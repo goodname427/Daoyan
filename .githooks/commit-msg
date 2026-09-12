@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# 提交信息规范：Conventional Commits
+#   feat(core): 新增识海变量
+#   fix(vm): 修正 for 循环栈残留
+#   docs(adr): 记录打包方案决策
+set -e
+
+MSG_FILE="$1"
+MSG=$(head -n 1 "$MSG_FILE")
+
+PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_.-]+\))?!?: .{1,72}$'
+
+if ! printf '%s' "$MSG" | grep -Eq "$PATTERN"; then
+  echo "✖ 提交信息不符合规范："
+  echo "    $MSG"
+  echo ""
+  echo "  正确格式： <type>(<scope>): <subject>"
+  echo "  type 可选：feat fix docs style refactor perf test build ci chore revert"
+  echo "  示例："
+  echo "    feat(core): 新增识海常驻变量"
+  echo "    fix(vm): 修正 for 循环的栈残留"
+  echo "    docs(adr): 记录桌面打包方案决策"
+  exit 1
+fi

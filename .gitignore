@@ -1,0 +1,27 @@
+node_modules/
+dist/
+dist-electron/
+release/
+coverage/
+.vite/
+
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+.env
+.env.local
+*.local
+
+# 编辑器
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# 打包产物
+*.exe
+*.msi
+*.dmg
+*.AppImage

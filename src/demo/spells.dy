@@ -1,0 +1,90 @@
+// ============================================================================
+// 道衍 · 示例法术
+//
+// 核心展示：同一件事（找到最近的敌人并射出一剑），三种写法各有取舍。
+//
+//   御剑术·朴  拿到句柄后逐个「探查」→ 每次都是一次对外查询，法力随敌人数线性增长
+//   御剑术·慧  用「快照」一次性把坐标读入神识 → 法力恒定，但要多占神识
+//   御剑术·微  同上，但把列表容量从 16 压到 4 → 神识大降，代价是最多只认得 4 个敌人
+//
+// 注意：静态分析给出的「法力上界」按列表容量计算，实测按真实敌人数计算，
+// 这个差距正是玩家要权衡的东西。
+// ============================================================================
+
+
+// 朴素写法：感知拿到句柄，循环里逐个探查
+spell 御剑术·朴 {
+  var self: vec2 = 自身位置()
+  var enemies: list<entity, 16> = 感知敌人(self, 400)
+  var best: entity
+  var bestD: num = 99999999
+  var p: vec2
+  var d: num
+
+  for e in enemies {
+    p = 探查(e)
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = e
+    }
+  }
+
+  if 不等(best, 空) {
+    发射(self, 朝向(self, 探查(best)), 30)
+  }
+}
+
+
+// 慧剑：一次快照把全部坐标读入神识，之后纯神识内运算
+spell 御剑术·慧 {
+  var self: vec2 = 自身位置()
+  var pts: list<vec2, 16> = 快照(self, 400)
+  var best: num = -1
+  var bestD: num = 99999999
+  var d: num
+  var i: num = 0
+
+  for p in pts {
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = i
+    }
+    i = 加(i, 1)
+  }
+
+  if 大于等于(best, 0) {
+    发射(self, 朝向(self, pts[best]), 30)
+  }
+}
+
+
+// 微剑：把容量压到 4，神识极省，但超过 4 个目标时就「看不全」了
+spell 御剑术·微 {
+  var self: vec2 = 自身位置()
+  var pts: list<vec2, 4> = 快照(self, 400)
+  var best: num = -1
+  var bestD: num = 99999999
+  var d: num
+  var i: num = 0
+
+  for p in pts {
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = i
+    }
+    i = 加(i, 1)
+  }
+
+  if 大于等于(best, 0) {
+    发射(self, 朝向(self, pts[best]), 30)
+  }
+}
+
+
+// 反例：递归。静态分析会在「创建阶段」就拒绝它
+spell 轮回测试 {
+  轮回测试()
+}
