@@ -41,6 +41,27 @@ Noita-like 修仙编程 roguelike。玩家自由编写功法/法术，
 - npm 的 install scripts 被 allow-scripts 拦截，但 esbuild / electron 二进制实际可用
 - `import.meta.glob` 只在 Vite 环境可用；tsx 跑无头沙盒时是 undefined，
   `src/core/metas/index.ts` 有显式兜底清单 —— 新增元法术文件需同步补一行
+- **git 代理坑**：全局 git 代理 `socks5://127.0.0.1:7890` 已失效（端口无监听），
+  直连 GitHub 会被 reset。实际可用的是 **7897** 端口（HTTP 混合代理）。
+  推送命令：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push`
+  （不修改全局 git config，每次临时覆盖）
+- 远程：`origin = https://github.com/goodname427/Daoyan.git`，分支 `master`，已设 upstream
+
+## 重要原则（用户反复强调）
+
+- **只有元法术（基础术式，`src/core/metas/*.ts`）能定义消耗数值**（mana/ticks 是唯一出处）
+- 自定义法术的消耗 = 它调用的元法术消耗叠加；法术体里不出现任何消耗数字
+- 元法术的消耗未来可按输入参数动态计算（当前固定值）
+- 主角与妖兽同构（同一 Actor + AttributeSet），区别只在数值与绑定的法术
+
+## 按键状态系统（阶段五）
+
+- `SpellMeta.keys: string[]` 声明虚拟按键；DSL `@keys=蓄力,辅助` / `@key=蓄力`
+- `KeyState`（held / heldTime / 粘性 pressEdge / 粘性 releaseEdge）
+- 按键类元法术：`按键按住/按下/松开/蓄力(索引)` + `结束施法()`
+- 粘性边沿：发生一次保持 true 直到被读取清除，避免 duration 周期轮询漏掉松开
+- 松开时保留 heldTime（不清零），让法术能在松开后轮询读到蓄力时长
+- 多按键结构已支持，但 keys[0] 才接到触发槽位；多键绑定 UI 是下一步
 
 ## 阶段四新增的关键结构（产品化）
 
