@@ -1,19 +1,12 @@
 /**
  * 无头沙盒：验证「资源约束能否逼出更优雅的写法」。
  *
- * 运行： npm run dev
+ * 运行： npm run sandbox
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import {
-  analyzeBook,
-  castSpell,
-  compileProgram,
-  makeCaster,
-  parseSpellbook,
-  World,
-} from '../core/index';
+import { VM, World, analyzeBook, compileProgram, parseSpellbook } from '../core/index';
 
 const SRC = join(process.cwd(), 'src', 'demo', 'spells.dy');
 
@@ -22,13 +15,23 @@ const pad = (s: string, n: number): string => {
   return s + ' '.repeat(Math.max(0, n - w));
 };
 
-/** 从剑气日志里取出命中目标编号 */
-function hitTarget(log: string[]): string {
-  for (const l of log) {
-    const m = /剑气命中 #(\d+)/.exec(l);
-    if (m) return `#${m[1]}`;
+/** 从弹道方向推断法术瞄向了谁 */
+function aimedAt(world: World): string {
+  const pr = world.projectiles[0];
+  if (!pr) return '未出手';
+  let best: number | null = null;
+  let bestT = Infinity;
+  for (const a of world.hostilesOf(pr.faction)) {
+    const t = (a.x - pr.x) * pr.dx + (a.y - pr.y) * pr.dy;
+    if (t < 0 || t > 800) continue;
+    const px = pr.x + pr.dx * t;
+    const py = pr.y + pr.dy * t;
+    if (Math.hypot(a.x - px, a.y - py) <= pr.radius + a.radius && t < bestT) {
+      bestT = t;
+      best = a.id;
+    }
   }
-  return '未命中';
+  return best === null ? '未命中' : `#${best}`;
 }
 
 /**
@@ -39,8 +42,13 @@ function setupWorld(n: number): World {
   const world = new World();
   for (let i = 0; i < n; i++) {
     const ang = i * 0.55;
-    const r = 110 + (n - 1 - i) * 28; // 越晚生成越近
-    world.spawn(Math.cos(ang) * r, Math.sin(ang) * r, 100);
+    const r = 110 + (n - 1 - i) * 28;
+    world.spawnActor({
+      faction: 'foe',
+      x: Math.cos(ang) * r,
+      y: Math.sin(ang) * r,
+      hpMax: 100,
+    });
   }
   return world;
 }
@@ -77,7 +85,7 @@ function main(): void {
     pad('法力', 6),
     pad('神识', 6),
     pad('耗时', 9),
-    pad('命中', 8),
+    pad('瞄向', 8),
     '备注',
   );
   console.log('─'.repeat(80));
@@ -85,18 +93,25 @@ function main(): void {
   for (const n of [1, 2, 3, 8]) {
     for (const name of spells) {
       const world = setupWorld(n);
-      const caster = makeCaster(0, 0, 400, 64);
-      const r = castSpell(program, name, world, caster);
-      const hit = hitTarget(r.log);
+      const caster = world.spawnActor({
+        name: '推演者',
+        faction: 'player',
+        x: 0,
+        y: 0,
+        manaMax: 400,
+        shenshiMax: 64,
+      });
+      const r = new VM(program, world, caster).run(name);
+      const aim = aimedAt(world);
       const nearest = `#${n}`; // 最后生成的敌人最近
-      const note = !r.ok ? (r.error ?? '') : hit === nearest ? '' : `看漏了（最近的是 ${nearest}）`;
+      const note = !r.ok ? (r.error ?? '') : aim === nearest ? '' : `看漏了（最近的是 ${nearest}）`;
       console.log(
         pad(String(n), 6),
         pad(name, 16),
         pad(String(r.mana), 6),
         pad(String(r.shenshiPeak), 6),
         pad(`${r.ticks} tick`, 9),
-        pad(hit, 8),
+        pad(aim, 8),
         note,
       );
     }
@@ -110,8 +125,15 @@ function main(): void {
   for (const cap of [24, 39, 64]) {
     for (const name of spells) {
       const world = setupWorld(6);
-      const caster = makeCaster(0, 0, 400, cap);
-      const r = castSpell(program, name, world, caster);
+      const caster = world.spawnActor({
+        name: '推演者',
+        faction: 'player',
+        x: 0,
+        y: 0,
+        manaMax: 400,
+        shenshiMax: cap,
+      });
+      const r = new VM(program, world, caster).run(name);
       console.log(
         pad(String(cap), 12),
         pad(name, 16),

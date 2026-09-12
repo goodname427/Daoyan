@@ -1,10 +1,10 @@
 import type { Type, Value } from './types';
-import type { Caster, World } from './world';
+import type { Actor, World } from './world';
 
 /** 元函数执行上下文：只有元函数能接触「外界」 */
 export interface Ctx {
   world: World;
-  caster: Caster;
+  caster: Actor;
   log: string[];
 }
 

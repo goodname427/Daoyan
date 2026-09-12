@@ -341,7 +341,8 @@ export function compileSpell(spell: Spell, fnIndex: Map<string, number>): Compil
   return new FnCompiler(fnIndex).compile(spell);
 }
 
-export function compileProgram(book: SpellBook, entry: string): Program {
+/** 编译整本法术书。entry 省略时取书中第一个法术作为入口。 */
+export function compileProgram(book: SpellBook, entry?: string): Program {
   const index = new Map<string, number>();
   const names = Object.keys(book);
   for (const n of names) {
@@ -349,8 +350,9 @@ export function compileProgram(book: SpellBook, entry: string): Program {
   }
   names.forEach((n, i) => index.set(n, i));
   const fns = names.map((n) => compileSpell(book[n], index));
-  const e = index.get(entry);
-  if (e === undefined) throw new Error(`入口法术不存在: ${entry}`);
+  const name = entry ?? names[0];
+  const e = name === undefined ? undefined : index.get(name);
+  if (e === undefined) throw new Error(`入口法术不存在: ${String(name)}`);
   return { fns, index, entry: e };
 }
 

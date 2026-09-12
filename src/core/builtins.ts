@@ -6,6 +6,11 @@ import type { Value } from './types';
  * 基础元函数库（基础术式）。
  *
  * 这张表就是整个游戏的 meta 平衡核心，早期请当作可调数据表看待。
+ *
+ * 定价原则：
+ *   - 神识内运算（加减、比较、距离、长度）→ 法力 0，只收耗时
+ *   - 读取外界（感知、探查、快照）        → 法力高，这是主要优化空间
+ *   - 改变外界（发射、伤害、移动）        → 法力高
  */
 
 const N = T.num;
@@ -293,6 +298,26 @@ defMeta({
   },
 });
 
+defMeta({
+  name: '旋转',
+  group: '向量',
+  params: [
+    { name: '向量', t: V },
+    { name: '弧度', t: N },
+  ],
+  ret: V,
+  mana: 0,
+  ticks: 1,
+  desc: '把向量旋转指定弧度（做扇形散射很便宜）',
+  impl: (_c, a) => {
+    const p = asVec(a[0]);
+    const r = asNum(a[1]);
+    const c = Math.cos(r);
+    const s = Math.sin(r);
+    return { x: p.x * c - p.y * s, y: p.x * s + p.y * c };
+  },
+});
+
 // ============================ 感知（对外查询，法力大头） ============================
 
 defMeta({
@@ -307,6 +332,39 @@ defMeta({
 });
 
 defMeta({
+  name: '自身生命',
+  group: '感知',
+  params: [],
+  ret: N,
+  mana: 1,
+  ticks: 1,
+  desc: '内视自身当前生命',
+  impl: (c) => c.caster.hp,
+});
+
+defMeta({
+  name: '自身法力率',
+  group: '感知',
+  params: [],
+  ret: N,
+  mana: 0,
+  ticks: 1,
+  desc: '自身剩余法力占比（0~1）。可用来写法力不足时的退化策略',
+  impl: (c) => (c.caster.manaMax <= 0 ? 0 : c.caster.mana / c.caster.manaMax),
+});
+
+defMeta({
+  name: '准星方向',
+  group: '感知',
+  params: [],
+  ret: V,
+  mana: 0,
+  ticks: 1,
+  desc: '当前准星方向（玩家由鼠标控制）。让玩家可以写手动瞄准的法术',
+  impl: (c) => ({ x: c.caster.aim.x, y: c.caster.aim.y }),
+});
+
+defMeta({
   name: '感知敌人',
   group: '感知',
   params: [
@@ -316,8 +374,8 @@ defMeta({
   ret: T.list('entity'),
   mana: 40,
   ticks: 4,
-  desc: '一次扫描获得范围内敌人句柄列表（只含句柄，不含坐标）',
-  impl: (c, a) => c.world.inRadius(asVec(a[0]), asNum(a[1]), 64).map((e) => e.id),
+  desc: '一次扫描获得范围内敌方句柄（只含句柄，不含坐标）',
+  impl: (c, a) => c.world.inRadius(asVec(a[0]), asNum(a[1]), 64, c.caster.faction).map((e) => e.id),
 });
 
 defMeta({
@@ -327,7 +385,7 @@ defMeta({
   ret: V,
   mana: 10,
   ticks: 2,
-  desc: '读取单个实体的坐标。每调用一次就是一次对外探查，循环里用它会很贵',
+  desc: '读取单个单位的坐标。每调用一次就是一次对外探查，循环里用它会很贵',
   impl: (c, a) => {
     const e = c.world.byId(asEntity(a[0]));
     return e ? { x: e.x, y: e.y } : { x: 0, y: 0 };
@@ -344,9 +402,11 @@ defMeta({
   ret: T.list('vec2'),
   mana: 70,
   ticks: 7,
-  desc: '一次 I/O 把范围内所有敌人坐标读入神识。很贵，但之后计算全免费',
+  desc: '一次 I/O 把范围内所有敌方坐标读入神识。很贵，但之后计算全免费',
   impl: (c, a) =>
-    c.world.inRadius(asVec(a[0]), asNum(a[1]), 64).map((e) => ({ x: e.x, y: e.y }) as Value),
+    c.world
+      .inRadius(asVec(a[0]), asNum(a[1]), 64, c.caster.faction)
+      .map((e) => ({ x: e.x, y: e.y }) as Value),
 });
 
 defMeta({
@@ -356,7 +416,7 @@ defMeta({
   ret: N,
   mana: 8,
   ticks: 2,
-  desc: '读取实体当前生命',
+  desc: '读取单位当前生命',
   impl: (c, a) => {
     const e = c.world.byId(asEntity(a[0]));
     return e ? e.hp : 0;
@@ -387,17 +447,53 @@ defMeta({
   ret: T.void,
   mana: 25,
   ticks: 3,
-  desc: '沿方向射出一道剑气，命中射线上最近的敌人',
+  desc: '射出一道飞剑（有飞行时间，可被躲开）',
   impl: (c, a) => {
     const o = asVec(a[0]);
     const d = asVec(a[1]);
-    const p = asNum(a[2]);
-    const hit = c.world.raycast(o, d, 400, 16);
+    const power = asNum(a[2]);
+    const l = Math.hypot(d.x, d.y);
+    const dx = l < 1e-9 ? 1 : d.x / l;
+    const dy = l < 1e-9 ? 0 : d.y / l;
+    c.world.spawnProjectile({
+      faction: c.caster.faction,
+      ownerId: c.caster.id,
+      x: o.x + dx * (c.caster.radius + 6),
+      y: o.y + dy * (c.caster.radius + 6),
+      dx,
+      dy,
+      speed: 380,
+      damage: power,
+      radius: 7,
+      life: 2.4,
+    });
+    return null;
+  },
+});
+
+defMeta({
+  name: '近战斩击',
+  group: '操控',
+  params: [
+    { name: '方向', t: V },
+    { name: '距离', t: N },
+    { name: '伤害', t: N },
+  ],
+  ret: T.void,
+  mana: 18,
+  ticks: 3,
+  desc: '朝方向挥出一道近战斩击，命中射线上最近的敌人（无法被躲开的贴身打法）',
+  impl: (c, a) => {
+    const d = asVec(a[0]);
+    const dist = asNum(a[1]);
+    const dmg = asNum(a[2]);
+    const o = { x: c.caster.x, y: c.caster.y };
+    const hit = c.world.raycast(o, d, dist, 18, c.caster.faction);
     if (hit) {
-      c.world.damage(hit.id, p);
-      c.log.push(`剑气命中 #${hit.id}，造成 ${p} 点伤害`);
+      c.world.damage(hit.id, dmg);
+      c.log.push(`斩击命中 #${hit.id}，造成 ${dmg} 点伤害`);
     } else {
-      c.log.push('剑气落空');
+      c.log.push('斩击落空');
     }
     return null;
   },
@@ -411,9 +507,9 @@ defMeta({
     { name: '数值', t: N },
   ],
   ret: T.void,
-  mana: 20,
+  mana: 15,
   ticks: 2,
-  desc: '直接对指定实体造成伤害（需要持有句柄）',
+  desc: '直接对指定单位造成伤害（需要持有句柄，不会被躲开）',
   impl: (c, a) => {
     const id = asEntity(a[0]);
     const dmg = asNum(a[1]);
@@ -432,14 +528,13 @@ defMeta({
   ret: T.void,
   mana: 12,
   ticks: 2,
-  desc: '沿方向移动自身',
+  desc: '沿方向瞬时位移（身法、冲刺）。想变快就要付出法力',
   impl: (c, a) => {
     const d = asVec(a[0]);
     const dist = asNum(a[1]);
     const l = Math.hypot(d.x, d.y);
     if (l < 1e-9) return null;
-    c.caster.x += (d.x / l) * dist;
-    c.caster.y += (d.y / l) * dist;
+    c.world.moveActor(c.caster, (d.x / l) * dist, (d.y / l) * dist);
     return null;
   },
 });
@@ -454,9 +549,8 @@ defMeta({
   desc: '直接挪移到指定坐标',
   impl: (c, a) => {
     const p = asVec(a[0]);
-    c.caster.x = p.x;
-    c.caster.y = p.y;
-    c.log.push(`瞬移至 (${p.x.toFixed(1)}, ${p.y.toFixed(1)})`);
+    c.world.placeActor(c.caster, p.x, p.y);
+    c.log.push(`瞬移至 (${Math.round(p.x)}, ${Math.round(p.y)})`);
     return null;
   },
 });

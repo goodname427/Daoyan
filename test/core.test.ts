@@ -1,19 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  VM,
+  World,
   analyzeBook,
-  castSpell,
   compileProgram,
-  makeCaster,
   parseSpellbook,
   shenshiOf,
   T,
-  World,
 } from '../src/core/index';
+import type { Actor } from '../src/core/index';
 
 function build(src: string, entry: string) {
   const book = parseSpellbook(src);
   return { book, program: compileProgram(book, entry) };
+}
+
+/** 造一个「施法者 + n 个敌人」的世界 */
+function scene(
+  n: number,
+  opts: { manaMax?: number; shenshiMax?: number } = {},
+): { world: World; caster: Actor } {
+  const world = new World();
+  for (let i = 0; i < n; i++) {
+    world.spawnActor({ faction: 'foe', x: 90 + i * 42, y: i * 6, hpMax: 100 });
+  }
+  const caster = world.spawnActor({
+    name: '推演者',
+    faction: 'player',
+    x: 0,
+    y: 0,
+    manaMax: opts.manaMax ?? 400,
+    shenshiMax: opts.shenshiMax ?? 64,
+  });
+  return { world, caster };
 }
 
 describe('资源模型：神识定价', () => {
@@ -26,7 +46,7 @@ describe('资源模型：神识定价', () => {
 });
 
 describe('虚拟机基础执行', () => {
-  it('能命中敌人并造成伤害', () => {
+  it('发射会生成带伤害的弹道（可被躲开，因此不是瞬时命中）', () => {
     const { program } = build(
       `
       spell 直击 {
@@ -37,12 +57,13 @@ describe('虚拟机基础执行', () => {
       `,
       '直击',
     );
-    const world = new World();
-    world.spawn(100, 0, 100);
-    const caster = makeCaster(0, 0, 300, 64);
-    const r = castSpell(program, '直击', world, caster);
+    const { world, caster } = scene(1);
+    const r = new VM(program, world, caster).run('直击');
     expect(r.ok).toBe(true);
-    expect(world.entities[0].hp).toBe(50);
+    expect(world.projectiles).toHaveLength(1);
+    expect(world.projectiles[0].damage).toBe(50);
+    // 尚未飞行，敌人不该掉血
+    expect(world.actors[0].hp).toBe(100);
   });
 
   it('法术之间可以互相调用，消耗叠加', () => {
@@ -63,16 +84,15 @@ describe('虚拟机基础执行', () => {
     expect(cost['加一'].tickWorst).toBe(2);
     expect(cost['主'].tickWorst).toBe(5);
 
-    const world = new World();
-    const caster = makeCaster(0, 0, 300, 64);
-    const r = castSpell(program, '主', world, caster);
+    const { world, caster } = scene(0);
+    const r = new VM(program, world, caster).run('主');
     expect(r.ok).toBe(true);
     expect(r.ticks).toBe(5);
   });
 });
 
 describe('走火入魔：资源超限', () => {
-  it('法力不足时失败并清空法力', () => {
+  it('法力不足时失败', () => {
     const { program } = build(
       `
       spell 大快照 {
@@ -82,12 +102,10 @@ describe('走火入魔：资源超限', () => {
       `,
       '大快照',
     );
-    const world = new World();
-    const caster = makeCaster(0, 0, 20, 64);
-    const r = castSpell(program, '大快照', world, caster);
+    const { world, caster } = scene(0, { manaMax: 20 });
+    const r = new VM(program, world, caster).run('大快照');
     expect(r.ok).toBe(false);
     expect(r.error).toContain('法力不足');
-    expect(caster.mana).toBe(0);
   });
 
   it('神识不足时失败', () => {
@@ -99,11 +117,44 @@ describe('走火入魔：资源超限', () => {
       `,
       '巨列表',
     );
-    const world = new World();
-    const caster = makeCaster(0, 0, 300, 64);
-    const r = castSpell(program, '巨列表', world, caster);
+    const { world, caster } = scene(0);
+    const r = new VM(program, world, caster).run('巨列表');
     expect(r.ok).toBe(false);
     expect(r.error).toContain('神识不足');
+  });
+});
+
+describe('分帧执行（施法耗时的基础）', () => {
+  it('advance 按 tick 预算推进，且能被打断', () => {
+    const { program } = build(
+      `
+      spell 长咒 {
+        var self: vec2 = 自身位置()
+        var p: list<vec2, 16> = 快照(self, 500)
+        var i: num = 0
+        var d: num
+        for q in p {
+          d = 距离(self, q)
+          i = 加(i, 1)
+        }
+      }
+      `,
+      '长咒',
+    );
+    const { world, caster } = scene(5);
+    const vm = new VM(program, world, caster);
+    vm.start('长咒');
+    expect(vm.isRunning).toBe(true);
+
+    // 只给 1 tick，绝不该跑完
+    vm.advance(1);
+    expect(vm.isRunning).toBe(true);
+
+    // 给足预算
+    let guard = 0;
+    while (vm.isRunning && guard++ < 1000) vm.advance(100);
+    expect(vm.isDone).toBe(true);
+    expect(vm.failure).toBeNull();
   });
 });
 
@@ -144,10 +195,8 @@ describe('静态分析', () => {
     const cost = analyzeBook(book)['御剑术·朴'];
 
     for (const n of [0, 1, 5, 12]) {
-      const world = new World();
-      for (let i = 0; i < n; i++) world.spawn(90 + i * 42, i * 6, 100);
-      const caster = makeCaster(0, 0, 9999, 9999);
-      const r = castSpell(program, '御剑术·朴', world, caster);
+      const { world, caster } = scene(n, { manaMax: 9999, shenshiMax: 9999 });
+      const r = new VM(program, world, caster).run('御剑术·朴');
       expect(r.ok).toBe(true);
       expect(r.mana).toBeLessThanOrEqual(cost.manaWorst);
       expect(r.ticks).toBeLessThanOrEqual(cost.tickWorst);
@@ -182,19 +231,14 @@ describe('静态分析', () => {
     `;
     const { book, program } = build(src, '朴');
     const costs = analyzeBook(book);
-    // 慧剑神识更贵
     expect(costs['慧'].shenshiPeak).toBeGreaterThan(costs['朴'].shenshiPeak);
 
     const run = (name: string, n: number): number => {
-      const world = new World();
-      for (let i = 0; i < n; i++) world.spawn(90 + i * 42, i * 6, 100);
-      const caster = makeCaster(0, 0, 9999, 9999);
-      return castSpell(program, name, world, caster).mana;
+      const { world, caster } = scene(n, { manaMax: 9999, shenshiMax: 9999 });
+      return new VM(program, world, caster).run(name).mana;
     };
 
-    // 敌人少：朴素更省法力
     expect(run('朴', 1)).toBeLessThan(run('慧', 1));
-    // 敌人多：慧剑更省法力
     expect(run('慧', 10)).toBeLessThan(run('朴', 10));
   });
 });

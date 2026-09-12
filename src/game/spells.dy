@@ -1,0 +1,164 @@
+// ============================================================================
+// 道衍 · 演武场法术书
+//
+// 玩家法术：绑定到按键上，按键触发
+// 妖兽法术：妖兽的「本能」，同样走施法管线，同样受神识 / 法力 / 耗时约束
+//
+// 这里的取舍是刻意设计的：
+//   基础剑气  逐个探查，法力随目标数增长 → 人少时便宜
+//   微剑      一次快照，法力恒定但容量只有 3 → 人多时省，但会看漏
+//   御剑·手动 手动瞄准，极便宜，但打不打得中看你自己的手
+//   疾风步    想跑得快就要烧法力
+// ============================================================================
+
+
+// 自动锁定最近目标，逐个「探查」——朴素写法
+spell 基础剑气 {
+  var self: vec2 = 自身位置()
+  var foes: list<entity, 8> = 感知敌人(self, 460)
+  var best: entity
+  var bestD: num = 999999
+  var p: vec2
+  var d: num
+
+  for f in foes {
+    p = 探查(f)
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = f
+    }
+  }
+
+  if 不等(best, 空) {
+    发射(self, 朝向(self, 探查(best)), 18)
+  }
+}
+
+
+// 一次快照读进神识，之后纯神识内运算。容量压到 3，神识极省
+spell 微剑 {
+  var self: vec2 = 自身位置()
+  var pts: list<vec2, 3> = 快照(self, 380)
+  var i: num = 0
+  var best: num = -1
+  var bestD: num = 999999
+  var d: num
+
+  for p in pts {
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = i
+    }
+    i = 加(i, 1)
+  }
+
+  if 大于等于(best, 0) {
+    发射(self, 朝向(self, pts[best]), 16)
+  }
+}
+
+
+// 三连散射：容量 8 的快照 + 旋转，覆盖面广但更贵
+spell 三连剑 {
+  var self: vec2 = 自身位置()
+  var pts: list<vec2, 8> = 快照(self, 460)
+  var i: num = 0
+  var best: num = -1
+  var bestD: num = 999999
+  var d: num
+
+  for p in pts {
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = i
+    }
+    i = 加(i, 1)
+  }
+
+  if 大于等于(best, 0) {
+    var dir: vec2 = 朝向(self, pts[best])
+    发射(self, dir, 14)
+    发射(self, 旋转(dir, 0.16), 14)
+    发射(self, 旋转(dir, -0.16), 14)
+  }
+}
+
+
+// 范围爆破：贴脸才有效，法力消耗随目标数线性增长
+spell 爆炎咒 {
+  var self: vec2 = 自身位置()
+  var foes: list<entity, 8> = 感知敌人(self, 240)
+  for f in foes {
+    伤害(f, 30)
+  }
+}
+
+
+// 手动瞄准：不花任何感知开销，极便宜 —— 代价是打不打得中看你自己
+spell 御剑·手动 {
+  var self: vec2 = 自身位置()
+  发射(self, 准星方向(), 22)
+}
+
+
+// 身法：想变快，就得烧法力
+spell 疾风步 {
+  移动(准星方向(), 170)
+}
+
+
+// ---------------- 妖兽的本能 ----------------
+
+// 近身则撕咬，稍远则扑击
+spell 妖兽·扑击 {
+  var self: vec2 = 自身位置()
+  var foes: list<entity, 3> = 感知敌人(self, 340)
+  var best: entity
+  var bestD: num = 999999
+  var p: vec2
+  var d: num
+
+  for f in foes {
+    p = 探查(f)
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = f
+    }
+  }
+
+  if 不等(best, 空) {
+    if 小于(bestD, 90) {
+      伤害(best, 14)
+    } else {
+      发射(self, 朝向(self, 探查(best)), 11)
+    }
+  }
+}
+
+
+// 远程符修：一次快照后遥击
+spell 妖兽·雷符 {
+  var self: vec2 = 自身位置()
+  var pts: list<vec2, 3> = 快照(self, 520)
+  var i: num = 0
+  var best: num = -1
+  var bestD: num = 999999
+  var d: num
+
+  for p in pts {
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = i
+    }
+    i = 加(i, 1)
+  }
+
+  if 大于等于(best, 0) {
+    发射(self, 朝向(self, pts[best]), 13)
+  }
+}

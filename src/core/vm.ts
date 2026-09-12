@@ -1,17 +1,13 @@
 import { Op } from './compiler';
 import type { CompiledFn, Program } from './compiler';
-
-export const DEFAULT_OPTIONS = {
-  maxTicks: 600,
-  fuel: 200_000,
-  maxDepth: 32,
-  trace: false,
-} satisfies CastOptions;
 import type { Value } from './types';
 import { asNum } from './meta';
 import { allMetas } from './meta';
 import type { Ctx } from './meta';
-import type { Caster, World } from './world';
+import type { Actor, World } from './world';
+
+/** 一个 tick 代表多少毫秒的施法时间 */
+export const TICK_MS = 10;
 
 export interface CastOptions {
   /** 施法耗时上限（tick），超出即走火入魔 */
@@ -23,6 +19,13 @@ export interface CastOptions {
   /** 单步追踪（推演模式与调试用） */
   trace?: boolean;
 }
+
+export const DEFAULT_OPTIONS = {
+  maxTicks: 600,
+  fuel: 200_000,
+  maxDepth: 32,
+  trace: false,
+} satisfies CastOptions;
 
 export interface CastResult {
   ok: boolean;
@@ -40,9 +43,6 @@ export interface CastResult {
   returnValue: Value;
 }
 
-const OP_NAMES: Record<number, string> = {};
-for (const [k, v] of Object.entries(Op)) OP_NAMES[v as number] = k;
-
 interface Frame {
   fn: CompiledFn;
   slots: Value[];
@@ -53,280 +53,372 @@ interface Frame {
   live: Map<number, number>;
 }
 
+const OP_NAMES: Record<number, string> = {};
+for (const [k, v] of Object.entries(Op)) OP_NAMES[v as number] = k;
+
+export type CastStatus = 'idle' | 'running' | 'done' | 'failed';
+
 /**
  * 受限虚拟机。
  *
- * 与通用 VM 的区别：每一步都计价。
- *   - 神识：DECL 时占用、FREE / 返回时归还，超过上限即失败
- *   - 法力：只有元函数（与外界交互）收费
- *   - 耗时：元函数与下标运算计费，纯控制流免费
- *   - fuel：指令步数硬上限
+ * 与通用 VM 的区别：
+ *   1. 每一步都计价（神识 / 法力 / 耗时 / fuel）
+ *   2. **可中断**：`advance(tickBudget)` 分帧推进，使「施法耗时」成为真实时间，
+ *      也让「受伤打断施法」成为可能 —— 这是「躲位」玩法成立的前提
  */
 export class VM {
   private metas = allMetas();
   private ctx: Ctx;
+  private opts: CastOptions;
+
+  private stack: Value[] = [];
+  private frames: Frame[] = [];
+  private shenshiCur = 0;
+  private shenshiPeak = 0;
+  private manaSpent = 0;
+  private ticksUsed = 0;
+  private steps = 0;
+  private status: CastStatus = 'idle';
+  private error: string | null = null;
+  private returnValue: Value = null;
+  private entryName = '';
 
   constructor(
     private program: Program,
     world: World,
-    private caster: Caster,
+    private caster: Actor,
+    options?: Partial<CastOptions>,
   ) {
     this.ctx = { world, caster, log: [] };
+    this.opts = { ...DEFAULT_OPTIONS, ...options };
   }
 
-  run(entryName?: string, options?: Partial<CastOptions>): CastResult {
-    const opts: CastOptions = { ...DEFAULT_OPTIONS, ...options };
+  // ---------------- 生命周期 ----------------
+
+  start(entryName?: string): void {
     const prog = this.program;
     let entryIdx = prog.entry;
     if (entryName !== undefined) {
       const i = prog.index.get(entryName);
       if (i === undefined) {
-        return {
-          ok: false,
-          mana: 0,
-          shenshiPeak: 0,
-          ticks: 0,
-          steps: 0,
-          error: `未定义的法术: ${entryName}`,
-          log: [],
-          returnValue: null,
-        };
+        this.status = 'failed';
+        this.error = `未定义的法术: ${entryName}`;
+        return;
       }
       entryIdx = i;
+      this.entryName = entryName;
+    } else {
+      this.entryName = prog.fns[prog.entry]?.name ?? '';
     }
 
-    const stack: Value[] = [];
-    const frames: Frame[] = [];
-    const log = this.ctx.log;
-    log.length = 0;
+    this.stack = [];
+    this.frames = [];
+    this.shenshiCur = 0;
+    this.shenshiPeak = 0;
+    this.manaSpent = 0;
+    this.ticksUsed = 0;
+    this.steps = 0;
+    this.error = null;
+    this.returnValue = null;
+    this.ctx.log.length = 0;
+    this.status = 'running';
+    this.pushFrame(entryIdx, 0);
+  }
 
-    let shenshiCur = 0;
-    let shenshiPeak = 0;
-    let mana = 0;
-    let ticks = 0;
-    let steps = 0;
-    let returnValue: Value = null;
+  /** 一次性执行到底（推演台、测试、无头沙盒用） */
+  run(entryName?: string): CastResult {
+    this.start(entryName);
+    while (this.status === 'running') this.execOne();
+    return this.result();
+  }
 
-    const caster = this.caster;
+  /**
+   * 推进最多 tickBudget 个 tick，返回实际推进的 tick 数。
+   * 每帧调用一次，即可把「耗时」映射成真实的施法时间。
+   */
+  advance(tickBudget: number, stepCap = 20_000): number {
+    if (this.status !== 'running') return 0;
+    const startTicks = this.ticksUsed;
+    const startSteps = this.steps;
+    while (this.status === 'running') {
+      this.execOne();
+      if (this.ticksUsed - startTicks >= tickBudget) break;
+      if (this.steps - startSteps >= stepCap) break;
+    }
+    return this.ticksUsed - startTicks;
+  }
 
-    const fail = (reason: string): CastResult => ({
-      ok: false,
-      mana,
-      shenshiPeak,
-      ticks,
-      steps,
-      error: reason,
-      log: [...log],
-      returnValue: null,
-    });
-
-    const pushFrame = (idx: number, argc: number): string | null => {
-      if (frames.length >= opts.maxDepth) return '轮回过深：神识无法承载更深层的调用';
-      const fn = prog.fns[idx];
-      const args: Value[] = new Array(argc);
-      for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
-      const slots: Value[] = new Array(fn.slotCount).fill(null);
-      for (let i = 0; i < argc; i++) slots[i] = args[i];
-      frames.push({ fn, slots, pc: 0, base: stack.length, live: new Map() });
-      ticks += 1; // 调用本身的开销
-      return null;
+  result(): CastResult {
+    return {
+      ok: this.status === 'done',
+      mana: this.manaSpent,
+      shenshiPeak: this.shenshiPeak,
+      ticks: this.ticksUsed,
+      steps: this.steps,
+      error: this.error,
+      log: [...this.ctx.log],
+      returnValue: this.returnValue,
     };
+  }
 
-    pushFrame(entryIdx, 0);
+  // ---------------- 只读状态 ----------------
 
-    for (;;) {
-      if (frames.length === 0) break;
-      const f = frames[frames.length - 1];
-      const code = f.fn.code;
-      if (f.pc >= code.length) {
-        // 隐式返回
-        for (const size of f.live.values()) shenshiCur -= size;
+  get isRunning(): boolean {
+    return this.status === 'running';
+  }
+  get isDone(): boolean {
+    return this.status === 'done' || this.status === 'failed';
+  }
+  get spellName(): string {
+    return this.entryName;
+  }
+  /** 已消耗法力（战斗层每帧按增量扣减，被打断时已消耗部分不退） */
+  get spentMana(): number {
+    return this.manaSpent;
+  }
+  get spentTicks(): number {
+    return this.ticksUsed;
+  }
+  get peakShenshi(): number {
+    return this.shenshiPeak;
+  }
+  get failure(): string | null {
+    return this.error;
+  }
+
+  // ---------------- 内部 ----------------
+
+  private fail(reason: string): void {
+    this.status = 'failed';
+    this.error = reason;
+    // 失败时释放本帧所有神识占用
+    for (const f of this.frames) {
+      for (const size of f.live.values()) this.shenshiCur -= size;
+      f.live.clear();
+    }
+    this.frames = [];
+  }
+
+  private pushFrame(idx: number, argc: number): string | null {
+    if (this.frames.length >= this.opts.maxDepth) return '轮回过深：神识无法承载更深层的调用';
+    const fn = this.program.fns[idx];
+    const args: Value[] = new Array(argc);
+    for (let i = argc - 1; i >= 0; i--) args[i] = this.stack.pop() ?? null;
+    const slots: Value[] = new Array(fn.slotCount).fill(null);
+    for (let i = 0; i < argc; i++) slots[i] = args[i];
+    this.frames.push({ fn, slots, pc: 0, base: this.stack.length, live: new Map() });
+    this.ticksUsed += 1; // 调用本身的开销
+    return null;
+  }
+
+  private execOne(): void {
+    if (this.frames.length === 0) {
+      this.status = 'done';
+      return;
+    }
+    const f = this.frames[this.frames.length - 1];
+    const code = f.fn.code;
+    if (f.pc >= code.length) {
+      // 隐式返回
+      for (const size of f.live.values()) this.shenshiCur -= size;
+      f.live.clear();
+      this.stack.length = f.base;
+      this.frames.pop();
+      if (this.frames.length === 0) this.status = 'done';
+      else this.stack.push(null);
+      return;
+    }
+
+    const inst = code[f.pc++];
+    this.steps++;
+    if (this.opts.trace) {
+      console.log(
+        `${String(f.pc - 1).padStart(3)} ${(OP_NAMES[inst.op] ?? inst.op).padEnd(9)}` +
+          ` a=${inst.a ?? ''} b=${inst.b ?? ''} | 栈深 ${this.stack.length}` +
+          ` 神识 ${this.shenshiCur} 法力 ${this.manaSpent} 耗时 ${this.ticksUsed}`,
+      );
+    }
+    if (this.steps > this.opts.fuel) {
+      this.fail(`神识溃散：指令数超过上限 ${this.opts.fuel}`);
+      return;
+    }
+
+    const stack = this.stack;
+    const opts = this.opts;
+
+    switch (inst.op) {
+      case Op.PUSHK:
+        stack.push(f.fn.consts[inst.a ?? 0]);
+        break;
+
+      case Op.LDSLOT:
+        stack.push(f.slots[inst.a ?? 0] ?? null);
+        break;
+
+      case Op.STSLOT: {
+        const v = stack.pop() ?? null;
+        f.slots[inst.a ?? 0] = v;
+        break;
+      }
+
+      case Op.TRUNC: {
+        const v = stack.pop();
+        stack.push(Array.isArray(v) ? v.slice(0, inst.a ?? 0) : (v ?? null));
+        break;
+      }
+
+      case Op.DECL: {
+        const slot = inst.a ?? 0;
+        const size = inst.b ?? 0;
+        this.shenshiCur += size;
+        if (this.shenshiCur > this.caster.shenshiMax) {
+          this.fail(`神识不足：需要 ${this.shenshiCur}，上限 ${this.caster.shenshiMax}`);
+          return;
+        }
+        if (this.shenshiCur > this.shenshiPeak) this.shenshiPeak = this.shenshiCur;
+        f.live.set(slot, size);
+        break;
+      }
+
+      case Op.FREE: {
+        const slot = inst.a ?? 0;
+        const size = f.live.get(slot);
+        if (size !== undefined) {
+          f.live.delete(slot);
+          this.shenshiCur -= size;
+        }
+        break;
+      }
+
+      case Op.POP:
+        stack.pop();
+        break;
+
+      case Op.SWAP: {
+        const a = stack.pop() ?? null;
+        const b = stack.pop() ?? null;
+        stack.push(a);
+        stack.push(b);
+        break;
+      }
+
+      case Op.PEEK: {
+        const d = inst.a ?? 0;
+        stack.push(stack[stack.length - 1 - d] ?? null);
+        break;
+      }
+
+      case Op.INCTOP: {
+        const i = stack.length - 1;
+        stack[i] = asNum(stack[i]) + 1;
+        break;
+      }
+
+      case Op.DECTOP: {
+        const i = stack.length - 1;
+        stack[i] = asNum(stack[i]) - 1;
+        break;
+      }
+
+      case Op.IDX: {
+        const idx = asNum(stack.pop() ?? null);
+        const arr = stack.pop();
+        this.ticksUsed += 1;
+        if (this.ticksUsed > opts.maxTicks) {
+          this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
+          return;
+        }
+        stack.push(Array.isArray(arr) ? (arr[idx] ?? null) : null);
+        break;
+      }
+
+      case Op.SETIDX: {
+        const v = stack.pop() ?? null;
+        const idx = asNum(stack.pop() ?? null);
+        const arr = stack.pop();
+        this.ticksUsed += 1;
+        if (this.ticksUsed > opts.maxTicks) {
+          this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
+          return;
+        }
+        if (Array.isArray(arr)) arr[idx] = v;
+        break;
+      }
+
+      case Op.CALLMETA: {
+        const m = this.metas[inst.a ?? 0];
+        const argc = inst.b ?? 0;
+        const args: Value[] = new Array(argc);
+        for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
+        if (this.manaSpent + m.mana > this.caster.mana) {
+          this.fail(`法力不足：需要 ${this.manaSpent + m.mana}，仅有 ${this.caster.mana}`);
+          return;
+        }
+        this.manaSpent += m.mana;
+        this.ticksUsed += m.ticks;
+        if (this.ticksUsed > opts.maxTicks) {
+          this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
+          return;
+        }
+        stack.push(m.impl(this.ctx, args));
+        break;
+      }
+
+      case Op.CALLUSER: {
+        const err = this.pushFrame(inst.a ?? 0, inst.b ?? 0);
+        if (err) {
+          this.fail(err);
+          return;
+        }
+        if (this.ticksUsed > opts.maxTicks) {
+          this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
+          return;
+        }
+        break;
+      }
+
+      case Op.JMP:
+        f.pc = inst.a ?? 0;
+        break;
+
+      case Op.JMPIFNOT: {
+        const c = stack.pop();
+        if (c !== true) f.pc = inst.a ?? 0;
+        break;
+      }
+
+      case Op.RET: {
+        const hasVal = (inst.a ?? 0) === 1;
+        const val = hasVal ? (stack.pop() ?? null) : null;
+        for (const size of f.live.values()) this.shenshiCur -= size;
         f.live.clear();
         stack.length = f.base;
-        frames.pop();
-        if (frames.length === 0) break;
-        stack.push(null);
-        continue;
-      }
-
-      const inst = code[f.pc++];
-      steps++;
-      if (opts.trace) {
-        console.log(
-          `${String(f.pc - 1).padStart(3)} ${(OP_NAMES[inst.op] ?? inst.op).padEnd(9)}` +
-            ` a=${inst.a ?? ''} b=${inst.b ?? ''} | 栈深 ${stack.length}` +
-            ` 神识 ${shenshiCur} 法力 ${mana} 耗时 ${ticks}`,
-        );
-      }
-      if (steps > opts.fuel) return fail(`神识溃散：指令数超过上限 ${opts.fuel}`);
-
-      switch (inst.op) {
-        case Op.PUSHK:
-          stack.push(f.fn.consts[inst.a ?? 0]);
-          break;
-
-        case Op.LDSLOT:
-          stack.push(f.slots[inst.a ?? 0] ?? null);
-          break;
-
-        case Op.STSLOT: {
-          const v = stack.pop() ?? null;
-          f.slots[inst.a ?? 0] = v;
-          break;
+        this.frames.pop();
+        if (this.frames.length === 0) {
+          this.returnValue = val;
+          this.status = 'done';
+          return;
         }
-
-        case Op.TRUNC: {
-          const v = stack.pop();
-          stack.push(Array.isArray(v) ? v.slice(0, inst.a ?? 0) : (v ?? null));
-          break;
-        }
-
-        case Op.DECL: {
-          const slot = inst.a ?? 0;
-          const size = inst.b ?? 0;
-          shenshiCur += size;
-          if (shenshiCur > caster.shenshiMax) {
-            return fail(`神识不足：需要 ${shenshiCur}，上限 ${caster.shenshiMax}`);
-          }
-          if (shenshiCur > shenshiPeak) shenshiPeak = shenshiCur;
-          f.live.set(slot, size);
-          break;
-        }
-
-        case Op.FREE: {
-          const slot = inst.a ?? 0;
-          const size = f.live.get(slot);
-          if (size !== undefined) {
-            f.live.delete(slot);
-            shenshiCur -= size;
-          }
-          break;
-        }
-
-        case Op.POP:
-          stack.pop();
-          break;
-
-        case Op.SWAP: {
-          const a = stack.pop() ?? null;
-          const b = stack.pop() ?? null;
-          stack.push(a);
-          stack.push(b);
-          break;
-        }
-
-        case Op.PEEK: {
-          const d = inst.a ?? 0;
-          stack.push(stack[stack.length - 1 - d] ?? null);
-          break;
-        }
-
-        case Op.INCTOP: {
-          const i = stack.length - 1;
-          stack[i] = asNum(stack[i]) + 1;
-          break;
-        }
-
-        case Op.DECTOP: {
-          const i = stack.length - 1;
-          stack[i] = asNum(stack[i]) - 1;
-          break;
-        }
-
-        case Op.IDX: {
-          const idx = asNum(stack.pop() ?? null);
-          const arr = stack.pop();
-          ticks += 1;
-          if (ticks > opts.maxTicks) return fail(`施法超时：超过 ${opts.maxTicks} tick`);
-          stack.push(Array.isArray(arr) ? (arr[idx] ?? null) : null);
-          break;
-        }
-
-        case Op.SETIDX: {
-          const v = stack.pop() ?? null;
-          const idx = asNum(stack.pop() ?? null);
-          const arr = stack.pop();
-          ticks += 1;
-          if (ticks > opts.maxTicks) return fail(`施法超时：超过 ${opts.maxTicks} tick`);
-          if (Array.isArray(arr)) arr[idx] = v;
-          break;
-        }
-
-        case Op.CALLMETA: {
-          const m = this.metas[inst.a ?? 0];
-          const argc = inst.b ?? 0;
-          const args: Value[] = new Array(argc);
-          for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
-          mana += m.mana;
-          if (mana > caster.mana) {
-            return fail(`法力不足：需要 ${mana}，仅有 ${caster.mana}`);
-          }
-          ticks += m.ticks;
-          if (ticks > opts.maxTicks) return fail(`施法超时：超过 ${opts.maxTicks} tick`);
-          stack.push(m.impl(this.ctx, args));
-          break;
-        }
-
-        case Op.CALLUSER: {
-          const err = pushFrame(inst.a ?? 0, inst.b ?? 0);
-          if (err) return fail(err);
-          if (ticks > opts.maxTicks) return fail(`施法超时：超过 ${opts.maxTicks} tick`);
-          break;
-        }
-
-        case Op.JMP:
-          f.pc = inst.a ?? 0;
-          break;
-
-        case Op.JMPIFNOT: {
-          const c = stack.pop();
-          if (c !== true) f.pc = inst.a ?? 0;
-          break;
-        }
-
-        case Op.RET: {
-          const hasVal = (inst.a ?? 0) === 1;
-          const val = hasVal ? (stack.pop() ?? null) : null;
-          for (const size of f.live.values()) shenshiCur -= size;
-          f.live.clear();
-          stack.length = f.base;
-          frames.pop();
-          if (frames.length === 0) {
-            returnValue = val;
-            break;
-          }
-          stack.push(val);
-          break;
-        }
+        stack.push(val);
+        break;
       }
     }
-
-    return {
-      ok: true,
-      mana,
-      shenshiPeak,
-      ticks,
-      steps,
-      error: null,
-      log: [...log],
-      returnValue,
-    };
   }
 }
 
 /**
- * 施展一次法术：计量并真正结算资源。
- * 成功则扣除法力；失败（走火入魔）则法力枯竭并留下反噬记录。
+ * 一次性施展并结算（推演台 / 测试用）。
+ * 成功扣法力；失败（走火入魔）法力枯竭。
  */
 export function castSpell(
   program: Program,
   entry: string,
   world: World,
-  caster: Caster,
+  caster: Actor,
   opts?: Partial<CastOptions>,
 ): CastResult {
-  const vm = new VM(program, world, caster);
-  const r = vm.run(entry, opts);
+  const vm = new VM(program, world, caster, opts);
+  const r = vm.run(entry);
   if (r.ok) {
     caster.mana = Math.max(0, caster.mana - r.mana);
     world.events.push(
