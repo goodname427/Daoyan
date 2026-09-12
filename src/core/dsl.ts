@@ -488,4 +488,96 @@ export function parseSpellbook(src: string): SpellBook {
   return new Parser(tokenize(src)).parseProgram();
 }
 
+// ============================ AST → DSL 序列化 ============================
+
+function serType(t: Type): string {
+  if (t.k === 'list') {
+    const cap = t.cap < 0 ? '' : `, ${t.cap}`;
+    return `list<${t.elem}${cap}>`;
+  }
+  return t.k;
+}
+
+function serExpr(e: Expr): string {
+  switch (e.k) {
+    case 'lit':
+      if (e.v === null) return '空';
+      if (typeof e.v === 'boolean') return e.v ? 'true' : 'false';
+      return String(e.v);
+    case 'var':
+      return e.name;
+    case 'index':
+      return `${serExpr(e.arr)}[${serExpr(e.i)}]`;
+    case 'call':
+      return `${e.name}(${e.args.map(serExpr).join(', ')})`;
+  }
+}
+
+function serStmt(s: Stmt, indent: number): string {
+  const pad = '  '.repeat(indent);
+  switch (s.k) {
+    case 'decl': {
+      const t = s.t ? `: ${serType(s.t)}` : '';
+      const init = s.init ? ` = ${serExpr(s.init)}` : '';
+      return `${pad}var ${s.name}${t}${init}`;
+    }
+    case 'assign':
+      if (s.target.k === 'var') return `${pad}${s.target.name} = ${serExpr(s.e)}`;
+      return `${pad}${serExpr(s.target.arr)}[${serExpr(s.target.i)}] = ${serExpr(s.e)}`;
+    case 'expr':
+      return `${pad}${serExpr(s.e)}`;
+    case 'if': {
+      const thenBody = s.then.map((st) => serStmt(st, indent + 1)).join('\n');
+      if (s.els) {
+        const elseBody = s.els.map((st) => serStmt(st, indent + 1)).join('\n');
+        return `${pad}if ${serExpr(s.cond)} {\n${thenBody}\n${pad}} else {\n${elseBody}\n${pad}}`;
+      }
+      return `${pad}if ${serExpr(s.cond)} {\n${thenBody}\n${pad}}`;
+    }
+    case 'for': {
+      const body = s.body.map((st) => serStmt(st, indent + 1)).join('\n');
+      return `${pad}for ${s.name} in ${serExpr(s.list)} {\n${body}\n${pad}}`;
+    }
+    case 'repeat': {
+      const body = s.body.map((st) => serStmt(st, indent + 1)).join('\n');
+      return `${pad}repeat ${s.count} {\n${body}\n${pad}}`;
+    }
+    case 'break':
+      return `${pad}break`;
+    case 'free':
+      return `${pad}free ${s.name}`;
+    case 'return':
+      return `${pad}return${s.e ? ' ' + serExpr(s.e) : ''}`;
+  }
+}
+
+function serAnnotations(spell: Spell): string {
+  if (!spell.meta) return '';
+  const m = spell.meta;
+  const parts: string[] = [];
+  if (m.kind) parts.push(`@kind=${m.kind}`);
+  if (m.period !== undefined) parts.push(`@period=${m.period}`);
+  if (m.duration !== undefined) parts.push(`@duration=${m.duration}`);
+  if (m.cooldown !== undefined) parts.push(`@cooldown=${m.cooldown}`);
+  if (m.keys && m.keys.length > 0) parts.push(`@keys=${m.keys.join(',')}`);
+  return parts.length > 0 ? ' ' + parts.join(' ') : '';
+}
+
+/** 把单个法术序列化回 DSL 文本 */
+export function serializeSpell(spell: Spell): string {
+  const params = spell.params.length
+    ? `(${spell.params.map((p) => `${p.name}: ${serType(p.t)}`).join(', ')})`
+    : '';
+  const ret = spell.ret ? ` -> ${serType(spell.ret)}` : '';
+  const annotations = serAnnotations(spell);
+  const body = spell.body.map((st) => serStmt(st, 1)).join('\n');
+  // 顺序与解析器一致：spell 名 注解 (参数) -> 返回类型 { 体 }
+  return `spell ${spell.name}${annotations}${params}${ret} {\n${body}\n}`;
+}
+
+/** 把整本法术书序列化回 DSL 文本 */
+export function serializeBook(book: SpellBook): string {
+  return Object.values(book).map(serializeSpell).join('\n\n');
+}
+
 export { ParseError, DYN_CAP };

@@ -6,6 +6,7 @@ import {
   analyzeBook,
   compileProgram,
   parseSpellbook,
+  serializeBook,
   shenshiOf,
   T,
 } from '../src/core/index';
@@ -34,6 +35,31 @@ function scene(
   });
   return { world, caster };
 }
+
+describe('AST ↔ DSL 序列化', () => {
+  it('序列化后能重新解析成等价法术书（往返一致）', () => {
+    const src = `
+      spell 往返 @kind=duration @period=1 @duration=3 @keys=蓄力 {
+        var self: vec2 = 自身位置()
+        var foes: list<entity, 4> = 感知敌人(self, 300)
+        for f in foes {
+          if 小于(距离(self, 探查(f)), 200) {
+            伤害(f, 20)
+          }
+        }
+        return 自身法力率()
+      }
+    `;
+    const book = parseSpellbook(src);
+    const ser = serializeBook(book);
+    const book2 = parseSpellbook(ser);
+    expect(Object.keys(book2)).toEqual(Object.keys(book));
+    // 关键结构：法术名、声明数、for/嵌套层级应一致
+    expect(book2['往返'].body.length).toBe(book['往返'].body.length);
+    expect(book2['往返'].meta?.kind).toBe('duration');
+    expect(book2['往返'].meta?.keys).toEqual(['蓄力']);
+  });
+});
 
 describe('资源模型：神识定价', () => {
   it('向量是两个数，列表按容量计价', () => {

@@ -628,3 +628,73 @@ body {
 .react-flow__attribution {
   display: none;
 }
+
+/* 节点编辑器 */
+.editor-wrap {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  .editor-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.palette {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.palette h3 {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 10px;
+  letter-spacing: 2px;
+}
+
+.palette-btn {
+  width: 100%;
+  text-align: left;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.palette-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.palette .editor {
+  height: auto;
+  font-size: 11px;
+}
+
+.node-input {
+  width: 100%;
+  background: #0e1219;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 6px;
+  margin-top: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.palette summary {
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  margin-top: 8px;
+}

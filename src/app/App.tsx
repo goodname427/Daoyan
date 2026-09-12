@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 
 import { CombatView } from './CombatView';
 import { LabView } from './LabView';
+import { NodeEditor } from './NodeEditor';
 import { loadExternalMetas } from '../game/externalMetas';
 
-type Tab = 'lab' | 'arena';
+type Tab = 'lab' | 'arena' | 'graph';
 
 const TABS: Array<{ id: Tab; label: string; hint: string }> = [
   { id: 'lab', label: '推演台', hint: '编写与静态分析' },
   { id: 'arena', label: '演武场', hint: '实际战斗' },
+  { id: 'graph', label: '蓝图编辑', hint: '节点图写法术' },
 ];
 
 export function App() {
@@ -35,7 +37,7 @@ export function App() {
           </button>
         ))}
       </nav>
-      {tab === 'lab' ? <LabView /> : <CombatView />}
+      {tab === 'lab' ? <LabView /> : tab === 'arena' ? <CombatView /> : <NodeEditor />}
     </>
   );
 }
