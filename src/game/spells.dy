@@ -12,8 +12,10 @@
 // ============================================================================
 
 
+// @kind=instant|duration|channel  @period 周期  @duration 持续  @cooldown 冷却
+
 // 自动锁定最近目标，逐个「探查」——朴素写法
-spell 基础剑气 {
+spell 基础剑气 @cooldown=0.4 {
   var self: vec2 = 自身位置()
   var foes: list<entity, 8> = 感知敌人(self, 460)
   var best: entity
@@ -37,7 +39,7 @@ spell 基础剑气 {
 
 
 // 一次快照读进神识，之后纯神识内运算。容量压到 3，神识极省
-spell 微剑 {
+spell 微剑 @cooldown=0.8 {
   var self: vec2 = 自身位置()
   var pts: list<vec2, 3> = 快照(self, 380)
   var i: num = 0
@@ -61,7 +63,7 @@ spell 微剑 {
 
 
 // 三连散射：容量 8 的快照 + 旋转，覆盖面广但更贵
-spell 三连剑 {
+spell 三连剑 @cooldown=2.5 {
   var self: vec2 = 自身位置()
   var pts: list<vec2, 8> = 快照(self, 460)
   var i: num = 0
@@ -88,7 +90,7 @@ spell 三连剑 {
 
 
 // 范围爆破：贴脸才有效，法力消耗随目标数线性增长
-spell 爆炎咒 {
+spell 爆炎咒 @cooldown=6 {
   var self: vec2 = 自身位置()
   var foes: list<entity, 8> = 感知敌人(self, 240)
   for f in foes {
@@ -105,8 +107,39 @@ spell 御剑·手动 {
 
 
 // 身法：想变快，就得烧法力
-spell 疾风步 {
+spell 疾风步 @cooldown=3 {
   移动(准星方向(), 170)
+}
+
+
+// 持续类：起手后每 1.5 秒续一次护体，共持续 6 秒
+// 注意 —— 每次续期都要再付一次法力，这就是「持续」的代价
+spell 护体金光 @kind=duration @period=1.5 @duration=6 @cooldown=14 {
+  护体(6, 2.5)
+}
+
+
+// 引导类：读条期间几乎无法移动，但威力可观
+spell 天雷引 @kind=channel @duration=2 @cooldown=10 {
+  var self: vec2 = 自身位置()
+  var pts: list<vec2, 8> = 快照(self, 460)
+  var i: num = 0
+  var best: num = -1
+  var bestD: num = 999999
+  var d: num
+
+  for p in pts {
+    d = 距离(self, p)
+    if 小于(d, bestD) {
+      bestD = d
+      best = i
+    }
+    i = 加(i, 1)
+  }
+
+  if 大于等于(best, 0) {
+    发射(self, 朝向(self, pts[best]), 45)
+  }
 }
 
 

@@ -23,15 +23,14 @@ function scene(
 ): { world: World; caster: Actor } {
   const world = new World();
   for (let i = 0; i < n; i++) {
-    world.spawnActor({ faction: 'foe', x: 90 + i * 42, y: i * 6, hpMax: 100 });
+    world.spawnActor({ faction: 'foe', x: 90 + i * 42, y: i * 6, attrs: { hpMax: 100 } });
   }
   const caster = world.spawnActor({
     name: '推演者',
     faction: 'player',
     x: 0,
     y: 0,
-    manaMax: opts.manaMax ?? 400,
-    shenshiMax: opts.shenshiMax ?? 64,
+    attrs: { manaMax: opts.manaMax ?? 400, shenshiMax: opts.shenshiMax ?? 64 },
   });
   return { world, caster };
 }

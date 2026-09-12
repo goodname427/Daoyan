@@ -1,4 +1,6 @@
 import type { Vec2 } from './types';
+import { baseAttributes, computeAttributes, tickModifiers } from './attributes';
+import type { AttrKey, Attributes, Modifier } from './attributes';
 
 /**
  * 战斗世界。
@@ -41,16 +43,18 @@ export interface Actor {
   /** 准星方向（单位向量），玩家由鼠标驱动 */
   aim: Vec2;
 
+  /** 当前生命（上限见 attr.hpMax） */
   hp: number;
-  hpMax: number;
+  /** 当前法力（上限见 attr.manaMax） */
   mana: number;
-  manaMax: number;
-  /** 每秒法力回复 */
-  manaRegen: number;
-  shenshiMax: number;
 
-  /** 每秒移动距离 */
-  speed: number;
+  /** 基础属性（不受临时增益影响） */
+  base: Attributes;
+  /** 临时增益 / 减益 */
+  mods: Modifier[];
+  /** 结算后的有效属性，战斗层每帧刷新 */
+  attr: Attributes;
+
   radius: number;
   alive: boolean;
 
@@ -78,11 +82,8 @@ export interface ActorInit {
   faction: Faction;
   x: number;
   y: number;
-  hpMax?: number;
-  manaMax?: number;
-  manaRegen?: number;
-  shenshiMax?: number;
-  speed?: number;
+  /** 基础属性覆盖项，未给出的走 baseAttributes() 默认值 */
+  attrs?: Partial<Attributes>;
   radius?: number;
   bindings?: Record<string, string>;
   behavior?: Behavior;
@@ -101,6 +102,7 @@ export class World {
 
   private nextActorId = 1;
   private nextProjId = 1;
+  private nextModifierId = 1;
 
   reset(): void {
     this.actors = [];
@@ -108,9 +110,20 @@ export class World {
     this.events = [];
     this.nextActorId = 1;
     this.nextProjId = 1;
+    this.nextModifierId = 1;
+  }
+
+  /** 每帧推进：法力回复、增益计时、属性重算 */
+  tickActor(a: Actor, dt: number): void {
+    if (!a.alive) return;
+    a.mana = Math.min(a.attr.manaMax, a.mana + a.attr.manaRegen * dt);
+    if (a.stun > 0) a.stun = Math.max(0, a.stun - dt);
+    if (a.hitFlash > 0) a.hitFlash = Math.max(0, a.hitFlash - dt);
+    if (a.mods.length > 0 && tickModifiers(a.mods, dt)) this.recompute(a);
   }
 
   spawnActor(init: ActorInit): Actor {
+    const base = baseAttributes(init.attrs);
     const a: Actor = {
       id: this.nextActorId++,
       name: init.name ?? (init.faction === 'player' ? '修士' : '妖兽'),
@@ -118,13 +131,11 @@ export class World {
       x: init.x,
       y: init.y,
       aim: { x: 1, y: 0 },
-      hp: init.hpMax ?? 100,
-      hpMax: init.hpMax ?? 100,
-      mana: init.manaMax ?? 100,
-      manaMax: init.manaMax ?? 100,
-      manaRegen: init.manaRegen ?? 10,
-      shenshiMax: init.shenshiMax ?? 32,
-      speed: init.speed ?? 120,
+      hp: base.hpMax,
+      mana: base.manaMax,
+      base,
+      mods: [],
+      attr: base,
       radius: init.radius ?? 12,
       alive: true,
       bindings: init.bindings ?? {},
@@ -169,19 +180,46 @@ export class World {
     return out;
   }
 
+  /** 结算有效属性 */
+  recompute(a: Actor): void {
+    a.attr = computeAttributes(a.base, a.mods);
+    if (a.hp > a.attr.hpMax) a.hp = a.attr.hpMax;
+    if (a.mana > a.attr.manaMax) a.mana = a.attr.manaMax;
+  }
+
+  addModifier(
+    a: Actor,
+    key: AttrKey,
+    op: 'add' | 'mul',
+    value: number,
+    duration: number,
+    source = '',
+  ): void {
+    a.mods.push({
+      id: this.nextModifierId++,
+      key,
+      op,
+      value,
+      duration,
+      source,
+    });
+    this.recompute(a);
+  }
+
   damage(id: number, amount: number): boolean {
     const a = this.byId(id);
     if (!a || !a.alive) return false;
-    a.hp -= amount;
+    const real = Math.max(1, amount - a.attr.armor);
+    a.hp -= real;
     a.hitFlash = 0.15;
     if (a.hp <= 0) {
       a.hp = 0;
       a.alive = false;
       this.events.push(`${a.name}#${a.id} 被击倒`);
     } else {
-      this.events.push(`${a.name}#${a.id} 受到 ${amount} 伤害，剩余 ${Math.round(a.hp)}`);
+      this.events.push(`${a.name}#${a.id} 受到 ${Math.round(real)} 伤害，剩余 ${Math.round(a.hp)}`);
     }
-    this.onDamage?.(a, amount);
+    this.onDamage?.(a, real);
     return true;
   }
 

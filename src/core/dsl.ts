@@ -1,4 +1,5 @@
 import type { Expr, Param, Spell, SpellBook, Stmt } from './ast';
+import type { SpellMeta } from './spellMeta';
 import { DYN_CAP, T } from './types';
 import type { Type } from './types';
 
@@ -76,7 +77,7 @@ export function tokenize(src: string): Tok[] {
       i += 2;
       continue;
     }
-    if ('+-*/%<>=!()[]{},:;'.includes(c)) {
+    if ('+-*/%<>=!()[]{},:;@'.includes(c)) {
       toks.push({ kind: 'punct', text: c, num: 0, line });
       i++;
       continue;
@@ -188,6 +189,21 @@ class Parser {
       throw new ParseError(`第 ${t?.line ?? 0} 行：期望 spell，实际是 "${t?.text}"`);
     }
     const name = this.name();
+
+    // 生命周期注解：@kind=duration @period=1 @duration=6 @cooldown=12
+    const meta: Partial<Record<keyof SpellMeta, string | number | boolean>> = {};
+    while (this.at('@')) {
+      this.next();
+      const key = this.name();
+      this.expect('=');
+      const tok = this.next();
+      let value: string | number | boolean = tok.text;
+      if (tok.kind === 'num') value = tok.num;
+      else if (tok.text === 'true' || tok.text === '真') value = true;
+      else if (tok.text === 'false' || tok.text === '假') value = false;
+      meta[key as keyof SpellMeta] = value;
+    }
+
     const params: Param[] = [];
     if (this.match('(')) {
       if (!this.at(')')) {
@@ -202,7 +218,7 @@ class Parser {
     let ret: Type | null = null;
     if (this.match('->')) ret = this.parseType();
     const body = this.parseBlock();
-    return { name, params, ret, body, tags: [] };
+    return { name, params, ret, body, tags: [], meta: meta as Partial<SpellMeta> };
   }
 
   private parseBlock(): Stmt[] {

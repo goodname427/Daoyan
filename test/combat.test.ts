@@ -42,7 +42,8 @@ describe('玩家操作', () => {
     // 把妖兽定在身边（速度归零），保证三连剑真的要跑满循环
     for (const a of b.world.actors) {
       if (a.faction !== 'foe') continue;
-      a.speed = 0;
+      a.base.speed = 0;
+      b.world.recompute(a);
       a.x = b.player.x + 120;
       a.y = b.player.y + 20;
     }
@@ -56,7 +57,60 @@ describe('玩家操作', () => {
 
     run(b, 3);
     expect(b.casts.has(b.player.id)).toBe(false);
-    expect(b.player.mana).toBeLessThan(b.player.manaMax);
+    expect(b.player.mana).toBeLessThan(b.player.attr.manaMax);
+  });
+
+  it('冷却期间无法再次施放', () => {
+    const b = makeBattle();
+    b.setBinding('3', '爆炎咒'); // 冷却 6s
+    expect(b.castPlayer('3')).toBe(true);
+    run(b, 3); // 等它放完
+    expect(b.cooldownLeft(b.player.id, '爆炎咒')).toBeGreaterThan(0);
+    expect(b.castPlayer('3')).toBe(false);
+  });
+
+  it('持续类法术会周期性重复执行', () => {
+    const b = makeBattle();
+    b.setBinding('5', '护体金光'); // duration 6s / period 1.5s
+    expect(b.castPlayer('5')).toBe(true);
+    expect(b.metaOf('护体金光').kind).toBe('duration');
+
+    run(b, 5);
+    // 6 秒内按 1.5 秒周期应触发多次
+    expect(b.player.mods.length).toBeGreaterThan(0);
+    expect(b.player.attr.armor).toBeGreaterThan(0);
+  });
+
+  it('属性增益会影响实际效果（护体减伤）', () => {
+    const b = makeBattle();
+    b.world.addModifier(b.player, 'armor', 'add', 20, 10, '测试');
+    expect(b.player.attr.armor).toBe(20);
+
+    const before = b.player.hp;
+    b.world.damage(b.player.id, 50);
+    // 50 伤害被 20 护体削掉
+    expect(before - b.player.hp).toBe(30);
+  });
+
+  it('术法威力属性会放大伤害', () => {
+    const b = makeBattle();
+    const foe = b.world.actors.find((a) => a.faction === 'foe');
+    expect(foe).toBeDefined();
+    if (!foe) return;
+    foe.base.speed = 0;
+    b.world.recompute(foe);
+    foe.x = b.player.x + 220;
+    foe.y = b.player.y;
+    b.aimAt(foe.x, foe.y);
+
+    b.player.base.power = 2;
+    b.world.recompute(b.player);
+
+    b.setBinding('5', '御剑·手动');
+    b.castPlayer('5');
+    run(b, 1.5);
+    // 基础 22 伤害 × 威力 2 = 44
+    expect(foe.attr.hpMax - foe.hp).toBeGreaterThan(30);
   });
 
   it('施法中不能分心二用', () => {
@@ -89,7 +143,8 @@ describe('弹道与命中', () => {
     if (!foe) return;
 
     // 挪到玩家正前方并定住（否则它会绕圈走位把飞剑躲开——那正是设计意图）
-    foe.speed = 0;
+    foe.base.speed = 0;
+    b.world.recompute(foe);
     foe.x = b.player.x + 220;
     foe.y = b.player.y;
     b.aimAt(foe.x, foe.y);
@@ -98,7 +153,7 @@ describe('弹道与命中', () => {
     expect(b.castPlayer('5')).toBe(true);
     run(b, 1.5);
 
-    expect(foe.hp).toBeLessThan(foe.hpMax);
+    expect(foe.hp).toBeLessThan(foe.attr.hpMax);
   });
 
   it('妖兽会被动施法（AI 走同一条施法管线）', () => {

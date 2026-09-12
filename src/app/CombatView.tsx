@@ -2,8 +2,8 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import COMBAT_SPELLS from '../game/spells.dy?raw';
 import { Battle } from '../game/battle';
-import { parseSpellbook } from '../core/index';
-import type { Actor } from '../core/index';
+import { ATTR_LABELS, describeMeta, parseSpellbook, SPELL_KIND_LABELS } from '../core/index';
+import type { Actor, AttrKey } from '../core/index';
 
 const VIEW_W = 900;
 const VIEW_H = 560;
@@ -119,23 +119,33 @@ function draw(canvas: HTMLCanvasElement | null, battle: Battle): void {
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(bx, by, bw, 4);
     ctx.fillStyle = a.faction === 'player' ? '#7bd88f' : '#ff7a5c';
-    ctx.fillRect(bx, by, bw * Math.max(0, a.hp / a.hpMax), 4);
+    ctx.fillRect(bx, by, bw * Math.max(0, a.hp / a.attr.hpMax), 4);
 
-    // 施法指示
-    const vm = battle.casts.get(a.id);
-    if (vm) {
-      const cost = battle.costs[vm.spellName];
+    // 施法指示：内圈是当前这次执行的进度，持续类外圈显示已持续时间
+    const cast = battle.casts.get(a.id);
+    if (cast) {
+      const cost = battle.costs[cast.spell];
       const total = cost ? Math.max(1, cost.tickWorst) : 1;
-      const prog = Math.min(1, vm.spentTicks / total);
+      const prog = Math.min(1, cast.vm.spentTicks / total);
       ctx.beginPath();
-      ctx.arc(a.x, a.y, a.radius + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
+      ctx.arc(a.x, a.y, a.radius + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
       ctx.strokeStyle = '#e8c37a';
       ctx.lineWidth = 3;
       ctx.stroke();
+
+      if (cast.meta.kind === 'duration') {
+        const dp = Math.min(1, cast.elapsed / Math.max(0.1, cast.meta.duration));
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.radius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * dp);
+        ctx.strokeStyle = '#6aa9ff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
       ctx.fillStyle = '#e8c37a';
       ctx.font = '11px ui-monospace, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(vm.spellName, a.x, a.y + a.radius + 18);
+      ctx.fillText(cast.spell, a.x, a.y + a.radius + 20);
     }
 
     ctx.fillStyle = '#8b97ab';
@@ -218,7 +228,7 @@ function Arena({ battle }: { battle: Battle }) {
 
   const player = battle.player;
   const casting = battle.casts.get(player.id);
-  const castCost = casting ? battle.costs[casting.spellName] : null;
+  const castCost = casting ? battle.costs[casting.spell] : null;
 
   return (
     <div className="arena-wrap">
@@ -256,24 +266,26 @@ function Arena({ battle }: { battle: Battle }) {
 
       <div className="hud">
         <div className="bars">
-          <Bar label="生命" v={player.hp} max={player.hpMax} color="#7bd88f" />
-          <Bar label="法力" v={player.mana} max={player.manaMax} color="#6aa9ff" />
+          <Bar label="生命" v={player.hp} max={player.attr.hpMax} color="#7bd88f" />
+          <Bar label="法力" v={player.mana} max={player.attr.manaMax} color="#6aa9ff" />
           <div className="bar-row">
             <span className="bar-label">神识</span>
             <div className="bar-track">
               <div
                 className="bar-fill"
                 style={{
-                  width: `${Math.min(100, ((casting?.peakShenshi ?? 0) / player.shenshiMax) * 100)}%`,
+                  width: `${Math.min(100, ((casting?.vm.peakShenshi ?? 0) / Math.max(1, player.attr.shenshiMax)) * 100)}%`,
                   background: '#c39bff',
                 }}
               />
             </div>
             <span className="bar-num">
-              {Math.round(casting?.peakShenshi ?? 0)}/{player.shenshiMax}
+              {Math.round(casting?.vm.peakShenshi ?? 0)}/{player.attr.shenshiMax}
             </span>
           </div>
         </div>
+
+        <AttributePanel player={player} />
 
         <div className="meta-info">
           <div>
@@ -285,30 +297,34 @@ function Arena({ battle }: { battle: Battle }) {
           </div>
           {casting && (
             <div className="casting-note">
-              施法中：<b>{casting.spellName}</b>
-              {castCost && ` · ${casting.spentTicks}/${castCost.tickWorst} tick`}
+              施法中：<b>{casting.spell}</b> · {describeMeta(casting.meta)}
+              <div>
+                {casting.vm.spentTicks}/{castCost?.tickWorst ?? '?'} tick（第 {casting.fired} 次）
+              </div>
               <div className="muted small">施法时移动变慢，受击会打断</div>
             </div>
           )}
         </div>
 
         <div className="bindings">
-          {SLOTS.map((s) => (
-            <label key={s.key} className="binding">
-              <span>{s.label}</span>
-              <select
-                value={player.bindings[s.key] ?? ''}
-                onChange={(e) => battle.setBinding(s.key, e.target.value)}
-              >
-                <option value="">—</option>
-                {battle.spellNames().map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+          {SLOTS.map((s) => {
+            const spell = player.bindings[s.key] ?? '';
+            const cd = spell ? battle.cooldownLeft(player.id, spell) : 0;
+            return (
+              <label key={s.key} className="binding">
+                <span>{s.label}</span>
+                <select value={spell} onChange={(e) => battle.setBinding(s.key, e.target.value)}>
+                  <option value="">—</option>
+                  {battle.spellNames().map((n) => (
+                    <option key={n} value={n}>
+                      {n} · {SPELL_KIND_LABELS[battle.metaOf(n).kind]}
+                    </option>
+                  ))}
+                </select>
+                {cd > 0 && <em className="cd">{cd.toFixed(1)}s</em>}
+              </label>
+            );
+          })}
         </div>
 
         <ul className="log">
@@ -317,6 +333,32 @@ function Arena({ battle }: { battle: Battle }) {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+const HUD_ATTRS: AttrKey[] = ['speed', 'castSpeed', 'power', 'manaCostMul', 'perception', 'armor'];
+
+/** 属性面板：展示有效属性，有增益时高亮 */
+function AttributePanel({ player }: { player: Actor }) {
+  return (
+    <div className="attrs">
+      {HUD_ATTRS.map((k) => {
+        const cur = player.attr[k];
+        const base = player.base[k];
+        const buffed = Math.abs(cur - base) > 1e-6;
+        return (
+          <div key={k} className="attr-row">
+            <span>{ATTR_LABELS[k]}</span>
+            <b className={buffed ? 'buffed' : ''}>
+              {k === 'armor' ? cur.toFixed(0) : cur.toFixed(2)}
+            </b>
+          </div>
+        );
+      })}
+      {player.mods.length > 0 && (
+        <div className="muted small">增益 {player.mods.length} 项生效中</div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,12 @@
 /**
- * 预加载脚本。当前不向渲染进程暴露任何 Node 能力——
- * 游戏逻辑全部跑在前端，保持「核心不依赖宿主」的约束。
+ * 预加载脚本。
+ *
+ * 只向渲染进程暴露一个能力：列出外部元法术文件。
+ * 游戏逻辑（含外部扩展）全部跑在前端，核心层不依赖任何宿主 API。
  */
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('daoyan', {
+contextBridge.exposeInMainWorld('daoyanHost', {
   platform: process.platform,
+  listMetaFiles: () => ipcRenderer.invoke('daoyan:listMetaFiles'),
 });

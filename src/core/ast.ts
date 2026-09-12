@@ -1,4 +1,5 @@
 import type { Type } from './types';
+import type { SpellMeta } from './spellMeta';
 
 /**
  * 抽象语法树 —— 整个项目的唯一真相（IR）。
@@ -51,6 +52,8 @@ export interface Spell {
   tags: string[];
   /** 描述，展示给玩家 */
   desc?: string;
+  /** 生命周期配置（瞬时 / 持续 / 引导、周期、冷却…） */
+  meta?: Partial<SpellMeta>;
 }
 
 export type SpellBook = Record<string, Spell>;

@@ -271,8 +271,9 @@ export class VM {
         const slot = inst.a ?? 0;
         const size = inst.b ?? 0;
         this.shenshiCur += size;
-        if (this.shenshiCur > this.caster.shenshiMax) {
-          this.fail(`神识不足：需要 ${this.shenshiCur}，上限 ${this.caster.shenshiMax}`);
+        const cap = this.caster.attr.shenshiMax;
+        if (this.shenshiCur > cap) {
+          this.fail(`神识不足：需要 ${this.shenshiCur}，上限 ${cap}`);
           return;
         }
         if (this.shenshiCur > this.shenshiPeak) this.shenshiPeak = this.shenshiCur;
@@ -350,11 +351,15 @@ export class VM {
         const argc = inst.b ?? 0;
         const args: Value[] = new Array(argc);
         for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
-        if (this.manaSpent + m.mana > this.caster.mana) {
-          this.fail(`法力不足：需要 ${this.manaSpent + m.mana}，仅有 ${this.caster.mana}`);
+        // 法力受「法力消耗」属性影响
+        const cost = m.mana * this.caster.attr.manaCostMul;
+        if (this.manaSpent + cost > this.caster.mana) {
+          this.fail(
+            `法力不足：需要 ${Math.round(this.manaSpent + cost)}，仅有 ${Math.round(this.caster.mana)}`,
+          );
           return;
         }
-        this.manaSpent += m.mana;
+        this.manaSpent += cost;
         this.ticksUsed += m.ticks;
         if (this.ticksUsed > opts.maxTicks) {
           this.fail(`施法超时：超过 ${opts.maxTicks} tick`);

@@ -1,5 +1,13 @@
-import { TICK_MS, VM, World, analyzeBook, compileProgram } from '../core/index';
-import type { Actor, Program, SpellBook, SpellCost } from '../core/index';
+import {
+  TICK_MS,
+  VM,
+  World,
+  analyzeBook,
+  compileProgram,
+  normalizeMeta,
+  spellMeta,
+} from '../core/index';
+import type { Actor, Program, SpellBook, SpellCost, SpellMeta } from '../core/index';
 
 /**
  * 战斗运行时。
@@ -37,15 +45,52 @@ export interface BattleStats {
   kills: number;
 }
 
+/** 一次施放的运行时状态 */
+export interface CastInstance {
+  spell: string;
+  meta: SpellMeta;
+  vm: VM;
+  /** 已持续秒数 */
+  elapsed: number;
+  /** 距离下次周期触发还剩多久（duration 用） */
+  periodTimer: number;
+  /** 已触发次数 */
+  fired: number;
+}
+
 const ARENA_W = 1600;
 const ARENA_H = 1200;
+
+const PLAYER_BINDINGS: Record<string, string> = {
+  mouse: '基础剑气',
+  '1': '疾风步',
+  '2': '三连剑',
+  '3': '爆炎咒',
+  '4': '微剑',
+  '5': '护体金光',
+};
+
+const PLAYER_ATTRS = {
+  hpMax: 120,
+  manaMax: 300,
+  manaRegen: 24,
+  shenshiMax: 64,
+  speed: 170,
+  castSpeed: 1,
+  power: 1,
+  armor: 0,
+};
 
 export class Battle {
   world: World;
   program: Program;
   costs: Record<string, SpellCost>;
+  metas: Record<string, SpellMeta>;
   player: Actor;
-  casts = new Map<number, VM>();
+  /** actorId → 当前施法 */
+  casts = new Map<number, CastInstance>();
+  /** actorId → 法术名 → 剩余冷却 */
+  cooldowns = new Map<number, Map<string, number>>();
 
   input: BattleInput = { up: false, down: false, left: false, right: false };
   time = 0;
@@ -57,32 +102,29 @@ export class Battle {
   constructor(private book: SpellBook) {
     this.costs = analyzeBook(book);
     this.program = compileProgram(book);
+    this.metas = Object.fromEntries(
+      Object.entries(book).map(([n, sp]) => [n, normalizeMeta(sp.meta)]),
+    );
+
     this.world = new World();
     this.world.bounds = { w: ARENA_W, h: ARENA_H };
     this.world.onDamage = (target) => this.handleDamage(target);
 
-    this.player = this.world.spawnActor({
+    this.player = this.spawnPlayer();
+    this.startWave(0);
+  }
+
+  private spawnPlayer(): Actor {
+    return this.world.spawnActor({
       name: '修士',
       faction: 'player',
       x: ARENA_W / 2,
       y: ARENA_H / 2,
-      hpMax: 120,
-      manaMax: 300,
-      manaRegen: 24,
-      shenshiMax: 64,
-      speed: 170,
+      attrs: PLAYER_ATTRS,
       radius: 13,
       castSlow: 0.45,
-      bindings: {
-        mouse: '基础剑气',
-        '1': '疾风步',
-        '2': '三连剑',
-        '3': '爆炎咒',
-        '4': '微剑',
-      },
+      bindings: { ...PLAYER_BINDINGS },
     });
-
-    this.startWave(0);
   }
 
   // ---------------- 波次 ----------------
@@ -99,7 +141,6 @@ export class Battle {
   }
 
   private spawnFoe(kind: 'chaser' | 'shooter'): Actor {
-    // 在离玩家足够远的位置生成
     let x = 0;
     let y = 0;
     for (let tries = 0; tries < 40; tries++) {
@@ -108,40 +149,46 @@ export class Battle {
       if (Math.hypot(x - this.player.x, y - this.player.y) > 420) break;
     }
 
-    const base = {
-      faction: 'foe' as const,
-      x,
-      y,
-      shenshiMax: 40,
-      castSlow: 0.35,
-    };
-
     if (kind === 'chaser') {
       return this.world.spawnActor({
-        ...base,
         name: '扑击妖兽',
-        hpMax: 60,
-        manaMax: 220,
-        manaRegen: 46,
-        speed: 108,
+        faction: 'foe',
+        x,
+        y,
+        attrs: {
+          hpMax: 60,
+          manaMax: 220,
+          manaRegen: 46,
+          shenshiMax: 40,
+          speed: 108,
+          power: 1,
+        },
         radius: 12,
         behavior: 'chaser',
         attackRange: 260,
         attackCooldown: 1.9,
+        castSlow: 0.35,
         bindings: { attack: '妖兽·扑击' },
       });
     }
     return this.world.spawnActor({
-      ...base,
       name: '妖兽符修',
-      hpMax: 45,
-      manaMax: 240,
-      manaRegen: 52,
-      speed: 88,
+      faction: 'foe',
+      x,
+      y,
+      attrs: {
+        hpMax: 45,
+        manaMax: 240,
+        manaRegen: 52,
+        shenshiMax: 40,
+        speed: 88,
+        power: 1,
+      },
       radius: 11,
       behavior: 'shooter',
       attackRange: 460,
       attackCooldown: 2.3,
+      castSlow: 0.35,
       bindings: { attack: '妖兽·雷符' },
     });
   }
@@ -154,10 +201,15 @@ export class Battle {
 
     for (const a of this.world.actors) {
       if (!a.alive) continue;
-      if (a.mana < a.manaMax) a.mana = Math.min(a.manaMax, a.mana + a.manaRegen * dt);
-      if (a.stun > 0) a.stun = Math.max(0, a.stun - dt);
-      if (a.hitFlash > 0) a.hitFlash = Math.max(0, a.hitFlash - dt);
-      if (a.alive && a.faction === 'foe') a.attackTimer -= dt;
+      this.world.tickActor(a, dt);
+      if (a.faction === 'foe') a.attackTimer -= dt;
+    }
+    for (const [, map] of this.cooldowns) {
+      for (const [spell, left] of [...map]) {
+        const next = left - dt;
+        if (next <= 0) map.delete(spell);
+        else map.set(spell, next);
+      }
     }
 
     this.movePlayer(dt);
@@ -177,9 +229,16 @@ export class Battle {
     const dy = (this.input.down ? 1 : 0) - (this.input.up ? 1 : 0);
     if (dx === 0 && dy === 0) return;
     const l = Math.hypot(dx, dy);
-    const casting = this.casts.has(p.id);
-    const speed = p.speed * (casting ? p.castSlow : 1);
+    const speed = p.attr.speed * this.moveMul(p);
     this.world.moveActor(p, (dx / l) * speed * dt, (dy / l) * speed * dt);
+  }
+
+  /** 施法中的移动速度倍率 */
+  private moveMul(a: Actor): number {
+    const cast = this.casts.get(a.id);
+    if (!cast) return 1;
+    if (cast.meta.kind === 'channel') return cast.meta.channelSlow;
+    return a.castSlow;
   }
 
   private updateFoe(a: Actor, dt: number): void {
@@ -202,7 +261,6 @@ export class Battle {
         mx = ux;
         my = uy;
       } else {
-        // 进入攻击距离后绕圈，避免糊在一起
         mx = -uy * 0.8;
         my = ux * 0.8;
       }
@@ -226,41 +284,69 @@ export class Battle {
 
     const l = Math.hypot(mx, my);
     if (l > 1e-6) {
-      const speed = a.speed * (casting ? a.castSlow : 1);
+      const speed = a.attr.speed * (casting ? a.castSlow : 1);
       this.world.moveActor(a, (mx / l) * speed * dt, (my / l) * speed * dt);
     }
 
     if (d <= a.attackRange && a.attackTimer <= 0 && !this.casts.has(a.id)) {
       if (this.trigger(a.id, 'attack')) {
-        a.attackTimer = a.attackCooldown;
+        a.attackTimer = a.attackCooldown * a.attr.cooldownMul;
       } else {
-        // 法力不足或法术有问题时短暂重试，避免空转刷屏
         a.attackTimer = 0.35;
       }
     }
   }
 
   private advanceCasts(dt: number): void {
-    const tickBudget = (dt * 1000) / TICK_MS;
-    for (const [id, vm] of [...this.casts]) {
+    for (const [id, cast] of [...this.casts]) {
       const a = this.world.byId(id);
       if (!a || !a.alive) {
         this.casts.delete(id);
         continue;
       }
-      const before = vm.spentMana;
-      vm.advance(tickBudget);
-      // 法力按增量扣减：被打断时已消耗的部分不会退还
-      a.mana = Math.max(0, a.mana - (vm.spentMana - before));
-      if (vm.isDone) {
-        this.casts.delete(id);
-        if (vm.failure) {
-          this.stats.backfires++;
-          this.pushLog(`${a.name} 走火入魔：${vm.failure}`);
-          a.stun = 0.5;
-        }
+
+      // 施法速度属性：把「每秒 tick 数」放大
+      const tickBudget = ((dt * 1000) / TICK_MS) * a.attr.castSpeed;
+      const before = cast.vm.spentMana;
+      cast.vm.advance(tickBudget);
+      a.mana = Math.max(0, a.mana - (cast.vm.spentMana - before));
+      cast.elapsed += dt;
+
+      // 超时（引导类最长引导时间）
+      if (cast.meta.kind === 'channel' && cast.elapsed > cast.meta.duration && cast.vm.isRunning) {
+        cast.vm.advance(Number.MAX_SAFE_INTEGER, 1);
       }
+
+      if (!cast.vm.isDone) continue;
+
+      if (cast.vm.failure) {
+        this.casts.delete(id);
+        this.stats.backfires++;
+        this.pushLog(`${a.name} 走火入魔：${cast.vm.failure}`);
+        a.stun = 0.5;
+        continue;
+      }
+
+      // 本次执行完毕
+      if (cast.meta.kind === 'duration' && cast.elapsed < cast.meta.duration) {
+        // 进入周期等待，到点再触发一次
+        cast.periodTimer -= dt;
+        if (cast.periodTimer <= 0) {
+          this.restartCastVm(a, cast);
+        }
+        continue;
+      }
+
+      this.casts.delete(id);
     }
+  }
+
+  private restartCastVm(a: Actor, cast: CastInstance): void {
+    cast.fired += 1;
+    cast.periodTimer = Math.max(0.05, cast.meta.period);
+    const vm = new VM(this.program, this.world, a);
+    vm.start(cast.spell);
+    cast.vm = vm;
   }
 
   private updateProjectiles(dt: number): void {
@@ -292,7 +378,6 @@ export class Battle {
     this.world.projectiles = keep;
   }
 
-  /** 简单分离，避免单位重叠成一坨 */
   private separate(): void {
     const list = this.world.aliveActors();
     for (let i = 0; i < list.length; i++) {
@@ -315,11 +400,18 @@ export class Battle {
   }
 
   private handleDamage(target: Actor): void {
-    if (this.casts.has(target.id)) {
-      this.casts.delete(target.id);
-      this.stats.interrupts++;
-      this.pushLog(`${target.name} 施法被打断`);
+    const cast = this.casts.get(target.id);
+    if (!cast) {
+      target.stun = Math.max(target.stun, 0.18);
+      return;
     }
+    if (!cast.meta.interruptible) {
+      target.stun = Math.max(target.stun, 0.18);
+      return;
+    }
+    this.casts.delete(target.id);
+    this.stats.interrupts++;
+    this.pushLog(`${target.name} 施法被打断`);
     target.stun = Math.max(target.stun, 0.18);
   }
 
@@ -341,6 +433,10 @@ export class Battle {
 
   // ---------------- 对外接口 ----------------
 
+  cooldownLeft(actorId: number, spell: string): number {
+    return this.cooldowns.get(actorId)?.get(spell) ?? 0;
+  }
+
   /** 触发某单位绑定在指定槽位上的法术 */
   trigger(actorId: number, slot: string): boolean {
     const a = this.world.byId(actorId);
@@ -357,10 +453,28 @@ export class Battle {
       this.pushLog(`「${spell}」无法施展：${cost.errors[0]}`);
       return false;
     }
+    if (this.cooldownLeft(actorId, spell) > 0) return false;
 
+    const meta = this.metas[spell] ?? normalizeMeta(null);
     const vm = new VM(this.program, this.world, a);
     vm.start(spell);
-    this.casts.set(actorId, vm);
+
+    this.casts.set(actorId, {
+      spell,
+      meta,
+      vm,
+      elapsed: 0,
+      periodTimer: Math.max(0.05, meta.period),
+      fired: 1,
+    });
+    if (meta.cooldown > 0) {
+      let map = this.cooldowns.get(actorId);
+      if (!map) {
+        map = new Map();
+        this.cooldowns.set(actorId, map);
+      }
+      map.set(spell, meta.cooldown * a.attr.cooldownMul);
+    }
     this.stats.casts++;
     return true;
   }
@@ -384,6 +498,10 @@ export class Battle {
     return Object.keys(this.book);
   }
 
+  metaOf(spell: string): SpellMeta {
+    return this.metas[spell] ?? normalizeMeta(null);
+  }
+
   foesLeft(): number {
     return this.world.aliveActors().filter((a) => a.faction === 'foe').length;
   }
@@ -391,32 +509,14 @@ export class Battle {
   restart(): void {
     this.world.reset();
     this.world.bounds = { w: ARENA_W, h: ARENA_H };
+    this.world.onDamage = (target) => this.handleDamage(target);
     this.casts.clear();
+    this.cooldowns.clear();
     this.log = [];
     this.time = 0;
     this.state = 'fighting';
     this.stats = { casts: 0, interrupts: 0, backfires: 0, kills: 0 };
-    this.player = this.world.spawnActor({
-      name: '修士',
-      faction: 'player',
-      x: ARENA_W / 2,
-      y: ARENA_H / 2,
-      hpMax: 120,
-      manaMax: 300,
-      manaRegen: 24,
-      shenshiMax: 64,
-      speed: 170,
-      radius: 13,
-      castSlow: 0.45,
-      bindings: {
-        mouse: '基础剑气',
-        '1': '疾风步',
-        '2': '三连剑',
-        '3': '爆炎咒',
-        '4': '微剑',
-      },
-    });
-    this.world.onDamage = (target) => this.handleDamage(target);
+    this.player = this.spawnPlayer();
     this.startWave(0);
   }
 
@@ -439,3 +539,5 @@ export class Battle {
     if (this.log.length > 8) this.log.pop();
   }
 }
+
+export { spellMeta };

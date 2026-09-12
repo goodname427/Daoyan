@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { CombatView } from './CombatView';
 import { LabView } from './LabView';
+import { loadExternalMetas } from '../game/externalMetas';
 
 type Tab = 'lab' | 'arena';
 
@@ -12,6 +13,13 @@ const TABS: Array<{ id: Tab; label: string; hint: string }> = [
 
 export function App() {
   const [tab, setTab] = useState<Tab>('lab');
+
+  useEffect(() => {
+    // 外部元法术：打包后从 exe 旁的 metas/ 目录加载（见 docs/扩展元法术.md）
+    loadExternalMetas().then((names) => {
+      if (names.length > 0) console.log(`[元法术] 已加载外部扩展: ${names.join(', ')}`);
+    });
+  }, []);
 
   return (
     <>

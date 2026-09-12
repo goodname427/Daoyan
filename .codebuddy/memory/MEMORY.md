@@ -1,14 +1,41 @@
-# 长期记忆
+# 道衍 · 长期记忆
 
-## 环境事实
-- **Git 外网代理**：全局 git 配置的 `socks5://127.0.0.1:7890` 已失效（端口无监听），直连 GitHub 会被 reset。
-  本机实际可用的代理端口是 **7897**（HTTP 混合端口）。
-  需要联网的 git 操作用临时覆盖：
-  `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 <cmd>`
-  （未改全局 git config，按安全约定不做修改）
+## 项目定位
 
-## 项目：道衍（Daoyan）
-- 远端仓库：https://github.com/goodname427/Daoyan （分支 `master`）
-- 技术栈：TypeScript + Vite + React + Electron；AST 为唯一 IR；暂禁递归（DAG）
-- 命令约定：`npm start`（vite 浏览器体验）/ `npm run desktop`（Electron）/ `npm run dist`（打包）/ `npm run verify`（门禁）/ `npm run sandbox`（无头 CLI）/
-- 详细开发日志见 `docs/dev/`，架构决策见 `docs/adr/`
+Noita-like 修仙编程 roguelike。玩家自由编写功法/法术，
+用**有限资源**约束创造力，鼓励更优雅的实现（像快排优于插排）。
+
+## 核心设计（不可违背）
+
+- **三资源模型**：神识 = 持有状态的成本（内存）；法力 = 与外界交互的成本（I/O）；
+  耗时 = 执行步数（时间）
+- **关键规则**：神识内运算几乎不要法力；读写世界的操作收高额法力
+  → 自然涌现「批量 I/O vs 逐个 I/O」的权衡
+- **默认禁止递归**（DAG），保证消耗可静态精确分析；后期「轮回术」解锁递归 + fuel
+- **AST 是唯一真相且可 JSON 序列化** → DSL 与未来节点图产出同一份结构；AST 即秘籍分享码
+- **列表定容**，静态上界按容量算、实测按真实长度算，差距刻意保留为可优化空间
+- **静态上界必须 >= 实测**（有单测守卫），否则玩家不信任消耗面板
+
+## 架构约定
+
+- `src/core/` 严禁依赖浏览器 API 或 UI 框架，必须能在 Node 下无头运行与测试
+- 分析器在 AST 上做（不在字节码上）
+- 战斗层通过 `world.onDamage` 钩子扩展，核心层不反向依赖战斗层
+- 元函数定价表 `src/core/builtins.ts` 是全局平衡核心，改价要谨慎
+
+## 协作工作流（用户指定）
+
+提想法 → 我实现 → `npm run verify` → `npm start` / `npm run dist` → 用户反馈。
+
+- `npm start` = `vite --open`（一键体验，浏览器）
+- `npm run verify` = typecheck + lint + format:check + test
+- `npm run sandbox` = 无头 CLI 沙盒
+- `npm run dist` = 打包 exe（electron-builder）
+- 提交规范：Conventional Commits；`.githooks` 自动跑 verify
+- 决策记 `docs/adr/`，过程记 `docs/dev/YYYY-MM-DD.md`
+
+## 环境限制（Windows 本机）
+
+- Electron 打包必须 `signAndEditExecutable: false`，
+  否则 winCodeSign 解压需创建符号链接会失败
+- npm 的 install scripts 被 allow-scripts 拦截，但 esbuild / electron 二进制实际可用

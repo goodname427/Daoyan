@@ -76,15 +76,14 @@ export function LabView() {
       const program = compileProgram(parsed.book, active);
       const world = new World();
       for (const p of layout(enemyCount)) {
-        world.spawnActor({ faction: 'foe', x: p.x, y: p.y, hpMax: 100 });
+        world.spawnActor({ faction: 'foe', x: p.x, y: p.y, attrs: { hpMax: 100 } });
       }
       const caster = world.spawnActor({
         name: '推演者',
         faction: 'player',
         x: 0,
         y: 0,
-        manaMax,
-        shenshiMax,
+        attrs: { manaMax, shenshiMax },
       });
       const result = new VM(program, world, caster).run(active);
       setOutcome({

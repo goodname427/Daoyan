@@ -34,14 +34,48 @@ export interface MetaDef {
   impl: (ctx: Ctx, args: Value[]) => Value;
 }
 
-const registry: MetaDef[] = [];
-const index = new Map<string, number>();
+/**
+ * 注册表挂在 globalThis 上，保证 HMR / 重复 import 时全局唯一。
+ * defMeta 幂等：同名元函数会被覆盖，而不是报错 —— 这样增删改元法术文件时
+ * 热更新不会炸掉整个页面。
+ */
+interface MetaRegistry {
+  list: MetaDef[];
+  index: Map<string, number>;
+}
+
+const REGISTRY_KEY = '__DAOYAN_META_REGISTRY__';
+const holder = globalThis as unknown as Record<string, MetaRegistry | undefined>;
+if (!holder[REGISTRY_KEY]) {
+  holder[REGISTRY_KEY] = { list: [], index: new Map() };
+}
+const registry: MetaDef[] = holder[REGISTRY_KEY]!.list;
+const index: Map<string, number> = holder[REGISTRY_KEY]!.index;
 
 export function defMeta(m: MetaDef): MetaDef {
-  if (index.has(m.name)) throw new Error(`元函数重名: ${m.name}`);
+  const existing = index.get(m.name);
+  if (existing !== undefined) {
+    registry[existing] = m;
+    return m;
+  }
   index.set(m.name, registry.length);
   registry.push(m);
   return m;
+}
+
+/** 用配置覆盖定价（调平衡不用改代码） */
+export function applyMetaOverrides(overrides: Record<string, Partial<MetaDef>>): void {
+  for (const [name, patch] of Object.entries(overrides)) {
+    const i = index.get(name);
+    if (i === undefined) continue;
+    registry[i] = { ...registry[i], ...patch, name };
+  }
+}
+
+/** 清空注册表（测试用） */
+export function clearMetas(): void {
+  registry.length = 0;
+  index.clear();
 }
 
 export function allMetas(): readonly MetaDef[] {

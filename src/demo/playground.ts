@@ -47,7 +47,7 @@ function setupWorld(n: number): World {
       faction: 'foe',
       x: Math.cos(ang) * r,
       y: Math.sin(ang) * r,
-      hpMax: 100,
+      attrs: { hpMax: 100 },
     });
   }
   return world;
@@ -98,8 +98,7 @@ function main(): void {
         faction: 'player',
         x: 0,
         y: 0,
-        manaMax: 400,
-        shenshiMax: 64,
+        attrs: { manaMax: 400, shenshiMax: 64 },
       });
       const r = new VM(program, world, caster).run(name);
       const aim = aimedAt(world);
@@ -130,8 +129,7 @@ function main(): void {
         faction: 'player',
         x: 0,
         y: 0,
-        manaMax: 400,
-        shenshiMax: cap,
+        attrs: { manaMax: 400, shenshiMax: cap },
       });
       const r = new VM(program, world, caster).run(name);
       console.log(
