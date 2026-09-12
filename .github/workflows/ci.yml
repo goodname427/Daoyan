@@ -34,6 +34,12 @@ jobs:
       - name: 无头沙盒冒烟
         run: npm run sandbox
 
+      - name: 安装 Playwright 浏览器
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E 测试
+        run: npm run test:e2e
+
       - name: 构建
         run: npm run build
 

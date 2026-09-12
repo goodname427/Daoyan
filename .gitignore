@@ -25,3 +25,9 @@ Thumbs.db
 *.msi
 *.dmg
 *.AppImage
+
+# Playwright 产物
+test-results/
+playwright-report/
+/blob-report/
+/playwright/.cache/

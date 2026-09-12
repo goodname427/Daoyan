@@ -26,21 +26,29 @@
 
 ## ③ 验证（自动，我必须跑通才能交付）
 
+测试分三层，各自挡不同类别的 bug：
+
+| 层   | 命令                  | 覆盖                                             | 速度      |
+| ---- | --------------------- | ------------------------------------------------ | --------- |
+| 单元 | `npm test`            | VM / 分析器 / 编译器 / 战斗逻辑 / jsdom 渲染冒烟 | 快（~1s） |
+| E2E  | `npm run test:e2e`    | 真浏览器加载页面、切页签、推演、编译、按键施法   | 中（~6s） |
+| 全量 | `npm run verify:full` | 单元 + E2E + 类型 + lint + 格式                  | ~15s      |
+
+常用：
+
 ```bash
-npm run verify     # = typecheck + lint + format:check + test
+npm run verify        # 类型 + lint + 格式 + 单元（pre-commit 跑这个，快）
+npm run verify:full   # 上面 + E2E（开发完成 / 推送前跑这个）
+npm run test:e2e      # 只跑 E2E（自动拉起 vite）
+npm run sandbox       # 无头沙盒：打印资源消耗对比表
 ```
 
-单项：
+**关键**：E2E 用 `pageerror` + `console.error` 抓「页面未捕获异常」，
+正是 jsdom 抓不到的 React Flow 测量 / Canvas / 真实布局路径——
+这类 bug（页面加载即崩）会被 E2E 挡下，不会再漏到你这。
 
-```bash
-npm run typecheck  # 类型
-npm run lint       # 静态检查
-npm run coverage   # 覆盖率（core 有阈值门禁）
-npm run sandbox    # 无头沙盒：打印资源消耗对比表
-```
-
-- `git commit` 时 `pre-commit` 钩子会自动跑一遍 `verify`，跑不过不让提交
-- CI（`.github/workflows/ci.yml`）在推送时再跑一遍
+- `git commit` 时 `pre-commit` 钩子自动跑 `verify`（快）
+- 推送前 / CI 跑 `verify:full`（含 E2E）
 
 ## ④ 体验（你）
 
