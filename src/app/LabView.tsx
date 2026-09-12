@@ -6,6 +6,7 @@ import type { CastResult, SpellBook } from '../core/index';
 import { Battlefield } from './Battlefield';
 import type { BattleEntity } from './Battlefield';
 import { MetaTable } from './MetaTable';
+import { NodeGraph } from './NodeGraph';
 import { CostCard, Slider, Stat } from './Panels';
 
 interface Outcome {
@@ -213,6 +214,8 @@ export function LabView() {
         <h2>基础术式定价表</h2>
         <MetaTable />
       </section>
+
+      <NodeGraph spell={parsed.book && active ? parsed.book[active] : null} />
     </div>
   );
 }
