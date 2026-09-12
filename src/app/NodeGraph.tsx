@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import type { Expr, Spell, Stmt } from '../core/index';
-import { T, typeName } from '../core/index';
+import { T, getMeta, typeName } from '../core/index';
 
 /**
  * 蓝图视图（阶段一：AST → 图，只读渲染）。
@@ -105,7 +105,17 @@ function exprLabel(e: Expr): string {
 }
 
 function exprType(e: Expr): string {
-  return (e as unknown as { t: { k: string } }).t.k;
+  // call / var / index 节点没有 t 字段，需要按结构推断，否则读 undefined.k 崩
+  switch (e.k) {
+    case 'lit':
+      return (e as unknown as { t: { k: string } }).t.k;
+    case 'call':
+      return getMeta(e.name)?.ret.k ?? 'any';
+    case 'var':
+      return 'any';
+    case 'index':
+      return 'any';
+  }
 }
 
 let counter = 0;
@@ -141,7 +151,7 @@ function layExpr(
     );
   }
 
-  const col = colorFor((e as unknown as { t: { k: string } }).t);
+  const col = colorFor({ k: exprType(e) });
   ctx.nodes.push({
     id: myId,
     type: 'spell',

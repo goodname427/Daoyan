@@ -17,7 +17,7 @@ export default defineConfig({
   test: {
     // 核心逻辑必须能在 Node 下无头运行与测试，不依赖浏览器
     environment: 'node',
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
