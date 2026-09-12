@@ -63,6 +63,18 @@ Noita-like 修仙编程 roguelike。玩家自由编写功法/法术，
 - 松开时保留 heldTime（不清零），让法术能在松开后轮询读到蓄力时长
 - 多按键结构已支持，但 keys[0] 才接到触发槽位；多键绑定 UI 是下一步
 
+## 节点编辑器与序列化（阶段六，roadmap 1.3）
+
+- `serializeSpell`/`serializeBook`（`src/core/dsl.ts`）：AST→DSL 文本，也是秘籍分享码的落地
+  - 注解顺序必须与解析器一致：`spell 名 @注解 (参数) -> 返回 { 体 }`，注解紧跟名字、在 `()` 之前
+- `src/app/NodeEditor.tsx`：蓝图编辑器（图→AST→DSL→编译/分析），第三页签「蓝图编辑」
+  - 节点：入口/调用(施法)/调用(取值)/常量/变量引用/声明/赋值/若/遍历/返回
+  - 端口按类型着色，连线即数据流/控制流；类型不匹配拒绝连接
+  - `if/for` 的体通过 `body` 端口 → 体首语句 → 沿 flow-out 链
+  - 编译复用 analyzeBook + compileProgram，生成的 DSL 自动重新解析验证一致性
+- React Flow v12：`Node<T>` 要求 T 有索引签名，故用非泛型 `Node` + `data as unknown as Nd` 访问
+- 只读视图 `NodeGraph.tsx`（AST→图）与编辑器 `NodeEditor.tsx`（图→AST）互补共存
+
 ## 阶段四新增的关键结构（产品化）
 
 - `src/core/metas/*.ts`：元法术按文件拆分，`import.meta.glob` 自动收录；
