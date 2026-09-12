@@ -39,3 +39,19 @@ Noita-like 修仙编程 roguelike。玩家自由编写功法/法术，
 - Electron 打包必须 `signAndEditExecutable: false`，
   否则 winCodeSign 解压需创建符号链接会失败
 - npm 的 install scripts 被 allow-scripts 拦截，但 esbuild / electron 二进制实际可用
+- `import.meta.glob` 只在 Vite 环境可用；tsx 跑无头沙盒时是 undefined，
+  `src/core/metas/index.ts` 有显式兜底清单 —— 新增元法术文件需同步补一行
+
+## 阶段四新增的关键结构（产品化）
+
+- `src/core/metas/*.ts`：元法术按文件拆分，`import.meta.glob` 自动收录；
+  外部扩展：Electron 主进程扫描 `metas/*.js`，渲染进程动态 import（`globalThis.DAOYAN` 注入 API）
+- `src/core/spellMeta.ts`：法术生命周期 `instant / duration / channel`，
+  DSL 用 `@kind=duration @period=1 @duration=6 @cooldown=12` 注解
+- `src/core/attributes.ts`：`AttributeSet` + `Modifier`（加法/乘法、可限时，先加后乘）。
+  属性同时影响效果与消耗（power×伤害 / manaCostMul×法力 / castSpeed×tick预算 / perception×感知半径 / armor 减伤）
+- `src/game/sprites.ts`：程序化生成精灵图（无外部美术），动画状态机 idle/run/cast/hurt/death
+- `src/game/audio.ts`：WebAudio 程序化音效
+- `src/game/fx.ts`：粒子
+- `src/app/renderer.ts`：消费 `world.fx` 事件 → 音效 + 粒子；核心层不反向依赖渲染
+- `src/app/NodeGraph.tsx`：React Flow 蓝图视图，目前只读（AST→图），反向编辑是下一迭代

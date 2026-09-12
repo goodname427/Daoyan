@@ -19,7 +19,7 @@
 **目标**：每个元法术一个文件；丢进目录即被读取；打包后用户也能扩展。
 
 - [x] `src/core/metas/` 目录，按类别分文件：`math.ts` / `vector.ts` / `sense.ts` / `control.ts` / `attribute.ts`
-- [x] 加载器用 `import.meta.glob` 自动收录目录内所有元法术文件（新增文件无需改任何索引）
+- [x] 加载器用 `import.meta.glob` 自动收录目录内所有元法术文件（新增文件无需改任何索引）；纯 Node 兜底
 - [x] `applyMetaOverrides()`：可用一份配置覆盖法力 / 耗时定价，调平衡不用改代码
 - [x] 外部扩展：Electron 下启动时扫描 `metas/*.js` 动态加载
 - [x] `docs/扩展元法术.md` 说明扩展方式
@@ -70,6 +70,9 @@ export default function register(): void {
 
 运行时 `CastInstance` 状态机：`pending → running → ending → done`，
 持续类法术到期时触发「结束段」（后续可扩展 onEnd 逻辑）。
+
+**进度**：`SpellMeta` + DSL `@kind=duration` 注解 + `CastInstance`（周期重复 / 引导限速 / 冷却 / 可打断）已落地；
+演武场默认法术含 `护体金光`（持续）、`天雷引`（引导）。
 
 ### 1.3 蓝图式节点编辑器
 
