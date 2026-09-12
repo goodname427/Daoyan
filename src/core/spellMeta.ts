@@ -23,6 +23,12 @@ export interface SpellMeta {
   interruptible: boolean;
   /** channel 类型的移动速度倍率 */
   channelSlow: number;
+  /**
+   * 该法术需要的虚拟按键名（按索引访问）。
+   * 例如 `['蓄力']` 表示需要 1 个键，DSL 里用 `按键松开(0)` 读取。
+   * 物理键由玩家在游玩时自由配置（见 Battle.pressSlot / keyBinds）。
+   */
+  keys: string[];
 }
 
 export const DEFAULT_SPELL_META: SpellMeta = {
@@ -32,6 +38,7 @@ export const DEFAULT_SPELL_META: SpellMeta = {
   cooldown: 0,
   interruptible: true,
   channelSlow: 0.15,
+  keys: [],
 };
 
 export const SPELL_KIND_LABELS: Record<SpellKind, string> = {
@@ -56,12 +63,13 @@ export function repeatCount(meta: SpellMeta): number {
 }
 
 export function describeMeta(meta: SpellMeta): string {
+  const key = meta.keys.length > 0 ? ` · ${meta.keys.length}键[${meta.keys.join(',')}]` : '';
   switch (meta.kind) {
     case 'instant':
-      return meta.cooldown > 0 ? `瞬时 · 冷却 ${meta.cooldown}s` : '瞬时';
+      return (meta.cooldown > 0 ? `瞬时 · 冷却 ${meta.cooldown}s` : '瞬时') + key;
     case 'duration':
-      return `持续 ${meta.duration}s · 每 ${meta.period}s 触发（共 ${repeatCount(meta)} 次）`;
+      return `持续 ${meta.duration}s · 每 ${meta.period}s 触发（共 ${repeatCount(meta)} 次）${key}`;
     case 'channel':
-      return `引导 ≤${meta.duration}s · 移速 ×${meta.channelSlow}`;
+      return `引导 ≤${meta.duration}s · 移速 ×${meta.channelSlow}${key}`;
   }
 }

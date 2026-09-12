@@ -119,6 +119,20 @@ spell 护体金光 @kind=duration @period=1.5 @duration=6 @cooldown=14 {
 }
 
 
+// 蓄力火球：按住蓄力，松开时若蓄力≥0.8s 则释放（威力随蓄力时长放大），否则取消
+// 注意：松开靠「按键松开」粘性边沿捕获，不会因周期轮询错过
+spell 蓄力火球 @kind=duration @period=0.05 @duration=10 @keys=蓄力 @cooldown=1 {
+  if 按键松开(0) {
+    var t: num = 按键蓄力(0)
+    if 大于等于(t, 0.8) {
+      var self: vec2 = 自身位置()
+      发射(self, 准星方向(), 加(20, 乘(最小(t, 2), 40)))
+    }
+    结束施法()
+  }
+}
+
+
 // 引导类：读条期间几乎无法移动，但威力可观
 spell 天雷引 @kind=channel @duration=2 @cooldown=10 {
   var self: vec2 = 自身位置()

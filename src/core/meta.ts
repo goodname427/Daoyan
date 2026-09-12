@@ -1,11 +1,16 @@
 import type { Type, Value } from './types';
 import type { Actor, World } from './world';
+import type { KeyState } from './input';
 
 /** 元函数执行上下文：只有元函数能接触「外界」 */
 export interface Ctx {
   world: World;
   caster: Actor;
   log: string[];
+  /** 当前施法的按键状态（duration/键位法术用），无键法术为 null */
+  keys: KeyState[] | null;
+  /** 法术调用「结束施法」后置真，VM 检测后立即结束 */
+  endRequested: boolean;
 }
 
 export interface MetaParam {

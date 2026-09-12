@@ -201,7 +201,17 @@ class Parser {
       if (tok.kind === 'num') value = tok.num;
       else if (tok.text === 'true' || tok.text === '真') value = true;
       else if (tok.text === 'false' || tok.text === '假') value = false;
-      meta[key as keyof SpellMeta] = value;
+      // keys 是字符串数组，需要把 "蓄力,辅助" 拆开
+      if (key === 'keys') {
+        (meta as { keys?: string[] }).keys = String(value)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      } else if (key === 'key') {
+        (meta as { keys?: string[] }).keys = [String(value)];
+      } else {
+        (meta as Record<string, string | number | boolean>)[key] = value;
+      }
     }
 
     const params: Param[] = [];

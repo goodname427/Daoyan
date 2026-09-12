@@ -7,7 +7,8 @@ import {
   normalizeMeta,
   spellMeta,
 } from '../core/index';
-import type { Actor, Program, SpellBook, SpellCost, SpellMeta } from '../core/index';
+import type { Actor, KeyState, Program, SpellBook, SpellCost, SpellMeta } from '../core/index';
+import { makeKeyState } from '../core/input';
 
 /**
  * 战斗运行时。
@@ -56,6 +57,12 @@ export interface CastInstance {
   periodTimer: number;
   /** 已触发次数 */
   fired: number;
+  /** 虚拟按键状态（引用共享，每帧原地更新） */
+  keys: KeyState[];
+  /** 触发本施法的槽位（玩家用，用于把物理键状态映射到 keys[0]） */
+  triggerSlot: string | null;
+  /** 已主动结束（调用过「结束施法」），优先于 duration 周期重启 */
+  ended: boolean;
 }
 
 const ARENA_W = 1600;
@@ -67,7 +74,7 @@ const PLAYER_BINDINGS: Record<string, string> = {
   '2': '三连剑',
   '3': '爆炎咒',
   '4': '微剑',
-  '5': '护体金光',
+  '5': '蓄力火球',
 };
 
 const PLAYER_ATTRS = {
@@ -93,6 +100,8 @@ export class Battle {
   cooldowns = new Map<number, Map<string, number>>();
 
   input: BattleInput = { up: false, down: false, left: false, right: false };
+  /** 当前按住的槽位集合（玩家用，驱动键位法术的 keys[0]） */
+  heldSlots = new Set<string>();
   time = 0;
   waveIndex = 0;
   state: BattleState = 'fighting';
@@ -309,12 +318,16 @@ export class Battle {
         continue;
       }
 
+      // 先更新按键状态（玩家：keys[0] 由触发槽位的 held 状态驱动）
+      this.updateKeyState(a, cast, dt);
+
       // 施法速度属性：把「每秒 tick 数」放大
       const tickBudget = ((dt * 1000) / TICK_MS) * a.attr.castSpeed;
       const before = cast.vm.spentMana;
       cast.vm.advance(tickBudget);
       a.mana = Math.max(0, a.mana - (cast.vm.spentMana - before));
       cast.elapsed += dt;
+      if (cast.vm.endRequested) cast.ended = true;
 
       // 超时（引导类最长引导时间）
       if (cast.meta.kind === 'channel' && cast.elapsed > cast.meta.duration && cast.vm.isRunning) {
@@ -332,6 +345,12 @@ export class Battle {
         continue;
       }
 
+      // 主动结束（调用了「结束施法」）：直接收尾，不再周期重启
+      if (cast.ended) {
+        this.casts.delete(id);
+        continue;
+      }
+
       // 本次执行完毕
       if (cast.meta.kind === 'duration' && cast.elapsed < cast.meta.duration) {
         // 进入周期等待，到点再触发一次
@@ -346,11 +365,33 @@ export class Battle {
     }
   }
 
+  /** 把按键物理状态写进 cast.keys（仅玩家；妖兽无按键） */
+  private updateKeyState(a: Actor, cast: CastInstance, dt: number): void {
+    if (cast.keys.length === 0) return;
+    if (a.faction !== 'player' || cast.triggerSlot === null) return;
+    const held = this.heldSlots.has(cast.triggerSlot);
+    for (const k of cast.keys) {
+      const prev = k.held;
+      if (held && !prev) {
+        k.pressEdge = true;
+        k.heldTime = 0; // 重新按下，蓄力从头计
+      }
+      if (!held && prev) {
+        k.releaseEdge = true;
+        // 松开时保留蓄力值，让法术能在松开后的轮询里读到「刚松开时的蓄力时长」
+      }
+      k.held = held;
+      if (held) k.heldTime += dt;
+    }
+  }
+
   private restartCastVm(a: Actor, cast: CastInstance): void {
     cast.fired += 1;
     cast.periodTimer = Math.max(0.05, cast.meta.period);
+    cast.ended = false;
     const vm = new VM(this.program, this.world, a);
     vm.start(cast.spell);
+    vm.setKeyState(cast.keys.length > 0 ? cast.keys : null);
     cast.vm = vm;
   }
 
@@ -464,6 +505,12 @@ export class Battle {
     const vm = new VM(this.program, this.world, a);
     vm.start(spell);
 
+    // 准备虚拟按键状态（玩家：按下瞬间给 keys[0] 一个 pressEdge）
+    const keys = meta.keys.map(() => makeKeyState());
+    const isPlayer = a.faction === 'player';
+    if (isPlayer && keys.length > 0) keys[0].pressEdge = true;
+    vm.setKeyState(keys.length > 0 ? keys : null);
+
     this.casts.set(actorId, {
       spell,
       meta,
@@ -471,6 +518,9 @@ export class Battle {
       elapsed: 0,
       periodTimer: Math.max(0.05, meta.period),
       fired: 1,
+      keys,
+      triggerSlot: isPlayer ? slot : null,
+      ended: false,
     });
     this.world.fx.push({ kind: 'cast', x: a.x, y: a.y });
     if (meta.cooldown > 0) {
@@ -483,6 +533,22 @@ export class Battle {
     }
     this.stats.casts++;
     return true;
+  }
+
+  /**
+   * 玩家按下某槽位的物理键。
+   * - 按键型法术（声明了 keys）：起手进入持续施法，并标记该槽位按住
+   * - 普通法术：等同 trigger 一次性触发
+   */
+  pressSlot(slot: string): boolean {
+    this.heldSlots.add(slot);
+    if (this.casts.has(this.player.id)) return false;
+    return this.castPlayer(slot);
+  }
+
+  /** 玩家松开某槽位的物理键 */
+  releaseSlot(slot: string): void {
+    this.heldSlots.delete(slot);
   }
 
   castPlayer(slot: string): boolean {
@@ -518,6 +584,7 @@ export class Battle {
     this.world.onDamage = (target) => this.handleDamage(target);
     this.casts.clear();
     this.cooldowns.clear();
+    this.heldSlots.clear();
     this.log = [];
     this.time = 0;
     this.state = 'fighting';

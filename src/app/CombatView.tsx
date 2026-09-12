@@ -73,11 +73,19 @@ function Arena({ battle }: { battle: Battle }) {
         return;
       }
       const m = /^Digit([1-5])$/.exec(e.code);
-      if (m) battle.castPlayer(m[1]);
+      if (m) {
+        // 重复触发时只算一次按下
+        if (!e.repeat) battle.pressSlot(m[1]);
+      }
     };
     const onKeyUp = (e: KeyboardEvent): void => {
       const dir = MOVEMENT_KEYS[e.code];
-      if (dir) battle.input[dir] = false;
+      if (dir) {
+        battle.input[dir] = false;
+        return;
+      }
+      const m = /^Digit([1-5])$/.exec(e.code);
+      if (m) battle.releaseSlot(m[1]);
     };
     const onBlur = (): void => {
       battle.input.up = false;
@@ -121,7 +129,9 @@ function Arena({ battle }: { battle: Battle }) {
             const sy = ((e.clientY - rect.top) / rect.height) * VIEW_H + camY;
             battle.aimAt(sx, sy);
           }}
-          onMouseDown={() => battle.castPlayer('mouse')}
+          onMouseDown={() => battle.pressSlot('mouse')}
+          onMouseUp={() => battle.releaseSlot('mouse')}
+          onMouseLeave={() => battle.releaseSlot('mouse')}
         />
         {battle.state !== 'fighting' && (
           <div className="overlay">

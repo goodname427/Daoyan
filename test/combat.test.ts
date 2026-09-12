@@ -172,6 +172,48 @@ describe('弹道与命中', () => {
   });
 });
 
+describe('按键状态接入法术', () => {
+  function quiet(b: Battle): void {
+    for (const a of b.world.actors) {
+      if (a.faction !== 'foe') continue;
+      a.base.speed = 0;
+      a.bindings = {};
+      b.world.recompute(a);
+    }
+    b.player.aim = { x: 1, y: 0 };
+  }
+
+  it('蓄力火球：按住蓄力、蓄满后松开则发射', () => {
+    const b = makeBattle();
+    quiet(b);
+    b.setBinding('5', '蓄力火球');
+
+    expect(b.pressSlot('5')).toBe(true); // 按下 → 起手持续施法
+    run(b, 1.2); // 蓄力超过 0.8s 阈值
+    b.releaseSlot('5'); // 松开
+    run(b, 0.2); // 下一个周期轮询捕获松开边沿 → 发射 + 结束施法
+
+    expect(b.casts.has(b.player.id)).toBe(false);
+    expect(b.world.projectiles.length).toBeGreaterThanOrEqual(1);
+    // 威力 = 20 + min(1.2, 2) * 40 = 68
+    expect(b.world.projectiles[0].damage).toBeGreaterThan(40);
+  });
+
+  it('蓄力火球：提前松开则不发射', () => {
+    const b = makeBattle();
+    quiet(b);
+    b.setBinding('5', '蓄力火球');
+
+    b.pressSlot('5');
+    run(b, 0.3); // 蓄力不足 0.8s
+    b.releaseSlot('5');
+    run(b, 0.2);
+
+    expect(b.casts.has(b.player.id)).toBe(false);
+    expect(b.world.projectiles.length).toBe(0);
+  });
+});
+
 describe('波次与胜负', () => {
   it('清空当前波会进入下一波', () => {
     const b = makeBattle();

@@ -5,6 +5,7 @@ import { asNum } from './meta';
 import { allMetas } from './meta';
 import type { Ctx } from './meta';
 import type { Actor, World } from './world';
+import type { KeyState } from './input';
 
 /** 一个 tick 代表多少毫秒的施法时间 */
 export const TICK_MS = 10;
@@ -89,8 +90,17 @@ export class VM {
     private caster: Actor,
     options?: Partial<CastOptions>,
   ) {
-    this.ctx = { world, caster, log: [] };
+    this.ctx = { world, caster, log: [], keys: null, endRequested: false };
     this.opts = { ...DEFAULT_OPTIONS, ...options };
+  }
+
+  /** 接入按键状态（duration / 键位法术用）。引用共享，战斗层原地修改即可 */
+  setKeyState(keys: KeyState[] | null): void {
+    this.ctx.keys = keys;
+  }
+
+  get endRequested(): boolean {
+    return this.ctx.endRequested;
   }
 
   // ---------------- 生命周期 ----------------
@@ -366,6 +376,11 @@ export class VM {
           return;
         }
         stack.push(m.impl(this.ctx, args));
+        // 「结束施法」元函数会让当前施法立即结束
+        if (this.ctx.endRequested) {
+          this.status = 'done';
+          return;
+        }
         break;
       }
 

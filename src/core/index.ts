@@ -5,6 +5,7 @@ export * from './types';
 export * from './ast';
 export * from './meta';
 export * from './attributes';
+export * from './input';
 export * from './world';
 export * from './analyzer';
 export * from './compiler';
