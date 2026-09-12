@@ -34,17 +34,29 @@ Noita-like 修仙编程 roguelike。玩家自由编写功法/法术，
 - 提交规范：Conventional Commits；`.githooks` 自动跑 verify
 - 决策记 `docs/adr/`，过程记 `docs/dev/YYYY-MM-DD.md`
 
+## 测试分层（阶段七，E2E 门禁）
+
+- **单元** `npm test`：VM / 分析器 / 编译器 / 战斗逻辑 + jsdom 渲染冒烟（`test/render.test.tsx`，`// @vitest-environment jsdom`）
+- **E2E** `npm run test:e2e`：Playwright + chromium，自动拉起 vite（端口 5180，与 5173 隔离）
+  - `e2e/helpers.ts` 的 `captureErrors` 抓 `pageerror` + 真错误级 `console.error`
+    （跳过 React dev act 警告噪声），正是 jsdom 抓不到的真实浏览器路径
+  - 覆盖：三页签加载/切换无未捕获异常、推演台推演出结果、蓝图编辑编译、演武场按键施法
+- **门禁**：`verify`（pre-commit，快，单元）→ `verify:full`（开发完成/推送前/CI，含 E2E）
+- CI（`.github/workflows/ci.yml`）push 时跑 `verify:full` 等价链路（含 `playwright install`）
+- ESLint ignores 必须包含 `playwright-report/**` `test-results/**`（.gitignore 不影响 eslint）
+
 ## 环境限制（Windows 本机）
 
 - Electron 打包必须 `signAndEditExecutable: false`，
   否则 winCodeSign 解压需创建符号链接会失败
-- npm 的 install scripts 被 allow-scripts 拦截，但 esbuild / electron 二进制实际可用
+- npm 的 install scripts 被 allow-scripts 拦截，但 esbuild / electron / playwright 浏览器实际可用
 - `import.meta.glob` 只在 Vite 环境可用；tsx 跑无头沙盒时是 undefined，
   `src/core/metas/index.ts` 有显式兜底清单 —— 新增元法术文件需同步补一行
 - **git 代理坑**：全局 git 代理 `socks5://127.0.0.1:7890` 已失效（端口无监听），
   直连 GitHub 会被 reset。实际可用的是 **7897** 端口（HTTP 混合代理）。
   推送命令：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push`
   （不修改全局 git config，每次临时覆盖）
+- Playwright 浏览器下载需代理：`HTTPS_PROXY=http://127.0.0.1:7897 npx playwright install chromium`
 - 远程：`origin = https://github.com/goodname427/Daoyan.git`，分支 `master`，已设 upstream
 
 ## 重要原则（用户反复强调）
