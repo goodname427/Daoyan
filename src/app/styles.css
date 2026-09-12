@@ -169,6 +169,29 @@ body {
   color: var(--gold);
 }
 
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini {
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.mini:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 .attrs {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);

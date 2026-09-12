@@ -2,6 +2,8 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import COMBAT_SPELLS from '../game/spells.dy?raw';
 import { Battle } from '../game/battle';
+import { sfx } from '../game/audio';
+import { Renderer } from './renderer';
 import { ATTR_LABELS, describeMeta, parseSpellbook, SPELL_KIND_LABELS } from '../core/index';
 import type { Actor, AttrKey } from '../core/index';
 
@@ -35,156 +37,23 @@ interface BattleInputLike {
   right: boolean;
 }
 
-const COLOR = {
-  player: '#e8c37a',
-  chaser: '#d2593f',
-  shooter: '#a05fd6',
-  projPlayer: '#ffe9b0',
-  projFoe: '#ff9a7a',
-};
-
-function actorColor(a: Actor): string {
-  if (a.faction === 'player') return COLOR.player;
-  return a.behavior === 'shooter' ? COLOR.shooter : COLOR.chaser;
-}
-
-function draw(canvas: HTMLCanvasElement | null, battle: Battle): void {
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const world = battle.world;
-  const cam = {
-    x: Math.max(0, Math.min(world.bounds.w - VIEW_W, battle.player.x - VIEW_W / 2)),
-    y: Math.max(0, Math.min(world.bounds.h - VIEW_H, battle.player.y - VIEW_H / 2)),
-  };
-  canvas.dataset.camX = String(cam.x);
-  canvas.dataset.camY = String(cam.y);
-
-  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-  ctx.fillStyle = '#0b0e14';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  ctx.save();
-  ctx.translate(-cam.x, -cam.y);
-
-  // 场地
-  ctx.strokeStyle = 'rgba(255,255,255,0.045)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= world.bounds.w; x += 100) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, world.bounds.h);
-    ctx.stroke();
-  }
-  for (let y = 0; y <= world.bounds.h; y += 100) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(world.bounds.w, y);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = '#2a3340';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0, 0, world.bounds.w, world.bounds.h);
-
-  // 玩家准星指示
-  const p = battle.player;
-  if (p.alive) {
-    ctx.strokeStyle = 'rgba(232,195,122,0.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x + p.aim.x * 90, p.y + p.aim.y * 90);
-    ctx.stroke();
-  }
-
-  // 单位
-  for (const a of world.actors) {
-    if (!a.alive) continue;
-    const color = actorColor(a);
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
-    ctx.fillStyle = a.hitFlash > 0 ? '#ffffff' : color;
-    ctx.fill();
-    if (a.behavior === 'shooter') {
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    // 生命条
-    const bw = 34;
-    const bx = a.x - bw / 2;
-    const by = a.y - a.radius - 10;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(bx, by, bw, 4);
-    ctx.fillStyle = a.faction === 'player' ? '#7bd88f' : '#ff7a5c';
-    ctx.fillRect(bx, by, bw * Math.max(0, a.hp / a.attr.hpMax), 4);
-
-    // 施法指示：内圈是当前这次执行的进度，持续类外圈显示已持续时间
-    const cast = battle.casts.get(a.id);
-    if (cast) {
-      const cost = battle.costs[cast.spell];
-      const total = cost ? Math.max(1, cost.tickWorst) : 1;
-      const prog = Math.min(1, cast.vm.spentTicks / total);
-      ctx.beginPath();
-      ctx.arc(a.x, a.y, a.radius + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
-      ctx.strokeStyle = '#e8c37a';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      if (cast.meta.kind === 'duration') {
-        const dp = Math.min(1, cast.elapsed / Math.max(0.1, cast.meta.duration));
-        ctx.beginPath();
-        ctx.arc(a.x, a.y, a.radius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * dp);
-        ctx.strokeStyle = '#6aa9ff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = '#e8c37a';
-      ctx.font = '11px ui-monospace, monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(cast.spell, a.x, a.y + a.radius + 20);
-    }
-
-    ctx.fillStyle = '#8b97ab';
-    ctx.font = '10px ui-monospace, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(a.name, a.x, by - 4);
-  }
-
-  // 弹道
-  for (const pr of world.projectiles) {
-    ctx.beginPath();
-    ctx.arc(pr.x, pr.y, pr.radius, 0, Math.PI * 2);
-    ctx.fillStyle = pr.faction === 'player' ? COLOR.projPlayer : COLOR.projFoe;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(pr.x, pr.y);
-    ctx.lineTo(pr.x - pr.dx * 16, pr.y - pr.dy * 16);
-    ctx.strokeStyle = pr.faction === 'player' ? 'rgba(255,233,176,0.4)' : 'rgba(255,154,122,0.4)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
 function Arena({ battle }: { battle: Battle }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef<Renderer>(new Renderer());
   const [, force] = useReducer((x: number) => x + 1, 0);
   const lastRef = useRef(0);
   const hudRef = useRef(0);
 
   useEffect(() => {
+    rendererRef.current.reset();
     let raf = 0;
     const loop = (now: number) => {
       const last = lastRef.current || now;
       const dt = Math.min(0.05, (now - last) / 1000);
       lastRef.current = now;
       battle.update(dt);
-      draw(canvasRef.current, battle);
+      const canvas = canvasRef.current;
+      if (canvas) rendererRef.current.render(canvas, battle, dt);
       if (now - hudRef.current > 80) {
         hudRef.current = now;
         force();
@@ -219,10 +88,16 @@ function Arena({ battle }: { battle: Battle }) {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
+    // 任意按键 / 点击解除浏览器音频自动播放限制
+    const unlock = (): void => sfx.unlock();
+    window.addEventListener('keydown', unlock, { once: true });
+    window.addEventListener('pointerdown', unlock, { once: true });
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('pointerdown', unlock);
     };
   }, [battle]);
 
@@ -288,8 +163,19 @@ function Arena({ battle }: { battle: Battle }) {
         <AttributePanel player={player} />
 
         <div className="meta-info">
-          <div>
-            第 <b>{battle.waveIndex + 1}</b> 波 · 剩余妖兽 <b>{battle.foesLeft()}</b>
+          <div className="row-between">
+            <span>
+              第 <b>{battle.waveIndex + 1}</b> 波 · 剩余妖兽 <b>{battle.foesLeft()}</b>
+            </span>
+            <button
+              className="mini"
+              onClick={() => {
+                sfx.enabled = !sfx.enabled;
+                force();
+              }}
+            >
+              {sfx.enabled ? '♪ 音效' : '× 静音'}
+            </button>
           </div>
           <div className="muted small">
             施法 {battle.stats.casts} · 打断 {battle.stats.interrupts} · 反噬{' '}

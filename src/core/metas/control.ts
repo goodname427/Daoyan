@@ -38,6 +38,7 @@ export default function register(): void {
         radius: 7,
         life: 2.4,
       });
+      c.world.fx.push({ kind: 'shoot', x: o.x + dx * 16, y: o.y + dy * 16 });
       return null;
     },
   });

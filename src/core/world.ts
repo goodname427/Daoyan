@@ -14,6 +14,13 @@ export type Faction = 'player' | 'foe';
 
 export type Behavior = 'chaser' | 'shooter' | null;
 
+/** 表现层事件：核心层只负责记录「发生了什么、发生在哪」，怎么表现由视图决定 */
+export interface FxEvent {
+  kind: string;
+  x: number;
+  y: number;
+}
+
 export interface Projectile {
   id: number;
   faction: Faction;
@@ -75,6 +82,8 @@ export interface Actor {
   stun: number;
   /** 受击闪白剩余秒数（仅表现） */
   hitFlash: number;
+  /** 死亡后仍保留的秒数（用于播放死亡动画） */
+  deathTimer: number;
 }
 
 export interface ActorInit {
@@ -96,6 +105,8 @@ export class World {
   actors: Actor[] = [];
   projectiles: Projectile[] = [];
   events: string[] = [];
+  /** 表现层事件队列，视图每帧消费 */
+  fx: FxEvent[] = [];
   bounds = { w: 1600, h: 1200 };
   /** 伤害回调，战斗层用它实现「受击打断施法」 */
   onDamage: ((target: Actor, amount: number) => void) | null = null;
@@ -108,6 +119,7 @@ export class World {
     this.actors = [];
     this.projectiles = [];
     this.events = [];
+    this.fx = [];
     this.nextActorId = 1;
     this.nextProjId = 1;
     this.nextModifierId = 1;
@@ -148,6 +160,7 @@ export class World {
       castSlow: init.castSlow ?? 0.45,
       stun: 0,
       hitFlash: 0,
+      deathTimer: 0,
     };
     this.actors.push(a);
     return a;
@@ -212,15 +225,24 @@ export class World {
     const real = Math.max(1, amount - a.attr.armor);
     a.hp -= real;
     a.hitFlash = 0.15;
+    this.fx.push({ kind: 'hit', x: a.x, y: a.y });
     if (a.hp <= 0) {
       a.hp = 0;
       a.alive = false;
+      a.deathTimer = 0.9;
       this.events.push(`${a.name}#${a.id} 被击倒`);
+      this.fx.push({ kind: 'death', x: a.x, y: a.y });
     } else {
       this.events.push(`${a.name}#${a.id} 受到 ${Math.round(real)} 伤害，剩余 ${Math.round(a.hp)}`);
     }
     this.onDamage?.(a, real);
     return true;
+  }
+
+  consumeFx(): FxEvent[] {
+    const out = this.fx;
+    this.fx = [];
+    return out;
   }
 
   /** 位移并限制在场地内 */

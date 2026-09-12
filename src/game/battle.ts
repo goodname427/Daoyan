@@ -137,6 +137,7 @@ export class Battle {
     for (let i = 0; i < spec.chaser; i++) this.spawnFoe('chaser');
     for (let i = 0; i < spec.shooter; i++) this.spawnFoe('shooter');
 
+    this.world.fx.push({ kind: 'wave', x: this.player.x, y: this.player.y });
     this.pushLog(`第 ${index + 1} 波：${spec.chaser} 扑击妖兽 / ${spec.shooter} 符修`);
   }
 
@@ -200,7 +201,10 @@ export class Battle {
     this.time += dt;
 
     for (const a of this.world.actors) {
-      if (!a.alive) continue;
+      if (!a.alive) {
+        if (a.deathTimer > 0) a.deathTimer = Math.max(0, a.deathTimer - dt);
+        continue;
+      }
       this.world.tickActor(a, dt);
       if (a.faction === 'foe') a.attackTimer -= dt;
     }
@@ -322,6 +326,7 @@ export class Battle {
       if (cast.vm.failure) {
         this.casts.delete(id);
         this.stats.backfires++;
+        this.world.fx.push({ kind: 'backfire', x: a.x, y: a.y });
         this.pushLog(`${a.name} 走火入魔：${cast.vm.failure}`);
         a.stun = 0.5;
         continue;
@@ -467,6 +472,7 @@ export class Battle {
       periodTimer: Math.max(0.05, meta.period),
       fired: 1,
     });
+    this.world.fx.push({ kind: 'cast', x: a.x, y: a.y });
     if (meta.cooldown > 0) {
       let map = this.cooldowns.get(actorId);
       if (!map) {

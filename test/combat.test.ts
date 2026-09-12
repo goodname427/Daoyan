@@ -71,6 +71,14 @@ describe('玩家操作', () => {
 
   it('持续类法术会周期性重复执行', () => {
     const b = makeBattle();
+    // 让妖兽既不动也不攻击，避免打断玩家的护体金光
+    for (const a of b.world.actors) {
+      if (a.faction !== 'foe') continue;
+      a.base.speed = 0;
+      a.bindings = {};
+      b.world.recompute(a);
+    }
+
     b.setBinding('5', '护体金光'); // duration 6s / period 1.5s
     expect(b.castPlayer('5')).toBe(true);
     expect(b.metaOf('护体金光').kind).toBe('duration');
