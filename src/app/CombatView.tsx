@@ -122,9 +122,12 @@ function Arena({ battle }: { battle: Battle }) {
           height={VIEW_H}
           className="arena"
           onMouseMove={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const camX = Number(e.currentTarget.dataset.camX ?? 0);
-            const camY = Number(e.currentTarget.dataset.camY ?? 0);
+            const el = e.currentTarget;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+            const camX = Number(el.dataset.camX ?? 0);
+            const camY = Number(el.dataset.camY ?? 0);
             const sx = ((e.clientX - rect.left) / rect.width) * VIEW_W + camX;
             const sy = ((e.clientY - rect.top) / rect.height) * VIEW_H + camY;
             battle.aimAt(sx, sy);
