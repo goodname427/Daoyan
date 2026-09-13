@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
   conventionalCommitOrFallback,
   buildLocalPlan,
+  classifyAgentFailure,
   escalateTier,
   optimizePlan,
   preferredWindowsExecutable,
   resolveProducerDirection,
   reviewRouteForPlan,
+  reviewRoutesForPlan,
   routeForTask,
   sortTasks,
   validatePlan,
@@ -33,6 +35,19 @@ const policy: AgentPolicy = {
     standard: { model: 'terra-review', reasoning: 'low' },
     advanced: { model: 'sol-review', reasoning: 'high' },
     critical: { model: 'astra-review', reasoning: 'high' },
+  },
+  recovery: {
+    transientRetries: 1,
+    retryBackoffSeconds: 0,
+    reviewerFallbacks: {
+      economy: [{ model: 'terra-review', reasoning: 'low' }],
+      standard: [{ model: 'luna-review', reasoning: 'medium' }],
+      advanced: [
+        { model: 'terra-review', reasoning: 'medium' },
+        { model: 'astra-review', reasoning: 'medium' },
+      ],
+      critical: [{ model: 'sol-review', reasoning: 'high' }],
+    },
   },
   limits: { maxTasks: 6, maxEscalationsPerTask: 2, maxReviewRounds: 2 },
   timeouts: {
@@ -153,6 +168,23 @@ describe('agent routing', () => {
     expect(reviewRouteForPlan(policy, buildLocalPlan('推演台新增 VM 单步界面')).model).toBe(
       'sol-review',
     );
+  });
+
+  it('builds a distinct reviewer fallback chain for the plan risk', () => {
+    expect(
+      reviewRoutesForPlan(policy, buildLocalPlan('推演台新增 VM 单步界面')).map(
+        (route) => route.model,
+      ),
+    ).toEqual(['sol-review', 'terra-review', 'astra-review']);
+  });
+
+  it('distinguishes retriable provider failures from external blockers', () => {
+    expect(classifyAgentFailure('Selected model is at capacity', 1)).toBe('transient');
+    expect(classifyAgentFailure('dispatcher timeout', 124)).toBe('transient');
+    expect(classifyAgentFailure('usage limit reached; purchase more credits', 1)).toBe(
+      'external-blocker',
+    );
+    expect(classifyAgentFailure('tests failed', 1)).toBe('execution');
   });
 
   it('prefers Windows executables and then cmd shims over extensionless shell shims', () => {

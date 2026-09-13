@@ -13,6 +13,11 @@ export interface AgentPolicy {
   planner: ModelRoute;
   tiers: Record<ModelTier, ModelRoute>;
   reviewers: Record<ModelTier, ModelRoute>;
+  recovery: {
+    transientRetries: number;
+    retryBackoffSeconds: number;
+    reviewerFallbacks: Record<ModelTier, ModelRoute[]>;
+  };
   limits: {
     maxTasks: number;
     maxEscalationsPerTask: number;
@@ -74,6 +79,8 @@ export interface ReviewResult {
   findings: ReviewFinding[];
 }
 
+export type AgentFailureKind = 'transient' | 'external-blocker' | 'execution';
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -89,12 +96,23 @@ export function validatePolicy(value: unknown): AgentPolicy {
   assert(policy.planner && typeof policy.planner.model === 'string', '缺少 planner 模型');
   assert(policy.tiers, '缺少模型分层');
   assert(policy.reviewers, '缺少审查模型分层');
+  assert(policy.recovery, '缺少故障恢复策略');
+  assert(
+    Number.isInteger(policy.recovery.transientRetries) && policy.recovery.transientRetries >= 0,
+    'transientRetries 必须是非负整数',
+  );
+  assert(policy.recovery.retryBackoffSeconds >= 0, 'retryBackoffSeconds 不能为负数');
   for (const tier of MODEL_TIERS) {
     assert(policy.tiers[tier] && typeof policy.tiers[tier].model === 'string', `缺少 ${tier} 模型`);
     assert(
       policy.reviewers[tier] && typeof policy.reviewers[tier].model === 'string',
       `缺少 ${tier} 审查模型`,
     );
+    assert(Array.isArray(policy.recovery.reviewerFallbacks[tier]), `缺少 ${tier} 审查备用路由`);
+    for (const route of policy.recovery.reviewerFallbacks[tier]) {
+      assert(typeof route.model === 'string' && route.model.length > 0, `${tier} 审查备用模型非法`);
+      assert(['low', 'medium', 'high'].includes(route.reasoning), `${tier} 审查备用推理等级非法`);
+    }
   }
   assert(policy.limits && policy.limits.maxTasks > 0, 'maxTasks 必须大于 0');
   assert(policy.timeouts && policy.timeouts.heartbeatSeconds > 0, 'heartbeatSeconds 必须大于 0');
@@ -211,6 +229,52 @@ export function highestTier(tasks: PlannedTask[]): ModelTier {
 
 export function reviewRouteForPlan(policy: AgentPolicy, plan: TaskPlan): ModelRoute {
   return policy.reviewers[highestTier(plan.tasks)];
+}
+
+export function reviewRoutesForPlan(policy: AgentPolicy, plan: TaskPlan): ModelRoute[] {
+  const tier = highestTier(plan.tasks);
+  const routes = [policy.reviewers[tier], ...policy.recovery.reviewerFallbacks[tier]];
+  return routes.filter(
+    (route, index) =>
+      routes.findIndex(
+        (candidate) => candidate.model === route.model && candidate.reasoning === route.reasoning,
+      ) === index,
+  );
+}
+
+export function classifyAgentFailure(output: string, code: number): AgentFailureKind {
+  const normalized = output.toLowerCase();
+  if (
+    includesAny(normalized, [
+      'usage limit',
+      'insufficient_quota',
+      'purchase more credits',
+      'not logged in',
+      'unauthorized',
+      'authentication failed',
+      'invalid api key',
+    ])
+  ) {
+    return 'external-blocker';
+  }
+  if (
+    code === 124 ||
+    includesAny(normalized, [
+      'at capacity',
+      'request timed out',
+      'reconnecting',
+      'temporarily unavailable',
+      'service unavailable',
+      'connection reset',
+      'connection refused',
+      'network error',
+      'rate limit',
+      'too many requests',
+    ])
+  ) {
+    return 'transient';
+  }
+  return 'execution';
 }
 
 export function escalateTier(tier: ModelTier): ModelTier | null {

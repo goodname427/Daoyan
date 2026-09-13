@@ -40,6 +40,44 @@
       "reasoning": "high"
     }
   },
+  "recovery": {
+    "transientRetries": 1,
+    "retryBackoffSeconds": 10,
+    "reviewerFallbacks": {
+      "economy": [
+        {
+          "model": "gpt-5.6-terra",
+          "reasoning": "low"
+        }
+      ],
+      "standard": [
+        {
+          "model": "gpt-5.6-luna",
+          "reasoning": "medium"
+        }
+      ],
+      "advanced": [
+        {
+          "model": "gpt-5.6-terra",
+          "reasoning": "medium"
+        },
+        {
+          "model": "gpt-6-astra",
+          "reasoning": "medium"
+        }
+      ],
+      "critical": [
+        {
+          "model": "gpt-5.6-sol",
+          "reasoning": "high"
+        },
+        {
+          "model": "gpt-5.6-terra",
+          "reasoning": "medium"
+        }
+      ]
+    }
+  },
   "limits": {
     "maxTasks": 4,
     "maxEscalationsPerTask": 1,

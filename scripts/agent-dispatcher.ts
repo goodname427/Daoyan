@@ -1,17 +1,19 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   conventionalCommitOrFallback,
   buildLocalPlan,
+  classifyAgentFailure,
   escalateTier,
   highestTier,
   optimizePlan,
   preferredWindowsExecutable,
   resolveProducerDirection,
-  reviewRouteForPlan,
+  reviewRoutesForPlan,
   routeForTask,
   sortTasks,
   validatePlan,
@@ -34,6 +36,7 @@ interface CliOptions {
   deepPlan: boolean;
   doctor: boolean;
   noPush: boolean;
+  resumeDirectory: string | null;
 }
 
 interface ProcessResult {
@@ -68,6 +71,37 @@ interface PlannerRun {
 interface ReviewRun {
   result: ReviewResult;
   tokensUsed: number | null;
+  route: ModelRoute;
+  attempts: number;
+}
+
+interface RecoveryCheckpoint {
+  version: 1;
+  status: 'active' | 'recoverable' | 'delivered';
+  phase: string;
+  direction: string;
+  resolvedDirection: string;
+  baseline: string;
+  workspaceFingerprint: string;
+  plan: TaskPlan;
+  taskRuns: TaskRun[];
+  review: ReviewResult | null;
+  plannerTokens: number | null;
+  reviewerTokens: number | null;
+  repairerTokens: number | null;
+  noPush: boolean;
+  error: string;
+  updatedAt: string;
+}
+
+class AgentCallError extends Error {
+  constructor(
+    message: string,
+    readonly kind: ReturnType<typeof classifyAgentFailure>,
+    readonly tokensUsed: number | null,
+  ) {
+    super(message);
+  }
 }
 
 function printHelp() {
@@ -76,12 +110,14 @@ function printHelp() {
 用法：
   npm run producer -- "描述产品方向或问题"
   npm run producer:plan -- "描述产品方向或问题"
+  npm run producer:resume -- ".daoyan-agent/runs/<运行目录>"
 
 选项：
   --plan-only  只让秘书分析、拆分和分配模型，不修改代码
   --deep-plan  额外调用模型进行规划；默认使用零-token 本地路由
   --doctor     检查 Codex 与 npm 子进程入口，不调用模型
   --no-push    完成交付和提交，但不推送远端
+  --resume     从失败运行的恢复点续跑，不重复已完成任务
   --help       显示帮助
 
 完整执行要求开始时 Git 工作区干净；制作人不需要判断任务复杂度。`);
@@ -92,8 +128,10 @@ function parseArgs(argv: string[]): CliOptions {
   let deepPlan = false;
   let doctor = false;
   let noPush = false;
+  let resumeDirectory: string | null = null;
   const direction: string[] = [];
-  for (const arg of argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
     if (arg === '--help' || arg === '-h') {
       printHelp();
       process.exit(0);
@@ -102,13 +140,28 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === '--deep-plan') deepPlan = true;
     else if (arg === '--doctor') doctor = true;
     else if (arg === '--no-push') noPush = true;
-    else direction.push(arg);
+    else if (arg === '--resume') {
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--')) throw new Error('--resume 后需要运行目录');
+      resumeDirectory = value;
+      index += 1;
+    } else direction.push(arg);
   }
   const joined = direction.join(' ').trim();
-  if (!joined && !doctor) {
+  if (!joined && !doctor && !resumeDirectory) {
     throw new Error('请提供产品方向，例如：npm run producer -- "增加法术单步推演"');
   }
-  return { direction: joined || 'doctor', planOnly, deepPlan, doctor, noPush };
+  if (resumeDirectory && (planOnly || deepPlan || doctor)) {
+    throw new Error('--resume 不能与 --plan-only、--deep-plan 或 --doctor 同时使用');
+  }
+  return {
+    direction: joined || (doctor ? 'doctor' : 'resume'),
+    planOnly,
+    deepPlan,
+    doctor,
+    noPush,
+    resumeDirectory,
+  };
 }
 
 function executable(name: string, args: string[]): { command: string; args: string[] } {
@@ -258,6 +311,92 @@ function addTokenUsage(current: number | null, addition: number | null): number 
   return (current ?? 0) + addition;
 }
 
+function failureText(result: ProcessResult): string {
+  return `${result.stderr}\n${result.stdout}`.trim();
+}
+
+async function waitForRetry(label: string) {
+  const seconds = policy.recovery.retryBackoffSeconds;
+  console.log(`[恢复] ${label}，${seconds} 秒后重试。`);
+  if (seconds > 0)
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, seconds * 1000));
+}
+
+async function writeCheckpoint(
+  runDirectory: string,
+  checkpoint: Omit<RecoveryCheckpoint, 'updatedAt'>,
+) {
+  await writeFile(
+    resolve(runDirectory, 'recovery.json'),
+    `${JSON.stringify({ ...checkpoint, updatedAt: new Date().toISOString() }, null, 2)}\n`,
+    'utf8',
+  );
+}
+
+async function workspaceFingerprint(): Promise<string> {
+  const [head, status, diff, untracked] = await Promise.all([
+    git(['rev-parse', 'HEAD']),
+    git(['-c', 'core.quotePath=false', 'status', '--porcelain=v1', '-z']),
+    git(['diff', '--binary', 'HEAD', '--']),
+    git(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard', '-z']),
+  ]);
+  if ([head, status, diff, untracked].some((result) => result.code !== 0)) {
+    throw new Error('无法计算恢复点工作区指纹');
+  }
+  const hash = createHash('sha256');
+  hash.update(head.stdout);
+  hash.update('\0STATUS\0');
+  hash.update(status.stdout);
+  hash.update('\0DIFF\0');
+  hash.update(diff.stdout);
+  const untrackedPaths = untracked.stdout.split('\0').filter(Boolean).sort();
+  for (const path of untrackedPaths) {
+    hash.update('\0UNTRACKED\0');
+    hash.update(path);
+    hash.update('\0');
+    hash.update(await readFile(resolve(root, path)));
+  }
+  return hash.digest('hex');
+}
+
+async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint> {
+  const value = JSON.parse(
+    await readFile(resolve(runDirectory, 'recovery.json'), 'utf8'),
+  ) as Partial<RecoveryCheckpoint>;
+  if (
+    value.version !== 1 ||
+    !value.plan ||
+    !value.baseline ||
+    !value.workspaceFingerprint ||
+    !Array.isArray(value.taskRuns)
+  ) {
+    throw new Error(`恢复点无效：${resolve(runDirectory, 'recovery.json')}`);
+  }
+  return {
+    version: 1,
+    status:
+      value.status === 'delivered'
+        ? 'delivered'
+        : value.status === 'active'
+          ? 'active'
+          : 'recoverable',
+    phase: value.phase ?? '未知阶段',
+    direction: value.direction ?? value.plan.summary,
+    resolvedDirection: value.resolvedDirection ?? value.plan.summary,
+    baseline: value.baseline,
+    workspaceFingerprint: value.workspaceFingerprint,
+    plan: validatePlan(value.plan, policy.limits.maxTasks),
+    taskRuns: value.taskRuns as TaskRun[],
+    review: value.review ?? null,
+    plannerTokens: value.plannerTokens ?? null,
+    reviewerTokens: value.reviewerTokens ?? null,
+    repairerTokens: value.repairerTokens ?? null,
+    noPush: value.noPush ?? false,
+    error: value.error ?? '',
+    updatedAt: value.updatedAt ?? '',
+  };
+}
+
 async function compactProjectContext(): Promise<string> {
   const status = (await readFile(resolve(root, 'docs/status.md'), 'utf8')).slice(0, 5000);
   return `模块边界：src/core 是无头 DSL/AST/编译器/VM；src/game 是战斗运行时；src/app 是推演台和演武场；test 与 e2e 是验证；docs 保存长期事实。\n\n当前状态摘要：\n${status}`;
@@ -363,54 +502,76 @@ async function runTask(
   let route = initialRoute;
   let failureContext = '';
   let tokensUsed: number | null = null;
-  const maxAttempts = policy.limits.maxEscalationsPerTask + 1;
+  let totalAttempts = 0;
+  let escalations = 0;
+  let lastOutputFile = '';
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const outputFile = resolve(runDirectory, `${task.id}-attempt-${attempt}.md`);
-    const logFile = resolve(runDirectory, `${task.id}-attempt-${attempt}.log`);
-    console.log(`\n[执行 ${task.id}] ${task.title} -> ${route.model} (${route.reasoning})`);
-    const result = await runProcess(
-      'codex',
-      [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
-      {
-        input: workerPrompt(plan, task, failureContext),
-        logFile,
-        stream: true,
-        heartbeatLabel: `执行 ${task.id} / ${route.model}`,
-        progressFile: resolve(runDirectory, 'progress.json'),
-        timeoutMs: minutes(policy.timeouts.workers[tier]),
-      },
-    );
-    tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(`${result.stdout}\n${result.stderr}`));
-    if (result.code === 0) {
-      return {
-        task,
-        route,
-        attempts: attempt,
-        result: 'passed',
-        outputFile,
-        tokensUsed,
-      };
+  while (true) {
+    let routeFailure = '';
+    for (let retry = 0; retry <= policy.recovery.transientRetries; retry += 1) {
+      totalAttempts += 1;
+      const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
+      const outputFile = resolve(runDirectory, `${task.id}-${slug}-attempt-${totalAttempts}.md`);
+      const logFile = resolve(runDirectory, `${task.id}-${slug}-attempt-${totalAttempts}.log`);
+      lastOutputFile = outputFile;
+      console.log(`\n[执行 ${task.id}] ${task.title} -> ${route.model} (${route.reasoning})`);
+      const result = await runProcess(
+        'codex',
+        [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
+        {
+          input: workerPrompt(plan, task, failureContext),
+          logFile,
+          stream: true,
+          heartbeatLabel: `执行 ${task.id} / ${route.model}`,
+          progressFile: resolve(runDirectory, 'progress.json'),
+          timeoutMs: minutes(policy.timeouts.workers[tier]),
+        },
+      );
+      tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(failureText(result)));
+      if (result.code === 0) {
+        return {
+          task,
+          route,
+          attempts: totalAttempts,
+          result: 'passed',
+          outputFile,
+          tokensUsed,
+        };
+      }
+
+      routeFailure = failureText(result).slice(-4000);
+      const kind = classifyAgentFailure(routeFailure, result.code);
+      if (kind === 'external-blocker') {
+        throw new AgentCallError(
+          `执行 ${task.id} 遇到账号或鉴权阻塞，详见 ${logFile}`,
+          kind,
+          tokensUsed,
+        );
+      }
+      if (kind === 'transient' && retry < policy.recovery.transientRetries) {
+        await waitForRetry(`${route.model} 出现临时故障`);
+        continue;
+      }
+      break;
     }
+
     const next = escalateTier(tier);
-    if (!next || attempt === maxAttempts) {
+    if (!next || escalations >= policy.limits.maxEscalationsPerTask) {
       return {
         task,
         route,
-        attempts: attempt,
+        attempts: totalAttempts,
         result: 'failed',
-        outputFile,
+        outputFile: lastOutputFile,
         tokensUsed,
       };
     }
-    failureContext = `上一次执行失败，请检查并修复，不要简单重复。失败摘要：\n${(
-      result.stderr || result.stdout
-    ).slice(-4000)}`;
+    failureContext = `上一条执行路由失败，请接管当前工作区并完成任务，不要简单重复。失败摘要：\n${routeFailure}`;
+    escalations += 1;
     tier = next;
     route = routeForTask(policy, tier);
-    console.log(`[升级] ${task.id} -> ${route.model}`);
+    console.log(`[接管] ${task.id} -> ${route.model}`);
   }
-  throw new Error('不可达的任务状态');
 }
 
 async function runDeliveryVerification(
@@ -477,16 +638,18 @@ async function writeReviewInput(
   return inputFile;
 }
 
-async function askReviewer(
+async function askReviewerAttempt(
   plan: TaskPlan,
   route: ModelRoute,
   baseline: string,
   runDirectory: string,
   round: number,
+  attempt: number,
+  inputFile: string,
 ): Promise<ReviewRun> {
-  const outputFile = resolve(runDirectory, `review-${round}.json`);
-  const logFile = resolve(runDirectory, `review-${round}.log`);
-  const inputFile = await writeReviewInput(baseline, runDirectory, round);
+  const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
+  const outputFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.json`);
+  const logFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.log`);
   const prompt = `你是道衍项目的独立审查 Agent。不要修改文件。
 
 父进程已经成功运行完整交付门禁，不要再次运行测试、构建或 Git 命令，也不要把当前沙盒不能启动子进程当作缺陷。先阅读 AGENTS.md，再只审查 ${inputFile} 中从基线 ${baseline} 开始的差异；仅在确认具体问题时读取差异涉及的文件或直接契约，不要扫描整个仓库、路线图或历史日志。
@@ -509,11 +672,74 @@ ${plan.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}
       timeoutMs: minutes(policy.timeouts.reviewers[highestTier(plan.tasks)]),
     },
   );
-  if (result.code !== 0) throw new Error(`独立审查失败，详见 ${logFile}`);
+  const tokensUsed = parseTokenUsage(failureText(result));
+  if (result.code !== 0) {
+    throw new AgentCallError(
+      `独立审查失败，详见 ${logFile}`,
+      classifyAgentFailure(failureText(result), result.code),
+      tokensUsed,
+    );
+  }
   return {
     result: validateReview(parseJsonFile(await readFile(outputFile, 'utf8'))),
-    tokensUsed: parseTokenUsage(`${result.stdout}\n${result.stderr}`),
+    tokensUsed,
+    route,
+    attempts: attempt,
   };
+}
+
+async function askReviewerWithRecovery(
+  plan: TaskPlan,
+  baseline: string,
+  runDirectory: string,
+  round: number,
+): Promise<ReviewRun> {
+  const inputFile = await writeReviewInput(baseline, runDirectory, round);
+  const routes = reviewRoutesForPlan(policy, plan);
+  let attempts = 0;
+  let tokensUsed: number | null = null;
+  let lastError: unknown = null;
+
+  for (const route of routes) {
+    for (let retry = 0; retry <= policy.recovery.transientRetries; retry += 1) {
+      attempts += 1;
+      try {
+        const run = await askReviewerAttempt(
+          plan,
+          route,
+          baseline,
+          runDirectory,
+          round,
+          attempts,
+          inputFile,
+        );
+        return {
+          ...run,
+          attempts,
+          tokensUsed: addTokenUsage(tokensUsed, run.tokensUsed),
+        };
+      } catch (error) {
+        lastError = error;
+        if (error instanceof AgentCallError) {
+          tokensUsed = addTokenUsage(tokensUsed, error.tokensUsed);
+          if (error.kind === 'external-blocker') throw error;
+          if (error.kind === 'transient' && retry < policy.recovery.transientRetries) {
+            await waitForRetry(`${route.model} 审查通道暂时不可用`);
+            continue;
+          }
+        }
+        break;
+      }
+    }
+    const nextRoute = routes[routes.indexOf(route) + 1];
+    if (nextRoute) console.log(`[审查接管] ${route.model} -> ${nextRoute.model}`);
+  }
+
+  throw new AgentCallError(
+    `所有独立审查路由均失败：${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    lastError instanceof AgentCallError ? lastError.kind : 'execution',
+    tokensUsed,
+  );
 }
 
 async function runReviewFix(
@@ -522,9 +748,11 @@ async function runReviewFix(
   route: ModelRoute,
   runDirectory: string,
   round: number,
+  attempt: number,
 ): Promise<number | null> {
-  const outputFile = resolve(runDirectory, `review-fix-${round}.md`);
-  const logFile = resolve(runDirectory, `review-fix-${round}.log`);
+  const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
+  const outputFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.md`);
+  const logFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.log`);
   const prompt = `你是道衍项目的修复 Agent。遵守 AGENTS.md，在当前工作区修复独立审查发现的问题；不要 commit、push 或 tag。
 
 原始目标：${plan.summary}
@@ -547,8 +775,56 @@ ${review.findings
       timeoutMs: minutes(policy.timeouts.repairs[highestTier(plan.tasks)]),
     },
   );
-  if (result.code !== 0) throw new Error(`审查修复失败，详见 ${logFile}`);
-  return parseTokenUsage(`${result.stdout}\n${result.stderr}`);
+  const tokensUsed = parseTokenUsage(failureText(result));
+  if (result.code !== 0) {
+    throw new AgentCallError(
+      `审查修复失败，详见 ${logFile}`,
+      classifyAgentFailure(failureText(result), result.code),
+      tokensUsed,
+    );
+  }
+  return tokensUsed;
+}
+
+async function runReviewFixWithRecovery(
+  plan: TaskPlan,
+  review: ReviewResult,
+  runDirectory: string,
+  round: number,
+): Promise<number | null> {
+  const routes = reviewRoutesForPlan(policy, plan);
+  let attempts = 0;
+  let tokensUsed: number | null = null;
+  let lastError: unknown = null;
+  for (const route of routes) {
+    for (let retry = 0; retry <= policy.recovery.transientRetries; retry += 1) {
+      attempts += 1;
+      try {
+        return addTokenUsage(
+          tokensUsed,
+          await runReviewFix(plan, review, route, runDirectory, round, attempts),
+        );
+      } catch (error) {
+        lastError = error;
+        if (error instanceof AgentCallError) {
+          tokensUsed = addTokenUsage(tokensUsed, error.tokensUsed);
+          if (error.kind === 'external-blocker') throw error;
+          if (error.kind === 'transient' && retry < policy.recovery.transientRetries) {
+            await waitForRetry(`${route.model} 修复通道暂时不可用`);
+            continue;
+          }
+        }
+        break;
+      }
+    }
+    const nextRoute = routes[routes.indexOf(route) + 1];
+    if (nextRoute) console.log(`[修复接管] ${route.model} -> ${nextRoute.model}`);
+  }
+  throw new AgentCallError(
+    `所有审查修复路由均失败：${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    lastError instanceof AgentCallError ? lastError.kind : 'execution',
+    tokensUsed,
+  );
 }
 
 async function writeReport(
@@ -607,21 +883,28 @@ async function ensureCleanWorktree() {
   }
 }
 
-async function commitAndPush(plan: TaskPlan, noPush: boolean): Promise<string> {
+async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string): Promise<string> {
   const status = await git(['status', '--porcelain']);
-  if (!status.stdout.trim()) return '没有产生文件改动，无需提交。';
-  const diffCheck = await git(['diff', '--check']);
-  if (diffCheck.code !== 0)
-    throw new Error(`git diff --check 失败：\n${diffCheck.stdout}${diffCheck.stderr}`);
+  let createdCommit = false;
+  if (status.stdout.trim()) {
+    const diffCheck = await git(['diff', '--check']);
+    if (diffCheck.code !== 0)
+      throw new Error(`git diff --check 失败：\n${diffCheck.stdout}${diffCheck.stderr}`);
 
-  const add = await git(['add', '-A'], true);
-  if (add.code !== 0) throw new Error('git add 失败');
-  const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
-  const commit = await git(['commit', '-m', message], true);
-  if (commit.code !== 0) throw new Error('Git 提交失败');
+    const add = await git(['add', '-A'], true);
+    if (add.code !== 0) throw new Error('git add 失败');
+    const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
+    const commit = await git(['commit', '-m', message], true);
+    if (commit.code !== 0) throw new Error('Git 提交失败');
+    createdCommit = true;
+  }
+  const head = (await git(['rev-parse', 'HEAD'])).stdout.trim();
   const sha = (await git(['rev-parse', '--short', 'HEAD'])).stdout.trim();
+  if (!createdCommit && head === baseline) return '没有产生文件改动，无需提交。';
 
-  if (noPush || !policy.git.autoPush) return `已提交 ${sha}，按参数未推送。`;
+  if (noPush || !policy.git.autoPush) {
+    return `${createdCommit ? '已提交' : '已恢复到提交'} ${sha}，按参数未推送。`;
+  }
   let push = await git(['push', policy.git.remote, 'HEAD'], true);
   if (push.code !== 0 && policy.git.proxyFallback) {
     console.log(`[Git] 默认网络失败，临时使用 ${policy.git.proxyFallback} 重试，不修改全局配置。`);
@@ -639,17 +922,60 @@ async function commitAndPush(plan: TaskPlan, noPush: boolean): Promise<string> {
     );
   }
   if (push.code !== 0) throw new Error(`提交 ${sha} 已创建，但推送失败`);
-  return `已提交并推送 ${sha}。`;
+  return `${createdCommit ? '已提交并推送' : '已续传'} ${sha}。`;
 }
 
 const options = parseArgs(process.argv.slice(2));
 const policy = validatePolicy(JSON.parse(await readFile(policyPath, 'utf8')));
-const runId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${options.direction
-  .slice(0, 24)
-  .replace(/[^\p{L}\p{N}]+/gu, '-')
-  .replace(/^-|-$/g, '')}`;
-const runDirectory = resolve(root, '.daoyan-agent', 'runs', runId);
+const runsRoot = resolve(root, '.daoyan-agent', 'runs');
+let runDirectory: string;
+if (options.resumeDirectory) {
+  runDirectory = resolve(root, options.resumeDirectory);
+  const relativeRun = relative(runsRoot, runDirectory);
+  if (relativeRun.startsWith('..') || isAbsolute(relativeRun)) {
+    throw new Error(`只能恢复 ${runsRoot} 中的运行目录`);
+  }
+} else {
+  const runId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${options.direction
+    .slice(0, 24)
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-|-$/g, '')}`;
+  runDirectory = resolve(runsRoot, runId);
+}
 await mkdir(runDirectory, { recursive: true });
+
+let activePlan: TaskPlan | null = null;
+let activeBaseline = '';
+let activeDirection = options.direction;
+let activeResolvedDirection = options.direction;
+let activeTaskRuns: TaskRun[] = [];
+let activeReview: ReviewResult | null = null;
+let activePlannerTokens: number | null = null;
+let activeReviewerTokens: number | null = null;
+let activeRepairerTokens: number | null = null;
+let activeNoPush = options.noPush;
+let currentPhase = '初始化';
+
+async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = ''): Promise<void> {
+  if (!activePlan || !activeBaseline) return;
+  await writeCheckpoint(runDirectory, {
+    version: 1,
+    status,
+    phase: currentPhase,
+    direction: activeDirection,
+    resolvedDirection: activeResolvedDirection,
+    baseline: activeBaseline,
+    workspaceFingerprint: await workspaceFingerprint(),
+    plan: activePlan,
+    taskRuns: activeTaskRuns,
+    review: activeReview,
+    plannerTokens: activePlannerTokens,
+    reviewerTokens: activeReviewerTokens,
+    repairerTokens: activeRepairerTokens,
+    noPush: activeNoPush,
+    error,
+  });
+}
 
 try {
   if (options.doctor) {
@@ -671,33 +997,75 @@ try {
     console.log(`[doctor] npm ${npm.stdout.trim()}`);
     process.exit(0);
   }
-  if (!options.planOnly) await ensureCleanWorktree();
-  console.log(`[秘书] 正在分析制作人方向，运行记录：${runDirectory}`);
-  const statusSource = await readFile(resolve(root, 'docs/status.md'), 'utf8');
-  const resolvedDirection = resolveProducerDirection(options.direction, statusSource);
-  if (resolvedDirection !== options.direction.trim()) {
-    console.log(`[秘书] 已将模糊续作解析为：${resolvedDirection}`);
-  }
-  const plannerRun = options.deepPlan
-    ? await askPlanner(
-        resolvedDirection,
-        policy.planner,
-        resolve(runDirectory, 'plan.json'),
-        resolve(runDirectory, 'planner.log'),
-      )
-    : {
-        plan: validatePlan(buildLocalPlan(resolvedDirection), policy.limits.maxTasks),
+  if (options.resumeDirectory) {
+    const checkpoint = await readCheckpoint(runDirectory);
+    if (checkpoint.status === 'delivered') throw new Error('该运行已经交付，无需恢复');
+    const currentFingerprint = await workspaceFingerprint();
+    if (currentFingerprint !== checkpoint.workspaceFingerprint) {
+      throw new Error(
+        '当前工作区与恢复点不一致。为避免跳过必要实现或提交无关改动，秘书已拒绝续跑。',
+      );
+    }
+    activePlan = checkpoint.plan;
+    activeBaseline = checkpoint.baseline;
+    activeDirection = checkpoint.direction;
+    activeResolvedDirection = checkpoint.resolvedDirection;
+    activeTaskRuns = checkpoint.taskRuns;
+    activeReview = checkpoint.review;
+    activePlannerTokens = checkpoint.plannerTokens;
+    activeReviewerTokens = checkpoint.reviewerTokens;
+    activeRepairerTokens = checkpoint.repairerTokens;
+    activeNoPush = options.noPush || checkpoint.noPush;
+    console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
+  } else {
+    if (!options.planOnly) await ensureCleanWorktree();
+    console.log(`[秘书] 正在分析制作人方向，运行记录：${runDirectory}`);
+    const statusSource = await readFile(resolve(root, 'docs/status.md'), 'utf8');
+    activeResolvedDirection = resolveProducerDirection(options.direction, statusSource);
+    if (activeResolvedDirection !== options.direction.trim()) {
+      console.log(`[秘书] 已将模糊续作解析为：${activeResolvedDirection}`);
+    }
+    let plannerRun: PlannerRun;
+    let localPlannerUsed = !options.deepPlan;
+    if (options.deepPlan) {
+      try {
+        plannerRun = await askPlanner(
+          activeResolvedDirection,
+          policy.planner,
+          resolve(runDirectory, 'plan.json'),
+          resolve(runDirectory, 'planner.log'),
+        );
+      } catch (error) {
+        console.warn(
+          `[规划接管] 深度规划不可用，改用本地零 token 路由：${error instanceof Error ? error.message : String(error)}`,
+        );
+        plannerRun = {
+          plan: validatePlan(buildLocalPlan(activeResolvedDirection), policy.limits.maxTasks),
+          tokensUsed: null,
+        };
+        localPlannerUsed = true;
+      }
+    } else {
+      plannerRun = {
+        plan: validatePlan(buildLocalPlan(activeResolvedDirection), policy.limits.maxTasks),
         tokensUsed: 0,
       };
-  const plan = plannerRun.plan;
-  const plannerTokens = plannerRun.tokensUsed;
-  if (!options.deepPlan) {
-    await writeFile(resolve(runDirectory, 'plan.json'), `${JSON.stringify(plan, null, 2)}\n`);
+    }
+    activePlan = plannerRun.plan;
+    activePlannerTokens = plannerRun.tokensUsed;
+    if (localPlannerUsed) {
+      await writeFile(
+        resolve(runDirectory, 'plan.json'),
+        `${JSON.stringify(activePlan, null, 2)}\n`,
+      );
+    }
+    await writeFile(
+      resolve(runDirectory, 'plan.validated.json'),
+      `${JSON.stringify(activePlan, null, 2)}\n`,
+    );
   }
-  await writeFile(
-    resolve(runDirectory, 'plan.validated.json'),
-    `${JSON.stringify(plan, null, 2)}\n`,
-  );
+
+  const plan = activePlan;
 
   console.log(`\n[计划] ${plan.title}`);
   console.log(plan.summary);
@@ -714,40 +1082,49 @@ try {
       [],
       null,
       plan.producerQuestion,
-      plannerTokens,
+      activePlannerTokens,
     );
     console.log(`\n[需要制作人决定] ${plan.producerQuestion}`);
     process.exit(2);
   }
   if (options.planOnly) {
-    await writeReport(runDirectory, '规划完成', plan, [], null, '', plannerTokens);
+    await writeReport(runDirectory, '规划完成', plan, [], null, '', activePlannerTokens);
     console.log('\n[完成] 仅生成计划，未修改工作区。');
     process.exit(0);
   }
 
-  const baseline = (await git(['rev-parse', 'HEAD'])).stdout.trim();
-  const taskRuns: TaskRun[] = [];
+  if (!activeBaseline) activeBaseline = (await git(['rev-parse', 'HEAD'])).stdout.trim();
+  currentPhase = '执行任务';
+  await persistCheckpoint('active');
   for (const task of sortTasks(plan.tasks)) {
+    const completed = activeTaskRuns.find(
+      (run) => run.task.id === task.id && run.result === 'passed',
+    );
+    if (completed) {
+      console.log(`[恢复] 跳过已完成任务 ${task.id}`);
+      continue;
+    }
     const run = await runTask(plan, task, routeForTask(policy, task.tier), runDirectory);
-    taskRuns.push(run);
+    activeTaskRuns = [...activeTaskRuns.filter((item) => item.task.id !== task.id), run];
+    await persistCheckpoint('active');
     if (run.result === 'failed') {
       await writeReport(
         runDirectory,
         '执行失败',
         plan,
-        taskRuns,
+        activeTaskRuns,
         null,
         `任务 ${task.id} 失败`,
-        plannerTokens,
+        activePlannerTokens,
       );
       throw new Error(`任务 ${task.id} 在自动升级后仍然失败`);
     }
   }
 
-  let review: ReviewResult | null = null;
-  let reviewerTokens: number | null = null;
-  let repairerTokens: number | null = null;
+  activeReview = null;
   for (let round = 1; round <= policy.limits.maxReviewRounds; round += 1) {
+    currentPhase = `交付门禁第 ${round} 轮`;
+    await persistCheckpoint('active');
     const verification = await runDeliveryVerification(runDirectory, round);
     if (verification.code !== 0) {
       const syntheticReview: ReviewResult = {
@@ -767,73 +1144,101 @@ try {
           runDirectory,
           '验证失败',
           plan,
-          taskRuns,
+          activeTaskRuns,
           syntheticReview,
           '',
-          plannerTokens,
-          reviewerTokens,
-          repairerTokens,
+          activePlannerTokens,
+          activeReviewerTokens,
+          activeRepairerTokens,
         );
         throw new Error(`交付门禁失败，详见 ${resolve(runDirectory, `verify-${round}.log`)}`);
       }
-      repairerTokens = addTokenUsage(
-        repairerTokens,
-        await runReviewFix(
-          plan,
-          syntheticReview,
-          reviewRouteForPlan(policy, plan),
-          runDirectory,
-          round,
-        ),
+      currentPhase = `门禁修复第 ${round} 轮`;
+      activeRepairerTokens = addTokenUsage(
+        activeRepairerTokens,
+        await runReviewFixWithRecovery(plan, syntheticReview, runDirectory, round),
       );
+      await persistCheckpoint('active');
       continue;
     }
 
-    const reviewRoute = reviewRouteForPlan(policy, plan);
-    const reviewRun = await askReviewer(plan, reviewRoute, baseline, runDirectory, round);
-    review = reviewRun.result;
-    reviewerTokens = addTokenUsage(reviewerTokens, reviewRun.tokensUsed);
-    console.log(`[独立审查] ${review.verdict}: ${review.summary}`);
-    if (review.verdict === 'pass') break;
+    currentPhase = `独立审查第 ${round} 轮`;
+    await persistCheckpoint('active');
+    const reviewRun = await askReviewerWithRecovery(plan, activeBaseline, runDirectory, round);
+    activeReview = reviewRun.result;
+    activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+    console.log(
+      `[独立审查] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
+    );
+    await persistCheckpoint('active');
+    if (activeReview.verdict === 'pass') break;
     if (round === policy.limits.maxReviewRounds) {
       await writeReport(
         runDirectory,
         '审查未通过',
         plan,
-        taskRuns,
-        review,
+        activeTaskRuns,
+        activeReview,
         '',
-        plannerTokens,
-        reviewerTokens,
-        repairerTokens,
+        activePlannerTokens,
+        activeReviewerTokens,
+        activeRepairerTokens,
       );
       throw new Error('独立审查在自动修复后仍未通过');
     }
-    repairerTokens = addTokenUsage(
-      repairerTokens,
-      await runReviewFix(plan, review, reviewRoute, runDirectory, round),
+    currentPhase = `审查修复第 ${round} 轮`;
+    activeRepairerTokens = addTokenUsage(
+      activeRepairerTokens,
+      await runReviewFixWithRecovery(plan, activeReview, runDirectory, round),
     );
+    await persistCheckpoint('active');
   }
 
-  if (!review || review.verdict !== 'pass') throw new Error('交付审查没有通过');
+  if (!activeReview || activeReview.verdict !== 'pass') throw new Error('交付审查没有通过');
+  currentPhase = 'Git 交付';
+  await persistCheckpoint('active');
   const gitResult = policy.git.autoCommit
-    ? await commitAndPush(plan, options.noPush)
+    ? await commitAndPush(plan, activeNoPush, activeBaseline)
     : '策略已关闭自动提交。';
   await writeReport(
     runDirectory,
     '已交付',
     plan,
-    taskRuns,
-    review,
+    activeTaskRuns,
+    activeReview,
     gitResult,
-    plannerTokens,
-    reviewerTokens,
-    repairerTokens,
+    activePlannerTokens,
+    activeReviewerTokens,
+    activeRepairerTokens,
   );
+  currentPhase = '已交付';
+  await persistCheckpoint('delivered');
   console.log(`\n[交付完成] ${gitResult}`);
   console.log(`报告：${resolve(runDirectory, 'report.md')}`);
 } catch (error) {
-  console.error(`\n[秘书中止] ${error instanceof Error ? error.message : String(error)}`);
+  const message = error instanceof Error ? error.message : String(error);
+  if (activePlan && activeBaseline) {
+    await persistCheckpoint('recoverable', message);
+    const resumePath = relative(root, runDirectory);
+    const recoveryMessage = `恢复点已保存，无需重新描述需求。\n\n续跑：\`npm run producer:resume -- "${resumePath}"\``;
+    await writeReport(
+      runDirectory,
+      '可恢复中止',
+      activePlan,
+      activeTaskRuns,
+      activeReview,
+      `${message}\n\n${recoveryMessage}`,
+      activePlannerTokens,
+      activeReviewerTokens,
+      activeRepairerTokens,
+    );
+  }
+  console.error(`\n[秘书暂停] ${message}`);
+  if (activePlan && activeBaseline) {
+    console.error(
+      `恢复点已保存，可续跑：npm run producer:resume -- "${relative(root, runDirectory)}"`,
+    );
+  }
   console.error(`运行记录保留在：${runDirectory}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
