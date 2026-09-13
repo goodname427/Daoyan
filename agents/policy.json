@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "planner": {
+    "model": "gpt-5.6-luna",
+    "reasoning": "low"
+  },
+  "tiers": {
+    "economy": {
+      "model": "gpt-5.6-luna",
+      "reasoning": "low"
+    },
+    "standard": {
+      "model": "gpt-5.6-terra",
+      "reasoning": "medium"
+    },
+    "advanced": {
+      "model": "gpt-5.6-sol",
+      "reasoning": "high"
+    },
+    "critical": {
+      "model": "gpt-6-astra",
+      "reasoning": "high"
+    }
+  },
+  "reviewers": {
+    "economy": {
+      "model": "gpt-5.6-luna",
+      "reasoning": "low"
+    },
+    "standard": {
+      "model": "gpt-5.6-terra",
+      "reasoning": "low"
+    },
+    "advanced": {
+      "model": "gpt-5.6-sol",
+      "reasoning": "high"
+    },
+    "critical": {
+      "model": "gpt-6-astra",
+      "reasoning": "high"
+    }
+  },
+  "limits": {
+    "maxTasks": 4,
+    "maxEscalationsPerTask": 1,
+    "maxReviewRounds": 2
+  },
+  "verification": {
+    "delivery": ["npm", "run", "verify:full"]
+  },
+  "git": {
+    "autoCommit": true,
+    "autoPush": true,
+    "remote": "origin",
+    "proxyFallback": "http://127.0.0.1:7897"
+  }
+}

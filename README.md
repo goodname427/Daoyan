@@ -49,6 +49,24 @@ npm run verify:full  # 再加覆盖率、沙盒、E2E 和生产构建
 
 首次克隆后运行 `npm run hooks` 启用仓库内 Git hooks。完整协作方式见 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 和 [`docs/workflow.md`](./docs/workflow.md)。
 
+## 制作人工作流
+
+制作人只需要在 Codex 主任务中描述产品方向或体验问题，不需要判断复杂度、拆分任务或选择模型。主 Agent 默认作为秘书，负责分派、实现、验证、Git 和最终汇报。
+
+只预览自动拆分结果：
+
+```bash
+npm run producer:plan -- "增加法术单步推演和变量观察"
+```
+
+完整的仓库级自动交付入口：
+
+```bash
+npm run producer -- "增加法术单步推演和变量观察"
+```
+
+详细职责、自动升级和恢复方式见 [`docs/agent-workflow.md`](./docs/agent-workflow.md)。
+
 ## 架构
 
 ```text

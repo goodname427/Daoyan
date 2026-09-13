@@ -12,6 +12,7 @@
 6. [`reference/entities-and-attributes.md`](./reference/entities-and-attributes.md)：当前实体、弹道和属性模型。
 7. [`architecture/overview.md`](./architecture/overview.md) 与 [`architecture/invariants.md`](./architecture/invariants.md)：模块边界和核心不变量。
 8. [`workflow.md`](./workflow.md) 与 [`testing.md`](./testing.md)：开发和验证方式。
+9. [`agent-workflow.md`](./agent-workflow.md)：制作人、秘书和异构模型执行者的使用与恢复方式。
 
 ## 文档职责
 

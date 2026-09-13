@@ -25,6 +25,8 @@
     "format:check": "prettier --check .",
     "docs:generate": "tsx scripts/generate-meta-reference.ts",
     "docs:check": "tsx scripts/generate-meta-reference.ts --check && node scripts/check-docs.mjs",
+    "producer": "tsx scripts/agent-dispatcher.ts",
+    "producer:plan": "tsx scripts/agent-dispatcher.ts --plan-only",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm run docs:check && npm run test",
     "verify:full": "npm run verify && npm run coverage && npm run sandbox && npm run test:e2e && npm run build",
     "verify:ci": "npm run verify:full",

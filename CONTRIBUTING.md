@@ -24,3 +24,5 @@ npm run verify
 6. Pull Request 必须说明验收结果、测试、体验路径和文档影响。
 
 完整流程见 [`docs/workflow.md`](./docs/workflow.md)，项目约束见 [`AGENTS.md`](./AGENTS.md)。
+
+制作人无需执行上述工程步骤。制作人通过 Codex 主任务描述方向后，由秘书 Agent 根据 [`docs/agent-workflow.md`](./docs/agent-workflow.md) 自动承担拆分、模型路由、验证、提交与汇报。

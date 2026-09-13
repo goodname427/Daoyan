@@ -31,3 +31,6 @@ test-results/
 playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# 制作人工作流的本地运行记录（计划、Agent 输出和验证日志）
+.daoyan-agent/

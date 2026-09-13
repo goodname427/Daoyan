@@ -11,6 +11,7 @@ const required = [
   'docs/README.md',
   'docs/status.md',
   'docs/workflow.md',
+  'docs/agent-workflow.md',
   'docs/testing.md',
   'docs/product/vision.md',
   'docs/product/core-loop.md',
@@ -22,6 +23,11 @@ const required = [
   'docs/architecture/invariants.md',
   'docs/specs/README.md',
   'docs/specs/template.md',
+  'docs/specs/producer-agent-workflow.md',
+  'agents/README.md',
+  'agents/policy.json',
+  'agents/plan.schema.json',
+  'agents/review.schema.json',
   '.codebuddy/memory/MEMORY.md',
 ];
 
@@ -45,6 +51,7 @@ const files = [
   resolve(root, 'CONTRIBUTING.md'),
   resolve(root, 'CHANGELOG.md'),
   ...markdownFiles(resolve(root, 'docs')),
+  ...markdownFiles(resolve(root, 'agents')),
   ...markdownFiles(resolve(root, '.codebuddy/memory')),
 ].filter(existsSync);
 
@@ -81,6 +88,18 @@ if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version
 }
 if (pkg.scripts?.['verify:ci'] !== 'npm run verify:full') {
   errors.push('verify:ci 必须直接复用 verify:full');
+}
+if (pkg.scripts?.producer !== 'tsx scripts/agent-dispatcher.ts') {
+  errors.push('producer 必须使用统一 Agent 调度入口');
+}
+if (pkg.scripts?.['producer:plan'] !== 'tsx scripts/agent-dispatcher.ts --plan-only') {
+  errors.push('producer:plan 必须复用只读规划入口');
+}
+
+const agentPolicy = JSON.parse(readFileSync(resolve(root, 'agents/policy.json'), 'utf8'));
+for (const tier of ['economy', 'standard', 'advanced', 'critical']) {
+  if (!agentPolicy.tiers?.[tier]?.model) errors.push(`Agent 策略缺少 ${tier} 模型`);
+  if (!agentPolicy.reviewers?.[tier]?.model) errors.push(`Agent 策略缺少 ${tier} 审查模型`);
 }
 
 const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
