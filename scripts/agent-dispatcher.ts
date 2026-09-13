@@ -1,14 +1,16 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   conventionalCommitOrFallback,
   buildLocalPlan,
   escalateTier,
+  highestTier,
   optimizePlan,
   preferredWindowsExecutable,
+  resolveProducerDirection,
   reviewRouteForPlan,
   routeForTask,
   sortTasks,
@@ -38,6 +40,15 @@ interface ProcessResult {
   code: number;
   stdout: string;
   stderr: string;
+}
+
+interface ProcessOptions {
+  input?: string;
+  logFile?: string;
+  stream?: boolean;
+  heartbeatLabel?: string;
+  progressFile?: string;
+  timeoutMs?: number;
 }
 
 interface TaskRun {
@@ -127,10 +138,11 @@ function executable(name: string, args: string[]): { command: string; args: stri
 async function runProcess(
   command: string,
   args: string[],
-  options: { input?: string; logFile?: string; stream?: boolean } = {},
+  options: ProcessOptions = {},
 ): Promise<ProcessResult> {
   return await new Promise((resolvePromise, reject) => {
     const invocation = executable(command, args);
+    const startedAt = Date.now();
     const child = spawn(invocation.command, invocation.args, {
       cwd: root,
       env: process.env,
@@ -138,6 +150,51 @@ async function runProcess(
     });
     let stdout = '';
     let stderr = '';
+    let timedOut = false;
+    let spawnFailed = false;
+    let progressWrites = Promise.resolve();
+    const recordProgress = (
+      status: 'running' | 'finished' | 'failed' | 'timed_out',
+      code?: number,
+    ) => {
+      if (!options.progressFile || !options.heartbeatLabel) return;
+      const progress = {
+        phase: options.heartbeatLabel,
+        status,
+        startedAt: new Date(startedAt).toISOString(),
+        updatedAt: new Date().toISOString(),
+        elapsedSeconds: Math.round((Date.now() - startedAt) / 1000),
+        ...(code === undefined ? {} : { code }),
+      };
+      progressWrites = progressWrites.then(() =>
+        writeFile(options.progressFile!, `${JSON.stringify(progress, null, 2)}\n`, 'utf8'),
+      );
+    };
+    recordProgress('running');
+    const heartbeat = options.heartbeatLabel
+      ? setInterval(() => {
+          const elapsed = Math.round((Date.now() - startedAt) / 1000);
+          console.log(`[等待] ${options.heartbeatLabel} 已运行 ${elapsed} 秒，仍在工作...`);
+          recordProgress('running');
+        }, policy.timeouts.heartbeatSeconds * 1000)
+      : null;
+    heartbeat?.unref();
+    const timeout = options.timeoutMs
+      ? setTimeout(() => {
+          timedOut = true;
+          const timeoutSeconds = Math.round(options.timeoutMs! / 1000);
+          const message = `${options.heartbeatLabel ?? command} 超过 ${timeoutSeconds} 秒限制`;
+          stderr += `\n[dispatcher] ${message}\n`;
+          console.error(`[超时] ${message}，正在停止该子进程。`);
+          recordProgress('timed_out', 124);
+          if (child.pid && process.platform === 'win32') {
+            spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+          } else {
+            child.kill('SIGTERM');
+          }
+        }, options.timeoutMs)
+      : null;
+    timeout?.unref();
     child.stdout.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       stdout += text;
@@ -148,19 +205,34 @@ async function runProcess(
       stderr += text;
       if (options.stream) process.stderr.write(text);
     });
-    child.on('error', reject);
+    child.on('error', (error) => {
+      spawnFailed = true;
+      if (heartbeat) clearInterval(heartbeat);
+      if (timeout) clearTimeout(timeout);
+      recordProgress('failed', 1);
+      reject(error);
+    });
     child.on('close', async (code) => {
       try {
+        if (heartbeat) clearInterval(heartbeat);
+        if (timeout) clearTimeout(timeout);
         if (options.logFile) {
           await writeFile(options.logFile, `${stdout}\n--- STDERR ---\n${stderr}`, 'utf8');
         }
-        resolvePromise({ code: code ?? 1, stdout, stderr });
+        const finalCode = timedOut ? 124 : (code ?? 1);
+        recordProgress(timedOut ? 'timed_out' : spawnFailed ? 'failed' : 'finished', finalCode);
+        await progressWrites;
+        resolvePromise({ code: finalCode, stdout, stderr });
       } catch (error) {
         reject(error);
       }
     });
     child.stdin.end(options.input ?? '');
   });
+}
+
+function minutes(value: number): number {
+  return value * 60_000;
 }
 
 async function git(args: string[], stream = false): Promise<ProcessResult> {
@@ -242,7 +314,13 @@ ${direction}
   const result = await runProcess(
     'codex',
     [...codexArgs(route, 'read-only'), '--output-schema', planSchemaPath, '-o', outputFile, '-'],
-    { input: prompt, logFile },
+    {
+      input: prompt,
+      logFile,
+      heartbeatLabel: '深度规划',
+      progressFile: resolve(dirname(outputFile), 'progress.json'),
+      timeoutMs: minutes(policy.timeouts.plannerMinutes),
+    },
   );
   if (result.code !== 0) throw new Error(`秘书规划失败，详见 ${logFile}`);
   return {
@@ -256,7 +334,7 @@ ${direction}
 function workerPrompt(plan: TaskPlan, task: PlannedTask, failureContext: string): string {
   return `你是道衍项目的执行 Agent。只承接下面这一项任务，不重新规划整个项目，也不要创建其他 Agent。
 
-必须遵守 AGENTS.md 和 docs/workflow.md。开始前读取任务相关代码、文档和测试；在当前工作区直接实现。不要 commit、push、tag 或发布，这些由秘书统一处理。不要覆盖无关改动。
+必须遵守 AGENTS.md 和 docs/workflow.md。开始前读取任务相关代码、文档和测试；优先限制在建议路径与直接依赖，不要扫描无关路线图、历史日志或整个仓库。在当前工作区直接实现。不要 commit、push、tag 或发布，这些由秘书统一处理。不要覆盖无关改动。
 
 总体目标：${plan.summary}
 总体验收标准：
@@ -272,7 +350,7 @@ ${task.verification.map((item) => `- ${item}`).join('\n') || '- 运行与风险�
 
 ${failureContext}
 
-完成实现和相关测试后，简洁报告修改、验证与剩余风险。`;
+完成实现后运行聚焦测试和 npm run verify；不要运行 npm run verify:full，它由秘书统一执行。简洁报告修改、验证与剩余风险。`;
 }
 
 async function runTask(
@@ -294,7 +372,14 @@ async function runTask(
     const result = await runProcess(
       'codex',
       [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
-      { input: workerPrompt(plan, task, failureContext), logFile, stream: true },
+      {
+        input: workerPrompt(plan, task, failureContext),
+        logFile,
+        stream: true,
+        heartbeatLabel: `执行 ${task.id} / ${route.model}`,
+        progressFile: resolve(runDirectory, 'progress.json'),
+        timeoutMs: minutes(policy.timeouts.workers[tier]),
+      },
     );
     tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(`${result.stdout}\n${result.stderr}`));
     if (result.code === 0) {
@@ -337,7 +422,59 @@ async function runDeliveryVerification(
   return await runProcess(command, args, {
     logFile: resolve(runDirectory, `verify-${round}.log`),
     stream: true,
+    heartbeatLabel: `交付门禁 / 第 ${round} 轮`,
+    progressFile: resolve(runDirectory, 'progress.json'),
+    timeoutMs: minutes(policy.timeouts.verificationMinutes),
   });
+}
+
+async function writeReviewInput(
+  baseline: string,
+  runDirectory: string,
+  round: number,
+): Promise<string> {
+  const diff = await git(['diff', '--no-ext-diff', baseline, '--']);
+  if (diff.code !== 0) throw new Error('无法生成审查差异');
+  const maxReviewBytes = 500_000;
+  let trackedChanges = diff.stdout;
+  if (Buffer.byteLength(trackedChanges, 'utf8') > maxReviewBytes) {
+    const summary = await git(['diff', '--stat', baseline, '--']);
+    const names = await git(['diff', '--name-only', baseline, '--']);
+    trackedChanges = `${summary.stdout}\n变更过大，未内联完整补丁。审查者按需读取以下文件：\n${names.stdout}`;
+  }
+  const untracked = await git([
+    '-c',
+    'core.quotePath=false',
+    'ls-files',
+    '--others',
+    '--exclude-standard',
+  ]);
+  if (untracked.code !== 0) throw new Error('无法读取未跟踪文件清单');
+  const untrackedPaths = untracked.stdout.split(/\r?\n/).filter(Boolean);
+  const untrackedSections: string[] = [];
+  for (const path of untrackedPaths) {
+    let content = '[无法按文本读取]';
+    try {
+      const absolutePath = resolve(root, path);
+      const fileStat = await stat(absolutePath);
+      if (fileStat.size > maxReviewBytes) {
+        content = `[文件过大，${fileStat.size} bytes；审查者按需读取]`;
+      } else {
+        const buffer = await readFile(absolutePath);
+        content = buffer.includes(0) ? '[二进制文件；未内联内容]' : buffer.toString('utf8');
+      }
+    } catch {
+      // 保留默认说明，让审查者知道该文件未能内联。
+    }
+    untrackedSections.push(`\n--- UNTRACKED FILE: ${path} ---\n${content}`);
+  }
+  const inputFile = resolve(runDirectory, `review-input-${round}.patch`);
+  await writeFile(
+    inputFile,
+    `BASELINE: ${baseline}\n\n${trackedChanges}${untrackedSections.join('')}\n`,
+    'utf8',
+  );
+  return inputFile;
 }
 
 async function askReviewer(
@@ -349,9 +486,12 @@ async function askReviewer(
 ): Promise<ReviewRun> {
   const outputFile = resolve(runDirectory, `review-${round}.json`);
   const logFile = resolve(runDirectory, `review-${round}.log`);
+  const inputFile = await writeReviewInput(baseline, runDirectory, round);
   const prompt = `你是道衍项目的独立审查 Agent。不要修改文件。
 
-阅读 AGENTS.md、任务相关架构/产品文档，并审查从基线提交 ${baseline} 到当前工作区的全部差异。优先寻找行为缺陷、架构不变量破坏、缺失测试、文档与实现不一致、乱码和 UI 工作流回归。已经通过自动门禁不代表没有问题。
+父进程已经成功运行完整交付门禁，不要再次运行测试、构建或 Git 命令，也不要把当前沙盒不能启动子进程当作缺陷。先阅读 AGENTS.md，再只审查 ${inputFile} 中从基线 ${baseline} 开始的差异；仅在确认具体问题时读取差异涉及的文件或直接契约，不要扫描整个仓库、路线图或历史日志。
+
+优先寻找行为缺陷、架构不变量破坏、缺失测试、文档与实现不一致、乱码和 UI 工作流回归。最多报告 5 个具体发现；没有交付阻断问题就通过，不用为了显得完整而继续探索。
 
 制作人目标：${plan.summary}
 验收标准：
@@ -361,7 +501,13 @@ ${plan.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}
   const result = await runProcess(
     'codex',
     [...codexArgs(route, 'read-only'), '--output-schema', reviewSchemaPath, '-o', outputFile, '-'],
-    { input: prompt, logFile },
+    {
+      input: prompt,
+      logFile,
+      heartbeatLabel: `独立审查 / 第 ${round} 轮 / ${route.model}`,
+      progressFile: resolve(runDirectory, 'progress.json'),
+      timeoutMs: minutes(policy.timeouts.reviewers[highestTier(plan.tasks)]),
+    },
   );
   if (result.code !== 0) throw new Error(`独立审查失败，详见 ${logFile}`);
   return {
@@ -392,7 +538,14 @@ ${review.findings
   const result = await runProcess(
     'codex',
     [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
-    { input: prompt, logFile, stream: true },
+    {
+      input: prompt,
+      logFile,
+      stream: true,
+      heartbeatLabel: `审查修复 / 第 ${round} 轮 / ${route.model}`,
+      progressFile: resolve(runDirectory, 'progress.json'),
+      timeoutMs: minutes(policy.timeouts.repairs[highestTier(plan.tasks)]),
+    },
   );
   if (result.code !== 0) throw new Error(`审查修复失败，详见 ${logFile}`);
   return parseTokenUsage(`${result.stdout}\n${result.stderr}`);
@@ -500,8 +653,17 @@ await mkdir(runDirectory, { recursive: true });
 
 try {
   if (options.doctor) {
-    const codex = await runProcess('codex', ['--version']);
-    const npm = await runProcess('npm', ['--version']);
+    const progressFile = resolve(runDirectory, 'progress.json');
+    const codex = await runProcess('codex', ['--version'], {
+      heartbeatLabel: '环境诊断 / Codex',
+      progressFile,
+      timeoutMs: minutes(1),
+    });
+    const npm = await runProcess('npm', ['--version'], {
+      heartbeatLabel: '环境诊断 / npm',
+      progressFile,
+      timeoutMs: minutes(1),
+    });
     if (codex.code !== 0 || npm.code !== 0) {
       throw new Error(`子进程检查失败：\n${codex.stderr}${npm.stderr}`);
     }
@@ -511,15 +673,20 @@ try {
   }
   if (!options.planOnly) await ensureCleanWorktree();
   console.log(`[秘书] 正在分析制作人方向，运行记录：${runDirectory}`);
+  const statusSource = await readFile(resolve(root, 'docs/status.md'), 'utf8');
+  const resolvedDirection = resolveProducerDirection(options.direction, statusSource);
+  if (resolvedDirection !== options.direction.trim()) {
+    console.log(`[秘书] 已将模糊续作解析为：${resolvedDirection}`);
+  }
   const plannerRun = options.deepPlan
     ? await askPlanner(
-        options.direction,
+        resolvedDirection,
         policy.planner,
         resolve(runDirectory, 'plan.json'),
         resolve(runDirectory, 'planner.log'),
       )
     : {
-        plan: validatePlan(buildLocalPlan(options.direction), policy.limits.maxTasks),
+        plan: validatePlan(buildLocalPlan(resolvedDirection), policy.limits.maxTasks),
         tokensUsed: 0,
       };
   const plan = plannerRun.plan;

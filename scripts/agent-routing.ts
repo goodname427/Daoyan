@@ -18,6 +18,14 @@ export interface AgentPolicy {
     maxEscalationsPerTask: number;
     maxReviewRounds: number;
   };
+  timeouts: {
+    heartbeatSeconds: number;
+    plannerMinutes: number;
+    workers: Record<ModelTier, number>;
+    reviewers: Record<ModelTier, number>;
+    repairs: Record<ModelTier, number>;
+    verificationMinutes: number;
+  };
   verification: { delivery: string[] };
   git: {
     autoCommit: boolean;
@@ -89,6 +97,14 @@ export function validatePolicy(value: unknown): AgentPolicy {
     );
   }
   assert(policy.limits && policy.limits.maxTasks > 0, 'maxTasks 必须大于 0');
+  assert(policy.timeouts && policy.timeouts.heartbeatSeconds > 0, 'heartbeatSeconds 必须大于 0');
+  assert(policy.timeouts.plannerMinutes > 0, 'plannerMinutes 必须大于 0');
+  assert(policy.timeouts.verificationMinutes > 0, 'verificationMinutes 必须大于 0');
+  for (const tier of MODEL_TIERS) {
+    assert(policy.timeouts.workers[tier] > 0, `缺少 ${tier} 执行超时`);
+    assert(policy.timeouts.reviewers[tier] > 0, `缺少 ${tier} 审查超时`);
+    assert(policy.timeouts.repairs[tier] > 0, `缺少 ${tier} 修复超时`);
+  }
   assert(policy.verification && isStringArray(policy.verification.delivery), '缺少交付验证命令');
   assert(policy.git && typeof policy.git.remote === 'string', '缺少 Git 策略');
   return policy as AgentPolicy;
@@ -239,6 +255,50 @@ export function preferredWindowsExecutable(candidates: string[]): string | null 
 
 function includesAny(source: string, terms: string[]): boolean {
   return terms.some((term) => source.toLowerCase().includes(term.toLowerCase()));
+}
+
+function normalizeContinuation(direction: string): string {
+  return direction
+    .trim()
+    .toLowerCase()
+    .replace(/[\s，。！？!?,.、]/g, '');
+}
+
+export function isGenericContinuation(direction: string): boolean {
+  return new Set([
+    '继续',
+    '继续推进',
+    '继续开发',
+    '继续执行',
+    '继续后续任务',
+    '继续推进后续任务',
+    '继续推进后续的开发任务',
+    '下一步',
+    '推进下一步',
+  ]).has(normalizeContinuation(direction));
+}
+
+export function nextTaskFromStatus(status: string): string | null {
+  const lines = status.split(/\r?\n/);
+  const preferredHeadings = ['## 当前首要任务', '## 下一阶段候选'];
+  for (const heading of preferredHeadings) {
+    const start = lines.findIndex((line) => line.trim() === heading);
+    if (start < 0) continue;
+    for (let index = start + 1; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (line.startsWith('## ')) break;
+      const match = /^\s*(?:[-*]|\d+\.)\s+(.+?)\s*$/.exec(line);
+      if (!match) continue;
+      return match[1].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    }
+  }
+  return null;
+}
+
+export function resolveProducerDirection(direction: string, status: string): string {
+  const normalized = direction.trim();
+  if (!isGenericContinuation(normalized)) return normalized;
+  return nextTaskFromStatus(status) ?? normalized;
 }
 
 export function buildLocalPlan(direction: string): TaskPlan {

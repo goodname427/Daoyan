@@ -45,6 +45,29 @@
     "maxEscalationsPerTask": 1,
     "maxReviewRounds": 2
   },
+  "timeouts": {
+    "heartbeatSeconds": 20,
+    "plannerMinutes": 3,
+    "workers": {
+      "economy": 4,
+      "standard": 6,
+      "advanced": 12,
+      "critical": 18
+    },
+    "reviewers": {
+      "economy": 3,
+      "standard": 4,
+      "advanced": 8,
+      "critical": 12
+    },
+    "repairs": {
+      "economy": 4,
+      "standard": 6,
+      "advanced": 10,
+      "critical": 15
+    },
+    "verificationMinutes": 10
+  },
   "verification": {
     "delivery": ["npm", "run", "verify:full"]
   },

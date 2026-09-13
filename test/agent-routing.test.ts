@@ -7,6 +7,7 @@ import {
   escalateTier,
   optimizePlan,
   preferredWindowsExecutable,
+  resolveProducerDirection,
   reviewRouteForPlan,
   routeForTask,
   sortTasks,
@@ -34,6 +35,14 @@ const policy: AgentPolicy = {
     critical: { model: 'astra-review', reasoning: 'high' },
   },
   limits: { maxTasks: 6, maxEscalationsPerTask: 2, maxReviewRounds: 2 },
+  timeouts: {
+    heartbeatSeconds: 20,
+    plannerMinutes: 3,
+    workers: { economy: 4, standard: 6, advanced: 12, critical: 18 },
+    reviewers: { economy: 3, standard: 4, advanced: 8, critical: 12 },
+    repairs: { economy: 4, standard: 6, advanced: 10, critical: 15 },
+    verificationMinutes: 10,
+  },
   verification: { delivery: ['npm', 'run', 'verify:full'] },
   git: {
     autoCommit: true,
@@ -157,5 +166,22 @@ describe('agent routing', () => {
     expect(
       preferredWindowsExecutable(['C:\\Users\\dev\\npm\\codex', 'C:\\Users\\dev\\npm\\codex.cmd']),
     ).toBe('C:\\Users\\dev\\npm\\codex.cmd');
+  });
+
+  it('resolves a generic continuation to the first documented next task', () => {
+    const status = `
+## 当前迭代
+
+- 已完成当前功能。
+
+## 下一阶段候选
+
+1. 完成 [元法术方案](./proposal.md) 的关键决策。
+2. 完善蓝图编辑。
+`;
+    expect(resolveProducerDirection('继续推进后续的开发任务', status)).toBe(
+      '完成 元法术方案 的关键决策。',
+    );
+    expect(resolveProducerDirection('继续修复蓝图连线', status)).toBe('继续修复蓝图连线');
   });
 });
