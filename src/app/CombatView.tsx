@@ -304,6 +304,13 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: Arena
               <div className="active-cast-list">
                 {activeCasts.map((cast) => {
                   const cost = battle.costs[cast.spell];
+                  const tickBase = Math.max(1, cost?.tickBudget.value ?? 1);
+                  const tickProgress = cost?.tickBudget.dynamic
+                    ? Math.min(90, (cast.vm.spentTicks / tickBase) * 90)
+                    : Math.min(100, (cast.vm.spentTicks / tickBase) * 100);
+                  const tickBudget = cost?.tickBudget.dynamic
+                    ? `${cost.tickBudget.value}+动态`
+                    : (cost?.tickWorst ?? '?');
                   return (
                     <div
                       className="active-cast"
@@ -320,12 +327,12 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: Arena
                       <div className="cast-progress" aria-hidden="true">
                         <span
                           style={{
-                            width: `${Math.min(100, (cast.vm.spentTicks / Math.max(1, cost?.tickWorst ?? 1)) * 100)}%`,
+                            width: `${tickProgress}%`,
                           }}
                         />
                       </div>
                       <div className="muted small">
-                        {cast.vm.spentTicks}/{cost?.tickWorst ?? '?'} tick · 第 {cast.fired} 次
+                        已用 {cast.vm.spentTicks} tick · 预算 {tickBudget} tick · 第 {cast.fired} 次
                       </div>
                     </div>
                   );
@@ -470,12 +477,18 @@ function SyncedSpellList({ battle }: { battle: Battle }) {
       <ul className="synced-spells">
         {battle.spellNames().map((name) => {
           const cost = battle.costs[name];
+          const mana = cost?.manaBudget.dynamic
+            ? `${cost.manaBudget.value}+动态`
+            : (cost?.manaWorst ?? '?');
+          const ticks = cost?.tickBudget.dynamic
+            ? `${cost.tickBudget.value}+动态`
+            : (cost?.tickWorst ?? '?');
           return (
             <li key={name}>
               <span>{name}</span>
               <small>
-                {SPELL_KIND_LABELS[battle.metaOf(name).kind]} · 法{cost?.manaWorst ?? '?'} · 神
-                {cost?.shenshiPeak ?? '?'} · {cost?.tickWorst ?? '?'}t
+                {SPELL_KIND_LABELS[battle.metaOf(name).kind]} · 法{mana} · 神
+                {cost?.shenshiPeak ?? '?'} · {ticks}t
               </small>
             </li>
           );

@@ -10,11 +10,33 @@ export function Stat({ label, value, hint }: { label: string; value: string; hin
 }
 
 export function CostCard({ cost }: { cost: SpellCost }) {
+  const manaValue = cost.manaBudget.dynamic
+    ? `${cost.manaBudget.value} + 动态`
+    : String(cost.manaBudget.value);
+  const tickValue = cost.tickBudget.dynamic
+    ? `${cost.tickBudget.value} + 动态 tick`
+    : `${cost.tickBudget.value} tick`;
   return (
     <div className="cost-card">
       <div className="stat-row">
-        <Stat label="法力上界" value={String(cost.manaWorst)} hint="按列表容量计算的最坏情况" />
-        <Stat label="耗时上界" value={`${cost.tickWorst} tick`} hint="按列表容量计算的最坏情况" />
+        <Stat
+          label={cost.manaBudget.dynamic ? '法力预算' : '法力上界'}
+          value={manaValue}
+          hint={
+            cost.manaBudget.dynamic
+              ? '包含已知基础成本；剩余部分由施法时的请求效果计算'
+              : '按列表容量计算的最坏情况'
+          }
+        />
+        <Stat
+          label={cost.tickBudget.dynamic ? '耗时预算' : '耗时上界'}
+          value={tickValue}
+          hint={
+            cost.tickBudget.dynamic
+              ? '包含已知基础耗时；剩余部分由施法时的请求效果计算'
+              : '按列表容量计算的最坏情况'
+          }
+        />
         <Stat label="神识峰值" value={String(cost.shenshiPeak)} hint="变量同时存在时的最大占用" />
       </div>
       {cost.errors.length > 0 && (

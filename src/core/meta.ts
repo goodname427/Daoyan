@@ -18,6 +18,34 @@ export interface MetaParam {
   t: Type;
 }
 
+/** 分析器传入的静态实参；未知值不会被伪装成 0。 */
+export interface CostArg {
+  known: boolean;
+  value: Value;
+}
+
+/** `dynamic` 表示 value 只是已知的固定部分，其余由运行时输入或实体状态决定。 */
+export interface CostAmount {
+  value: number;
+  dynamic: boolean;
+}
+
+export interface MetaCost {
+  mana: CostAmount;
+  ticks: CostAmount;
+}
+
+export const knownCostArg = (value: Value): CostArg => ({ known: true, value });
+export const unknownCostArg = (): CostArg => ({ known: false, value: null });
+export const fixedCost = (value: number): CostAmount => ({ value, dynamic: false });
+export const dynamicCost = (base = 0): CostAmount => ({ value: base, dynamic: true });
+
+export function costNumber(arg: CostArg): number | null {
+  return arg.known && typeof arg.value === 'number' && Number.isFinite(arg.value)
+    ? arg.value
+    : null;
+}
+
 /**
  * 元函数（基础术式）。
  *
@@ -31,12 +59,18 @@ export interface MetaDef {
   group: string;
   params: MetaParam[];
   ret: Type;
-  /** 静态法力上界；没有 manaCost 时也是固定实扣。 */
+  /** 不含请求效果的基础法力成本；动态定价可在此基础上继续累加。 */
   mana: number;
-  /** 可选的运行时价格，必须处于 [0, mana]，从而保持静态上界可信。 */
+  /** 旧版仅计算法力的运行时价格，保留给外部元法术兼容。 */
   manaCost?: (ctx: Ctx, args: Value[]) => number;
   /** 耗时（tick） */
   ticks: number;
+  /**
+   * 同时计算法力与耗时的新定价契约。运行时的参数全部 known；静态分析时
+   * 未知输入用 dynamic 表达，避免为了得到伪上界而限制玩家请求的效果。
+   * 与旧 `manaCost` 同时存在时以本字段为准。
+   */
+  cost?: (ctx: Ctx | null, args: readonly CostArg[]) => MetaCost;
   desc: string;
   impl: (ctx: Ctx, args: Value[]) => Value;
 }

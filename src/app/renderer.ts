@@ -175,8 +175,9 @@ export class Renderer {
       const cast = activeCasts[0];
       if (cast) {
         const cost = battle.costs[cast.spell];
-        const total = cost ? Math.max(1, cost.tickWorst) : 1;
-        const prog = Math.min(1, cast.vm.spentTicks / total);
+        const total = cost ? Math.max(1, cost.tickBudget.value) : 1;
+        const maxProgress = cost?.tickBudget.dynamic ? 0.9 : 1;
+        const prog = Math.min(maxProgress, (cast.vm.spentTicks / total) * maxProgress);
         const cy = a.y - 16;
         ctx.beginPath();
         ctx.arc(a.x, cy, a.radius + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);

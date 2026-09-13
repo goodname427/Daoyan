@@ -33,8 +33,8 @@ describe('app rendering smoke test', () => {
     const { App } = await import('../src/app/App');
     const { container, getByRole } = render(<App />);
     fireEvent.click(getByRole('button', { name: /创建弹道.*实体创建/ }));
-    expect(container.querySelector('.meta-inspector')?.textContent).toContain('法力上界');
-    expect(container.querySelector('.meta-inspector')?.textContent).toContain('≤18');
+    expect(container.querySelector('.meta-inspector')?.textContent).toContain('法力基础');
+    expect(container.querySelector('.meta-inspector')?.textContent).toContain('8 + 动态');
     fireEvent.click(getByRole('button', { name: /^御剑·手动/ }));
     fireEvent.click(getByRole('button', { name: /推演一次/ }));
     expect(container.querySelector('.verdict')?.textContent).toContain('施法成功');

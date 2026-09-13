@@ -86,10 +86,10 @@ test.describe('lab functionality', () => {
     const sink = captureErrors(page);
     await page.goto('/');
     const create = page.locator('.meta-spell').filter({ hasText: '创建弹道' });
-    await expect(create).toContainText('实体创建 · 法≤18');
+    await expect(create).toContainText('实体创建 · 法8+动态');
     await create.click();
-    await expect(page.locator('.meta-inspector')).toContainText('法力上界');
-    await expect(page.locator('.meta-inspector')).toContainText('≤18');
+    await expect(page.locator('.meta-inspector')).toContainText('法力基础');
+    await expect(page.locator('.meta-inspector')).toContainText('8 + 动态');
     await page.locator('button.spell').filter({ hasText: '御剑·手动' }).click();
     await expect(page.locator('.code-input').first()).toHaveValue(/创建弹道/);
     await page.getByRole('button', { name: /推演一次/ }).click();
@@ -101,7 +101,7 @@ test.describe('lab functionality', () => {
     await expect(page.locator('.code-input').first()).toHaveValue(/激活弹道/);
     await page.setViewportSize({ width: 760, height: 800 });
     await create.click();
-    await expect(page.locator('.meta-inspector')).toContainText('≤18');
+    await expect(page.locator('.meta-inspector')).toContainText('8 + 动态');
     sink.assert();
   });
 

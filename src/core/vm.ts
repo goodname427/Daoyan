@@ -1,7 +1,7 @@
 import { Op } from './compiler';
 import type { CompiledFn, Program } from './compiler';
 import type { Value } from './types';
-import { asNum } from './meta';
+import { asNum, knownCostArg } from './meta';
 import { allMetas } from './meta';
 import type { Ctx } from './meta';
 import type { Actor, World } from './world';
@@ -441,7 +441,31 @@ export class VM {
         const args: Value[] = new Array(argc);
         for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
         let baseCost = m.mana;
-        if (m.manaCost) {
+        let tickCost = m.ticks;
+        if (m.cost) {
+          try {
+            const dynamic = m.cost(this.ctx, args.map(knownCostArg));
+            if (dynamic.mana.dynamic || dynamic.ticks.dynamic) {
+              this.fail(`元函数「${m.name}」运行时定价仍包含未知项`);
+              return;
+            }
+            baseCost = dynamic.mana.value;
+            tickCost = dynamic.ticks.value;
+          } catch (error) {
+            this.fail(`元函数「${m.name}」动态定价失败：${String(error)}`);
+            return;
+          }
+          if (
+            !Number.isFinite(baseCost) ||
+            baseCost < 0 ||
+            !Number.isFinite(tickCost) ||
+            tickCost < 0 ||
+            !Number.isInteger(tickCost)
+          ) {
+            this.fail(`元函数「${m.name}」返回非法动态消耗：法力 ${baseCost}，耗时 ${tickCost}`);
+            return;
+          }
+        } else if (m.manaCost) {
           try {
             baseCost = m.manaCost(this.ctx, args);
           } catch (error) {
@@ -463,7 +487,7 @@ export class VM {
           return;
         }
         this.manaSpent += cost;
-        this.ticksUsed += m.ticks;
+        this.ticksUsed += tickCost;
         if (this.ticksUsed > opts.maxTicks) {
           this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
           return;

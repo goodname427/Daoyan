@@ -1,16 +1,6 @@
 import { T } from '../types';
 import { asEntity, asNum, asVec, defMeta } from '../meta';
-
-export const MAX_PROJECTILE_LIFE = 5;
-export const MAX_PROJECTILE_SPEED = 600;
-export const MAX_PROJECTILE_POWER = 100;
-
-const bounded = (value: number, max: number): boolean =>
-  Number.isFinite(value) && value > 0 && value <= max;
-
-// 非有限请求也是领域失败，定价阶段保持有限，让 impl 返回空/false。
-const pricedRequest = (value: number, max: number): number =>
-  Number.isFinite(value) ? Math.min(max, Math.max(0, value)) : 0;
+import { effectCost, isPositiveFinite } from '../pricing';
 
 /** vNext 纵向切片：创建一个统一句柄，再按能力控制并探查它。 */
 export default function register(): void {
@@ -24,13 +14,13 @@ export default function register(): void {
     group: '实体创建',
     params: [{ name: '存活秒数', t: N }],
     ret: E,
-    mana: 18,
-    manaCost: (_c, args) => 8 + pricedRequest(asNum(args[0]), MAX_PROJECTILE_LIFE) * 2,
+    mana: 8,
     ticks: 2,
-    desc: '创建未激活的弹道并返回句柄；寿命范围 (0, 5] 秒，每位施法者最多保有 16 个；失败返回空',
+    cost: (_ctx, args) => effectCost(args, 8, 2, [{ index: 0, manaPer: 2, tickUnit: 2 }]),
+    desc: '创建未激活的弹道并返回句柄；寿命越长，法力和耗时越高，不设人为上限；每位施法者最多保有 16 个',
     impl: (c, args) => {
       const life = asNum(args[0]);
-      if (!bounded(life, MAX_PROJECTILE_LIFE)) return null;
+      if (!isPositiveFinite(life)) return null;
       return (
         c.world.spawnProjectile({
           faction: c.caster.faction,
@@ -78,14 +68,14 @@ export default function register(): void {
       { name: '速度', t: N },
     ],
     ret: B,
-    mana: 8,
-    manaCost: (_c, args) => 2 + pricedRequest(asNum(args[1]), MAX_PROJECTILE_SPEED) / 100,
+    mana: 2,
     ticks: 1,
-    desc: '设置自己创建的弹道速度；请求越快法力越高，允许范围为 (0, 600]',
+    cost: (_ctx, args) => effectCost(args, 2, 1, [{ index: 1, manaPer: 0.01, tickUnit: 300 }]),
+    desc: '设置自己创建的弹道速度；请求越快，法力和耗时越高，不设人为上限',
     impl: (c, args) => {
       const projectile = c.world.ownedProjectile(c.caster.id, asEntity(args[0]));
       const speed = asNum(args[1]);
-      if (!projectile || !bounded(speed, MAX_PROJECTILE_SPEED)) return false;
+      if (!projectile || !isPositiveFinite(speed)) return false;
       projectile.speed = speed;
       return true;
     },
@@ -99,14 +89,14 @@ export default function register(): void {
       { name: '威力', t: N },
     ],
     ret: B,
-    mana: 27,
-    manaCost: (_c, args) => 2 + pricedRequest(asNum(args[1]), MAX_PROJECTILE_POWER) / 4,
+    mana: 2,
     ticks: 1,
-    desc: '设置自己创建的弹道基础威力；请求越强法力越高，允许范围为 (0, 100]',
+    cost: (_ctx, args) => effectCost(args, 2, 1, [{ index: 1, manaPer: 0.25, tickUnit: 50 }]),
+    desc: '设置自己创建的弹道基础威力；请求越强，法力和耗时越高，不设人为上限',
     impl: (c, args) => {
       const projectile = c.world.ownedProjectile(c.caster.id, asEntity(args[0]));
       const power = asNum(args[1]);
-      if (!projectile || !bounded(power, MAX_PROJECTILE_POWER)) return false;
+      if (!projectile || !isPositiveFinite(power)) return false;
       projectile.damage = power * c.caster.attr.power;
       return true;
     },

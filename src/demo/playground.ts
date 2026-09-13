@@ -66,18 +66,15 @@ function main(): void {
 
   // ---------- 1. 静态分析 ----------
   console.log('\n【一】静态分析 —— 创建法术时玩家就能看到的代价\n');
-  console.log(pad('法术', 16), pad('法力上界', 10), pad('耗时上界', 10), '神识峰值');
+  console.log(pad('法术', 16), pad('法力预算', 12), pad('耗时预算', 12), '神识峰值');
   console.log('─'.repeat(58));
   for (const [name, c] of Object.entries(analyzeBook(book))) {
-    console.log(
-      pad(name, 16),
-      pad(String(c.manaWorst), 10),
-      pad(`${c.tickWorst} tick`, 10),
-      String(c.shenshiPeak),
-    );
+    const mana = c.manaBudget.dynamic ? `${c.manaBudget.value}+动态` : String(c.manaWorst);
+    const ticks = c.tickBudget.dynamic ? `${c.tickBudget.value}+动态` : String(c.tickWorst);
+    console.log(pad(name, 16), pad(mana, 12), pad(`${ticks} tick`, 12), String(c.shenshiPeak));
     for (const e of c.errors) console.log('   ✗', e);
   }
-  console.log('\n  注：上界按「列表容量」算，实测按真实敌人数算。');
+  console.log('\n  注：列表次数仍按容量计算；“+动态”部分由请求效果、距离和实体关系决定。');
 
   // ---------- 2. 敌人数变化 ----------
   const spells = ['御剑术·朴', '御剑术·慧', '御剑术·微'];

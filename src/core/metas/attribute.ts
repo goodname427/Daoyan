@@ -1,6 +1,38 @@
 import { T } from '../types';
-import { asEntity, asNum, defMeta } from '../meta';
+import { asEntity, asNum, defMeta, fixedCost, type CostArg, type Ctx } from '../meta';
 import type { AttrKey } from '../attributes';
+import { effectCost, isPositiveFinite, multiplierMagnitude } from '../pricing';
+
+function targetEffectCost(
+  ctx: Ctx | null,
+  args: readonly CostArg[],
+  targetIndex: number,
+  baseMana: number,
+  baseTicks: number,
+  terms: Parameters<typeof effectCost>[3],
+) {
+  const targetArg = args[targetIndex];
+  if (!ctx || !targetArg?.known) {
+    const knownInput = effectCost(args, baseMana, baseTicks, terms);
+    return {
+      mana: { ...knownInput.mana, dynamic: true },
+      ticks: { ...knownInput.ticks, dynamic: true },
+    };
+  }
+  const target = ctx.world.entityById(asEntity(targetArg.value));
+  if (!target) return effectCost(args, baseMana, baseTicks, terms);
+  const relation = ctx.world.entityCostMultiplier(ctx.caster, target);
+  const inputCost = effectCost(
+    args,
+    baseMana * relation,
+    baseTicks,
+    terms.map((term) => ({ ...term, manaPer: term.manaPer * relation })),
+  );
+  return {
+    mana: inputCost.mana,
+    ticks: fixedCost(baseTicks + (inputCost.ticks.value - baseTicks) * relation),
+  };
+}
 
 /**
  * 属性类元法术（增益 / 减益）。
@@ -30,18 +62,19 @@ export default function register(): void {
         { name: '持续秒数', t: N },
       ],
       ret: T.void,
-      mana: 20,
+      mana: 8,
       ticks: 2,
+      cost: (_ctx, args) =>
+        effectCost(args, 8, 2, [
+          { index: 0, manaPer: 4, tickUnit: 1, measure: multiplierMagnitude },
+          { index: 1, manaPer: 1, tickUnit: 2 },
+        ]),
       desc,
       impl: (c, a) => {
-        c.world.addModifier(
-          c.caster,
-          key,
-          'mul',
-          asNum(a[0]),
-          asNum(a[1]),
-          `${c.caster.name}·${name}`,
-        );
+        const multiplier = asNum(a[0]);
+        const duration = asNum(a[1]);
+        if (!isPositiveFinite(multiplier) || !isPositiveFinite(duration)) return null;
+        c.world.addModifier(c.caster, key, 'mul', multiplier, duration, `${c.caster.name}·${name}`);
         c.log.push(`${name}：${key} ×${asNum(a[0])}，持续 ${asNum(a[1])} 秒`);
         return null;
       },
@@ -56,11 +89,19 @@ export default function register(): void {
       { name: '持续秒数', t: N },
     ],
     ret: T.void,
-    mana: 18,
+    mana: 8,
     ticks: 2,
+    cost: (_ctx, args) =>
+      effectCost(args, 8, 2, [
+        { index: 0, manaPer: 0.5, tickUnit: 1 },
+        { index: 1, manaPer: 1, tickUnit: 2 },
+      ]),
     desc: '为自身附加固定减伤（加法）',
     impl: (c, a) => {
-      c.world.addModifier(c.caster, 'armor', 'add', asNum(a[0]), asNum(a[1]), '护体');
+      const amount = asNum(a[0]);
+      const duration = asNum(a[1]);
+      if (!isPositiveFinite(amount) || !isPositiveFinite(duration)) return null;
+      c.world.addModifier(c.caster, 'armor', 'add', amount, duration, '护体');
       c.log.push(`护体：减伤 +${asNum(a[0])}，持续 ${asNum(a[1])} 秒`);
       return null;
     },
@@ -82,14 +123,27 @@ export default function register(): void {
         { name: '持续秒数', t: N },
       ],
       ret: T.void,
-      mana: 22,
+      mana: 8,
       ticks: 2,
+      cost: (ctx, args) =>
+        targetEffectCost(ctx, args, 0, 8, 2, [
+          { index: 1, manaPer: 4, tickUnit: 1, measure: multiplierMagnitude },
+          { index: 2, manaPer: 1, tickUnit: 2 },
+        ]),
       desc,
       impl: (c, a) => {
-        const t = c.world.byId(asEntity(a[0]));
-        if (!t) return null;
-        c.world.addModifier(t, key, 'mul', asNum(a[1]), asNum(a[2]), name);
-        c.log.push(`对 #${t.id} 施加${name}：${key} ×${asNum(a[1])}`);
+        const target = c.world.entityById(asEntity(a[0]));
+        const multiplier = asNum(a[1]);
+        const duration = asNum(a[2]);
+        if (
+          target?.kind !== 'actor' ||
+          !isPositiveFinite(multiplier) ||
+          !isPositiveFinite(duration)
+        ) {
+          return null;
+        }
+        c.world.addModifier(target, key, 'mul', multiplier, duration, name);
+        c.log.push(`对 #${target.id} 施加${name}：${key} ×${multiplier}`);
         return null;
       },
     });
@@ -104,14 +158,23 @@ export default function register(): void {
       { name: '持续秒数', t: N },
     ],
     ret: T.void,
-    mana: 20,
+    mana: 8,
     ticks: 2,
+    cost: (ctx, args) =>
+      targetEffectCost(ctx, args, 0, 8, 2, [
+        { index: 1, manaPer: 0.5, tickUnit: 1 },
+        { index: 2, manaPer: 1, tickUnit: 2 },
+      ]),
     desc: '削损目标护体（加法，传正数即降低减伤）',
     impl: (c, a) => {
-      const t = c.world.byId(asEntity(a[0]));
-      if (!t) return null;
-      c.world.addModifier(t, 'armor', 'add', -asNum(a[1]), asNum(a[2]), '破防');
-      c.log.push(`对 #${t.id} 破防：护体 -${asNum(a[1])}`);
+      const target = c.world.entityById(asEntity(a[0]));
+      const amount = asNum(a[1]);
+      const duration = asNum(a[2]);
+      if (target?.kind !== 'actor' || !isPositiveFinite(amount) || !isPositiveFinite(duration)) {
+        return null;
+      }
+      c.world.addModifier(target, 'armor', 'add', -amount, duration, '破防');
+      c.log.push(`对 #${target.id} 破防：护体 -${amount}`);
       return null;
     },
   });

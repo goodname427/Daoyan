@@ -1,5 +1,16 @@
 import { T } from '../types';
-import { asEntity, asList, asNum, asVec, defMeta } from '../meta';
+import {
+  asEntity,
+  asList,
+  asNum,
+  asVec,
+  defMeta,
+  dynamicCost,
+  fixedCost,
+  type CostArg,
+  type Ctx,
+} from '../meta';
+import { effectCost } from '../pricing';
 import type { Value } from '../types';
 
 /**
@@ -10,6 +21,27 @@ export default function register(): void {
   const N = T.num;
   const V = T.vec2;
   const E = T.entity;
+
+  function distanceCost(
+    ctx: Ctx | null,
+    args: readonly CostArg[],
+    index: number,
+    mana: number,
+    ticks: number,
+  ) {
+    const targetArg = args[index];
+    if (!ctx || !targetArg?.known) {
+      return { mana: dynamicCost(mana), ticks: dynamicCost(ticks) };
+    }
+    const target = ctx.world.entityById(asEntity(targetArg.value));
+    if (!target) return { mana: fixedCost(mana), ticks: fixedCost(ticks) };
+    const distance = Math.hypot(target.x - ctx.caster.x, target.y - ctx.caster.y);
+    const relation = ctx.world.entityCostMultiplier(ctx.caster, target);
+    return {
+      mana: fixedCost(mana + (distance / 200) * relation),
+      ticks: fixedCost(ticks + Math.ceil((distance / 400) * relation)),
+    };
+  }
 
   defMeta({
     name: '自身位置',
@@ -63,8 +95,9 @@ export default function register(): void {
       { name: '半径', t: N },
     ],
     ret: T.list('entity'),
-    mana: 40,
+    mana: 20,
     ticks: 4,
+    cost: (_ctx, args) => effectCost(args, 20, 4, [{ index: 1, manaPer: 0.2, tickUnit: 100 }]),
     desc: '一次扫描获得范围内敌方句柄（只含句柄，不含坐标）。半径受「感知」属性影响',
     impl: (c, a) => {
       const r = asNum(a[1]) * c.caster.attr.perception;
@@ -77,14 +110,10 @@ export default function register(): void {
     group: '状态探查',
     params: [{ name: '目标', t: E }],
     ret: V,
-    mana: 12,
-    manaCost: (c, a) => {
-      const target = c.world.entityById(asEntity(a[0]));
-      if (!target) return 8;
-      return Math.min(12, 8 + Math.hypot(target.x - c.caster.x, target.y - c.caster.y) / 200);
-    },
+    mana: 8,
+    cost: (ctx, args) => distanceCost(ctx, args, 0, 8, 2),
     ticks: 2,
-    desc: '读取 Actor 或 Projectile 的坐标；距离越远法力越高（动态价格，上界 12）',
+    desc: '读取 Actor 或 Projectile 的坐标；距离越远法力和耗时越高，不设人为上限',
     impl: (c, a) => {
       return c.world.positionOf(asEntity(a[0])) ?? { x: 0, y: 0 };
     },
@@ -98,8 +127,9 @@ export default function register(): void {
       { name: '半径', t: N },
     ],
     ret: T.list('vec2'),
-    mana: 70,
+    mana: 20,
     ticks: 7,
+    cost: (_ctx, args) => effectCost(args, 20, 7, [{ index: 1, manaPer: 0.5, tickUnit: 80 }]),
     desc: '一次 I/O 把范围内所有敌方坐标读入神识。很贵，但之后计算全免费',
     impl: (c, a) => {
       const r = asNum(a[1]) * c.caster.attr.perception;
@@ -115,6 +145,7 @@ export default function register(): void {
     params: [{ name: '目标', t: E }],
     ret: N,
     mana: 8,
+    cost: (ctx, args) => distanceCost(ctx, args, 0, 8, 2),
     ticks: 2,
     desc: '读取单位当前生命',
     impl: (c, a) => {

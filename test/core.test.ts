@@ -131,7 +131,8 @@ describe('虚拟机基础执行', () => {
       x: caster.x,
       y: caster.y + caster.radius + projectile.radius,
     });
-    expect(result.mana).toBeLessThan(analyzeBook(book)['炼剑'].manaWorst);
+    expect(result.mana).toBeGreaterThan(analyzeBook(book)['炼剑'].manaWorst);
+    expect(analyzeBook(book)['炼剑'].manaBudget.dynamic).toBe(true);
   });
 
   it('能力或所有权不匹配时控制元法术返回 false 且不修改目标', () => {
@@ -389,7 +390,7 @@ describe('静态分析', () => {
     expect(cost['轮回'].errors.join()).toContain('递归');
   });
 
-  it('静态上界不低于实测值', () => {
+  it('动态预算不会伪装成固定上界，神识上界仍保持可信', () => {
     const src = `
       spell 御剑术·朴 {
         var self: vec2 = 自身位置()
@@ -418,8 +419,8 @@ describe('静态分析', () => {
       const { world, caster } = scene(n, { manaMax: 9999, shenshiMax: 9999 });
       const r = new VM(program, world, caster).run('御剑术·朴');
       expect(r.ok).toBe(true);
-      expect(r.mana).toBeLessThanOrEqual(cost.manaWorst);
-      expect(r.ticks).toBeLessThanOrEqual(cost.tickWorst);
+      expect(cost.manaBudget.dynamic).toBe(true);
+      expect(cost.tickBudget.dynamic).toBe(true);
       expect(r.shenshiPeak).toBeLessThanOrEqual(cost.shenshiPeak);
     }
   });

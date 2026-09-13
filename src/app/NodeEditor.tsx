@@ -1116,8 +1116,10 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
       parseSpellbook(ser);
       const prog = compileProgram(book);
       void prog;
+      const mana = c.manaBudget.dynamic ? `${c.manaBudget.value}+动态` : `${c.manaWorst}`;
+      const ticks = c.tickBudget.dynamic ? `${c.tickBudget.value}+动态` : `${c.tickWorst}`;
       setCompileMsg(
-        `✓ 编译通过 · 法力≤${c.manaWorst} · 耗时≤${c.tickWorst}tick · 神识峰值${c.shenshiPeak}${errs}`,
+        `✓ 编译通过 · 法力${mana} · 耗时${ticks}tick · 神识峰值${c.shenshiPeak}${errs}`,
       );
       setDsl(ser);
       onSourceChange(ser);

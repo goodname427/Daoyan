@@ -349,7 +349,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                     >
                       <span>{meta.name}</span>
                       <small>
-                        {meta.group} · 法{meta.manaCost ? `≤${meta.mana}` : meta.mana} ·{' '}
+                        {meta.group} · 法
+                        {meta.cost || meta.manaCost ? `${meta.mana}+动态` : meta.mana} ·{' '}
                         {meta.ticks}t
                       </small>
                     </button>
@@ -570,10 +571,19 @@ function MetaInspector({ meta }: { meta: MetaDef }) {
       <p>{meta.desc}</p>
       <div className="meta-costs">
         <Stat
-          label={meta.manaCost ? '法力上界' : '法力'}
-          value={`${meta.manaCost ? '≤' : ''}${meta.mana}`}
+          label={meta.cost || meta.manaCost ? '法力基础' : '法力'}
+          value={`${meta.mana}${meta.cost || meta.manaCost ? ' + 动态' : ''}`}
+          hint={
+            meta.cost || meta.manaCost
+              ? '实际法力会根据本次请求的效果或目标状态继续计算'
+              : undefined
+          }
         />
-        <Stat label="耗时" value={`${meta.ticks}t`} />
+        <Stat
+          label={meta.cost ? '耗时基础' : '耗时'}
+          value={`${meta.ticks}${meta.cost ? ' + 动态' : ''}t`}
+          hint={meta.cost ? '实际耗时会根据本次请求的效果继续计算' : undefined}
+        />
         <Stat label="返回" value={typeName(meta.ret)} />
       </div>
       <section>

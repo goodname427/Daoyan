@@ -7,6 +7,8 @@ import {
   parseSpellbook,
   getMeta,
   defMeta,
+  fixedCost,
+  knownCostArg,
   type Ctx,
   type Value,
 } from '../src/core/index';
@@ -48,10 +50,10 @@ describe('实体句柄与控制失败边界', () => {
       expect(call(name, null, arg)).toBe(false);
       expect(call(name, caster.id, arg)).toBe(false);
     }
-    for (const value of [-1, 0, 601, Infinity, NaN]) {
+    for (const value of [-1, 0, Infinity, NaN]) {
       expect(call('设置弹道速度', id, value)).toBe(false);
     }
-    for (const value of [-1, 0, 101, Infinity, NaN]) {
+    for (const value of [-1, 0, Infinity, NaN]) {
       expect(call('设置弹道威力', id, value)).toBe(false);
     }
     for (const direction of [
@@ -63,7 +65,7 @@ describe('实体句柄与控制失败边界', () => {
     }
     expect(call('激活弹道', id)).toBe(false);
     expect(projectile).toEqual(before);
-    for (const value of [-1, 0, 6, Infinity, NaN]) expect(call('创建弹道', value)).toBeNull();
+    for (const value of [-1, 0, Infinity, NaN]) expect(call('创建弹道', value)).toBeNull();
     expect(world.projectiles).toHaveLength(1);
   });
 
@@ -82,26 +84,28 @@ describe('实体句柄与控制失败边界', () => {
 });
 
 describe('动态定价契约', () => {
-  it('距离、请求效果改变实扣，倍率后的实扣不超过同倍率静态上界', () => {
+  it('距离与请求效果改变实扣，动态请求不再被旧上限截断', () => {
     const { world, caster, ctx, call } = setup();
     const id = call('创建弹道', 5) as number;
     const target = world.entityById(id)!;
     const probe = getMeta('探查')!;
-    const near = probe.manaCost!(ctx, [id]);
+    const near = probe.cost!(ctx, [knownCostArg(id)]).mana.value;
     target.x += 200;
-    expect(probe.manaCost!(ctx, [id])).toBeGreaterThan(near);
+    expect(probe.cost!(ctx, [knownCostArg(id)]).mana.value).toBeGreaterThan(near);
     target.x += 10000;
-    expect(probe.manaCost!(ctx, [id])).toBe(probe.mana);
-    for (const [name, max] of [
+    expect(probe.cost!(ctx, [knownCostArg(id)]).mana.value).toBeGreaterThan(near);
+    for (const [name, high] of [
       ['创建弹道', 5],
       ['设置弹道速度', 600],
       ['设置弹道威力', 100],
     ] as const) {
       const meta = getMeta(name)!;
       const args = (value: number) => (name === '创建弹道' ? [value] : [id, value]);
-      expect(meta.manaCost!(ctx, args(1))).toBeLessThan(meta.manaCost!(ctx, args(max)));
-      expect(meta.manaCost!(ctx, args(max))).toBe(meta.mana);
-      expect(Number.isFinite(meta.manaCost!(ctx, args(NaN)))).toBe(true);
+      const low = meta.cost!(ctx, args(1).map(knownCostArg)).mana.value;
+      const highCost = meta.cost!(ctx, args(high).map(knownCostArg)).mana.value;
+      expect(low).toBeLessThan(highCost);
+      expect(highCost).toBeGreaterThan(meta.mana);
+      expect(Number.isFinite(meta.cost!(ctx, args(NaN).map(knownCostArg)).mana.value)).toBe(true);
     }
     const book = parseSpellbook(
       'spell 铸剑 { var p: entity = 创建弹道(5) 设置弹道速度(p, 600) 设置弹道威力(p, 100) 激活弹道(p) }',
@@ -110,10 +114,76 @@ describe('动态定价契约', () => {
     world.recompute(caster);
     const result = new VM(compileProgram(book), world, caster).run('铸剑');
     expect(result.ok).toBe(true);
-    expect(result.mana).toBe(analyzeBook(book)['铸剑'].manaWorst * 2);
+    const budget = analyzeBook(book)['铸剑'];
+    expect(result.mana).toBe(budget.manaWorst * 2);
+    expect(result.ticks).toBe(budget.tickWorst);
+    expect(result.ticks).toBeGreaterThan(7);
   });
 
-  it.each([NaN, Infinity, -1, 19, 'throw'])('拒绝非法价格 %s，扣费和效果均未发生', (price) => {
+  it('同一个设置位置元法术可以控制 Actor 与 Projectile，关系同时影响法力与耗时', () => {
+    const { world, caster, ctx, call } = setup();
+    const ownProjectileId = call('创建弹道', 5) as number;
+    const ally = world.spawnActor({ faction: 'player', x: 300, y: 260 });
+    const foe = world.spawnActor({ faction: 'foe', x: 300, y: 260 });
+    const hostileProjectile = world.spawnProjectile({
+      faction: 'foe',
+      ownerId: foe.id,
+      x: 300,
+      y: 260,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+    const meta = getMeta('设置位置')!;
+    const point = knownCostArg({ x: 500, y: 260 });
+    const foeCost = meta.cost!(ctx, [knownCostArg(foe.id), point]);
+    const projectileCost = meta.cost!(ctx, [knownCostArg(hostileProjectile.id), point]);
+    expect(foeCost.mana.value).toBe(projectileCost.mana.value);
+    expect(foeCost.ticks.value).toBe(projectileCost.ticks.value);
+
+    const moveBy = (id: number, x: number, y: number) =>
+      meta.cost!(ctx, [knownCostArg(id), knownCostArg({ x: x + 100, y })]);
+    const ownCost = moveBy(ownProjectileId, caster.x, caster.y);
+    const allyCost = moveBy(ally.id, ally.x, ally.y);
+    const hostileCost = moveBy(foe.id, foe.x, foe.y);
+    expect(ownCost.mana.value).toBeLessThan(allyCost.mana.value);
+    expect(allyCost.mana.value).toBeLessThan(hostileCost.mana.value);
+    expect(ownCost.ticks.value).toBeLessThan(allyCost.ticks.value);
+    expect(allyCost.ticks.value).toBeLessThan(hostileCost.ticks.value);
+
+    expect(call('设置位置', foe.id, { x: 500, y: 260 })).toBe(true);
+    expect(call('设置位置', hostileProjectile.id, { x: 500, y: 260 })).toBe(true);
+    expect(world.positionOf(foe.id)).toEqual({ x: 500, y: 260 });
+    expect(world.positionOf(hostileProjectile.id)).toEqual({ x: 500, y: 260 });
+    expect(caster.x).toBe(100);
+  });
+
+  it('效果数值直接决定法力与时间，10000 不能伪装成 100 的同价请求', () => {
+    const meta = getMeta('伤害')!;
+    const low = meta.cost!(null, [knownCostArg(1), knownCostArg(100)]);
+    const high = meta.cost!(null, [knownCostArg(1), knownCostArg(10000)]);
+    expect(high.mana.value).toBeGreaterThan(low.mana.value);
+    expect(high.ticks.value).toBeGreaterThan(low.ticks.value);
+  });
+
+  it('分支写入不同请求值时分析器保留动态预算，不采用最后分析分支的伪定值', () => {
+    const book = parseSpellbook(`
+      spell 分支(flag: bool) {
+        var target: entity
+        var amount: num = 1
+        if flag { amount = 10000 } else { amount = 1 }
+        伤害(target, amount)
+      }
+    `);
+    const budget = analyzeBook(book)['分支'];
+    expect(budget.errors).toEqual([]);
+    expect(budget.manaBudget.dynamic).toBe(true);
+    expect(budget.tickBudget.dynamic).toBe(true);
+    expect(budget.manaBudget.value).toBe(getMeta('伤害')!.mana);
+  });
+
+  it.each([NaN, Infinity, -1, 'throw'])('拒绝非法价格 %s，扣费和效果均未发生', (price) => {
     const { world, caster } = setup();
     const original = getMeta('创建弹道')!;
     const impl = vi.fn(original.impl);
@@ -121,12 +191,15 @@ describe('动态定价契约', () => {
       defMeta({
         ...original,
         impl,
-        manaCost: () => {
+        cost: () => {
           if (typeof price === 'string') throw new Error('pricing');
-          return price;
+          return { mana: fixedCost(price), ticks: fixedCost(2) };
         },
       });
       const book = parseSpellbook('spell 测试 { 创建弹道(1) }');
+      const analyzed = analyzeBook(book)['测试'];
+      expect(analyzed.errors.join()).toMatch(/静态定价失败|非法静态消耗/);
+      expect(analyzed.manaBudget.dynamic).toBe(true);
       const result = new VM(compileProgram(book), world, caster).run('测试');
       expect(result.ok).toBe(false);
       expect(result.error).toMatch(/动态/);

@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -36,6 +36,7 @@ interface CliOptions {
   deepPlan: boolean;
   doctor: boolean;
   noPush: boolean;
+  takeover: boolean;
   resumeDirectory: string | null;
 }
 
@@ -90,6 +91,7 @@ interface RecoveryCheckpoint {
   reviewerTokens: number | null;
   repairerTokens: number | null;
   noPush: boolean;
+  takeover?: boolean;
   error: string;
   updatedAt: string;
 }
@@ -117,10 +119,11 @@ function printHelp() {
   --deep-plan  额外调用模型进行规划；默认使用零-token 本地路由
   --doctor     检查 Codex 与 npm 子进程入口，不调用模型
   --no-push    完成交付和提交，但不推送远端
+  --takeover   强制秘书接管当前现场，记录快照后保留并审查现有改动
   --resume     从失败运行的恢复点续跑，不重复已完成任务
   --help       显示帮助
 
-完整执行要求开始时 Git 工作区干净；制作人不需要判断任务复杂度。`);
+完整执行要求开始时 Git 工作区干净；若上一执行 Agent 异常退出并留下受控恢复点，秘书会自动审查并接管遗留改动。若现场需要人工确认过后直接交给秘书，可使用 --takeover；制作人不需要判断任务复杂度。`);
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -128,7 +131,9 @@ function parseArgs(argv: string[]): CliOptions {
   let deepPlan = false;
   let doctor = false;
   let noPush = false;
+  let takeover = false;
   let resumeDirectory: string | null = null;
+  let resumeRequested = false;
   const direction: string[] = [];
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -140,14 +145,19 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === '--deep-plan') deepPlan = true;
     else if (arg === '--doctor') doctor = true;
     else if (arg === '--no-push') noPush = true;
+    else if (arg === '--takeover' || arg === '--force-takeover') takeover = true;
     else if (arg === '--resume') {
+      resumeRequested = true;
       const value = argv[index + 1];
-      if (!value || value.startsWith('--')) throw new Error('--resume 后需要运行目录');
-      resumeDirectory = value;
-      index += 1;
-    } else direction.push(arg);
+      if (value && !value.startsWith('--')) {
+        resumeDirectory = value;
+        index += 1;
+      }
+    } else if (resumeRequested && !resumeDirectory) resumeDirectory = arg;
+    else direction.push(arg);
   }
   const joined = direction.join(' ').trim();
+  if (resumeRequested && !resumeDirectory) throw new Error('--resume 后需要运行目录');
   if (!joined && !doctor && !resumeDirectory) {
     throw new Error('请提供产品方向，例如：npm run producer -- "增加法术单步推演"');
   }
@@ -160,6 +170,7 @@ function parseArgs(argv: string[]): CliOptions {
     deepPlan,
     doctor,
     noPush,
+    takeover,
     resumeDirectory,
   };
 }
@@ -392,6 +403,7 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
     reviewerTokens: value.reviewerTokens ?? null,
     repairerTokens: value.repairerTokens ?? null,
     noPush: value.noPush ?? false,
+    takeover: value.takeover ?? false,
     error: value.error ?? '',
     updatedAt: value.updatedAt ?? '',
   };
@@ -471,6 +483,9 @@ ${direction}
 }
 
 function workerPrompt(plan: TaskPlan, task: PlannedTask, failureContext: string): string {
+  const takeoverInstruction = activeTakeover
+    ? '\n这是秘书强制接管现场：工作区中可能已有执行 Agent 的部分改动。先区分与本目标相关的改动和无关改动，保留相关改动并审查其正确性；禁止为了恢复而清空或覆盖无关现场。\n'
+    : '';
   return `你是道衍项目的执行 Agent。只承接下面这一项任务，不重新规划整个项目，也不要创建其他 Agent。
 
 必须遵守 AGENTS.md 和 docs/workflow.md。开始前读取任务相关代码、文档和测试；优先限制在建议路径与直接依赖，不要扫描无关路线图、历史日志或整个仓库。在当前工作区直接实现。不要 commit、push、tag 或发布，这些由秘书统一处理。不要覆盖无关改动。
@@ -488,6 +503,7 @@ ${task.deliverables.map((item) => `- ${item}`).join('\n') || '- 完成目标所�
 ${task.verification.map((item) => `- ${item}`).join('\n') || '- 运行与风险相称的测试'}
 
 ${failureContext}
+${takeoverInstruction}
 
 完成实现后运行聚焦测试和 npm run verify；不要运行 npm run verify:full，它由秘书统一执行。简洁报告修改、验证与剩余风险。`;
 }
@@ -872,13 +888,92 @@ async function writeReport(
   );
 }
 
-async function ensureCleanWorktree() {
+async function latestAbandonedRun(): Promise<string | null> {
+  const head = await git(['rev-parse', 'HEAD']);
+  if (head.code !== 0) return null;
+  let entries;
+  try {
+    entries = await readdir(runsRoot, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  for (const entry of entries
+    .filter((item) => item.isDirectory())
+    .sort((a, b) => b.name.localeCompare(a.name))) {
+    try {
+      const checkpoint = JSON.parse(
+        await readFile(resolve(runsRoot, entry.name, 'recovery.json'), 'utf8'),
+      ) as Partial<RecoveryCheckpoint>;
+      if (
+        (checkpoint.status === 'active' || checkpoint.status === 'recoverable') &&
+        checkpoint.baseline === head.stdout.trim() &&
+        Array.isArray(checkpoint.taskRuns) &&
+        checkpoint.taskRuns.length === 0
+      ) {
+        return resolve(runsRoot, entry.name);
+      }
+    } catch {
+      // Ignore incomplete or unrelated run directories.
+    }
+  }
+  return null;
+}
+
+async function writeTakeoverManifest(runDirectory: string, reason: string): Promise<void> {
+  const [head, status, diffStat, untracked, fingerprint] = await Promise.all([
+    git(['rev-parse', 'HEAD']),
+    git(['-c', 'core.quotePath=false', 'status', '--porcelain=v1']),
+    git(['-c', 'core.quotePath=false', 'diff', '--stat', 'HEAD', '--']),
+    git(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard']),
+    workspaceFingerprint(),
+  ]);
+  if ([head, status, diffStat, untracked].some((result) => result.code !== 0)) {
+    throw new Error('无法记录强制接管现场');
+  }
+  await writeFile(
+    resolve(runDirectory, 'takeover.json'),
+    `${JSON.stringify(
+      {
+        mode: 'forced-secretary-takeover',
+        reason,
+        capturedAt: new Date().toISOString(),
+        head: head.stdout.trim(),
+        workspaceFingerprint: fingerprint,
+        status: status.stdout,
+        diffStat: diffStat.stdout,
+        untracked: untracked.stdout,
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+}
+
+async function ensureCleanWorktree(runDirectory: string, takeover: boolean) {
   const repository = await git(['rev-parse', '--show-toplevel']);
   if (repository.code !== 0) throw new Error('当前目录不是 Git 仓库');
   const status = await git(['status', '--porcelain']);
+  if (takeover) {
+    await writeTakeoverManifest(
+      runDirectory,
+      status.stdout.trim()
+        ? '制作人显式要求强制接管当前工作区；秘书负责区分相关改动与无关改动。'
+        : '制作人显式要求强制接管当前工作区；现场当前干净，仍记录接管快照。',
+    );
+    console.log(`[秘书强制接管] 已记录当前工作区现场：${resolve(runDirectory, 'takeover.json')}`);
+    return;
+  }
   if (status.stdout.trim()) {
+    const abandonedRun = await latestAbandonedRun();
+    if (abandonedRun) {
+      console.log(
+        `[秘书接管] 检测到 ${abandonedRun} 的执行 Agent 异常退出，保留现有改动并重新接管。`,
+      );
+      return;
+    }
     throw new Error(
-      '完整执行要求 Git 工作区干净。请先处理现有改动，或使用 producer:plan 只做规划。',
+      '完整执行要求 Git 工作区干净。请先处理现有改动，或使用 --takeover 让秘书记录并接管当前现场。',
     );
   }
 }
@@ -954,6 +1049,7 @@ let activePlannerTokens: number | null = null;
 let activeReviewerTokens: number | null = null;
 let activeRepairerTokens: number | null = null;
 let activeNoPush = options.noPush;
+let activeTakeover = options.takeover;
 let currentPhase = '初始化';
 
 async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = ''): Promise<void> {
@@ -973,6 +1069,7 @@ async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = '
     reviewerTokens: activeReviewerTokens,
     repairerTokens: activeRepairerTokens,
     noPush: activeNoPush,
+    takeover: activeTakeover,
     error,
   });
 }
@@ -1001,24 +1098,40 @@ try {
     const checkpoint = await readCheckpoint(runDirectory);
     if (checkpoint.status === 'delivered') throw new Error('该运行已经交付，无需恢复');
     const currentFingerprint = await workspaceFingerprint();
-    if (currentFingerprint !== checkpoint.workspaceFingerprint) {
+    const canAdoptAbandonedChanges =
+      checkpoint.status === 'active' && checkpoint.taskRuns.length === 0;
+    const fingerprintMismatch = currentFingerprint !== checkpoint.workspaceFingerprint;
+    if (fingerprintMismatch && !options.takeover && !canAdoptAbandonedChanges) {
       throw new Error(
-        '当前工作区与恢复点不一致。为避免跳过必要实现或提交无关改动，秘书已拒绝续跑。',
+        '当前工作区与恢复点不一致。为避免跳过必要实现或提交无关改动，秘书已拒绝续跑；如需接管当前现场，请追加 --takeover。',
+      );
+    }
+    if (options.takeover) {
+      activeTakeover = true;
+      await writeTakeoverManifest(
+        runDirectory,
+        '制作人显式要求从指定恢复点强制接管当前工作区；秘书放弃旧跳过记录并重新审查。',
+      );
+      console.log(`[秘书强制接管] 已记录当前工作区现场：${resolve(runDirectory, 'takeover.json')}`);
+    } else if (fingerprintMismatch) {
+      console.log(
+        '[秘书接管] 上一执行 Agent 在首个任务中异常退出，放弃旧跳过记录并审查当前遗留改动。',
       );
     }
     activePlan = checkpoint.plan;
     activeBaseline = checkpoint.baseline;
     activeDirection = checkpoint.direction;
     activeResolvedDirection = checkpoint.resolvedDirection;
-    activeTaskRuns = checkpoint.taskRuns;
-    activeReview = checkpoint.review;
+    activeTaskRuns = fingerprintMismatch || options.takeover ? [] : checkpoint.taskRuns;
+    activeReview = fingerprintMismatch || options.takeover ? null : checkpoint.review;
     activePlannerTokens = checkpoint.plannerTokens;
     activeReviewerTokens = checkpoint.reviewerTokens;
     activeRepairerTokens = checkpoint.repairerTokens;
     activeNoPush = options.noPush || checkpoint.noPush;
+    activeTakeover = options.takeover || fingerprintMismatch || checkpoint.takeover === true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {
-    if (!options.planOnly) await ensureCleanWorktree();
+    if (!options.planOnly) await ensureCleanWorktree(runDirectory, options.takeover);
     console.log(`[秘书] 正在分析制作人方向，运行记录：${runDirectory}`);
     const statusSource = await readFile(resolve(root, 'docs/status.md'), 'utf8');
     activeResolvedDirection = resolveProducerDirection(options.direction, statusSource);

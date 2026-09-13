@@ -202,6 +202,19 @@ export class World {
     return entity ? { x: entity.x, y: entity.y } : null;
   }
 
+  /** 同一实体能力按关系定价，而不是按 Actor / Projectile 拆成不同元法术。 */
+  entityCostMultiplier(caster: Actor, target: Entity): number {
+    if (target.id === caster.id) return 1;
+    if (target.kind === 'projectile' && target.ownerId === caster.id) return 1;
+    if (target.faction === caster.faction) return 2;
+    return 8;
+  }
+
+  /** 兼容旧调用名；新的元法术按统一实体关系计价。 */
+  controlCostMultiplier(caster: Actor, target: Entity): number {
+    return this.entityCostMultiplier(caster, target);
+  }
+
   ownedProjectile(ownerId: number, id: number): Projectile | null {
     const entity = this.entityById(id);
     return entity?.kind === 'projectile' && entity.ownerId === ownerId ? entity : null;
@@ -291,6 +304,12 @@ export class World {
   placeActor(a: Actor, x: number, y: number): void {
     a.x = Math.min(this.bounds.w - a.radius, Math.max(a.radius, x));
     a.y = Math.min(this.bounds.h - a.radius, Math.max(a.radius, y));
+  }
+
+  /** Transform 能力的统一位置写入；Actor 与 Projectile 走同一条语义。 */
+  placeEntity(entity: Entity, x: number, y: number): void {
+    entity.x = Math.min(this.bounds.w - entity.radius, Math.max(entity.radius, x));
+    entity.y = Math.min(this.bounds.h - entity.radius, Math.max(entity.radius, y));
   }
 
   spawnProjectile(p: {

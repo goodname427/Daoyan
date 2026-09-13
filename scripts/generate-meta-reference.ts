@@ -23,11 +23,11 @@ const lines = [
   '',
   '## 如何读表',
   '',
-  '- `法力价格` 是固定价格或动态价格的静态上界。战斗实扣为 `运行时基础价 × 施法者.manaCostMul`。',
+  '- `法力价格` 是固定价格或动态价格的基础成本。动态调用会按请求效果或目标状态继续计价；战斗实扣为 `运行时基础价 × 施法者.manaCostMul`。',
   '- `基础 tick` 是该调用本身的执行步数；参数表达式、列表下标和被调用的自定义法术还会继续累加耗时。',
   '- 演武场中约 `1 tick = 10ms / 施法速度`，因此施法速度只改变真实时间，不改变静态 tick 数。',
   '- 返回 `list<类型,?>` 表示元法术返回动态列表；接入 `list<类型,容量>` 变量时按声明容量截断。',
-  '- 标为“动态≤N”的调用会按距离或请求效果结算，但运行时基础价绝不超过静态上界 N。',
+  '- 标为“动态”或“基础 + 动态”的调用会按距离、目标关系或请求效果结算；有限请求不会被人为上限截断。',
   '',
 ];
 
@@ -43,7 +43,7 @@ for (const group of groupOrder) {
         ? '无'
         : meta.params.map((param) => `${param.name}: ${typeName(param.t)}`).join('<br>');
     lines.push(
-      `| ${escapeCell(meta.name)} | ${escapeCell(params)} | ${typeName(meta.ret)} | ${meta.manaCost ? `动态≤${meta.mana}` : meta.mana} | ${meta.ticks} | ${escapeCell(meta.desc)} |`,
+      `| ${escapeCell(meta.name)} | ${escapeCell(params)} | ${typeName(meta.ret)} | ${meta.cost || meta.manaCost ? `基础${meta.mana} + 动态` : meta.mana} | ${meta.cost ? `基础${meta.ticks} + 动态` : meta.ticks} | ${escapeCell(meta.desc)} |`,
     );
   }
   lines.push('');
@@ -55,7 +55,7 @@ lines.push(
   '- `运算符` 合并数值、逻辑、向量和列表内计算；这些调用不读取世界且不消耗法力。',
   '- `按键状态` 只读取输入；`结束施法` 单列为跨领域的 `施法控制`。',
   '- `状态探查`、`实体创建` 与 `实体控制` 按世界 I/O 职责区分。',
-  '- vNext 的稳定分类、统一句柄与动态价格契约见 [`../adr/0009-统一实体句柄与能力判定.md`](../adr/0009-统一实体句柄与能力判定.md) 和 [`../adr/0010-动态元法术价格与静态上界.md`](../adr/0010-动态元法术价格与静态上界.md)。',
+  '- vNext 的稳定分类、统一句柄与动态价格契约见 [`../adr/0009-统一实体句柄与能力判定.md`](../adr/0009-统一实体句柄与能力判定.md)、[`../adr/0010-动态元法术价格与静态上界.md`](../adr/0010-动态元法术价格与静态上界.md) 和 [`../adr/0011-无界效果与动态资源预算.md`](../adr/0011-无界效果与动态资源预算.md)。',
   '',
 );
 

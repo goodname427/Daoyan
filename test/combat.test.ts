@@ -71,7 +71,7 @@ describe('玩家操作', () => {
 
     const cast = b.activeCasts(b.player.id)[0];
     expect(cast).toBeDefined();
-    expect(cast.vm.spentTicks).toBeLessThan(15);
+    expect(cast.vm.spentTicks).toBeLessThanOrEqual(15);
   });
 
   it('冷却期间无法再次施放', () => {
@@ -164,7 +164,7 @@ describe('玩家操作', () => {
       spell 乙 { 瞬移(自身位置()) }
     `);
     const b = new Battle(book, {
-      playerAttrs: { manaMax: 60, manaRegen: 0 },
+      playerAttrs: { manaMax: 10, manaRegen: 0 },
       playerBindings: { '1': '甲', '2': '乙' },
     });
 
