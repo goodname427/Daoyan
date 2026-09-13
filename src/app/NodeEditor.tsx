@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -8,6 +8,7 @@ import {
   addEdge,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -26,7 +27,7 @@ import {
   serializeBook,
   typeName,
 } from '../core/index';
-import type { Expr, Spell, SpellBook, Stmt, Type } from '../core/index';
+import type { Expr, ListElem, Param, Spell, SpellBook, Stmt, Type } from '../core/index';
 
 /**
  * 蓝图编辑器（反向方向：图 → AST）。
@@ -56,7 +57,21 @@ function color(t: Type | { k: string }): string {
 // ---------------- 节点数据模型 ----------------
 
 type NodeKind =
-  'entry' | 'callstmt' | 'call' | 'const' | 'varref' | 'decl' | 'assign' | 'if' | 'for' | 'return';
+  | 'entry'
+  | 'callstmt'
+  | 'expr'
+  | 'call'
+  | 'const'
+  | 'varref'
+  | 'index'
+  | 'decl'
+  | 'assign'
+  | 'if'
+  | 'for'
+  | 'repeat'
+  | 'break'
+  | 'free'
+  | 'return';
 
 interface BaseData {
   kind: NodeKind;
@@ -74,10 +89,22 @@ interface VarData extends BaseData {
   kind: 'varref';
   name: string;
 }
+interface IndexData extends BaseData {
+  kind: 'index';
+}
+interface BreakData extends BaseData {
+  kind: 'break';
+}
+interface ExprStmtData extends BaseData {
+  kind: 'expr';
+  expr: Expr;
+}
 interface DeclData extends BaseData {
   kind: 'decl';
   name: string;
-  dtype: 'num' | 'bool' | 'vec2' | 'entity';
+  dtype: 'num' | 'bool' | 'vec2' | 'entity' | 'list';
+  elem?: ListElem;
+  cap?: number;
 }
 interface AssignData extends BaseData {
   kind: 'assign';
@@ -86,6 +113,14 @@ interface AssignData extends BaseData {
 interface ForData extends BaseData {
   kind: 'for';
   varName: string;
+}
+interface RepeatData extends BaseData {
+  kind: 'repeat';
+  count: number;
+}
+interface FreeData extends BaseData {
+  kind: 'free';
+  name: string;
 }
 interface ReturnData extends BaseData {
   kind: 'return';
@@ -97,15 +132,21 @@ interface EntryData extends BaseData {
   kind: 'entry';
   name: string;
   ret: 'num' | 'bool' | 'vec2' | 'entity' | 'void';
+  params?: Param[];
 }
 
 type Nd =
   | CallData
+  | ExprStmtData
   | ConstData
   | VarData
+  | IndexData
+  | BreakData
   | DeclData
   | AssignData
   | ForData
+  | RepeatData
+  | FreeData
   | ReturnData
   | IfData
   | EntryData;
@@ -127,6 +168,7 @@ function outTypeOf(node: Node): Type {
     return d.ctype === 'entity' ? T.entity : d.ctype === 'bool' ? T.bool : T.num;
   }
   if (d.kind === 'varref') return T.any;
+  if (d.kind === 'index') return T.any;
   return T.any;
 }
 
@@ -138,8 +180,9 @@ function inTypeOf(node: Node, port: string): Type {
     const i = Number(port.replace('in', ''));
     return m?.params[i]?.t ?? T.any;
   }
-  if (d.kind === 'decl') return primType(d.dtype);
+  if (d.kind === 'decl') return declType(d);
   if (d.kind === 'assign') return T.any;
+  if (d.kind === 'index') return port === 'in0' ? T.list('any') : T.num;
   if (d.kind === 'if') return T.bool;
   if (d.kind === 'for') return T.list('any');
   if (d.kind === 'return') return T.any;
@@ -150,24 +193,47 @@ function primType(k: 'num' | 'bool' | 'vec2' | 'entity'): Type {
   return k === 'num' ? T.num : k === 'bool' ? T.bool : k === 'vec2' ? T.vec2 : T.entity;
 }
 
+function declType(d: DeclData): Type {
+  if (d.dtype === 'list') return T.list(d.elem ?? 'any', d.cap ?? 0);
+  return primType(d.dtype);
+}
+
 function isStmtKind(k: NodeKind): boolean {
   return (
     k === 'callstmt' ||
+    k === 'expr' ||
     k === 'decl' ||
     k === 'assign' ||
     k === 'if' ||
     k === 'for' ||
+    k === 'repeat' ||
+    k === 'break' ||
+    k === 'free' ||
     k === 'return'
   );
 }
 
+function isFlowSourceKind(k: NodeKind): boolean {
+  return k === 'entry' || isStmtKind(k);
+}
+
 // ---------------- 节点渲染 ----------------
 
-function Port({ label, t }: { label: string; t: Type }) {
+function Port({ id, label, t, tip }: { id: string; label: string; t: Type; tip: string }) {
   return (
-    <div className="port">
-      <Handle type="target" position={Position.Left} id={label} style={{ background: color(t) }} />
-      <span style={{ color: color(t) }}>{typeName(t)}</span>
+    <div className="port port-value" data-port-id={id} title={tip}>
+      <Handle
+        className="pin pin-value pin-value-input"
+        type="target"
+        position={Position.Left}
+        id={id}
+        aria-label={`值输入：${label}，${typeName(t)}`}
+        title={tip}
+        style={{ background: color(t) }}
+      />
+      <span style={{ color: color(t) }}>
+        <b>输入</b> {label} · {typeName(t)}
+      </span>
     </div>
   );
 }
@@ -177,19 +243,30 @@ function SpellNode({ id, data }: NodeProps<Node>) {
   const isStmt = isStmtKind(d.kind) || d.kind === 'entry';
   const outT = outTypeOf({ id, data } as Node);
   const metas = allMetas();
+  const { updateNodeData } = useReactFlow();
+  const nodeTip = descriptionOf(d);
 
   const setMeta = (m: string): void => {
-    (data as unknown as { meta: string }).meta = m;
-    // 触发更新：React Flow 不可变更新，这里简单改 data 引用
-    (data as unknown as Record<string, unknown>).__v = Date.now();
+    updateNodeData(id, { ...data, meta: m });
   };
 
   return (
     <div
-      className="spell-node"
+      className={`spell-node node-${d.kind}`}
+      title={nodeTip}
+      aria-label={`${titleOf(d.kind)}节点：${nodeTip}`}
       style={{ borderColor: d.kind === 'entry' ? '#e8c37a' : color(outT) }}
     >
-      {isStmt && <Handle type="target" position={Position.Top} id="flow-in" />}
+      {isStmtKind(d.kind) && (
+        <Handle
+          className="pin pin-flow pin-flow-input"
+          type="target"
+          position={Position.Top}
+          id="flow-in"
+          aria-label="控制流入口"
+          title="控制流入口：连接上一条要执行的语句"
+        />
+      )}
       {d.kind !== 'entry' && d.kind !== 'callstmt' && d.kind !== 'call' && (
         <div className="spell-node-title">{titleOf(d.kind)}</div>
       )}
@@ -212,6 +289,7 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <select
             className="node-input"
             defaultValue={d.meta}
+            title={getMeta(d.meta)?.desc}
             onChange={(e) => setMeta(e.target.value)}
           >
             {metas.map((m) => (
@@ -270,15 +348,48 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <select
             className="node-input"
             defaultValue={d.dtype}
-            onChange={(e) =>
-              ((data as unknown as DeclData).dtype = e.target.value as DeclData['dtype'])
-            }
+            onChange={(e) => {
+              const dtype = e.target.value as DeclData['dtype'];
+              updateNodeData(id, {
+                ...data,
+                dtype,
+                elem: dtype === 'list' ? (d.elem ?? 'any') : undefined,
+                cap: dtype === 'list' ? (d.cap ?? 4) : undefined,
+              });
+            }}
           >
             <option value="num">数</option>
             <option value="bool">布尔</option>
             <option value="vec2">向量</option>
             <option value="entity">实体</option>
+            <option value="list">列表</option>
           </select>
+          {d.dtype === 'list' && (
+            <div className="node-list-type">
+              <select
+                className="node-input"
+                aria-label="列表元素类型"
+                defaultValue={d.elem ?? 'any'}
+                onChange={(e) => updateNodeData(id, { ...data, elem: e.target.value as ListElem })}
+              >
+                <option value="any">任意</option>
+                <option value="num">数</option>
+                <option value="bool">布尔</option>
+                <option value="vec2">向量</option>
+                <option value="entity">实体</option>
+              </select>
+              <input
+                className="node-input"
+                type="number"
+                min={1}
+                aria-label="列表容量"
+                defaultValue={d.cap ?? 4}
+                onChange={(e) =>
+                  updateNodeData(id, { ...data, cap: Math.max(1, Number(e.target.value) || 1) })
+                }
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -316,31 +427,52 @@ function SpellNode({ id, data }: NodeProps<Node>) {
         const plabel =
           d.kind === 'call' || d.kind === 'callstmt'
             ? (m?.params[Number(pid.replace('in', ''))]?.name ?? pid)
-            : inLabel(d.kind);
-        return <Port key={pid} label={plabel} t={t === T.void ? T.any : t} />;
+            : d.kind === 'index'
+              ? pid === 'in0'
+                ? '列表'
+                : '索引'
+              : inLabel(d.kind);
+        const inputType = t === T.void ? T.any : t;
+        const tip = `${plabel}：${typeName(inputType)}。连接一个兼容类型的值输出。`;
+        return <Port key={pid} id={pid} label={plabel} t={inputType} tip={tip} />;
       })}
 
       {/* 值输出端口 */}
-      {(d.kind === 'call' || d.kind === 'const' || d.kind === 'varref') && (
+      {(d.kind === 'call' || d.kind === 'const' || d.kind === 'varref' || d.kind === 'index') && (
         <Handle
+          className="pin pin-value pin-value-output"
           type="source"
           position={Position.Right}
           id="out"
+          aria-label={`值输出：${typeName(outT)}`}
+          title={`值输出：产生 ${typeName(outT)}，可连接到同类型输入`}
           style={{ background: color(outT) }}
         />
       )}
 
       {/* 体端口（if/for） */}
-      {(d.kind === 'if' || d.kind === 'for') && (
+      {(d.kind === 'if' || d.kind === 'for' || d.kind === 'repeat') && (
         <Handle
+          className="pin pin-body"
           type="source"
           position={Position.Right}
           id="body"
+          aria-label="分支体出口"
+          title="分支体出口：连接条件或循环内部首先执行的语句"
           style={{ top: 'auto', bottom: 8, background: '#6aa9ff' }}
         />
       )}
 
-      {isStmt && <Handle type="source" position={Position.Bottom} id="flow-out" />}
+      {isStmt && (
+        <Handle
+          className="pin pin-flow pin-flow-output"
+          type="source"
+          position={Position.Bottom}
+          id="flow-out"
+          aria-label="控制流出口"
+          title="控制流出口：连接下一条要执行的语句"
+        />
+      )}
     </div>
   );
 }
@@ -365,10 +497,45 @@ function titleOf(k: NodeKind): string {
       return '常量';
     case 'varref':
       return '变量引用';
+    case 'expr':
+      return '表达式';
+    case 'index':
+      return '列表索引';
+    case 'repeat':
+      return '重复';
+    case 'break':
+      return '中断';
+    case 'free':
+      return '释放';
     case 'entry':
       return '入口';
   }
 }
+
+function descriptionOf(d: Nd): string {
+  if (d.kind === 'call' || d.kind === 'callstmt') {
+    return getMeta(d.meta)?.desc ?? '调用一个元法术';
+  }
+  return NODE_DESCRIPTIONS[d.kind];
+}
+
+const NODE_DESCRIPTIONS: Record<NodeKind, string> = {
+  entry: '法术执行的起点；从底部控制流出口连接第一条语句',
+  callstmt: '执行一个不返回值的元法术',
+  expr: '执行一个表达式',
+  call: '调用元法术并从右侧输出返回值',
+  const: '产生一个固定值',
+  varref: '读取已经声明的变量值',
+  index: '按索引读取列表中的值',
+  decl: '声明变量，可从左侧接入初始值',
+  assign: '把左侧输入写入指定变量',
+  if: '条件成立时执行右侧分支体',
+  for: '遍历左侧输入的列表，并执行右侧循环体',
+  repeat: '按固定次数重复执行右侧循环体',
+  break: '立即结束当前循环',
+  free: '提前释放变量占用的神识',
+  return: '结束法术，并可返回左侧输入值',
+};
 
 function inLabel(k: NodeKind): string {
   switch (k) {
@@ -376,6 +543,10 @@ function inLabel(k: NodeKind): string {
       return '初值';
     case 'assign':
       return '值';
+    case 'index':
+      return '列表';
+    case 'repeat':
+      return '次数';
     case 'if':
       return '条件';
     case 'for':
@@ -392,6 +563,7 @@ function inputPortIds(d: Nd): string[] {
     const m = getMeta(d.meta);
     return m ? m.params.map((_, i) => `in${i}`) : [];
   }
+  if (d.kind === 'index') return ['in0', 'in1'];
   if (
     d.kind === 'decl' ||
     d.kind === 'assign' ||
@@ -436,6 +608,20 @@ function chain(nodes: Node[], edges: Edge[], startId: string | null): Node[] {
   return out;
 }
 
+function compileStmtChain(
+  nodes: Node[],
+  edges: Edge[],
+  startId: string | null,
+): { ok: true; body: Stmt[] } | { ok: false; error: string } {
+  const body: Stmt[] = [];
+  for (const node of chain(nodes, edges, startId)) {
+    const result = compileStmt(nodes, edges, node.id);
+    if (!result.ok) return result;
+    body.push(result.s);
+  }
+  return { ok: true, body };
+}
+
 function compileExpr(
   nodes: Node[],
   edges: Edge[],
@@ -453,6 +639,16 @@ function compileExpr(
     return { ok: true, e: { k: 'lit', v, t } };
   }
   if (d.kind === 'varref') return { ok: true, e: { k: 'var', name: d.name } };
+  if (d.kind === 'index') {
+    const arr = inSource(edges, nodeId, 'in0');
+    const index = inSource(edges, nodeId, 'in1');
+    if (!arr || !index) return { ok: false, error: `节点 ${nodeId} 缺少列表或索引参数` };
+    const arrResult = compileExpr(nodes, edges, arr);
+    const indexResult = compileExpr(nodes, edges, index);
+    if (!arrResult.ok) return arrResult;
+    if (!indexResult.ok) return indexResult;
+    return { ok: true, e: { k: 'index', arr: arrResult.e, i: indexResult.e } };
+  }
   if (d.kind === 'call') {
     const m = getMeta(d.meta);
     if (!m) return { ok: false, error: `未知元函数 ${d.meta}` };
@@ -498,9 +694,11 @@ function compileStmt(
       }
       return { ok: true, s: { k: 'expr', e: { k: 'call', name: d.meta, args } } };
     }
+    case 'expr':
+      return { ok: true, s: { k: 'expr', e: d.expr } };
     case 'decl': {
       const init = valIn();
-      return { ok: true, s: { k: 'decl', name: d.name, t: primType(d.dtype), init } };
+      return { ok: true, s: { k: 'decl', name: d.name, t: declType(d), init } };
     }
     case 'assign': {
       const e = valIn();
@@ -513,23 +711,26 @@ function compileStmt(
     case 'if': {
       const cond = valIn();
       if (!cond) return { ok: false, error: '若 缺条件' };
-      const bodyStart = outTarget(edges, nodeId, 'body');
-      const thenBody = chain(nodes, edges, bodyStart)
-        .map((n) => compileStmt(nodes, edges, n.id))
-        .map((r) => (r.ok ? r.s : null))
-        .filter(Boolean) as Stmt[];
-      return { ok: true, s: { k: 'if', cond, then: thenBody, els: null } };
+      const result = compileStmtChain(nodes, edges, outTarget(edges, nodeId, 'body'));
+      if (!result.ok) return result;
+      return { ok: true, s: { k: 'if', cond, then: result.body, els: null } };
     }
     case 'for': {
       const list = valIn();
       if (!list) return { ok: false, error: '遍历 缺列表' };
-      const bodyStart = outTarget(edges, nodeId, 'body');
-      const body = chain(nodes, edges, bodyStart)
-        .map((n) => compileStmt(nodes, edges, n.id))
-        .map((r) => (r.ok ? r.s : null))
-        .filter(Boolean) as Stmt[];
-      return { ok: true, s: { k: 'for', name: d.varName, list, body } };
+      const result = compileStmtChain(nodes, edges, outTarget(edges, nodeId, 'body'));
+      if (!result.ok) return result;
+      return { ok: true, s: { k: 'for', name: d.varName, list, body: result.body } };
     }
+    case 'repeat': {
+      const result = compileStmtChain(nodes, edges, outTarget(edges, nodeId, 'body'));
+      if (!result.ok) return result;
+      return { ok: true, s: { k: 'repeat', count: d.count, body: result.body } };
+    }
+    case 'break':
+      return { ok: true, s: { k: 'break' } };
+    case 'free':
+      return { ok: true, s: { k: 'free', name: d.name } };
     default:
       return { ok: false, error: `节点 ${nodeId} 不是语句` };
   }
@@ -552,7 +753,7 @@ function compileGraph(
   }
   const spell: Spell = {
     name: ed.name || '未命名',
-    params: [],
+    params: ed.params ?? [],
     ret: ed.ret === 'void' ? null : primType(ed.ret as 'num' | 'bool' | 'vec2' | 'entity'),
     body,
     tags: [],
@@ -567,10 +768,14 @@ const PALETTE: Array<{ kind: NodeKind; label: string }> = [
   { kind: 'call', label: '调用(取值)' },
   { kind: 'const', label: '常量' },
   { kind: 'varref', label: '变量引用' },
+  { kind: 'index', label: '列表索引' },
   { kind: 'decl', label: '声明' },
   { kind: 'assign', label: '赋值' },
   { kind: 'if', label: '若' },
   { kind: 'for', label: '遍历' },
+  { kind: 'repeat', label: '重复' },
+  { kind: 'break', label: '中断' },
+  { kind: 'free', label: '释放变量' },
   { kind: 'return', label: '返回' },
 ];
 
@@ -599,9 +804,216 @@ function makeNode(kind: NodeKind): Node {
       return { ...base, data: { kind: 'if' } } as Node;
     case 'return':
       return { ...base, data: { kind: 'return' } } as Node;
+    case 'expr':
+      return { ...base, data: { kind: 'expr', expr: { k: 'lit', v: 0, t: T.num } } } as Node;
+    case 'index':
+      return { ...base, data: { kind: 'index' } } as Node;
+    case 'repeat':
+      return { ...base, data: { kind: 'repeat', count: 1 } } as Node;
+    case 'break':
+      return { ...base, data: { kind: 'break' } } as Node;
+    case 'free':
+      return { ...base, data: { kind: 'free', name: '' } } as Node;
     default:
       return { ...base, data: { kind: 'entry', name: '新法术', ret: 'void' } } as Node;
   }
+}
+
+function declDataOf(name: string, t: Type | null): DeclData {
+  if (t?.k === 'list') {
+    return { kind: 'decl', name, dtype: 'list', elem: t.elem, cap: t.cap };
+  }
+  const dtype = !t || t.k === 'void' || t.k === 'any' ? 'num' : t.k;
+  return { kind: 'decl', name, dtype };
+}
+
+function entryRetOf(t: Type | null): EntryData['ret'] {
+  if (!t || t.k === 'void') return 'void';
+  return t.k === 'list' || t.k === 'any' ? 'void' : t.k;
+}
+
+function graphFromSpell(spell: Spell): { nodes: Node[]; edges: Edge[] } {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  let nextId = 0;
+  let exprY = 80;
+  const statementDepth = (stmts: Stmt[], depth = 0): number =>
+    stmts.reduce((max, stmt) => {
+      const child =
+        stmt.k === 'if' ? stmt.then : stmt.k === 'for' || stmt.k === 'repeat' ? stmt.body : [];
+      return Math.max(max, child.length > 0 ? statementDepth(child, depth + 1) : depth);
+    }, depth);
+  const expressionX = 430 + statementDepth(spell.body) * 330;
+  const statementSpan = (stmt: Stmt): number => {
+    const child =
+      stmt.k === 'if' ? stmt.then : stmt.k === 'for' || stmt.k === 'repeat' ? stmt.body : [];
+    return Math.max(
+      145,
+      child.reduce((sum, nested) => sum + statementSpan(nested), 0),
+    );
+  };
+
+  const next = (prefix: string): string => `${prefix}-${nextId++}`;
+  const pushEdge = (
+    source: string,
+    sourceHandle: string,
+    target: string,
+    targetHandle: string,
+    stroke = '#6aa9ff',
+  ): void => {
+    edges.push({
+      id: next('edge'),
+      source,
+      sourceHandle,
+      target,
+      targetHandle,
+      style: { stroke },
+    });
+  };
+
+  const addExpr = (expr: Expr, depth: number): string => {
+    const id = next('expr');
+    let data: Nd;
+    let children: Expr[] = [];
+    if (expr.k === 'lit') {
+      data = {
+        kind: 'const',
+        value: expr.v === null ? '' : String(expr.v),
+        ctype: expr.t.k === 'bool' ? 'bool' : expr.v === null ? 'entity' : 'num',
+      };
+    } else if (expr.k === 'var') {
+      data = { kind: 'varref', name: expr.name };
+    } else if (expr.k === 'index') {
+      data = { kind: 'index' };
+      children = [expr.arr, expr.i];
+    } else {
+      data = { kind: 'call', meta: expr.name };
+      children = expr.args;
+    }
+    nodes.push({
+      id,
+      type: 'spell',
+      position: { x: expressionX + depth * 230, y: exprY },
+      data: data as unknown as Record<string, unknown>,
+    });
+    exprY += 105;
+    children.forEach((child, i) => {
+      const childId = addExpr(child, depth + 1);
+      pushEdge(
+        childId,
+        'out',
+        id,
+        `in${i}`,
+        color(inTypeOf({ id, data } as unknown as Node, `in${i}`)),
+      );
+    });
+    return id;
+  };
+
+  // The statement builder references this callback recursively for nested bodies.
+  // eslint-disable-next-line prefer-const
+  let addStmtList: (
+    stmts: Stmt[],
+    x: number,
+    y: number,
+  ) => { first: string | null; last: string | null };
+  const addStmt = (stmt: Stmt, index: number, x: number, y: number): string => {
+    const id = next(`stmt-${index}`);
+    let data: Nd;
+    let value: Expr | null = null;
+    switch (stmt.k) {
+      case 'decl':
+        data = declDataOf(stmt.name, stmt.t);
+        value = stmt.init;
+        break;
+      case 'assign':
+        data = { kind: 'assign', name: stmt.target.k === 'var' ? stmt.target.name : '' };
+        value = stmt.e;
+        break;
+      case 'expr':
+        data =
+          stmt.e.k === 'call'
+            ? { kind: 'callstmt', meta: stmt.e.name }
+            : { kind: 'expr', expr: stmt.e };
+        value = stmt.e.k === 'call' ? null : stmt.e;
+        break;
+      case 'if':
+        data = { kind: 'if' };
+        value = stmt.cond;
+        break;
+      case 'for':
+        data = { kind: 'for', varName: stmt.name };
+        value = stmt.list;
+        break;
+      case 'repeat':
+        data = { kind: 'repeat', count: stmt.count };
+        break;
+      case 'break':
+        data = { kind: 'break' };
+        break;
+      case 'free':
+        data = { kind: 'free', name: stmt.name };
+        break;
+      case 'return':
+        data = { kind: 'return' };
+        value = stmt.e;
+        break;
+    }
+    nodes.push({
+      id,
+      type: 'spell',
+      position: { x, y },
+      data: data as unknown as Record<string, unknown>,
+    });
+    if (value) pushEdge(addExpr(value, 0), 'out', id, 'in0', '#e8c37a');
+    if (stmt.k === 'expr' && stmt.e.k === 'call') {
+      stmt.e.args.forEach((arg, i) => {
+        pushEdge(
+          addExpr(arg, 0),
+          'out',
+          id,
+          `in${i}`,
+          color(inTypeOf({ id, data } as unknown as Node, `in${i}`)),
+        );
+      });
+    }
+    if (stmt.k === 'if' || stmt.k === 'for' || stmt.k === 'repeat') {
+      const child = stmt.k === 'if' ? stmt.then : stmt.body;
+      const body = addStmtList(child, x + 330, y + 20);
+      if (body.first) pushEdge(id, 'body', body.first, 'flow-in', '#7bd88f');
+    }
+    return id;
+  };
+
+  addStmtList = (stmts, x, y) => {
+    let first: string | null = null;
+    let last: string | null = null;
+    let cursorY = y;
+    stmts.forEach((stmt, i) => {
+      const id = addStmt(stmt, i, x, cursorY);
+      if (!first) first = id;
+      if (last) pushEdge(last, 'flow-out', id, 'flow-in', '#4a5060');
+      last = id;
+      cursorY += statementSpan(stmt);
+    });
+    return { first, last };
+  };
+
+  const entry = 'entry';
+  nodes.push({
+    id: entry,
+    type: 'spell',
+    position: { x: 80, y: 40 },
+    data: {
+      kind: 'entry',
+      name: spell.name,
+      ret: entryRetOf(spell.ret),
+      params: spell.params,
+    } as unknown as Record<string, unknown>,
+  });
+  const body = addStmtList(spell.body, 80, 180);
+  if (body.first) pushEdge(entry, 'flow-out', body.first, 'flow-in', '#e8c37a');
+  return { nodes, edges };
 }
 
 const initialNodes: Node[] = [
@@ -615,11 +1027,33 @@ const initialNodes: Node[] = [
 
 // ---------------- 组件 ----------------
 
-export function NodeEditor() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes as Node[]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+interface NodeEditorProps {
+  source: string;
+  spell: Spell | null;
+  onSourceChange: (source: string) => void;
+  onSpellNameChange?: (name: string) => void;
+}
+
+export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }: NodeEditorProps) {
+  const graph = useMemo(
+    () => (spell ? graphFromSpell(spell) : { nodes: initialNodes, edges: [] as Edge[] }),
+    [spell],
+  );
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(graph.nodes as Node[]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(graph.edges);
   const [compileMsg, setCompileMsg] = useState('');
   const [dsl, setDsl] = useState('');
+  const loadedSpellName = useRef<string | null>(null);
+
+  useEffect(() => {
+    const nextName = spell?.name ?? null;
+    if (loadedSpellName.current === nextName) return;
+    loadedSpellName.current = nextName;
+    setNodes(graph.nodes as Node[]);
+    setEdges(graph.edges);
+    setCompileMsg('');
+    setDsl('');
+  }, [graph, setEdges, setNodes, spell?.name]);
 
   const onConnect = useCallback(
     (c: Connection) => {
@@ -632,10 +1066,10 @@ export function NodeEditor() {
 
       // 控制流：flow-out → flow-in（语句→语句）
       if (c.sourceHandle === 'flow-out' && c.targetHandle === 'flow-in') {
-        if (!isStmtKind(sKind) || !isStmtKind(tKind)) return;
+        if (!isFlowSourceKind(sKind) || !isStmtKind(tKind)) return;
       } else if (c.sourceHandle === 'body' && c.targetHandle === 'flow-in') {
         // 体端口：if/for → 语句
-        if (sKind !== 'if' && sKind !== 'for') return;
+        if (sKind !== 'if' && sKind !== 'for' && sKind !== 'repeat') return;
         if (!isStmtKind(tKind)) return;
       } else if (c.sourceHandle === 'out' && c.targetHandle.startsWith('in')) {
         // 值连接：类型校验
@@ -665,7 +1099,14 @@ export function NodeEditor() {
       setDsl('');
       return;
     }
-    const book: SpellBook = { [r.spell.name]: r.spell };
+    let current: SpellBook = {};
+    try {
+      current = parseSpellbook(source);
+    } catch {
+      // The graph can still replace the selected invalid spell.
+    }
+    const book: SpellBook = { ...current, [r.spell.name]: r.spell };
+    if (spell && spell.name !== r.spell.name) delete book[spell.name];
     try {
       const costs = analyzeBook(book);
       const c = costs[r.spell.name];
@@ -679,6 +1120,8 @@ export function NodeEditor() {
         `✓ 编译通过 · 法力≤${c.manaWorst} · 耗时≤${c.tickWorst}tick · 神识峰值${c.shenshiPeak}${errs}`,
       );
       setDsl(ser);
+      onSourceChange(ser);
+      if (spell?.name !== r.spell.name) onSpellNameChange?.(r.spell.name);
     } catch (e) {
       setCompileMsg(`✗ ${e instanceof Error ? e.message : String(e)}`);
       setDsl('');
@@ -688,26 +1131,28 @@ export function NodeEditor() {
   const palette = useMemo(() => PALETTE, []);
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          道衍<span>蓝图编辑</span>
-        </div>
-        <div className="hint">拖节点、连线编写法术 → 编译 → 复制 DSL 到推演台/演武场运行</div>
-      </header>
+    <div className="blueprint-editor">
+      <div className="blueprint-toolbar">
+        <strong>{spell?.name ?? 'BluePrint'}</strong>
+        <span className="muted small">修改当前法术，编译后同步回法术书</span>
+        <button className="run" onClick={compile} disabled={!spell}>
+          编译并写回
+        </button>
+      </div>
 
       <div className="editor-wrap">
         <aside className="palette">
           <h3>节点</h3>
           {palette.map((p) => (
-            <button key={p.kind} className="palette-btn" onClick={() => addNode(p.kind)}>
+            <button
+              key={p.kind}
+              className="palette-btn"
+              title={NODE_DESCRIPTIONS[p.kind]}
+              onClick={() => addNode(p.kind)}
+            >
               + {p.label}
             </button>
           ))}
-          <hr />
-          <button className="run" onClick={compile}>
-            编译法术
-          </button>
           {compileMsg && <pre className="errors">{compileMsg}</pre>}
           {dsl && (
             <details>
@@ -725,7 +1170,9 @@ export function NodeEditor() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
-            fitView
+            minZoom={0.45}
+            maxZoom={1.5}
+            defaultViewport={{ x: 28, y: 16, zoom: 0.68 }}
             deleteKeyCode={['Backspace', 'Delete']}
           >
             <Background color="#262e3a" gap={20} />

@@ -19,6 +19,14 @@ export interface CastOptions {
   maxDepth: 32;
   /** 单步追踪（推演模式与调试用） */
   trace?: boolean;
+  /** 战斗层可注入的共享资源账户；推演台不注入时使用本次 VM 的独立预算 */
+  resources?: CastResourceHooks;
+}
+
+export interface CastResourceHooks {
+  trySpendMana(amount: number): boolean;
+  tryReserveShenshi(amount: number): boolean;
+  releaseShenshi(amount: number): void;
 }
 
 export const DEFAULT_OPTIONS = {
@@ -77,6 +85,7 @@ export class VM {
   private shenshiCur = 0;
   private shenshiPeak = 0;
   private manaSpent = 0;
+  private manaBudget = 0;
   private ticksUsed = 0;
   private steps = 0;
   private status: CastStatus = 'idle';
@@ -106,6 +115,7 @@ export class VM {
   // ---------------- 生命周期 ----------------
 
   start(entryName?: string): void {
+    this.releaseAllShenshi();
     const prog = this.program;
     let entryIdx = prog.entry;
     if (entryName !== undefined) {
@@ -126,6 +136,7 @@ export class VM {
     this.shenshiCur = 0;
     this.shenshiPeak = 0;
     this.manaSpent = 0;
+    this.manaBudget = this.caster.mana;
     this.ticksUsed = 0;
     this.steps = 0;
     this.error = null;
@@ -196,17 +207,33 @@ export class VM {
     return this.error;
   }
 
+  /** 战斗打断或重置时显式结束，并归还仍由本 VM 占用的共享神识。 */
+  cancel(): void {
+    if (this.status !== 'running') return;
+    this.releaseAllShenshi();
+    this.frames = [];
+    this.status = 'done';
+  }
+
   // ---------------- 内部 ----------------
 
   private fail(reason: string): void {
     this.status = 'failed';
     this.error = reason;
-    // 失败时释放本帧所有神识占用
-    for (const f of this.frames) {
-      for (const size of f.live.values()) this.shenshiCur -= size;
-      f.live.clear();
-    }
+    this.releaseAllShenshi();
     this.frames = [];
+  }
+
+  private releaseAllShenshi(): void {
+    for (const frame of this.frames) {
+      for (const size of frame.live.values()) this.releaseShenshi(size);
+      frame.live.clear();
+    }
+  }
+
+  private releaseShenshi(amount: number): void {
+    this.shenshiCur = Math.max(0, this.shenshiCur - amount);
+    this.opts.resources?.releaseShenshi(amount);
   }
 
   private pushFrame(idx: number, argc: number): string | null {
@@ -230,7 +257,7 @@ export class VM {
     const code = f.fn.code;
     if (f.pc >= code.length) {
       // 隐式返回
-      for (const size of f.live.values()) this.shenshiCur -= size;
+      for (const size of f.live.values()) this.releaseShenshi(size);
       f.live.clear();
       this.stack.length = f.base;
       this.frames.pop();
@@ -280,12 +307,16 @@ export class VM {
       case Op.DECL: {
         const slot = inst.a ?? 0;
         const size = inst.b ?? 0;
-        this.shenshiCur += size;
         const cap = this.caster.attr.shenshiMax;
-        if (this.shenshiCur > cap) {
-          this.fail(`神识不足：需要 ${this.shenshiCur}，上限 ${cap}`);
+        const next = this.shenshiCur + size;
+        const reserved = this.opts.resources
+          ? this.opts.resources.tryReserveShenshi(size)
+          : next <= cap;
+        if (!reserved) {
+          this.fail(`神识不足：本次还需 ${size}，上限 ${cap}`);
           return;
         }
+        this.shenshiCur = next;
         if (this.shenshiCur > this.shenshiPeak) this.shenshiPeak = this.shenshiCur;
         f.live.set(slot, size);
         break;
@@ -296,7 +327,7 @@ export class VM {
         const size = f.live.get(slot);
         if (size !== undefined) {
           f.live.delete(slot);
-          this.shenshiCur -= size;
+          this.releaseShenshi(size);
         }
         break;
       }
@@ -363,10 +394,11 @@ export class VM {
         for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
         // 法力受「法力消耗」属性影响
         const cost = m.mana * this.caster.attr.manaCostMul;
-        if (this.manaSpent + cost > this.caster.mana) {
-          this.fail(
-            `法力不足：需要 ${Math.round(this.manaSpent + cost)}，仅有 ${Math.round(this.caster.mana)}`,
-          );
+        const paid = this.opts.resources
+          ? this.opts.resources.trySpendMana(cost)
+          : this.manaSpent + cost <= this.manaBudget;
+        if (!paid) {
+          this.fail(`法力不足：本次还需 ${Math.round(cost)}，仅有 ${Math.round(this.caster.mana)}`);
           return;
         }
         this.manaSpent += cost;
@@ -403,14 +435,16 @@ export class VM {
 
       case Op.JMPIFNOT: {
         const c = stack.pop();
-        if (c !== true) f.pc = inst.a ?? 0;
+        // 用户条件经分析器保证为 bool；编译器内部的 repeat 计数器则是正数。
+        const truthy = c === true || (typeof c === 'number' && c > 0);
+        if (!truthy) f.pc = inst.a ?? 0;
         break;
       }
 
       case Op.RET: {
         const hasVal = (inst.a ?? 0) === 1;
         const val = hasVal ? (stack.pop() ?? null) : null;
-        for (const size of f.live.values()) this.shenshiCur -= size;
+        for (const size of f.live.values()) this.releaseShenshi(size);
         f.live.clear();
         stack.length = f.base;
         this.frames.pop();

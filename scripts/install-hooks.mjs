@@ -6,7 +6,7 @@
  * 只做一件事：git config core.hooksPath .githooks
  */
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { chmodSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +18,10 @@ if (!existsSync(resolve(root, '.git'))) {
 }
 
 execSync('git config core.hooksPath .githooks', { cwd: root, stdio: 'inherit' });
+for (const name of readdirSync(resolve(root, '.githooks'))) {
+  chmodSync(resolve(root, '.githooks', name), 0o755);
+}
 console.log('✔ git hooks 已启用：.githooks/');
 console.log('  pre-commit  → npm run verify');
+console.log('  pre-push    → npm run verify:full');
 console.log('  commit-msg  → 校验 Conventional Commits 格式');

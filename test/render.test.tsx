@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 
-// jsdom 缺失的 API 用最小桩补上，避免 React Flow / canvas 因环境（而非真 bug）报错
 class RO {
   observe(): void {}
   unobserve(): void {}
@@ -16,35 +15,29 @@ const errors: string[] = [];
 beforeEach(() => {
   errors.length = 0;
   const orig = console.error;
-  console.error = (...a: unknown[]): void => {
-    const s = a.map(String).join(' ');
-    if (/Cannot read|is not a function|is not defined|TypeError|ReferenceError/.test(s)) {
-      errors.push(s);
+  console.error = (...args: unknown[]): void => {
+    const message = args.map(String).join(' ');
+    if (/Cannot read|is not a function|is not defined|TypeError|ReferenceError/.test(message)) {
+      errors.push(message);
     }
-    orig(...(a as unknown as Parameters<typeof console.error>));
+    orig(...(args as Parameters<typeof console.error>));
   };
 });
 afterEach(() => {
   cleanup();
-  if (errors.length > 0) throw new Error('控制台报错:\n' + errors.join('\n---\n'));
+  if (errors.length > 0) throw new Error(errors.join('\n---\n'));
 });
 
-async function loadApp(): Promise<React.FC> {
-  const mod = await import('../src/app/App');
-  return mod.App;
-}
+describe('app rendering smoke test', () => {
+  it('switches the two main views and the embedded blueprint mode', async () => {
+    const { App } = await import('../src/app/App');
+    const { getAllByRole, getByTestId } = render(<App />);
+    const tabs = getAllByRole('button', { name: /^(推演台|演武场)/ });
+    expect(tabs).toHaveLength(2);
 
-describe('页面渲染冒烟', () => {
-  it('三个页签切换都不抛运行时报错', async () => {
-    const App = await loadApp();
-    const { getAllByText } = render(<App />);
-    expect(getAllByText('推演台').length).toBeGreaterThan(0);
-
-    // 切到演武场
-    fireEvent.click(getAllByText('演武场')[0]);
-    // 切到蓝图编辑
-    fireEvent.click(getAllByText('蓝图编辑')[0]);
-    // 切回推演台
-    fireEvent.click(getAllByText('推演台')[0]);
+    fireEvent.click(tabs[1]);
+    fireEvent.click(tabs[0]);
+    fireEvent.click(getByTestId('lab-blueprint-mode'));
+    fireEvent.click(getByTestId('lab-code-mode'));
   });
 });

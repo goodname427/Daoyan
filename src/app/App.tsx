@@ -2,19 +2,25 @@ import { useEffect, useState } from 'react';
 
 import { CombatView } from './CombatView';
 import { LabView } from './LabView';
-import { NodeEditor } from './NodeEditor';
+import type { Attributes } from '../core/index';
 import { loadExternalMetas } from '../game/externalMetas';
+import { DEFAULT_PLAYER_ATTRS, DEFAULT_PLAYER_BINDINGS } from '../game/battle';
+import INITIAL_SPELLS from '../game/spells.dy?raw';
 
-type Tab = 'lab' | 'arena' | 'graph';
+type Tab = 'lab' | 'arena';
 
 const TABS: Array<{ id: Tab; label: string; hint: string }> = [
   { id: 'lab', label: '推演台', hint: '编写与静态分析' },
   { id: 'arena', label: '演武场', hint: '实际战斗' },
-  { id: 'graph', label: '蓝图编辑', hint: '节点图写法术' },
 ];
 
 export function App() {
   const [tab, setTab] = useState<Tab>('lab');
+  const [spellSource, setSpellSource] = useState(INITIAL_SPELLS);
+  const [arenaAttrs, setArenaAttrs] = useState<Attributes>(() => ({ ...DEFAULT_PLAYER_ATTRS }));
+  const [arenaBindings, setArenaBindings] = useState<Record<string, string>>(() => ({
+    ...DEFAULT_PLAYER_BINDINGS,
+  }));
 
   useEffect(() => {
     // 外部元法术：打包后从 exe 旁的 metas/ 目录加载（见 docs/扩展元法术.md）
@@ -37,7 +43,17 @@ export function App() {
           </button>
         ))}
       </nav>
-      {tab === 'lab' ? <LabView /> : tab === 'arena' ? <CombatView /> : <NodeEditor />}
+      {tab === 'lab' ? (
+        <LabView source={spellSource} onSourceChange={setSpellSource} />
+      ) : (
+        <CombatView
+          source={spellSource}
+          attrs={arenaAttrs}
+          bindings={arenaBindings}
+          onAttrsChange={setArenaAttrs}
+          onBindingsChange={setArenaBindings}
+        />
+      )}
     </>
   );
 }

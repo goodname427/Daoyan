@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# 推送前完整门禁：与 CI 使用同一条验证链路。
+set -e
+
+echo "▶ pre-push: npm run verify:full"
+npm run verify:full

@@ -9,13 +9,15 @@
  * 不做 git push，交由人工确认后再推。
  */
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pkgPath = resolve(root, 'package.json');
+const lockPath = resolve(root, 'package-lock.json');
 const changelogPath = resolve(root, 'CHANGELOG.md');
+const baselinePath = resolve(root, 'scripts/release-baseline.json');
 
 const bump = process.argv[2] ?? 'patch';
 const dry = process.argv.includes('--dry');
@@ -24,7 +26,20 @@ if (!['patch', 'minor', 'major'].includes(bump)) {
   process.exit(1);
 }
 
-const run = (cmd) => execSync(cmd, { cwd: root, encoding: 'utf8' }).trim();
+const run = (cmd) =>
+  execSync(cmd, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+
+function tryRun(cmd) {
+  try {
+    return run(cmd);
+  } catch {
+    return '';
+  }
+}
 
 const GROUPS = [
   { type: 'feat', title: '新功能' },
@@ -50,12 +65,17 @@ function nextVersion(v) {
 }
 
 function commitsSinceLastTag() {
-  let range = '';
-  try {
-    const lastTag = run('git describe --tags --abbrev=0');
-    range = `${lastTag}..HEAD`;
-  } catch {
-    range = 'HEAD';
+  const lastTag = tryRun('git describe --tags --abbrev=0');
+  let range = lastTag ? `${lastTag}..HEAD` : 'HEAD';
+  if (!lastTag && existsSync(baselinePath)) {
+    const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
+    if (baseline.version !== currentVersion()) {
+      throw new Error(`发布基线版本 ${baseline.version} 与当前版本 ${currentVersion()} 不一致`);
+    }
+    if (!tryRun(`git rev-parse --verify ${baseline.commit}`)) {
+      throw new Error(`发布基线提交不存在: ${baseline.commit}`);
+    }
+    range = `${baseline.commit}..HEAD`;
   }
   const raw = run(`git log ${range} --pretty=format:%s`).split('\n').filter(Boolean);
   return raw.map((line) => {
@@ -94,16 +114,33 @@ if (dry) {
   process.exit(0);
 }
 
+if (run('git branch --show-current') !== 'master') {
+  console.error('发布必须在 master 分支执行');
+  process.exit(1);
+}
+if (run('git status --porcelain')) {
+  console.error('发布前工作区必须干净');
+  process.exit(1);
+}
+
+console.log('\n运行发布前完整验证……');
+execSync('npm run verify:full', { cwd: root, stdio: 'inherit' });
+
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 pkg.version = to;
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+
+const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+lock.version = to;
+lock.packages[''].version = to;
+writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
 
 const old = readFileSync(changelogPath, 'utf8');
 const marker = '# 更新日志';
 const body = old.startsWith(marker) ? old.slice(marker.length).trimStart() : old;
 writeFileSync(changelogPath, `${marker}\n\n${renderVersion(to, commits)}\n${body}`);
 
-run('git add package.json CHANGELOG.md');
+run('git add package.json package-lock.json CHANGELOG.md');
 run(`git commit -m "chore(release): v${to}"`);
 run(`git tag -a v${to} -m "v${to}"`);
 

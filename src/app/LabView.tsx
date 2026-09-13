@@ -1,19 +1,35 @@
 import { useMemo, useState } from 'react';
 
-import LAB_SPELLS from '../demo/spells.dy?raw';
-import { VM, World, analyzeBook, compileProgram, parseSpellbook } from '../core/index';
-import type { CastResult, SpellBook } from '../core/index';
+import {
+  VM,
+  World,
+  allMetas,
+  analyzeBook,
+  compileProgram,
+  emptySpell,
+  parseSpellbook,
+  serializeBook,
+  typeName,
+} from '../core/index';
+import type { CastResult, MetaDef, SpellBook } from '../core/index';
 import { Battlefield } from './Battlefield';
 import type { BattleEntity } from './Battlefield';
 import { MetaTable } from './MetaTable';
+import { NodeEditor } from './NodeEditor';
 import { NodeGraph } from './NodeGraph';
 import { CostCard, Slider, Stat } from './Panels';
+import { SpellEditor } from './SpellEditor';
 
 interface Outcome {
   result: CastResult;
   entities: BattleEntity[];
   /** 法术瞄向了谁 */
   aim: string;
+}
+
+interface LabViewProps {
+  source: string;
+  onSourceChange: (source: string) => void;
 }
 
 /** 布阵：越晚生成越近，便于暴露「容量小 → 看漏目标」的代价 */
@@ -44,9 +60,9 @@ function aimedAt(world: World): string {
   return best === null ? '未命中' : `#${best}`;
 }
 
-export function LabView() {
-  const [source, setSource] = useState(LAB_SPELLS);
-  const [selected, setSelected] = useState('御剑术·朴');
+export function LabView({ source, onSourceChange }: LabViewProps) {
+  const [editorMode, setEditorMode] = useState<'code' | 'blueprint'>('code');
+  const [selected, setSelected] = useState('spell:基础剑气');
   const [enemyCount, setEnemyCount] = useState(6);
   const [shenshiMax, setShenshiMax] = useState(64);
   const [manaMax, setManaMax] = useState(300);
@@ -63,7 +79,29 @@ export function LabView() {
   }, [source]);
 
   const names = parsed.book ? Object.keys(parsed.book) : [];
-  const active = names.includes(selected) ? selected : (names[0] ?? '');
+  const metas = useMemo(
+    () => [...allMetas()].sort((a, b) => a.group.localeCompare(b.group, 'zh-CN')),
+    [],
+  );
+  const requestedSpell = selected.startsWith('spell:') ? selected.slice(6) : '';
+  const requestedMeta = selected.startsWith('meta:') ? selected.slice(5) : '';
+  const active = names.includes(requestedSpell) ? requestedSpell : '';
+  const activeMeta = metas.find((meta) => meta.name === requestedMeta) ?? null;
+  const activeKey = active
+    ? `spell:${active}`
+    : activeMeta
+      ? `meta:${activeMeta.name}`
+      : names[0]
+        ? `spell:${names[0]}`
+        : metas[0]
+          ? `meta:${metas[0].name}`
+          : '';
+  const activeSpell = active || (activeKey.startsWith('spell:') ? activeKey.slice(6) : '');
+  const shownMeta =
+    activeMeta ??
+    (activeKey.startsWith('meta:')
+      ? (metas.find((meta) => meta.name === activeKey.slice(5)) ?? null)
+      : null);
 
   const ghost = useMemo<BattleEntity[]>(
     () => layout(enemyCount).map((p, i) => ({ id: i + 1, x: p.x, y: p.y, hp: 100, alive: true })),
@@ -72,9 +110,9 @@ export function LabView() {
 
   const run = (): void => {
     setRunError('');
-    if (!parsed.book || !active) return;
+    if (!parsed.book || !activeSpell) return;
     try {
-      const program = compileProgram(parsed.book, active);
+      const program = compileProgram(parsed.book, activeSpell);
       const world = new World();
       for (const p of layout(enemyCount)) {
         world.spawnActor({ faction: 'foe', x: p.x, y: p.y, attrs: { hpMax: 100 } });
@@ -86,7 +124,7 @@ export function LabView() {
         y: 0,
         attrs: { manaMax, shenshiMax },
       });
-      const result = new VM(program, world, caster).run(active);
+      const result = new VM(program, world, caster).run(activeSpell);
       setOutcome({
         result,
         aim: aimedAt(world),
@@ -109,8 +147,32 @@ export function LabView() {
     return m ? Number(m[1]) : null;
   }, [outcome]);
 
+  const addSpell = (): void => {
+    if (!parsed.book) return;
+    let suffix = 1;
+    let name = '新法术';
+    while (parsed.book[name]) {
+      suffix += 1;
+      name = `新法术${suffix}`;
+    }
+    onSourceChange(serializeBook({ ...parsed.book, [name]: emptySpell(name) }));
+    setSelected(`spell:${name}`);
+    setEditorMode('code');
+    setOutcome(null);
+  };
+
+  const deleteSpell = (): void => {
+    if (!parsed.book || !activeSpell) return;
+    const next = { ...parsed.book };
+    delete next[activeSpell];
+    const nextNames = Object.keys(next);
+    onSourceChange(serializeBook(next));
+    setSelected(nextNames[0] ? `spell:${nextNames[0]}` : metas[0] ? `meta:${metas[0].name}` : '');
+    setOutcome(null);
+  };
+
   return (
-    <div className="app">
+    <div className={`app lab-app mode-${editorMode}`}>
       <header className="topbar">
         <div className="brand">
           道衍<span>推演台</span>
@@ -120,52 +182,187 @@ export function LabView() {
         </div>
       </header>
 
+      <div className="lab-modebar">
+        <span className="mode-label">法术编辑</span>
+        <div className="mode-switch" role="tablist" aria-label="法术编辑方式">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={editorMode === 'code'}
+            data-testid="lab-code-mode"
+            className={editorMode === 'code' ? 'mode active' : 'mode'}
+            onClick={() => setEditorMode('code')}
+          >
+            DSL 代码
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={editorMode === 'blueprint'}
+            data-testid="lab-blueprint-mode"
+            className={editorMode === 'blueprint' ? 'mode active' : 'mode'}
+            onClick={() => setEditorMode('blueprint')}
+          >
+            蓝图
+          </button>
+        </div>
+        <span className="mode-help">
+          {shownMeta
+            ? '查看元法术签名、输入含义和资源定价'
+            : editorMode === 'code'
+              ? '直接编写 DSL，修改后自动检查'
+              : '拖节点和连线，编译结果回写当前法术'}
+        </span>
+      </div>
+
       <main className="grid">
-        <section className="panel">
-          <h2>法术书</h2>
-          {names.length === 0 ? (
-            <p className="muted">暂无可用法术</p>
-          ) : (
-            <ul className="spell-list">
-              {names.map((n) => {
-                const c = parsed.costs?.[n];
-                return (
-                  <li key={n}>
+        <section className="panel spellbook-panel">
+          <div className="spellbook-heading">
+            <h2>法术书</h2>
+            <div className="spell-actions">
+              <button
+                type="button"
+                title="新建自定义法术"
+                aria-label="新建自定义法术"
+                onClick={addSpell}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                title="删除当前自定义法术"
+                aria-label="删除当前自定义法术"
+                disabled={!activeSpell}
+                onClick={deleteSpell}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div className="spell-catalog">
+            <section className="catalog-group">
+              <h3>
+                自定义法术 <span>{names.length}</span>
+              </h3>
+              {names.length === 0 ? (
+                <p className="muted small">暂无自定义法术</p>
+              ) : (
+                <ul className="spell-list">
+                  {names.map((n) => {
+                    const c = parsed.costs?.[n];
+                    return (
+                      <li key={n}>
+                        <button
+                          className={n === activeSpell ? 'spell active' : 'spell'}
+                          onClick={() => {
+                            setSelected(`spell:${n}`);
+                            setOutcome(null);
+                          }}
+                        >
+                          <span>{n}</span>
+                          {c && (
+                            <small>
+                              法{c.manaWorst} · 神{c.shenshiPeak} · {c.tickWorst}t
+                            </small>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+            <section className="catalog-group meta-catalog">
+              <h3>
+                元法术 <span>{metas.length}</span>
+              </h3>
+              <ul className="spell-list">
+                {metas.map((meta) => (
+                  <li key={meta.name}>
                     <button
-                      className={n === active ? 'spell active' : 'spell'}
+                      className={
+                        shownMeta?.name === meta.name
+                          ? 'spell meta-spell active'
+                          : 'spell meta-spell'
+                      }
+                      title={meta.desc}
                       onClick={() => {
-                        setSelected(n);
+                        setSelected(`meta:${meta.name}`);
                         setOutcome(null);
                       }}
                     >
-                      <span>{n}</span>
-                      {c && (
-                        <small>
-                          法{c.manaWorst} · 神{c.shenshiPeak} · {c.tickWorst}t
-                        </small>
-                      )}
+                      <span>{meta.name}</span>
+                      <small>
+                        {meta.group} · 法{meta.mana} · {meta.ticks}t
+                      </small>
                     </button>
                   </li>
-                );
-              })}
-            </ul>
+                ))}
+              </ul>
+            </section>
+          </div>
+          <select
+            className="spell-picker"
+            aria-label="选择法术"
+            value={activeKey}
+            onChange={(e) => {
+              setSelected(e.target.value);
+              setOutcome(null);
+            }}
+          >
+            <optgroup label="自定义法术">
+              {names.map((name) => (
+                <option key={name} value={`spell:${name}`}>
+                  {name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="元法术">
+              {metas.map((meta) => (
+                <option key={meta.name} value={`meta:${meta.name}`}>
+                  {meta.name}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          {activeSpell && parsed.costs?.[activeSpell] && (
+            <CostCard cost={parsed.costs[activeSpell]} />
           )}
-          {active && parsed.costs?.[active] && <CostCard cost={parsed.costs[active]} />}
         </section>
 
-        <section className="panel">
-          <h2>法术源码</h2>
-          <textarea
-            className="editor"
-            value={source}
-            spellCheck={false}
-            onChange={(e) => setSource(e.target.value)}
-          />
-          {parsed.error ? (
-            <pre className="errors">{parsed.error}</pre>
+        <section className="panel editor-panel">
+          <h2>{shownMeta ? '元法术详情' : editorMode === 'code' ? '法术源码' : '法术蓝图'}</h2>
+          {shownMeta ? (
+            <MetaInspector meta={shownMeta} />
+          ) : editorMode === 'code' ? (
+            <SpellEditor
+              source={source}
+              spellName={activeSpell}
+              onSourceChange={(next) => {
+                onSourceChange(next);
+                setOutcome(null);
+              }}
+              onSpellNameChange={(name) => setSelected(`spell:${name}`)}
+            />
           ) : (
-            <p className="ok">解析通过 · {names.length} 个法术</p>
+            <div className="blueprint-callout">
+              <NodeEditor
+                source={source}
+                spell={parsed.book && activeSpell ? parsed.book[activeSpell] : null}
+                onSourceChange={(next: string) => {
+                  onSourceChange(next);
+                  setOutcome(null);
+                }}
+                onSpellNameChange={(name) => setSelected(`spell:${name}`)}
+              />
+            </div>
           )}
+          {!shownMeta &&
+            (parsed.error ? (
+              <pre className="errors">{parsed.error}</pre>
+            ) : (
+              <p className="ok">解析通过 · {names.length} 个法术</p>
+            ))}
         </section>
 
         <section className="panel">
@@ -180,9 +377,14 @@ export function LabView() {
             step={20}
             onChange={setManaMax}
           />
-          <button className="run" onClick={run} disabled={!active}>
+          <button className="run" onClick={run} disabled={!activeSpell}>
             推演一次
           </button>
+          {shownMeta && (
+            <p className="muted small meta-run-hint">
+              元法术是自定义法术的基础组件，不能单独推演。
+            </p>
+          )}
           {runError && <pre className="errors">{runError}</pre>}
 
           {outcome && (
@@ -215,7 +417,56 @@ export function LabView() {
         <MetaTable />
       </section>
 
-      <NodeGraph spell={parsed.book && active ? parsed.book[active] : null} />
+      {editorMode === 'code' && (
+        <NodeGraph spell={parsed.book && activeSpell ? parsed.book[activeSpell] : null} />
+      )}
     </div>
   );
+}
+
+function MetaInspector({ meta }: { meta: MetaDef }) {
+  return (
+    <div className="meta-inspector">
+      <header>
+        <div>
+          <span className="meta-kind">{meta.group}</span>
+          <h3>{meta.name}</h3>
+        </div>
+        <code>
+          {meta.name}({meta.params.map((param) => `${param.name}: ${typeName(param.t)}`).join(', ')}
+          ){meta.ret.k === 'void' ? '' : ` → ${typeName(meta.ret)}`}
+        </code>
+      </header>
+      <p>{meta.desc}</p>
+      <div className="meta-costs">
+        <Stat label="法力" value={String(meta.mana)} />
+        <Stat label="耗时" value={`${meta.ticks}t`} />
+        <Stat label="返回" value={typeName(meta.ret)} />
+      </div>
+      <section>
+        <h4>输入</h4>
+        {meta.params.length === 0 ? (
+          <p className="muted small">无需输入，节点可以直接参与值连接或控制流。</p>
+        ) : (
+          <dl className="meta-inputs">
+            {meta.params.map((param, index) => (
+              <div key={`${param.name}-${index}`}>
+                <dt>
+                  {index + 1}. {param.name}
+                </dt>
+                <dd>{inputDescription(param.name, typeName(param.t))}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+      <p className="meta-source-note">
+        元法术由系统与扩展模块提供；自定义法术可以在 DSL 或蓝图中调用它。
+      </p>
+    </div>
+  );
+}
+
+function inputDescription(name: string, type: string): string {
+  return `“${name}”输入，类型为 ${type}。在蓝图中连接同类型的值输出端口。`;
 }

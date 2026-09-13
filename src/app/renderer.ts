@@ -171,7 +171,8 @@ export class Renderer {
       ctx.fillText(a.name, a.x, by - 4);
 
       // 施法指示环
-      const cast = battle.casts.get(a.id);
+      const activeCasts = battle.activeCasts(a.id);
+      const cast = activeCasts[0];
       if (cast) {
         const cost = battle.costs[cast.spell];
         const total = cost ? Math.max(1, cost.tickWorst) : 1;
@@ -192,7 +193,9 @@ export class Renderer {
         }
         ctx.fillStyle = '#e8c37a';
         ctx.font = '11px ui-monospace, monospace';
-        ctx.fillText(cast.spell, a.x, by - 14);
+        const label =
+          activeCasts.length > 1 ? `${cast.spell} +${activeCasts.length - 1}` : cast.spell;
+        ctx.fillText(label, a.x, by - 14);
       }
     }
 

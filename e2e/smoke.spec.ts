@@ -1,93 +1,201 @@
 import { test, expect } from '@playwright/test';
 import { captureErrors } from './helpers';
 
-test.describe('页面冒烟', () => {
-  test('三个页签加载与切换不产生未捕获异常', async ({ page }) => {
+test.describe('main view smoke', () => {
+  test('uses two main views and an embedded blueprint mode', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
-
-    // 默认推演台可见
-    await expect(page.getByRole('button', { name: /推演台/ }).first()).toBeVisible();
-
-    // 切到演武场
-    await page
-      .getByRole('button', { name: /演武场/ })
-      .first()
-      .click();
+    await expect(page.locator('.tabs .tab')).toHaveCount(2);
+    await page.locator('.tabs .tab').first().click();
+    await page.getByTestId('lab-blueprint-mode').click();
+    await expect(
+      page.locator('.lab-app.mode-blueprint .blueprint-callout .palette h3'),
+    ).toBeVisible();
+    await page.getByTestId('lab-code-mode').click();
+    await page.locator('.tabs .tab').nth(1).click();
     await expect(page.locator('canvas.arena')).toBeVisible();
-
-    // 切到蓝图编辑
-    await page
-      .getByRole('button', { name: /蓝图编辑/ })
-      .first()
-      .click();
-    await expect(page.getByRole('heading', { name: '节点' })).toBeVisible();
-
-    // 切回推演台
-    await page
-      .getByRole('button', { name: /推演台/ })
-      .first()
-      .click();
-
     sink.assert();
   });
 });
 
-test.describe('推演台功能', () => {
-  test('选中法术并推演能给出结果', async ({ page }) => {
+test.describe('arena round trip workflow', () => {
+  test('keeps arena setup while editing spells in the lab', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
 
-    // 选中第一个法术
-    const firstSpell = page.locator('button.spell').first();
-    await firstSpell.click();
+    await page.locator('.tabs .tab').nth(1).click();
+    await page.locator('.attr-editor input').first().fill('240');
+    await page.locator('.battle-controls .run').click();
+    await page.locator('.battle-controls .mini').first().click();
 
-    // 点推演
-    await page.getByRole('button', { name: '推演一次' }).click();
+    await page.locator('.tabs .tab').first().click();
+    const editor = page.locator('.code-input').first();
+    await editor.fill(`${await editor.inputValue()}\n// workflow round trip`);
 
-    // 应当出现「施法成功」或「走火入魔」
+    await page.locator('.tabs .tab').nth(1).click();
+    await expect(page.locator('.attr-editor input').first()).toHaveValue('240');
+    await expect(page.locator('.synced-spells li').first()).toBeAttached();
+    sink.assert();
+  });
+});
+
+test.describe('blueprint connection regression', () => {
+  test('keeps a valid flow connection after pointer release', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.locator('.tabs .tab').first().click();
+    await page.getByTestId('lab-blueprint-mode').click();
+
+    const blueprint = page.locator('.blueprint-callout');
+    const initialNodes = await blueprint.locator('.react-flow__node').count();
+    const initialEdges = await blueprint.locator('.react-flow__edge').count();
+    await blueprint.locator('.palette-btn').first().click();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(initialNodes + 1);
+
+    const source = blueprint
+      .locator('.react-flow__node')
+      .first()
+      .locator('.react-flow__handle.source');
+    const target = blueprint
+      .locator('.react-flow__node')
+      .last()
+      .locator('.react-flow__handle.target')
+      .first();
+    const sourceBox = await source.boundingBox();
+    const targetBox = await target.boundingBox();
+    expect(sourceBox).not.toBeNull();
+    expect(targetBox).not.toBeNull();
+    if (!sourceBox || !targetBox) return;
+
+    await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+      steps: 12,
+    });
+    await page.mouse.up();
+
+    await expect
+      .poll(() => blueprint.locator('.react-flow__edge').count())
+      .toBeGreaterThanOrEqual(initialEdges);
+    sink.assert();
+  });
+});
+
+test.describe('lab functionality', () => {
+  test('runs a selected spell and reports a result', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.locator('button.spell').first().click();
+    await page.getByRole('button', { name: /推演一次/ }).click();
     await expect(page.locator('.verdict')).toContainText(/施法成功|走火入魔/);
     sink.assert();
   });
-});
 
-test.describe('蓝图编辑功能', () => {
-  test('空法术能编译通过', async ({ page }) => {
+  test('compiles the current blueprint and keeps the result visible', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
-    await page
-      .getByRole('button', { name: /蓝图编辑/ })
-      .first()
-      .click();
+    await page.locator('.tabs .tab').first().click();
+    await page.getByTestId('lab-blueprint-mode').click();
+    await expect(page.locator('.blueprint-callout .node-entry')).toBeVisible();
+    const compile = page.locator('.blueprint-callout .blueprint-toolbar .run');
+    await expect(compile).toBeEnabled();
+    await compile.click();
+    await expect(page.locator('.blueprint-callout .errors')).toContainText(/编译通过/);
+    await expect(page.locator('.blueprint-callout .errors')).not.toContainText(/声明为 num/);
+    await page.getByTestId('lab-code-mode').click();
+    await expect(page.locator('.code-input')).toHaveValue(/list<entity, 8>/);
+    await expect(page.locator('.code-input')).toHaveValue(/发射\(/);
+    sink.assert();
+  });
 
-    await page.getByRole('button', { name: '编译法术' }).click();
-    await expect(page.locator('.errors, .palette pre')).toContainText(/编译通过/);
+  test('browses meta spells and manages custom spells in a scrolling catalog', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.setViewportSize({ width: 1536, height: 900 });
+    await page.goto('/');
+
+    const catalog = page.locator('.spell-catalog');
+    await expect(catalog).toBeVisible();
+    expect(await catalog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+
+    await page.locator('.meta-spell').first().click();
+    await expect(page.locator('.meta-inspector')).toBeVisible();
+    await expect(
+      page.locator('.meta-inspector .meta-inputs, .meta-inspector .muted').first(),
+    ).toBeVisible();
+
+    const customSpells = page.locator('.catalog-group').first().locator('button.spell');
+    const before = await customSpells.count();
+    await page.getByRole('button', { name: '新建自定义法术' }).click();
+    await expect(customSpells).toHaveCount(before + 1);
+    await expect(page.locator('.editor-heading strong')).toHaveText(/新法术/);
+    await page.getByRole('button', { name: '删除当前自定义法术' }).click();
+    await expect(customSpells).toHaveCount(before);
+    sink.assert();
+  });
+
+  test('keeps the three work areas aligned and exposes blueprint tips', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.setViewportSize({ width: 1536, height: 900 });
+    await page.goto('/');
+
+    const boxes = await page.locator('.lab-app .grid > .panel').evaluateAll((panels) =>
+      panels.map((panel) => {
+        const box = panel.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom };
+      }),
+    );
+    expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
+    expect(new Set(boxes.map((box) => Math.round(box.bottom))).size).toBe(1);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+
+    await page.getByTestId('lab-blueprint-mode').click();
+    const node = page.locator('.blueprint-callout .spell-node[title]').first();
+    await expect(node).toHaveAttribute('title', /.+/);
+    const input = page.locator('.blueprint-callout .port-value[title]').first();
+    await expect(input).toHaveAttribute('title', /连接一个兼容类型/);
+    await expect(page.locator('.blueprint-callout .blueprint-editor')).toHaveCount(1);
     sink.assert();
   });
 });
 
-test.describe('演武场功能', () => {
-  test('按数字键能起手施法', async ({ page }) => {
+test.describe('arena functionality', () => {
+  test('accepts movement and a number-key spell cast', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
+    await page.locator('.tabs .tab').nth(1).click();
     await page
-      .getByRole('button', { name: /演武场/ })
+      .getByRole('button', { name: /开始演武/ })
       .first()
       .click();
-
-    // 点击画布让窗口聚焦
     await page.locator('canvas.arena').click();
-    // 按住移动键几帧
     await page.keyboard.down('KeyD');
     await page.waitForTimeout(200);
     await page.keyboard.up('KeyD');
-
-    // 按数字键 1 触发疾风步（瞬时应立刻结束）
     await page.keyboard.press('Digit1');
     await page.waitForTimeout(300);
-
-    // 不该崩，且仍在战斗中
     await expect(page.locator('canvas.arena')).toBeVisible();
+    sink.assert();
+  });
+
+  test('shows two spells from different slots casting at the same time', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.locator('.tabs .tab').nth(1).click();
+    await page.locator('.attr-editor input').nth(5).fill('0.1');
+    await page
+      .getByRole('button', { name: /开始演武/ })
+      .first()
+      .click();
+
+    await page.keyboard.press('Digit2');
+    await page.keyboard.press('Digit3');
+
+    const active = page.getByTestId('active-casts').locator('.active-cast');
+    await expect(active).toHaveCount(2);
+    await expect(active.nth(0)).toHaveAttribute('data-slot', '2');
+    await expect(active.nth(1)).toHaveAttribute('data-slot', '3');
     sink.assert();
   });
 });

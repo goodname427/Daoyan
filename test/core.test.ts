@@ -150,6 +150,24 @@ describe('走火入魔：资源超限', () => {
 });
 
 describe('分帧执行（施法耗时的基础）', () => {
+  it('repeat 会执行声明的次数', () => {
+    const { program } = build(
+      `
+      spell 三次 {
+        var x: num = 0
+        repeat 3 { x = 加(x, 1) }
+        return x
+      }
+      `,
+      '三次',
+    );
+    const { world, caster } = scene(0);
+    const r = new VM(program, world, caster).run('三次');
+
+    expect(r.ok).toBe(true);
+    expect(r.returnValue).toBe(3);
+  });
+
   it('advance 按 tick 预算推进，且能被打断', () => {
     const { program } = build(
       `

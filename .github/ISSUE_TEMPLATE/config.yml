@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 开发流程与文档
+    url: https://github.com/goodname427/Daoyan/blob/master/docs/workflow.md
+    about: 提交前先了解需求、验收和验证流程

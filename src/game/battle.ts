@@ -1,4 +1,5 @@
 import {
+  baseAttributes,
   TICK_MS,
   VM,
   World,
@@ -7,7 +8,16 @@ import {
   normalizeMeta,
   spellMeta,
 } from '../core/index';
-import type { Actor, KeyState, Program, SpellBook, SpellCost, SpellMeta } from '../core/index';
+import type {
+  Actor,
+  AttrKey,
+  Attributes,
+  KeyState,
+  Program,
+  SpellBook,
+  SpellCost,
+  SpellMeta,
+} from '../core/index';
 import { makeKeyState } from '../core/input';
 
 /**
@@ -53,14 +63,16 @@ export interface CastInstance {
   vm: VM;
   /** 已持续秒数 */
   elapsed: number;
+  /** 跨帧 tick 信用；元法术整步执行造成的超支会在后续帧偿还 */
+  tickCredit: number;
   /** 距离下次周期触发还剩多久（duration 用） */
   periodTimer: number;
   /** 已触发次数 */
   fired: number;
   /** 虚拟按键状态（引用共享，每帧原地更新） */
   keys: KeyState[];
-  /** 触发本施法的槽位（玩家用，用于把物理键状态映射到 keys[0]） */
-  triggerSlot: string | null;
+  /** 触发本施法的槽位；玩家还用它把物理键状态映射到 keys[0] */
+  triggerSlot: string;
   /** 已主动结束（调用过「结束施法」），优先于 duration 周期重启 */
   ended: boolean;
 }
@@ -68,7 +80,7 @@ export interface CastInstance {
 const ARENA_W = 1600;
 const ARENA_H = 1200;
 
-const PLAYER_BINDINGS: Record<string, string> = {
+export const DEFAULT_PLAYER_BINDINGS: Record<string, string> = {
   mouse: '基础剑气',
   '1': '疾风步',
   '2': '三连剑',
@@ -77,7 +89,7 @@ const PLAYER_BINDINGS: Record<string, string> = {
   '5': '蓄力火球',
 };
 
-const PLAYER_ATTRS = {
+export const DEFAULT_PLAYER_ATTRS: Attributes = baseAttributes({
   hpMax: 120,
   manaMax: 300,
   manaRegen: 24,
@@ -86,7 +98,13 @@ const PLAYER_ATTRS = {
   castSpeed: 1,
   power: 1,
   armor: 0,
-};
+});
+
+export interface BattleOptions {
+  playerAttrs?: Partial<Attributes>;
+  playerBindings?: Record<string, string>;
+  autoStart?: boolean;
+}
 
 export class Battle {
   world: World;
@@ -94,10 +112,12 @@ export class Battle {
   costs: Record<string, SpellCost>;
   metas: Record<string, SpellMeta>;
   player: Actor;
-  /** actorId → 当前施法 */
-  casts = new Map<number, CastInstance>();
+  /** actorId → 触发槽位 → 当前施法 */
+  casts = new Map<number, Map<string, CastInstance>>();
   /** actorId → 法术名 → 剩余冷却 */
   cooldowns = new Map<number, Map<string, number>>();
+  /** actorId → 所有并发 VM 当前共同占用的神识 */
+  private shenshiUsage = new Map<number, number>();
 
   input: BattleInput = { up: false, down: false, left: false, right: false };
   /** 当前按住的槽位集合（玩家用，驱动键位法术的 keys[0]） */
@@ -105,22 +125,31 @@ export class Battle {
   time = 0;
   waveIndex = 0;
   state: BattleState = 'fighting';
+  started = false;
+  paused = false;
   log: string[] = [];
   stats: BattleStats = { casts: 0, interrupts: 0, backfires: 0, kills: 0 };
+  private playerAttrs: Attributes;
+  private playerBindings: Record<string, string>;
 
-  constructor(private book: SpellBook) {
+  constructor(
+    private book: SpellBook,
+    options: BattleOptions = {},
+  ) {
     this.costs = analyzeBook(book);
     this.program = compileProgram(book);
     this.metas = Object.fromEntries(
       Object.entries(book).map(([n, sp]) => [n, normalizeMeta(sp.meta)]),
     );
+    this.playerAttrs = { ...DEFAULT_PLAYER_ATTRS, ...(options.playerAttrs ?? {}) };
+    this.playerBindings = { ...DEFAULT_PLAYER_BINDINGS, ...(options.playerBindings ?? {}) };
 
     this.world = new World();
     this.world.bounds = { w: ARENA_W, h: ARENA_H };
     this.world.onDamage = (target) => this.handleDamage(target);
 
     this.player = this.spawnPlayer();
-    this.startWave(0);
+    if (options.autoStart ?? true) this.start();
   }
 
   private spawnPlayer(): Actor {
@@ -129,10 +158,10 @@ export class Battle {
       faction: 'player',
       x: ARENA_W / 2,
       y: ARENA_H / 2,
-      attrs: PLAYER_ATTRS,
+      attrs: this.playerAttrs,
       radius: 13,
       castSlow: 0.45,
-      bindings: { ...PLAYER_BINDINGS },
+      bindings: { ...this.playerBindings },
     });
   }
 
@@ -206,6 +235,7 @@ export class Battle {
   // ---------------- 主循环 ----------------
 
   update(dt: number): void {
+    if (!this.started || this.paused) return;
     if (this.state !== 'fighting') return;
     this.time += dt;
 
@@ -248,10 +278,11 @@ export class Battle {
 
   /** 施法中的移动速度倍率 */
   private moveMul(a: Actor): number {
-    const cast = this.casts.get(a.id);
-    if (!cast) return 1;
-    if (cast.meta.kind === 'channel') return cast.meta.channelSlow;
-    return a.castSlow;
+    const active = this.activeCasts(a.id);
+    if (active.length === 0) return 1;
+    return Math.min(
+      ...active.map((cast) => (cast.meta.kind === 'channel' ? cast.meta.channelSlow : a.castSlow)),
+    );
   }
 
   private updateFoe(a: Actor, dt: number): void {
@@ -265,7 +296,7 @@ export class Battle {
     const uy = dy / d;
     a.aim = { x: ux, y: uy };
 
-    const casting = this.casts.has(a.id);
+    const casting = this.isCasting(a.id);
     let mx = 0;
     let my = 0;
 
@@ -301,7 +332,7 @@ export class Battle {
       this.world.moveActor(a, (mx / l) * speed * dt, (my / l) * speed * dt);
     }
 
-    if (d <= a.attackRange && a.attackTimer <= 0 && !this.casts.has(a.id)) {
+    if (d <= a.attackRange && a.attackTimer <= 0) {
       if (this.trigger(a.id, 'attack')) {
         a.attackTimer = a.attackCooldown * a.attr.cooldownMul;
       } else {
@@ -311,64 +342,70 @@ export class Battle {
   }
 
   private advanceCasts(dt: number): void {
-    for (const [id, cast] of [...this.casts]) {
+    for (const [id, actorCasts] of [...this.casts]) {
       const a = this.world.byId(id);
       if (!a || !a.alive) {
-        this.casts.delete(id);
+        this.cancelCasts(id);
         continue;
       }
 
-      // 先更新按键状态（玩家：keys[0] 由触发槽位的 held 状态驱动）
-      this.updateKeyState(a, cast, dt);
+      for (const [slot, cast] of [...actorCasts]) {
+        // 先更新按键状态（玩家：keys[0] 由触发槽位的 held 状态驱动）
+        this.updateKeyState(a, cast, dt);
 
-      // 施法速度属性：把「每秒 tick 数」放大
-      const tickBudget = ((dt * 1000) / TICK_MS) * a.attr.castSpeed;
-      const before = cast.vm.spentMana;
-      cast.vm.advance(tickBudget);
-      a.mana = Math.max(0, a.mana - (cast.vm.spentMana - before));
-      cast.elapsed += dt;
-      if (cast.vm.endRequested) cast.ended = true;
-
-      // 超时（引导类最长引导时间）
-      if (cast.meta.kind === 'channel' && cast.elapsed > cast.meta.duration && cast.vm.isRunning) {
-        cast.vm.advance(Number.MAX_SAFE_INTEGER, 1);
-      }
-
-      if (!cast.vm.isDone) continue;
-
-      if (cast.vm.failure) {
-        this.casts.delete(id);
-        this.stats.backfires++;
-        this.world.fx.push({ kind: 'backfire', x: a.x, y: a.y });
-        this.pushLog(`${a.name} 走火入魔：${cast.vm.failure}`);
-        a.stun = 0.5;
-        continue;
-      }
-
-      // 主动结束（调用了「结束施法」）：直接收尾，不再周期重启
-      if (cast.ended) {
-        this.casts.delete(id);
-        continue;
-      }
-
-      // 本次执行完毕
-      if (cast.meta.kind === 'duration' && cast.elapsed < cast.meta.duration) {
-        // 进入周期等待，到点再触发一次
-        cast.periodTimer -= dt;
-        if (cast.periodTimer <= 0) {
-          this.restartCastVm(a, cast);
+        // 每个实例都按完整施法速度独立推进；共享资源在 VM 钩子中实时结算。
+        cast.tickCredit += ((dt * 1000) / TICK_MS) * a.attr.castSpeed;
+        if (cast.vm.isRunning && cast.tickCredit > 0) {
+          cast.tickCredit -= cast.vm.advance(cast.tickCredit);
         }
-        continue;
-      }
+        cast.elapsed += dt;
+        if (cast.vm.endRequested) cast.ended = true;
 
-      this.casts.delete(id);
+        // 超时（引导类最长引导时间）
+        if (
+          cast.meta.kind === 'channel' &&
+          cast.elapsed > cast.meta.duration &&
+          cast.vm.isRunning
+        ) {
+          cast.vm.advance(Number.MAX_SAFE_INTEGER, 1);
+        }
+
+        if (!cast.vm.isDone) continue;
+
+        if (cast.vm.failure) {
+          this.removeCast(id, slot);
+          this.stats.backfires++;
+          this.world.fx.push({ kind: 'backfire', x: a.x, y: a.y });
+          this.pushLog(`${a.name} 施展「${cast.spell}」走火入魔：${cast.vm.failure}`);
+          a.stun = 0.5;
+          continue;
+        }
+
+        // 主动结束（调用了「结束施法」）：直接收尾，不再周期重启
+        if (cast.ended) {
+          this.removeCast(id, slot);
+          continue;
+        }
+
+        // 本次执行完毕
+        if (cast.meta.kind === 'duration' && cast.elapsed < cast.meta.duration) {
+          // 进入周期等待，到点再触发一次
+          cast.periodTimer -= dt;
+          if (cast.periodTimer <= 0) {
+            this.restartCastVm(a, cast);
+          }
+          continue;
+        }
+
+        this.removeCast(id, slot);
+      }
     }
   }
 
   /** 把按键物理状态写进 cast.keys（仅玩家；妖兽无按键） */
   private updateKeyState(a: Actor, cast: CastInstance, dt: number): void {
     if (cast.keys.length === 0) return;
-    if (a.faction !== 'player' || cast.triggerSlot === null) return;
+    if (a.faction !== 'player') return;
     const held = this.heldSlots.has(cast.triggerSlot);
     for (const k of cast.keys) {
       const prev = k.held;
@@ -389,10 +426,11 @@ export class Battle {
     cast.fired += 1;
     cast.periodTimer = Math.max(0.05, cast.meta.period);
     cast.ended = false;
-    const vm = new VM(this.program, this.world, a);
+    const vm = this.createBattleVm(a);
     vm.start(cast.spell);
     vm.setKeyState(cast.keys.length > 0 ? cast.keys : null);
     cast.vm = vm;
+    cast.tickCredit = -vm.spentTicks;
   }
 
   private updateProjectiles(dt: number): void {
@@ -446,18 +484,14 @@ export class Battle {
   }
 
   private handleDamage(target: Actor): void {
-    const cast = this.casts.get(target.id);
-    if (!cast) {
-      target.stun = Math.max(target.stun, 0.18);
-      return;
+    const interrupted = this.activeCasts(target.id).filter((cast) => cast.meta.interruptible);
+    for (const cast of interrupted) {
+      this.removeCast(target.id, cast.triggerSlot, true);
     }
-    if (!cast.meta.interruptible) {
-      target.stun = Math.max(target.stun, 0.18);
-      return;
+    this.stats.interrupts += interrupted.length;
+    if (interrupted.length > 0) {
+      this.pushLog(`${target.name} 的 ${interrupted.length} 个法术被打断`);
     }
-    this.casts.delete(target.id);
-    this.stats.interrupts++;
-    this.pushLog(`${target.name} 施法被打断`);
     target.stun = Math.max(target.stun, 0.18);
   }
 
@@ -483,11 +517,39 @@ export class Battle {
     return this.cooldowns.get(actorId)?.get(spell) ?? 0;
   }
 
+  activeCasts(actorId: number): CastInstance[] {
+    return [...(this.casts.get(actorId)?.values() ?? [])];
+  }
+
+  isCasting(actorId: number): boolean {
+    return (this.casts.get(actorId)?.size ?? 0) > 0;
+  }
+
+  shenshiInUse(actorId: number): number {
+    return this.shenshiUsage.get(actorId) ?? 0;
+  }
+
+  start(): void {
+    if (this.started) {
+      this.setPaused(false);
+      return;
+    }
+    this.started = true;
+    this.paused = false;
+    this.startWave(0);
+  }
+
+  setPaused(paused: boolean): void {
+    if (!this.started || this.state !== 'fighting') return;
+    this.paused = paused;
+    if (paused) this.clearPlayerInput();
+  }
+
   /** 触发某单位绑定在指定槽位上的法术 */
   trigger(actorId: number, slot: string): boolean {
+    if (!this.started || this.paused) return false;
     const a = this.world.byId(actorId);
     if (!a || !a.alive) return false;
-    if (this.casts.has(actorId)) return false; // 施法中，不能分心二用
     if (a.stun > 0) return false;
 
     const spell = a.bindings[slot];
@@ -500,9 +562,10 @@ export class Battle {
       return false;
     }
     if (this.cooldownLeft(actorId, spell) > 0) return false;
+    if (this.casts.get(actorId)?.has(slot)) return false;
 
     const meta = this.metas[spell] ?? normalizeMeta(null);
-    const vm = new VM(this.program, this.world, a);
+    const vm = this.createBattleVm(a);
     vm.start(spell);
 
     // 准备虚拟按键状态（玩家：按下瞬间给 keys[0] 一个 pressEdge）
@@ -511,15 +574,21 @@ export class Battle {
     if (isPlayer && keys.length > 0) keys[0].pressEdge = true;
     vm.setKeyState(keys.length > 0 ? keys : null);
 
-    this.casts.set(actorId, {
+    let actorCasts = this.casts.get(actorId);
+    if (!actorCasts) {
+      actorCasts = new Map();
+      this.casts.set(actorId, actorCasts);
+    }
+    actorCasts.set(slot, {
       spell,
       meta,
       vm,
       elapsed: 0,
+      tickCredit: -vm.spentTicks,
       periodTimer: Math.max(0.05, meta.period),
       fired: 1,
       keys,
-      triggerSlot: isPlayer ? slot : null,
+      triggerSlot: slot,
       ended: false,
     });
     this.world.fx.push({ kind: 'cast', x: a.x, y: a.y });
@@ -541,8 +610,8 @@ export class Battle {
    * - 普通法术：等同 trigger 一次性触发
    */
   pressSlot(slot: string): boolean {
+    if (!this.started || this.paused) return false;
     this.heldSlots.add(slot);
-    if (this.casts.has(this.player.id)) return false;
     return this.castPlayer(slot);
   }
 
@@ -563,7 +632,23 @@ export class Battle {
   }
 
   setBinding(slot: string, spell: string): void {
+    this.playerBindings[slot] = spell;
     this.player.bindings[slot] = spell;
+  }
+
+  setPlayerBaseAttr(key: AttrKey, value: number, refillResource = false): void {
+    const safeValue = Number.isFinite(value) ? value : DEFAULT_PLAYER_ATTRS[key];
+    this.playerAttrs[key] = safeValue;
+    this.player.base[key] = safeValue;
+    this.world.recompute(this.player);
+    if (refillResource && key === 'hpMax') this.player.hp = this.player.attr.hpMax;
+    if (refillResource && key === 'manaMax') this.player.mana = this.player.attr.manaMax;
+  }
+
+  setPlayerBaseAttrs(attrs: Partial<Attributes>, refillResource = false): void {
+    for (const [key, value] of Object.entries(attrs) as Array<[AttrKey, number]>) {
+      this.setPlayerBaseAttr(key, value, refillResource);
+    }
   }
 
   spellNames(): string[] {
@@ -579,18 +664,61 @@ export class Battle {
   }
 
   restart(): void {
+    for (const actorId of this.casts.keys()) this.cancelCasts(actorId);
     this.world.reset();
     this.world.bounds = { w: ARENA_W, h: ARENA_H };
     this.world.onDamage = (target) => this.handleDamage(target);
     this.casts.clear();
+    this.shenshiUsage.clear();
     this.cooldowns.clear();
     this.heldSlots.clear();
+    this.clearPlayerInput();
     this.log = [];
     this.time = 0;
     this.state = 'fighting';
+    this.started = true;
+    this.paused = false;
     this.stats = { casts: 0, interrupts: 0, backfires: 0, kills: 0 };
     this.player = this.spawnPlayer();
     this.startWave(0);
+  }
+
+  private createBattleVm(a: Actor): VM {
+    return new VM(this.program, this.world, a, {
+      resources: {
+        trySpendMana: (amount) => {
+          if (amount > a.mana) return false;
+          a.mana -= amount;
+          return true;
+        },
+        tryReserveShenshi: (amount) => {
+          const current = this.shenshiInUse(a.id);
+          if (current + amount > a.attr.shenshiMax) return false;
+          this.shenshiUsage.set(a.id, current + amount);
+          return true;
+        },
+        releaseShenshi: (amount) => {
+          const next = Math.max(0, this.shenshiInUse(a.id) - amount);
+          if (next === 0) this.shenshiUsage.delete(a.id);
+          else this.shenshiUsage.set(a.id, next);
+        },
+      },
+    });
+  }
+
+  private removeCast(actorId: number, slot: string, cancel = false): void {
+    const actorCasts = this.casts.get(actorId);
+    const cast = actorCasts?.get(slot);
+    if (!actorCasts || !cast) return;
+    if (cancel) cast.vm.cancel();
+    actorCasts.delete(slot);
+    if (actorCasts.size === 0) this.casts.delete(actorId);
+  }
+
+  private cancelCasts(actorId: number): void {
+    const actorCasts = this.casts.get(actorId);
+    if (!actorCasts) return;
+    for (const [slot] of actorCasts) this.removeCast(actorId, slot, true);
   }
 
   private nearestHostile(a: Actor): Actor | null {
@@ -610,6 +738,14 @@ export class Battle {
   private pushLog(line: string): void {
     this.log.unshift(line);
     if (this.log.length > 8) this.log.pop();
+  }
+
+  private clearPlayerInput(): void {
+    this.input.up = false;
+    this.input.down = false;
+    this.input.left = false;
+    this.input.right = false;
+    this.heldSlots.clear();
   }
 }
 

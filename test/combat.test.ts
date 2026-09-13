@@ -60,6 +60,20 @@ describe('玩家操作', () => {
     expect(b.player.mana).toBeLessThan(b.player.attr.manaMax);
   });
 
+  it('低施法速度会跨帧积累并偿还 tick 预算', () => {
+    const b = new Battle(parseSpellbook(readFileSync(SRC, 'utf8')), {
+      playerAttrs: { castSpeed: 0.1 },
+    });
+    b.setBinding('2', '三连剑');
+
+    expect(b.castPlayer('2')).toBe(true);
+    run(b, 0.5);
+
+    const cast = b.activeCasts(b.player.id)[0];
+    expect(cast).toBeDefined();
+    expect(cast.vm.spentTicks).toBeLessThan(15);
+  });
+
   it('冷却期间无法再次施放', () => {
     const b = makeBattle();
     b.setBinding('3', '爆炎咒'); // 冷却 6s
@@ -121,14 +135,80 @@ describe('玩家操作', () => {
     expect(foe.attr.hpMax - foe.hp).toBeGreaterThan(30);
   });
 
-  it('施法中不能分心二用', () => {
+  it('同一槽位在施法结束前不能重入', () => {
     const b = makeBattle();
     b.setBinding('1', '疾风步');
     expect(b.castPlayer('1')).toBe(true);
-    // 疾风步很短，立刻再触发一次应被拒绝
+    // 同一物理槽位的重复事件不能制造多个实例
     run(b, 0.01);
     const second = b.castPlayer('1');
     expect(second).toBe(false);
+  });
+
+  it('不同槽位可以同时释放法术', () => {
+    const b = makeBattle();
+    b.setBinding('2', '三连剑');
+    b.setBinding('3', '爆炎咒');
+
+    expect(b.castPlayer('2')).toBe(true);
+    expect(b.castPlayer('3')).toBe(true);
+    expect(b.activeCasts(b.player.id).map((cast) => cast.triggerSlot)).toEqual(['2', '3']);
+
+    run(b, 0.01);
+    expect(b.activeCasts(b.player.id)).toHaveLength(2);
+  });
+
+  it('并发法术从同一当前法力池扣费', () => {
+    const book = parseSpellbook(`
+      spell 甲 { 瞬移(自身位置()) }
+      spell 乙 { 瞬移(自身位置()) }
+    `);
+    const b = new Battle(book, {
+      playerAttrs: { manaMax: 60, manaRegen: 0 },
+      playerBindings: { '1': '甲', '2': '乙' },
+    });
+
+    expect(b.castPlayer('1')).toBe(true);
+    expect(b.castPlayer('2')).toBe(true);
+    run(b, 0.1);
+
+    expect(b.stats.backfires).toBe(1);
+    expect(b.player.mana).toBeGreaterThanOrEqual(0);
+    expect(b.player.mana).toBeLessThan(20);
+  });
+
+  it('并发法术共享实时神识并在结束后归还', () => {
+    const book = parseSpellbook(`
+      spell 甲 {
+        var hold: list<num, 40>
+        repeat 100 {
+          长度(hold)
+          自身位置()
+        }
+      }
+      spell 乙 {
+        var hold: list<num, 40>
+        repeat 100 {
+          长度(hold)
+          自身位置()
+        }
+      }
+    `);
+    const b = new Battle(book, {
+      playerAttrs: { shenshiMax: 64 },
+      playerBindings: { '1': '甲', '2': '乙' },
+    });
+
+    b.castPlayer('1');
+    b.castPlayer('2');
+    run(b, 0.01);
+
+    expect(b.stats.backfires).toBe(1);
+    expect(b.activeCasts(b.player.id)).toHaveLength(1);
+    expect(b.shenshiInUse(b.player.id)).toBe(41);
+
+    run(b, 2);
+    expect(b.shenshiInUse(b.player.id)).toBe(0);
   });
 
   it('受击会打断施法', () => {
@@ -140,6 +220,36 @@ describe('玩家操作', () => {
     b.world.damage(b.player.id, 10);
     expect(b.casts.has(b.player.id)).toBe(false);
     expect(b.stats.interrupts).toBe(1);
+  });
+
+  it('受击会打断全部可打断法术并归还共享神识', () => {
+    const book = parseSpellbook(`
+      spell 甲 {
+        var hold: list<num, 20>
+        repeat 100 {
+          长度(hold)
+          自身位置()
+        }
+      }
+      spell 乙 {
+        var hold: list<num, 20>
+        repeat 100 {
+          长度(hold)
+          自身位置()
+        }
+      }
+    `);
+    const b = new Battle(book, { playerBindings: { '1': '甲', '2': '乙' } });
+
+    b.castPlayer('1');
+    b.castPlayer('2');
+    run(b, 0.01);
+    expect(b.shenshiInUse(b.player.id)).toBe(42);
+
+    b.world.damage(b.player.id, 10);
+    expect(b.activeCasts(b.player.id)).toHaveLength(0);
+    expect(b.shenshiInUse(b.player.id)).toBe(0);
+    expect(b.stats.interrupts).toBe(2);
   });
 });
 

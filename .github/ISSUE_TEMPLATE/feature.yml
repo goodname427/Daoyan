@@ -1,0 +1,40 @@
+name: 功能提案
+description: 描述玩家问题、目标和完整体验流程
+title: '[功能] '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 玩家问题
+      description: 当前发生了什么，为什么值得解决？
+    validations:
+      required: true
+  - type: textarea
+    id: flow
+    attributes:
+      label: 用户流程
+      description: 从哪里开始，经过哪些操作，最终看到什么？
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 请使用可观察、可测试的结果描述。
+      placeholder: |
+        - [ ] 正常流程……
+        - [ ] 错误或空状态……
+        - [ ] 页面往返后……
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: 本次非目标
+      description: 哪些相关内容明确不在这次处理？
+  - type: textarea
+    id: context
+    attributes:
+      label: 补充材料
+      description: 截图、录像、日志或相关文档。
