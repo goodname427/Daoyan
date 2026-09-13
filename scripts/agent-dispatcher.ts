@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +8,7 @@ import {
   buildLocalPlan,
   escalateTier,
   optimizePlan,
+  preferredWindowsExecutable,
   reviewRouteForPlan,
   routeForTask,
   sortTasks,
@@ -28,6 +30,7 @@ interface CliOptions {
   direction: string;
   planOnly: boolean;
   deepPlan: boolean;
+  doctor: boolean;
   noPush: boolean;
 }
 
@@ -66,6 +69,7 @@ function printHelp() {
 选项：
   --plan-only  只让秘书分析、拆分和分配模型，不修改代码
   --deep-plan  额外调用模型进行规划；默认使用零-token 本地路由
+  --doctor     检查 Codex 与 npm 子进程入口，不调用模型
   --no-push    完成交付和提交，但不推送远端
   --help       显示帮助
 
@@ -75,6 +79,7 @@ function printHelp() {
 function parseArgs(argv: string[]): CliOptions {
   let planOnly = false;
   let deepPlan = false;
+  let doctor = false;
   let noPush = false;
   const direction: string[] = [];
   for (const arg of argv) {
@@ -84,23 +89,39 @@ function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === '--plan-only') planOnly = true;
     else if (arg === '--deep-plan') deepPlan = true;
+    else if (arg === '--doctor') doctor = true;
     else if (arg === '--no-push') noPush = true;
     else direction.push(arg);
   }
   const joined = direction.join(' ').trim();
-  if (!joined) throw new Error('请提供产品方向，例如：npm run producer -- "增加法术单步推演"');
-  return { direction: joined, planOnly, deepPlan, noPush };
+  if (!joined && !doctor) {
+    throw new Error('请提供产品方向，例如：npm run producer -- "增加法术单步推演"');
+  }
+  return { direction: joined || 'doctor', planOnly, deepPlan, doctor, noPush };
 }
 
-function executable(name: string): string {
-  if (name === 'codex' && process.env.CODEX_BIN) return process.env.CODEX_BIN;
-  if (process.platform !== 'win32') return name;
+function executable(name: string, args: string[]): { command: string; args: string[] } {
+  const configured = name === 'codex' ? process.env.CODEX_BIN : undefined;
+  if (process.platform !== 'win32') return { command: configured ?? name, args };
   const found = spawnSync('where.exe', [name], { encoding: 'utf8' });
   const candidates = found.stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  return candidates.find((path) => path.toLowerCase().endsWith('.exe')) ?? candidates[0] ?? name;
+  const selected = configured ?? preferredWindowsExecutable(candidates) ?? name;
+  if (selected.toLowerCase().endsWith('.exe')) return { command: selected, args };
+
+  const base = dirname(selected);
+  const entry =
+    name === 'codex'
+      ? resolve(base, 'node_modules', '@openai', 'codex', 'bin', 'codex.js')
+      : name === 'npm'
+        ? resolve(base, 'node_modules', 'npm', 'bin', 'npm-cli.js')
+        : null;
+  if (entry && existsSync(entry)) {
+    return { command: process.execPath, args: [entry, ...args] };
+  }
+  return { command: selected, args };
 }
 
 async function runProcess(
@@ -109,7 +130,8 @@ async function runProcess(
   options: { input?: string; logFile?: string; stream?: boolean } = {},
 ): Promise<ProcessResult> {
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(executable(command), args, {
+    const invocation = executable(command, args);
+    const child = spawn(invocation.command, invocation.args, {
       cwd: root,
       env: process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -477,6 +499,16 @@ const runDirectory = resolve(root, '.daoyan-agent', 'runs', runId);
 await mkdir(runDirectory, { recursive: true });
 
 try {
+  if (options.doctor) {
+    const codex = await runProcess('codex', ['--version']);
+    const npm = await runProcess('npm', ['--version']);
+    if (codex.code !== 0 || npm.code !== 0) {
+      throw new Error(`子进程检查失败：\n${codex.stderr}${npm.stderr}`);
+    }
+    console.log(`[doctor] ${codex.stdout.trim()}`);
+    console.log(`[doctor] npm ${npm.stdout.trim()}`);
+    process.exit(0);
+  }
   if (!options.planOnly) await ensureCleanWorktree();
   console.log(`[秘书] 正在分析制作人方向，运行记录：${runDirectory}`);
   const plannerRun = options.deepPlan

@@ -6,6 +6,7 @@ import {
   buildLocalPlan,
   escalateTier,
   optimizePlan,
+  preferredWindowsExecutable,
   reviewRouteForPlan,
   routeForTask,
   sortTasks,
@@ -143,5 +144,18 @@ describe('agent routing', () => {
     expect(reviewRouteForPlan(policy, buildLocalPlan('推演台新增 VM 单步界面')).model).toBe(
       'sol-review',
     );
+  });
+
+  it('prefers Windows executables and then cmd shims over extensionless shell shims', () => {
+    expect(
+      preferredWindowsExecutable([
+        'C:\\Users\\dev\\npm\\codex',
+        'C:\\Users\\dev\\npm\\codex.cmd',
+        'C:\\Codex\\codex.exe',
+      ]),
+    ).toBe('C:\\Codex\\codex.exe');
+    expect(
+      preferredWindowsExecutable(['C:\\Users\\dev\\npm\\codex', 'C:\\Users\\dev\\npm\\codex.cmd']),
+    ).toBe('C:\\Users\\dev\\npm\\codex.cmd');
   });
 });

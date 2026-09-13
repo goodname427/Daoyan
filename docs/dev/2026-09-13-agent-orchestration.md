@@ -33,3 +33,7 @@
 - “发布大版本”在执行前以退出码 2 进入制作人决策状态。
 - 脏工作区保护在调用模型前中止完整执行。
 - `npm run verify:full` 通过：41 个 Vitest 测试、9 个 Playwright E2E、覆盖率、沙盒和生产构建全部成功。
+
+## Windows CLI 修复
+
+首次由普通 PowerShell 运行完整入口时，PATH 只暴露 npm 的无扩展名 `codex` shim 和 `codex.cmd`，调度器错误选择前者并以 `ENOENT` 中止。现在 Windows 解析顺序为 `.exe`、`.cmd`、`.bat`、其他；npm shim 不再直接 spawn，而是由当前 Node 执行对应的 Codex 或 npm JavaScript 入口。回归测试覆盖“只有无扩展名 shim 与 cmd shim”的终端环境。

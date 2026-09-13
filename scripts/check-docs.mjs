@@ -92,6 +92,9 @@ if (pkg.scripts?.['verify:ci'] !== 'npm run verify:full') {
 if (pkg.scripts?.producer !== 'tsx scripts/agent-dispatcher.ts') {
   errors.push('producer 必须使用统一 Agent 调度入口');
 }
+if (pkg.scripts?.['producer:doctor'] !== 'tsx scripts/agent-dispatcher.ts --doctor') {
+  errors.push('producer:doctor 必须复用 Agent 调度入口');
+}
 if (pkg.scripts?.['producer:plan'] !== 'tsx scripts/agent-dispatcher.ts --plan-only') {
   errors.push('producer:plan 必须复用只读规划入口');
 }

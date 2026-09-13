@@ -70,6 +70,12 @@ npm run producer:plan -- --deep-plan "重新考虑整个实体与资源架构"
 
 该选项会消耗额外 token，不是制作人需要选择的常规入口。
 
+若完整入口在启动 Codex 或 npm 时失败，可运行不消耗 token 的环境诊断：
+
+```bash
+npm run producer:doctor
+```
+
 ## 自动执行边界
 
 秘书会自动决定：

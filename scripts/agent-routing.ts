@@ -227,6 +227,16 @@ export function validateReview(value: unknown): ReviewResult {
   return review as ReviewResult;
 }
 
+export function preferredWindowsExecutable(candidates: string[]): string | null {
+  return (
+    candidates.find((path) => path.toLowerCase().endsWith('.exe')) ??
+    candidates.find((path) => path.toLowerCase().endsWith('.cmd')) ??
+    candidates.find((path) => path.toLowerCase().endsWith('.bat')) ??
+    candidates[0] ??
+    null
+  );
+}
+
 function includesAny(source: string, terms: string[]): boolean {
   return terms.some((term) => source.toLowerCase().includes(term.toLowerCase()));
 }
