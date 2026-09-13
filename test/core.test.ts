@@ -150,6 +150,98 @@ describe('走火入魔：资源超限', () => {
 });
 
 describe('分帧执行（施法耗时的基础）', () => {
+  it('单步观察保留当前指令、具名变量和逐步资源状态', () => {
+    const { program } = build(
+      `
+      spell 观照 {
+        var x: num = 7
+        var self: vec2 = 自身位置()
+      }
+      `,
+      '观照',
+    );
+    const { world, caster } = scene(0);
+    const vm = new VM(program, world, caster);
+    vm.start('观照');
+    expect(vm.snapshot().instruction).toBeNull();
+
+    vm.step(); // DECL x
+    vm.step(); // PUSHK 7
+    const stored = vm.step(); // STSLOT x
+    expect(stored.instruction).toMatchObject({ fn: '观照', op: 'STSLOT' });
+    expect(stored.variables.find((variable) => variable.name === 'x')?.value).toBe(7);
+    expect(stored.shenshi).toBe(1);
+
+    while (vm.isRunning) vm.step();
+    const done = vm.snapshot();
+    expect(done.status).toBe('done');
+    expect(done.mana).toBeGreaterThan(0);
+    expect(done.ticks).toBeGreaterThan(1);
+  });
+
+  it('单步观察只显示仍在生命周期内的变量，并正确处理槽位复用', () => {
+    const { program } = build(
+      `
+      spell 观察作用域 {
+        var x: num = 7
+        free x
+        if true {
+          var branch: num = 3
+        }
+        repeat 1 {
+          var loopLocal: num = 4
+        }
+        var y: num = 9
+      }
+      `,
+      '观察作用域',
+    );
+    const { world, caster } = scene(0);
+    const vm = new VM(program, world, caster);
+    vm.start('观察作用域');
+
+    const names = () => vm.snapshot().variables.map((variable) => variable.name);
+    while (vm.isRunning && vm.snapshot().instruction?.op !== 'FREE') vm.step();
+    expect(names()).not.toContain('x');
+
+    while (vm.isRunning && !names().includes('branch')) vm.step();
+    expect(names()).toContain('branch');
+    while (vm.isRunning && names().includes('branch')) vm.step();
+    expect(names()).not.toContain('branch');
+
+    while (vm.isRunning && !names().includes('loopLocal')) vm.step();
+    expect(names()).toContain('loopLocal');
+    while (vm.isRunning && names().includes('loopLocal')) vm.step();
+    expect(names()).not.toContain('loopLocal');
+
+    while (vm.isRunning && !names().includes('y')) vm.step();
+    expect(names()).toEqual(['y']);
+    expect(vm.snapshot().variables[0]?.value).toBeNull();
+    while (vm.isRunning && vm.snapshot().variables[0]?.value !== 9) vm.step();
+    expect(vm.snapshot().variables[0]?.value).toBe(9);
+  });
+
+  it('单步观察不会在参数声明时清空调用值', () => {
+    const { program } = build(
+      `
+      spell 两倍(x: num) -> num { return 加(x, x) }
+      spell 入口 { var result: num = 两倍(6) }
+      `,
+      '入口',
+    );
+    const { world, caster } = scene(0);
+    const vm = new VM(program, world, caster);
+    vm.start('入口');
+
+    while (vm.isRunning && !vm.snapshot().variables.some((variable) => variable.name === 'x')) {
+      vm.step();
+    }
+
+    expect(vm.snapshot().variables.find((variable) => variable.name === 'x')?.value).toBe(6);
+    while (vm.isRunning) vm.step();
+    expect(vm.result().ok).toBe(true);
+  });
+
   it('repeat 会执行声明的次数', () => {
     const { program } = build(
       `

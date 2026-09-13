@@ -31,11 +31,17 @@ export interface Inst {
   op: Op;
   a?: number;
   b?: number;
+  /** DECL 的调试名称；同一槽位被后续作用域复用时不能覆盖它。 */
+  name?: string;
+  /** 参数值已由调用帧写入，声明时不得按普通复用槽位清空。 */
+  preserveValue?: boolean;
 }
 
 export interface CompiledFn {
   name: string;
   slotCount: number;
+  /** 调试器显示用的槽位名；不参与运行语义或资源分析。 */
+  slotNames: string[];
   hasRet: boolean;
   code: Inst[];
   consts: Value[];
@@ -78,6 +84,7 @@ class FnCompiler {
   private scopes: ScopeVar[][] = [];
   private nextSlot = 0;
   private maxSlot = 0;
+  private slotNames: string[] = [];
   private breaks: number[][] = [];
 
   constructor(private fnIndex: Map<string, number>) {}
@@ -106,7 +113,9 @@ class FnCompiler {
     const s = this.scopes.pop();
     if (!s) return;
     for (let i = s.length - 1; i >= 0; i--) {
-      if (s[i].charged) this.emit(Op.FREE, s[i].slot);
+      // FREE also ends the debug lifetime.  Emit it for uncharged loop
+      // temporaries as well, so a reused slot cannot remain observable.
+      this.emit(Op.FREE, s[i].slot);
       this.nextSlot--;
     }
   }
@@ -117,11 +126,16 @@ class FnCompiler {
     return s;
   }
 
-  private declare(name: string, t: Type, charged = true): number {
+  private declare(name: string, t: Type, charged = true, preserveValue = false): number {
     const slot = this.allocSlot();
+    this.slotNames[slot] = name;
     const scope = this.scopes[this.scopes.length - 1];
     if (scope) scope.push({ name, t, slot, charged });
-    if (charged) this.emit(Op.DECL, slot, shenshiOf(t));
+    // DECL establishes the slot lifetime in addition to reserving shenshi.
+    // Uncharged loop variables use a zero-sized declaration for that purpose.
+    const decl = this.emit(Op.DECL, slot, charged ? shenshiOf(t) : 0);
+    this.code[decl].name = name;
+    this.code[decl].preserveValue = preserveValue;
     return slot;
   }
 
@@ -319,7 +333,7 @@ class FnCompiler {
   compile(spell: Spell): CompiledFn {
     this.pushScope();
     for (const p of spell.params) {
-      const slot = this.declare(p.name, p.t);
+      const slot = this.declare(p.name, p.t, true, true);
       // 参数由调用方写入槽位
       void slot;
     }
@@ -330,6 +344,7 @@ class FnCompiler {
     return {
       name: spell.name,
       slotCount: this.maxSlot,
+      slotNames: this.slotNames,
       hasRet: true,
       code: this.code,
       consts: this.consts,

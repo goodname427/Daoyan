@@ -52,14 +52,27 @@ export interface CastResult {
   returnValue: Value;
 }
 
+/** 单步推演完成后的只读观察点。 */
+export interface VMSnapshot {
+  status: CastStatus;
+  /** 刚刚执行的函数与指令；启动后、执行前为 null。 */
+  instruction: { fn: string; pc: number; op: string } | null;
+  mana: number;
+  shenshi: number;
+  shenshiPeak: number;
+  ticks: number;
+  steps: number;
+  variables: Array<{ name: string; value: Value }>;
+}
+
 interface Frame {
   fn: CompiledFn;
   slots: Value[];
   pc: number;
   /** 本帧开始时的栈高度，返回时截断到此处 */
   base: number;
-  /** 槽位 → 神识占用（尚未释放的变量） */
-  live: Map<number, number>;
+  /** 槽位 → 尚未释放变量的资源占用与声明时名称。 */
+  live: Map<number, { size: number; name: string }>;
 }
 
 const OP_NAMES: Record<number, string> = {};
@@ -92,6 +105,7 @@ export class VM {
   private error: string | null = null;
   private returnValue: Value = null;
   private entryName = '';
+  private lastInstruction: VMSnapshot['instruction'] = null;
 
   constructor(
     private program: Program,
@@ -141,6 +155,7 @@ export class VM {
     this.steps = 0;
     this.error = null;
     this.returnValue = null;
+    this.lastInstruction = null;
     this.ctx.log.length = 0;
     this.status = 'running';
     this.pushFrame(entryIdx, 0);
@@ -151,6 +166,33 @@ export class VM {
     this.start(entryName);
     while (this.status === 'running') this.execOne();
     return this.result();
+  }
+
+  /** 执行恰好一条指令，并返回可供推演台展示的观察点。 */
+  step(): VMSnapshot {
+    this.execOne();
+    return this.snapshot();
+  }
+
+  /** 获取当前观察点，不会推进 VM。 */
+  snapshot(): VMSnapshot {
+    const frame = this.frames[this.frames.length - 1];
+    return {
+      status: this.status,
+      instruction: this.lastInstruction,
+      mana: this.manaSpent,
+      shenshi: this.shenshiCur,
+      shenshiPeak: this.shenshiPeak,
+      ticks: this.ticksUsed,
+      steps: this.steps,
+      variables: frame
+        ? frame.slots.flatMap((value, slot) =>
+            frame.live.has(slot)
+              ? [{ name: frame.live.get(slot)?.name ?? `槽位 ${slot}`, value }]
+              : [],
+          )
+        : [],
+    };
   }
 
   /**
@@ -226,7 +268,7 @@ export class VM {
 
   private releaseAllShenshi(): void {
     for (const frame of this.frames) {
-      for (const size of frame.live.values()) this.releaseShenshi(size);
+      for (const variable of frame.live.values()) this.releaseShenshi(variable.size);
       frame.live.clear();
     }
   }
@@ -257,7 +299,7 @@ export class VM {
     const code = f.fn.code;
     if (f.pc >= code.length) {
       // 隐式返回
-      for (const size of f.live.values()) this.releaseShenshi(size);
+      for (const variable of f.live.values()) this.releaseShenshi(variable.size);
       f.live.clear();
       this.stack.length = f.base;
       this.frames.pop();
@@ -268,6 +310,11 @@ export class VM {
 
     const inst = code[f.pc++];
     this.steps++;
+    this.lastInstruction = {
+      fn: f.fn.name,
+      pc: f.pc - 1,
+      op: OP_NAMES[inst.op] ?? String(inst.op),
+    };
     if (this.opts.trace) {
       console.log(
         `${String(f.pc - 1).padStart(3)} ${(OP_NAMES[inst.op] ?? inst.op).padEnd(9)}` +
@@ -318,16 +365,17 @@ export class VM {
         }
         this.shenshiCur = next;
         if (this.shenshiCur > this.shenshiPeak) this.shenshiPeak = this.shenshiCur;
-        f.live.set(slot, size);
+        if (!inst.preserveValue) f.slots[slot] = null;
+        f.live.set(slot, { size, name: inst.name ?? f.fn.slotNames[slot] ?? `槽位 ${slot}` });
         break;
       }
 
       case Op.FREE: {
         const slot = inst.a ?? 0;
-        const size = f.live.get(slot);
-        if (size !== undefined) {
+        const variable = f.live.get(slot);
+        if (variable !== undefined) {
           f.live.delete(slot);
-          this.releaseShenshi(size);
+          this.releaseShenshi(variable.size);
         }
         break;
       }
@@ -444,7 +492,7 @@ export class VM {
       case Op.RET: {
         const hasVal = (inst.a ?? 0) === 1;
         const val = hasVal ? (stack.pop() ?? null) : null;
-        for (const size of f.live.values()) this.releaseShenshi(size);
+        for (const variable of f.live.values()) this.releaseShenshi(variable.size);
         f.live.clear();
         stack.length = f.base;
         this.frames.pop();

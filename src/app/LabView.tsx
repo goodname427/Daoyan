@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import {
   VM,
@@ -10,6 +10,7 @@ import {
   parseSpellbook,
   serializeBook,
   typeName,
+  type VMSnapshot,
 } from '../core/index';
 import type { CastResult, MetaDef, SpellBook } from '../core/index';
 import { Battlefield } from './Battlefield';
@@ -25,6 +26,11 @@ interface Outcome {
   entities: BattleEntity[];
   /** 法术瞄向了谁 */
   aim: string;
+}
+
+interface StepSession {
+  snapshot: VMSnapshot;
+  timeline: VMSnapshot[];
 }
 
 interface LabViewProps {
@@ -68,6 +74,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
   const [manaMax, setManaMax] = useState(300);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [runError, setRunError] = useState('');
+  const stepVm = useRef<VM | null>(null);
+  const [stepSession, setStepSession] = useState<StepSession | null>(null);
 
   const parsed = useMemo(() => {
     try {
@@ -110,6 +118,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
 
   const run = (): void => {
     setRunError('');
+    setStepSession(null);
+    stepVm.current = null;
     if (!parsed.book || !activeSpell) return;
     try {
       const program = compileProgram(parsed.book, activeSpell);
@@ -141,6 +151,44 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
     }
   };
 
+  const resetStep = (): void => {
+    setRunError('');
+    setOutcome(null);
+    if (!parsed.book || !activeSpell) return;
+    try {
+      const program = compileProgram(parsed.book, activeSpell);
+      const world = new World();
+      for (const p of layout(enemyCount)) {
+        world.spawnActor({ faction: 'foe', x: p.x, y: p.y, attrs: { hpMax: 100 } });
+      }
+      const caster = world.spawnActor({
+        name: '推演者',
+        faction: 'player',
+        x: 0,
+        y: 0,
+        attrs: { manaMax, shenshiMax },
+      });
+      const vm = new VM(program, world, caster);
+      vm.start(activeSpell);
+      stepVm.current = vm;
+      const snapshot = vm.snapshot();
+      setStepSession({ snapshot, timeline: [snapshot] });
+    } catch (e) {
+      setRunError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const step = (): void => {
+    const vm = stepVm.current;
+    if (!vm || !vm.isRunning) return;
+    const snapshot = vm.step();
+    setStepSession((current) =>
+      current
+        ? { snapshot, timeline: [...current.timeline, snapshot] }
+        : { snapshot, timeline: [snapshot] },
+    );
+  };
+
   const hitId = useMemo(() => {
     if (!outcome) return null;
     const m = /#(\d+)/.exec(outcome.aim);
@@ -159,6 +207,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
     setSelected(`spell:${name}`);
     setEditorMode('code');
     setOutcome(null);
+    setStepSession(null);
+    stepVm.current = null;
   };
 
   const deleteSpell = (): void => {
@@ -169,6 +219,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
     onSourceChange(serializeBook(next));
     setSelected(nextNames[0] ? `spell:${nextNames[0]}` : metas[0] ? `meta:${metas[0].name}` : '');
     setOutcome(null);
+    setStepSession(null);
+    stepVm.current = null;
   };
 
   return (
@@ -257,6 +309,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                           onClick={() => {
                             setSelected(`spell:${n}`);
                             setOutcome(null);
+                            setStepSession(null);
+                            stepVm.current = null;
                           }}
                         >
                           <span>{n}</span>
@@ -289,6 +343,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                       onClick={() => {
                         setSelected(`meta:${meta.name}`);
                         setOutcome(null);
+                        setStepSession(null);
+                        stepVm.current = null;
                       }}
                     >
                       <span>{meta.name}</span>
@@ -308,6 +364,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
             onChange={(e) => {
               setSelected(e.target.value);
               setOutcome(null);
+              setStepSession(null);
+              stepVm.current = null;
             }}
           >
             <optgroup label="自定义法术">
@@ -341,6 +399,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
               onSourceChange={(next) => {
                 onSourceChange(next);
                 setOutcome(null);
+                setStepSession(null);
+                stepVm.current = null;
               }}
               onSpellNameChange={(name) => setSelected(`spell:${name}`)}
             />
@@ -352,6 +412,8 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                 onSourceChange={(next: string) => {
                   onSourceChange(next);
                   setOutcome(null);
+                  setStepSession(null);
+                  stepVm.current = null;
                 }}
                 onSpellNameChange={(name) => setSelected(`spell:${name}`)}
               />
@@ -380,6 +442,20 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
           <button className="run" onClick={run} disabled={!activeSpell}>
             推演一次
           </button>
+          <div className="step-controls" aria-label="单步推演控制">
+            <button type="button" className="mini" onClick={resetStep} disabled={!activeSpell}>
+              重置单步
+            </button>
+            <button
+              type="button"
+              className="mini"
+              onClick={step}
+              disabled={!stepSession || stepSession.snapshot.status !== 'running'}
+            >
+              执行下一步
+            </button>
+          </div>
+          {stepSession && <StepInspector session={stepSession} />}
           {shownMeta && (
             <p className="muted small meta-run-hint">
               元法术是自定义法术的基础组件，不能单独推演。
@@ -422,6 +498,59 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
       )}
     </div>
   );
+}
+
+function StepInspector({ session }: { session: StepSession }) {
+  const { snapshot, timeline } = session;
+  return (
+    <section className="step-inspector" aria-label="单步推演观察">
+      <h3>单步观察</h3>
+      <p className="muted small">
+        {snapshot.instruction
+          ? `${snapshot.instruction.fn} · #${snapshot.instruction.pc} ${snapshot.instruction.op}`
+          : '已就绪：点击“执行下一步”开始'}
+        {' · '}
+        {snapshot.status === 'running'
+          ? '施法中'
+          : snapshot.status === 'done'
+            ? '已完成'
+            : '已失败'}
+      </p>
+      <div className="stat-row">
+        <Stat label="法力" value={String(snapshot.mana)} />
+        <Stat label="神识" value={`${snapshot.shenshi}/${snapshot.shenshiPeak}`} />
+        <Stat label="耗时" value={`${snapshot.ticks}t`} />
+      </div>
+      <dl className="step-variables">
+        {snapshot.variables.length === 0 ? (
+          <div>
+            <dt>变量</dt>
+            <dd>{snapshot.status === 'running' ? '暂无活跃变量' : '当前调用帧已结束'}</dd>
+          </div>
+        ) : (
+          snapshot.variables.map((variable, index) => (
+            <div key={`${variable.name}-${index}`}>
+              <dt>{variable.name}</dt>
+              <dd>{formatValue(variable.value)}</dd>
+            </div>
+          ))
+        )}
+      </dl>
+      <ol className="resource-timeline" aria-label="资源消耗时间线">
+        {timeline.map((point, index) => (
+          <li key={index}>
+            {index}: 法{point.mana} · 神{point.shenshi} · {point.ticks}t
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function formatValue(value: unknown): string {
+  if (value === null) return '未赋值';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
 }
 
 function MetaInspector({ meta }: { meta: MetaDef }) {

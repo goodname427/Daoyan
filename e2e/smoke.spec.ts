@@ -91,6 +91,43 @@ test.describe('lab functionality', () => {
     sink.assert();
   });
 
+  test('steps through a spell and exposes variables plus a resource timeline', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: '重置单步' }).click();
+    await expect(page.getByLabel('单步推演观察')).toContainText('已就绪');
+    await page.getByRole('button', { name: '执行下一步' }).click();
+    await expect(page.getByLabel('单步推演观察')).toContainText(/施法中|已完成/);
+    await expect(page.getByLabel('资源消耗时间线').locator('li')).toHaveCount(2);
+    const editor = page.locator('.code-input').first();
+    await editor.fill(`${await editor.inputValue()}\n// source changed after stepping`);
+    await expect(page.getByLabel('单步推演观察')).toHaveCount(0);
+    sink.assert();
+  });
+
+  test('hides released and out-of-scope variables from the step inspector', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    const editor = page.locator('.code-input').first();
+    await editor.fill(`spell 观察作用域 {
+  var x: num = 7
+  free x
+  if true {
+    var branch: num = 3
+  }
+  var y: num = 9
+}`);
+    await page.getByRole('button', { name: '重置单步' }).click();
+    const inspector = page.getByLabel('单步推演观察');
+    // x: DECL/PUSHK/STSLOT/FREE, branch: condition + DECL/PUSHK/STSLOT/FREE,
+    // then y: DECL/PUSHK/STSLOT.  Stop before the spell completes.
+    for (let i = 0; i < 13; i += 1) await page.getByRole('button', { name: '执行下一步' }).click();
+    await expect(inspector).toContainText('y');
+    await expect(inspector).not.toContainText('x');
+    await expect(inspector).not.toContainText('branch');
+    sink.assert();
+  });
+
   test('compiles the current blueprint and keeps the result visible', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
