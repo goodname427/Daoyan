@@ -17,7 +17,7 @@ export default function register(): void {
 
   defMeta({
     name: '按键按住',
-    group: '按键',
+    group: '按键状态',
     params: [{ name: '索引', t: N }],
     ret: B,
     mana: 0,
@@ -31,7 +31,7 @@ export default function register(): void {
 
   defMeta({
     name: '按键按下',
-    group: '按键',
+    group: '按键状态',
     params: [{ name: '索引', t: N }],
     ret: B,
     mana: 0,
@@ -49,7 +49,7 @@ export default function register(): void {
 
   defMeta({
     name: '按键松开',
-    group: '按键',
+    group: '按键状态',
     params: [{ name: '索引', t: N }],
     ret: B,
     mana: 0,
@@ -67,7 +67,7 @@ export default function register(): void {
 
   defMeta({
     name: '按键蓄力',
-    group: '按键',
+    group: '按键状态',
     params: [{ name: '索引', t: N }],
     ret: N,
     mana: 0,
@@ -81,7 +81,7 @@ export default function register(): void {
 
   defMeta({
     name: '结束施法',
-    group: '按键',
+    group: '施法控制',
     params: [],
     ret: T.void,
     mana: 0,

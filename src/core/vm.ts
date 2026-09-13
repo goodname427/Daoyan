@@ -440,8 +440,21 @@ export class VM {
         const argc = inst.b ?? 0;
         const args: Value[] = new Array(argc);
         for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
-        // 法力受「法力消耗」属性影响
-        const cost = m.mana * this.caster.attr.manaCostMul;
+        let baseCost = m.mana;
+        if (m.manaCost) {
+          try {
+            baseCost = m.manaCost(this.ctx, args);
+          } catch (error) {
+            this.fail(`元函数「${m.name}」动态定价失败：${String(error)}`);
+            return;
+          }
+          if (!Number.isFinite(baseCost) || baseCost < 0 || baseCost > m.mana) {
+            this.fail(`元函数「${m.name}」动态法力 ${baseCost} 超出静态上界 ${m.mana}`);
+            return;
+          }
+        }
+        // 法力受「法力消耗」属性影响；动态基础价也不得越过注册时声明的上界。
+        const cost = baseCost * this.caster.attr.manaCostMul;
         const paid = this.opts.resources
           ? this.opts.resources.trySpendMana(cost)
           : this.manaSpent + cost <= this.manaBudget;

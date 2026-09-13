@@ -91,6 +91,91 @@ describe('虚拟机基础执行', () => {
     expect(world.actors[0].hp).toBe(100);
   });
 
+  it('统一实体句柄支持创建、控制、激活与探查弹道的完整链路', () => {
+    const { book, program } = build(
+      `
+      spell 炼剑 -> vec2 {
+        var sword: entity = 创建弹道(3)
+        if 不等(sword, 空) {
+          设置弹道方向(sword, 向量(0, 1))
+          设置弹道速度(sword, 420)
+          设置弹道威力(sword, 36)
+          激活弹道(sword)
+          return 探查(sword)
+        }
+        return 向量(0, 0)
+      }
+      `,
+      '炼剑',
+    );
+    const { world, caster } = scene(1, { manaMax: 9999 });
+    const actorIds = new Set(world.actors.map((actor) => actor.id));
+    const result = new VM(program, world, caster).run('炼剑');
+    const projectile = world.projectiles[0];
+
+    expect(result.ok).toBe(true);
+    expect(projectile).toMatchObject({
+      kind: 'projectile',
+      ownerId: caster.id,
+      active: true,
+      dx: 0,
+      dy: 1,
+      speed: 420,
+      damage: 36,
+    });
+    expect(actorIds.has(projectile.id)).toBe(false);
+    expect(world.entityById(projectile.id)).toBe(projectile);
+    expect(world.hasCapability(projectile, 'transform')).toBe(true);
+    expect(world.hasCapability(projectile, 'vitality')).toBe(false);
+    expect(result.returnValue).toEqual({
+      x: caster.x,
+      y: caster.y + caster.radius + projectile.radius,
+    });
+    expect(result.mana).toBeLessThan(analyzeBook(book)['炼剑'].manaWorst);
+  });
+
+  it('能力或所有权不匹配时控制元法术返回 false 且不修改目标', () => {
+    const { program } = build(
+      `
+      spell 越权 -> bool {
+        var self: vec2 = 自身位置()
+        var foes: list<entity, 1> = 感知敌人(self, 500)
+        return 设置弹道速度(foes[0], 500)
+      }
+      `,
+      '越权',
+    );
+    const { world, caster } = scene(1, { manaMax: 9999 });
+    const target = world.actors[0];
+    const originalSpeed = target.attr.speed;
+    const result = new VM(program, world, caster).run('越权');
+
+    expect(result.ok).toBe(true);
+    expect(result.returnValue).toBe(false);
+    expect(target.attr.speed).toBe(originalSpeed);
+  });
+
+  it('每位施法者最多保有 16 个弹道，创建失败返回空句柄', () => {
+    const { program } = build(
+      `
+      spell 铸剑海 -> entity {
+        var last: entity
+        repeat 17 {
+          last = 创建弹道(5)
+        }
+        return last
+      }
+      `,
+      '铸剑海',
+    );
+    const { world, caster } = scene(0, { manaMax: 9999 });
+    const result = new VM(program, world, caster).run('铸剑海');
+
+    expect(result.ok).toBe(true);
+    expect(world.projectiles).toHaveLength(16);
+    expect(result.returnValue).toBeNull();
+  });
+
   it('法术之间可以互相调用，消耗叠加', () => {
     const { book, program } = build(
       `

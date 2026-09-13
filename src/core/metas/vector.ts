@@ -8,7 +8,7 @@ export default function register(): void {
 
   defMeta({
     name: '向量',
-    group: '向量',
+    group: '运算符',
     params: [
       { name: '横', t: N },
       { name: '纵', t: N },
@@ -22,7 +22,7 @@ export default function register(): void {
 
   defMeta({
     name: '取横',
-    group: '向量',
+    group: '运算符',
     params: [{ name: '向量', t: V }],
     ret: N,
     mana: 0,
@@ -33,7 +33,7 @@ export default function register(): void {
 
   defMeta({
     name: '取纵',
-    group: '向量',
+    group: '运算符',
     params: [{ name: '向量', t: V }],
     ret: N,
     mana: 0,
@@ -44,7 +44,7 @@ export default function register(): void {
 
   defMeta({
     name: '向量加',
-    group: '向量',
+    group: '运算符',
     params: [
       { name: '甲', t: V },
       { name: '乙', t: V },
@@ -62,7 +62,7 @@ export default function register(): void {
 
   defMeta({
     name: '数乘',
-    group: '向量',
+    group: '运算符',
     params: [
       { name: '向量', t: V },
       { name: '倍率', t: N },
@@ -80,7 +80,7 @@ export default function register(): void {
 
   defMeta({
     name: '距离',
-    group: '向量',
+    group: '运算符',
     params: [
       { name: '甲', t: V },
       { name: '乙', t: V },
@@ -98,7 +98,7 @@ export default function register(): void {
 
   defMeta({
     name: '归一',
-    group: '向量',
+    group: '运算符',
     params: [{ name: '向量', t: V }],
     ret: V,
     mana: 0,
@@ -113,7 +113,7 @@ export default function register(): void {
 
   defMeta({
     name: '朝向',
-    group: '向量',
+    group: '运算符',
     params: [
       { name: '起点', t: V },
       { name: '终点', t: V },
@@ -134,7 +134,7 @@ export default function register(): void {
 
   defMeta({
     name: '旋转',
-    group: '向量',
+    group: '运算符',
     params: [
       { name: '向量', t: V },
       { name: '弧度', t: N },

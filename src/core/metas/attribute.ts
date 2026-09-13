@@ -24,7 +24,7 @@ export default function register(): void {
   for (const [name, key, desc] of selfMul) {
     defMeta({
       name,
-      group: '属性',
+      group: '实体控制',
       params: [
         { name: '倍率', t: N },
         { name: '持续秒数', t: N },
@@ -50,7 +50,7 @@ export default function register(): void {
 
   defMeta({
     name: '护体',
-    group: '属性',
+    group: '实体控制',
     params: [
       { name: '减伤', t: N },
       { name: '持续秒数', t: N },
@@ -75,7 +75,7 @@ export default function register(): void {
   for (const [name, key, desc] of foeMul) {
     defMeta({
       name,
-      group: '属性',
+      group: '实体控制',
       params: [
         { name: '目标', t: E },
         { name: '倍率', t: N },
@@ -97,7 +97,7 @@ export default function register(): void {
 
   defMeta({
     name: '破防',
-    group: '属性',
+    group: '实体控制',
     params: [
       { name: '目标', t: E },
       { name: '数值', t: N },

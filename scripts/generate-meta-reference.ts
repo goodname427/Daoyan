@@ -6,7 +6,7 @@ import { allMetas, typeName } from '../src/core/index';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = resolve(root, 'docs/reference/meta-spells.md');
-const groupOrder = ['运算', '向量', '按键', '感知', '操控', '属性'];
+const groupOrder = ['运算符', '按键状态', '状态探查', '实体创建', '实体控制', '施法控制'];
 
 const escapeCell = (value: string): string => value.replaceAll('|', '\\|').replaceAll('\n', ' ');
 
@@ -19,15 +19,15 @@ const lines = [
   '',
   '> 本页由 `scripts/generate-meta-reference.ts` 从 `src/core/metas/` 自动生成。不要手工修改表格；元法术变化后运行 `npm run docs:generate`。',
   '',
-  `当前共有 **${metas.length}** 个元法术、**${new Set(metas.map((meta) => meta.group)).size}** 个实现分组。这里记录的是 0.2 现状，不代表 vNext 分类已经确定。`,
+  `当前共有 **${metas.length}** 个元法术、**${new Set(metas.map((meta) => meta.group)).size}** 个职责分组。`,
   '',
   '## 如何读表',
   '',
-  '- `基础法力` 是注册表中的固定价格。战斗实扣为 `基础法力 × 施法者.manaCostMul`。',
+  '- `法力价格` 是固定价格或动态价格的静态上界。战斗实扣为 `运行时基础价 × 施法者.manaCostMul`。',
   '- `基础 tick` 是该调用本身的执行步数；参数表达式、列表下标和被调用的自定义法术还会继续累加耗时。',
   '- 演武场中约 `1 tick = 10ms / 施法速度`，因此施法速度只改变真实时间，不改变静态 tick 数。',
   '- 返回 `list<类型,?>` 表示元法术返回动态列表；接入 `list<类型,容量>` 变量时按声明容量截断。',
-  '- 当前距离、目标神识强度和投入强度都不会动态改变元法术价格；这是现状限制，不是 vNext 结论。',
+  '- 标为“动态≤N”的调用会按距离或请求效果结算，但运行时基础价绝不超过静态上界 N。',
   '',
 ];
 
@@ -35,7 +35,7 @@ for (const group of groupOrder) {
   const groupMetas = metas.filter((meta) => meta.group === group);
   if (groupMetas.length === 0) continue;
   lines.push(`## ${group}（${groupMetas.length}）`, '');
-  lines.push('| 元法术 | 参数 | 返回 | 基础法力 | 基础 tick | 当前效果 |');
+  lines.push('| 元法术 | 参数 | 返回 | 法力价格 | 基础 tick | 当前效果 |');
   lines.push('| ------ | ---- | ---- | -------- | --------- | -------- |');
   for (const meta of groupMetas) {
     const params =
@@ -43,20 +43,19 @@ for (const group of groupOrder) {
         ? '无'
         : meta.params.map((param) => `${param.name}: ${typeName(param.t)}`).join('<br>');
     lines.push(
-      `| ${escapeCell(meta.name)} | ${escapeCell(params)} | ${typeName(meta.ret)} | ${meta.mana} | ${meta.ticks} | ${escapeCell(meta.desc)} |`,
+      `| ${escapeCell(meta.name)} | ${escapeCell(params)} | ${typeName(meta.ret)} | ${meta.manaCost ? `动态≤${meta.mana}` : meta.mana} | ${meta.ticks} | ${escapeCell(meta.desc)} |`,
     );
   }
   lines.push('');
 }
 
 lines.push(
-  '## 当前分组边界',
+  '## 分类与定价契约',
   '',
-  '- `运算` 与 `向量` 都是神识内计算，均不消耗法力。',
-  '- `长度` 目前放在 `感知`，但它只读取已在神识中的列表，也不消耗法力。',
-  '- `结束施法` 目前放在 `按键`，实际职责是控制施法生命周期。',
-  '- `操控` 同时包含生成弹道、直接伤害、自身位移与瞬移；`属性` 同时包含自身增益和目标减益。',
-  '- 新分类方向及其风险见 [`../proposals/meta-spell-and-entity-model-vnext.md`](../proposals/meta-spell-and-entity-model-vnext.md)。',
+  '- `运算符` 合并数值、逻辑、向量和列表内计算；这些调用不读取世界且不消耗法力。',
+  '- `按键状态` 只读取输入；`结束施法` 单列为跨领域的 `施法控制`。',
+  '- `状态探查`、`实体创建` 与 `实体控制` 按世界 I/O 职责区分。',
+  '- vNext 的稳定分类、统一句柄与动态价格契约见 [`../adr/0009-统一实体句柄与能力判定.md`](../adr/0009-统一实体句柄与能力判定.md) 和 [`../adr/0010-动态元法术价格与静态上界.md`](../adr/0010-动态元法术价格与静态上界.md)。',
   '',
 );
 

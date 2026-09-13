@@ -31,8 +31,10 @@ export interface MetaDef {
   group: string;
   params: MetaParam[];
   ret: Type;
-  /** 法力消耗：与外界交互的成本 */
+  /** 静态法力上界；没有 manaCost 时也是固定实扣。 */
   mana: number;
+  /** 可选的运行时价格，必须处于 [0, mana]，从而保持静态上界可信。 */
+  manaCost?: (ctx: Ctx, args: Value[]) => number;
   /** 耗时（tick） */
   ticks: number;
   desc: string;

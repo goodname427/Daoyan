@@ -82,6 +82,29 @@ test.describe('blueprint connection regression', () => {
 });
 
 test.describe('lab functionality', () => {
+  test('explains dynamic costs and runs the entity projectile spell', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    const create = page.locator('.meta-spell').filter({ hasText: '创建弹道' });
+    await expect(create).toContainText('实体创建 · 法≤18');
+    await create.click();
+    await expect(page.locator('.meta-inspector')).toContainText('法力上界');
+    await expect(page.locator('.meta-inspector')).toContainText('≤18');
+    await page.locator('button.spell').filter({ hasText: '御剑·手动' }).click();
+    await expect(page.locator('.code-input').first()).toHaveValue(/创建弹道/);
+    await page.getByRole('button', { name: /推演一次/ }).click();
+    await expect(page.locator('.verdict')).toContainText('施法成功');
+    await page.locator('.tabs .tab').nth(1).click();
+    await expect(page.locator('.synced-spells')).toContainText('御剑·手动');
+    await page.locator('.tabs .tab').first().click();
+    await page.locator('button.spell').filter({ hasText: '御剑·手动' }).click();
+    await expect(page.locator('.code-input').first()).toHaveValue(/激活弹道/);
+    await page.setViewportSize({ width: 760, height: 800 });
+    await create.click();
+    await expect(page.locator('.meta-inspector')).toContainText('≤18');
+    sink.assert();
+  });
+
   test('runs a selected spell and reports a result', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');

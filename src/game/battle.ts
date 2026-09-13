@@ -434,16 +434,21 @@ export class Battle {
   }
 
   private updateProjectiles(dt: number): void {
-    const keep = [];
+    const keep: typeof this.world.projectiles = [];
     for (const p of this.world.projectiles) {
-      p.x += p.dx * p.speed * dt;
-      p.y += p.dy * p.speed * dt;
       p.life -= dt;
 
-      let dead =
-        p.life <= 0 || p.x < 0 || p.y < 0 || p.x > this.world.bounds.w || p.y > this.world.bounds.h;
+      if (p.active) {
+        p.x += p.dx * p.speed * dt;
+        p.y += p.dy * p.speed * dt;
+      }
 
-      if (!dead) {
+      let dead = p.life <= 0;
+      if (p.active) {
+        dead = dead || p.x < 0 || p.y < 0 || p.x > this.world.bounds.w || p.y > this.world.bounds.h;
+      }
+
+      if (!dead && p.active) {
         for (const a of this.world.actors) {
           if (!a.alive || a.faction === p.faction || p.hit.has(a.id)) continue;
           if (Math.hypot(a.x - p.x, a.y - p.y) <= p.radius + a.radius) {

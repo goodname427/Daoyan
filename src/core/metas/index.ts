@@ -13,6 +13,7 @@
 
 import * as attribute from './attribute';
 import * as control from './control';
+import * as entity from './entity';
 import * as input from './input';
 import * as math from './math';
 import * as sense from './sense';
@@ -38,6 +39,7 @@ const fallbackModules: Record<string, MetaModule> = {
   './vector.ts': vector,
   './sense.ts': sense,
   './control.ts': control,
+  './entity.ts': entity,
   './attribute.ts': attribute,
   './input.ts': input,
 };

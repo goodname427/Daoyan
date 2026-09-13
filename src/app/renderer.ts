@@ -201,6 +201,7 @@ export class Renderer {
 
     // 弹道
     for (const pr of world.projectiles) {
+      if (!pr.active) continue;
       const col = PROJ_COLOR[pr.faction] ?? '#ffe9b0';
       ctx.beginPath();
       ctx.moveTo(pr.x, pr.y);

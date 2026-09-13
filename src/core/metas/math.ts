@@ -18,7 +18,7 @@ export default function register(): void {
   for (const [name, desc, f] of arith) {
     defMeta({
       name,
-      group: '运算',
+      group: '运算符',
       params: [
         { name: '甲', t: N },
         { name: '乙', t: N },
@@ -40,7 +40,7 @@ export default function register(): void {
   for (const [name, desc, f] of cmp) {
     defMeta({
       name,
-      group: '运算',
+      group: '运算符',
       params: [
         { name: '甲', t: N },
         { name: '乙', t: N },
@@ -55,7 +55,7 @@ export default function register(): void {
 
   defMeta({
     name: '等于',
-    group: '运算',
+    group: '运算符',
     params: [
       { name: '甲', t: T.any },
       { name: '乙', t: T.any },
@@ -69,7 +69,7 @@ export default function register(): void {
 
   defMeta({
     name: '不等',
-    group: '运算',
+    group: '运算符',
     params: [
       { name: '甲', t: T.any },
       { name: '乙', t: T.any },
@@ -87,7 +87,7 @@ export default function register(): void {
   ] as Array<[string, string, (a: boolean, b: boolean) => boolean]>) {
     defMeta({
       name,
-      group: '运算',
+      group: '运算符',
       params: [
         { name: '甲', t: B },
         { name: '乙', t: B },
@@ -108,7 +108,7 @@ export default function register(): void {
   for (const [name, desc, f] of unary) {
     defMeta({
       name,
-      group: '运算',
+      group: '运算符',
       params: [{ name: '甲', t: N }],
       ret: N,
       mana: 0,
@@ -120,7 +120,7 @@ export default function register(): void {
 
   defMeta({
     name: '非',
-    group: '运算',
+    group: '运算符',
     params: [{ name: '甲', t: B }],
     ret: B,
     mana: 0,
@@ -131,7 +131,7 @@ export default function register(): void {
 
   defMeta({
     name: '随机',
-    group: '运算',
+    group: '运算符',
     params: [{ name: '上限', t: N }],
     ret: N,
     mana: 0,

@@ -28,7 +28,7 @@ export function MetaTable() {
                     <td className="msig">
                       {m.params.map((p) => `${typeName(p.t)}`).join(', ')} → {typeName(m.ret)}
                     </td>
-                    <td className="num">{m.mana}</td>
+                    <td className="num">{m.manaCost ? `≤${m.mana}` : m.mana}</td>
                     <td className="num">{m.ticks}</td>
                     <td className="mdesc">{m.desc}</td>
                   </tr>

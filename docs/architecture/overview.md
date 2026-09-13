@@ -26,8 +26,9 @@ App 共享状态 → 推演台
 
 ## 当前世界模型
 
-- 玩家与妖兽统一为 `Actor`，DSL 的 `entity` 句柄只能指向 Actor。
-- Projectile 仍是 `World.projectiles` 中的独立结构，不具备 Actor 属性，也不能被 DSL 引用。
-- 属性、实际资源公式与这项边界详见 [`../reference/entities-and-attributes.md`](../reference/entities-and-attributes.md)。
+- 玩家与妖兽统一为 `Actor`；Actor 与 Projectile 共用同一、不复用的 `entity` 句柄空间。
+- 统一句柄不等于统一属性全集。Actor 和 Projectile 保持不同结构，操作通过 Identity、Transform、Vitality、Caster、Movement、Projectile 与 Modifiers 能力判定。
+- Projectile 可由 DSL 创建为未激活对象，再由所有者配置、激活和探查；旧 `发射` 保留为兼容入口。
+- 句柄、能力、属性和实际资源公式详见 [`../reference/entities-and-attributes.md`](../reference/entities-and-attributes.md)。
 
 重要取舍见 [`../adr/`](../adr/)，不可破坏的规则见 [`invariants.md`](./invariants.md)。

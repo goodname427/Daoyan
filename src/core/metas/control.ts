@@ -9,7 +9,7 @@ export default function register(): void {
 
   defMeta({
     name: '发射',
-    group: '操控',
+    group: '实体创建',
     params: [
       { name: '起点', t: V },
       { name: '方向', t: V },
@@ -26,7 +26,7 @@ export default function register(): void {
       const l = Math.hypot(d.x, d.y);
       const dx = l < 1e-9 ? 1 : d.x / l;
       const dy = l < 1e-9 ? 0 : d.y / l;
-      c.world.spawnProjectile({
+      const projectile = c.world.spawnProjectile({
         faction: c.caster.faction,
         ownerId: c.caster.id,
         x: o.x + dx * (c.caster.radius + 6),
@@ -38,14 +38,14 @@ export default function register(): void {
         radius: 7,
         life: 2.4,
       });
-      c.world.fx.push({ kind: 'shoot', x: o.x + dx * 16, y: o.y + dy * 16 });
+      if (projectile) c.world.fx.push({ kind: 'shoot', x: o.x + dx * 16, y: o.y + dy * 16 });
       return null;
     },
   });
 
   defMeta({
     name: '近战斩击',
-    group: '操控',
+    group: '实体控制',
     params: [
       { name: '方向', t: V },
       { name: '距离', t: N },
@@ -73,7 +73,7 @@ export default function register(): void {
 
   defMeta({
     name: '伤害',
-    group: '操控',
+    group: '实体控制',
     params: [
       { name: '目标', t: E },
       { name: '数值', t: N },
@@ -92,7 +92,7 @@ export default function register(): void {
 
   defMeta({
     name: '移动',
-    group: '操控',
+    group: '实体控制',
     params: [
       { name: '方向', t: V },
       { name: '距离', t: N },
@@ -113,7 +113,7 @@ export default function register(): void {
 
   defMeta({
     name: '瞬移',
-    group: '操控',
+    group: '实体控制',
     params: [{ name: '目标点', t: V }],
     ret: T.void,
     mana: 40,

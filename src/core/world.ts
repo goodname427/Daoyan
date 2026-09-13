@@ -22,6 +22,7 @@ export interface FxEvent {
 }
 
 export interface Projectile {
+  kind: 'projectile';
   id: number;
   faction: Faction;
   ownerId: number;
@@ -38,9 +39,12 @@ export interface Projectile {
   /** 剩余穿透次数 */
   pierce: number;
   hit: Set<number>;
+  /** 创建后可先配置；只有激活的弹道才移动和碰撞 */
+  active: boolean;
 }
 
 export interface Actor {
+  kind: 'actor';
   id: number;
   name: string;
   faction: Faction;
@@ -86,6 +90,15 @@ export interface Actor {
   deathTimer: number;
 }
 
+/** DSL `entity` 句柄可以指向的统一世界对象。 */
+export type Entity = Actor | Projectile;
+
+export type EntityCapability =
+  'identity' | 'transform' | 'vitality' | 'caster' | 'movement' | 'projectile' | 'modifiers';
+
+/** 单个施法者在场上可同时保有的弹道上限（含尚未激活的弹道）。 */
+export const MAX_OWNED_PROJECTILES = 16;
+
 export interface ActorInit {
   name?: string;
   faction: Faction;
@@ -111,8 +124,8 @@ export class World {
   /** 伤害回调，战斗层用它实现「受击打断施法」 */
   onDamage: ((target: Actor, amount: number) => void) | null = null;
 
-  private nextActorId = 1;
-  private nextProjId = 1;
+  /** Actor 与 Projectile 共用同一 ID 空间，句柄在一次 World 生命周期内不复用。 */
+  private nextEntityId = 1;
   private nextModifierId = 1;
 
   reset(): void {
@@ -120,8 +133,7 @@ export class World {
     this.projectiles = [];
     this.events = [];
     this.fx = [];
-    this.nextActorId = 1;
-    this.nextProjId = 1;
+    // 保留计数器，避免重置前持有的句柄误指向新场景对象。
     this.nextModifierId = 1;
   }
 
@@ -137,7 +149,8 @@ export class World {
   spawnActor(init: ActorInit): Actor {
     const base = baseAttributes(init.attrs);
     const a: Actor = {
-      id: this.nextActorId++,
+      kind: 'actor',
+      id: this.nextEntityId++,
       name: init.name ?? (init.faction === 'player' ? '修士' : '妖兽'),
       faction: init.faction,
       x: init.x,
@@ -168,6 +181,30 @@ export class World {
 
   byId(id: number): Actor | null {
     return this.actors.find((a) => a.id === id) ?? null;
+  }
+
+  /** 统一句柄解析；调用方再按能力而不是按 ID 范围判断可执行操作。 */
+  entityById(id: number): Entity | null {
+    return (
+      this.actors.find((a) => a.id === id) ?? this.projectiles.find((p) => p.id === id) ?? null
+    );
+  }
+
+  hasCapability(entity: Entity, capability: EntityCapability): boolean {
+    if (capability === 'identity' || capability === 'transform' || capability === 'movement')
+      return true;
+    if (entity.kind === 'projectile') return capability === 'projectile';
+    return capability === 'vitality' || capability === 'caster' || capability === 'modifiers';
+  }
+
+  positionOf(id: number): Vec2 | null {
+    const entity = this.entityById(id);
+    return entity ? { x: entity.x, y: entity.y } : null;
+  }
+
+  ownedProjectile(ownerId: number, id: number): Projectile | null {
+    const entity = this.entityById(id);
+    return entity?.kind === 'projectile' && entity.ownerId === ownerId ? entity : null;
   }
 
   aliveActors(): Actor[] {
@@ -268,9 +305,15 @@ export class World {
     radius?: number;
     life?: number;
     pierce?: number;
-  }): Projectile {
+    active?: boolean;
+  }): Projectile | null {
+    const ownedCount = this.projectiles.filter(
+      (projectile) => projectile.ownerId === p.ownerId,
+    ).length;
+    if (ownedCount >= MAX_OWNED_PROJECTILES) return null;
     const proj: Projectile = {
-      id: this.nextProjId++,
+      kind: 'projectile',
+      id: this.nextEntityId++,
       faction: p.faction,
       ownerId: p.ownerId,
       x: p.x,
@@ -283,6 +326,7 @@ export class World {
       life: p.life ?? 2.4,
       pierce: p.pierce ?? 0,
       hit: new Set<number>(),
+      active: p.active ?? true,
     };
     this.projectiles.push(proj);
     return proj;

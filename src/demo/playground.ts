@@ -15,6 +15,9 @@ const pad = (s: string, n: number): string => {
   return s + ' '.repeat(Math.max(0, n - w));
 };
 
+const formatNumber = (value: number): string =>
+  Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+
 /** 从弹道方向推断法术瞄向了谁 */
 function aimedAt(world: World): string {
   const pr = world.projectiles[0];
@@ -78,6 +81,7 @@ function main(): void {
 
   // ---------- 2. 敌人数变化 ----------
   const spells = ['御剑术·朴', '御剑术·慧', '御剑术·微'];
+  const measuredMana = new Map<string, number>();
   console.log('\n【二】敌人数变化 —— 谁更划算？\n');
   console.log(
     pad('敌人', 6),
@@ -101,13 +105,14 @@ function main(): void {
         attrs: { manaMax: 400, shenshiMax: 64 },
       });
       const r = new VM(program, world, caster).run(name);
+      measuredMana.set(`${n}:${name}`, r.mana);
       const aim = aimedAt(world);
       const nearest = `#${n}`; // 最后生成的敌人最近
       const note = !r.ok ? (r.error ?? '') : aim === nearest ? '' : `看漏了（最近的是 ${nearest}）`;
       console.log(
         pad(String(n), 6),
         pad(name, 16),
-        pad(String(r.mana), 6),
+        pad(formatNumber(r.mana), 6),
         pad(String(r.shenshiPeak), 6),
         pad(`${r.ticks} tick`, 9),
         pad(aim, 8),
@@ -135,14 +140,21 @@ function main(): void {
       console.log(
         pad(String(cap), 12),
         pad(name, 16),
-        r.ok ? `成功（法力 ${r.mana}，神识 ${r.shenshiPeak}）` : `走火入魔：${r.error}`,
+        r.ok
+          ? `成功（法力 ${formatNumber(r.mana)}，神识 ${r.shenshiPeak}）`
+          : `走火入魔：${r.error}`,
       );
     }
     console.log('─'.repeat(64));
   }
 
+  const mana = (enemyCount: number, spell: string) =>
+    formatNumber(measuredMana.get(`${enemyCount}:${spell}`) ?? 0);
   console.log('\n结论：');
-  console.log('  · 法力：敌人 1 个时朴素版更省（87 < 97），3 个以上慧剑完胜（法力恒定）');
+  console.log(
+    `  · 法力：敌人 1 个时朴素版更省（${mana(1, '御剑术·朴')} < ${mana(1, '御剑术·慧')}），` +
+      `3 个时慧剑开始占优（${mana(3, '御剑术·朴')} > ${mana(3, '御剑术·慧')}）`,
+  );
   console.log('  · 神识：慧剑要付 15 点「租金」，神识上限 39 以下根本撑不起来');
   console.log('  · 容量：微剑把容量压到 4，神识只要 15，代价是场上超过 4 人时看漏最近的目标');
   console.log('  · 三个维度互相制衡，没有单一最优解 —— 玩家必须按自己的境界和战场选择写法');

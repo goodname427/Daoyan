@@ -13,7 +13,7 @@ export default function register(): void {
 
   defMeta({
     name: '自身位置',
-    group: '感知',
+    group: '状态探查',
     params: [],
     ret: V,
     mana: 2,
@@ -24,7 +24,7 @@ export default function register(): void {
 
   defMeta({
     name: '自身生命',
-    group: '感知',
+    group: '状态探查',
     params: [],
     ret: N,
     mana: 1,
@@ -35,7 +35,7 @@ export default function register(): void {
 
   defMeta({
     name: '自身法力率',
-    group: '感知',
+    group: '状态探查',
     params: [],
     ret: N,
     mana: 0,
@@ -46,7 +46,7 @@ export default function register(): void {
 
   defMeta({
     name: '准星方向',
-    group: '感知',
+    group: '状态探查',
     params: [],
     ret: V,
     mana: 0,
@@ -57,7 +57,7 @@ export default function register(): void {
 
   defMeta({
     name: '感知敌人',
-    group: '感知',
+    group: '状态探查',
     params: [
       { name: '中心', t: V },
       { name: '半径', t: N },
@@ -74,21 +74,25 @@ export default function register(): void {
 
   defMeta({
     name: '探查',
-    group: '感知',
+    group: '状态探查',
     params: [{ name: '目标', t: E }],
     ret: V,
-    mana: 10,
+    mana: 12,
+    manaCost: (c, a) => {
+      const target = c.world.entityById(asEntity(a[0]));
+      if (!target) return 8;
+      return Math.min(12, 8 + Math.hypot(target.x - c.caster.x, target.y - c.caster.y) / 200);
+    },
     ticks: 2,
-    desc: '读取单个单位的坐标。每调用一次就是一次对外探查，循环里用它会很贵',
+    desc: '读取 Actor 或 Projectile 的坐标；距离越远法力越高（动态价格，上界 12）',
     impl: (c, a) => {
-      const e = c.world.byId(asEntity(a[0]));
-      return e ? { x: e.x, y: e.y } : { x: 0, y: 0 };
+      return c.world.positionOf(asEntity(a[0])) ?? { x: 0, y: 0 };
     },
   });
 
   defMeta({
     name: '快照',
-    group: '感知',
+    group: '状态探查',
     params: [
       { name: '中心', t: V },
       { name: '半径', t: N },
@@ -107,7 +111,7 @@ export default function register(): void {
 
   defMeta({
     name: '生命',
-    group: '感知',
+    group: '状态探查',
     params: [{ name: '目标', t: E }],
     ret: N,
     mana: 8,
@@ -121,7 +125,7 @@ export default function register(): void {
 
   defMeta({
     name: '长度',
-    group: '感知',
+    group: '运算符',
     params: [{ name: '列表', t: T.list('any') }],
     ret: N,
     mana: 0,
