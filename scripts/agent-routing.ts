@@ -18,6 +18,10 @@ export interface AgentPolicy {
     retryBackoffSeconds: number;
     reviewerFallbacks: Record<ModelTier, ModelRoute[]>;
   };
+  versionCycle: {
+    maxFeatureRounds: number;
+    featureRecoveryAttempts: number;
+  };
   limits: {
     maxTasks: number;
     maxEscalationsPerTask: number;
@@ -81,6 +85,16 @@ export interface ReviewResult {
 
 export type AgentFailureKind = 'transient' | 'external-blocker' | 'execution';
 
+export interface CompletedCommitRecoveryInput {
+  phase: string;
+  baseline: string;
+  currentHead: string;
+  currentParent: string;
+  currentMessage: string;
+  expectedMessage: string;
+  worktreeClean: boolean;
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -102,6 +116,17 @@ export function validatePolicy(value: unknown): AgentPolicy {
     'transientRetries 必须是非负整数',
   );
   assert(policy.recovery.retryBackoffSeconds >= 0, 'retryBackoffSeconds 不能为负数');
+  assert(policy.versionCycle, '缺少版本迭代策略');
+  assert(
+    Number.isInteger(policy.versionCycle.maxFeatureRounds) &&
+      policy.versionCycle.maxFeatureRounds > 0,
+    'maxFeatureRounds 必须是正整数',
+  );
+  assert(
+    Number.isInteger(policy.versionCycle.featureRecoveryAttempts) &&
+      policy.versionCycle.featureRecoveryAttempts >= 0,
+    'featureRecoveryAttempts 必须是非负整数',
+  );
   for (const tier of MODEL_TIERS) {
     assert(policy.tiers[tier] && typeof policy.tiers[tier].model === 'string', `缺少 ${tier} 模型`);
     assert(
@@ -289,6 +314,16 @@ export function conventionalCommitOrFallback(message: string, title: string): st
   return `feat: 完成${title}`;
 }
 
+export function canResumeCompletedCommit(input: CompletedCommitRecoveryInput): boolean {
+  return (
+    input.phase === 'Git 交付' &&
+    input.worktreeClean &&
+    input.currentHead !== input.baseline &&
+    input.currentParent === input.baseline &&
+    input.currentMessage === input.expectedMessage
+  );
+}
+
 export function validateReview(value: unknown): ReviewResult {
   assert(typeof value === 'object' && value !== null, '审查结果必须是对象');
   const review = value as Partial<ReviewResult>;
@@ -343,8 +378,13 @@ export function isGenericContinuation(direction: string): boolean {
 }
 
 export function nextTaskFromStatus(status: string): string | null {
+  return versionTasksFromStatus(status)[0] ?? null;
+}
+
+export function versionTasksFromStatus(status: string): string[] {
   const lines = status.split(/\r?\n/);
   const preferredHeadings = ['## 当前首要任务', '## 下一阶段候选'];
+  const tasks: string[] = [];
   for (const heading of preferredHeadings) {
     const start = lines.findIndex((line) => line.trim() === heading);
     if (start < 0) continue;
@@ -353,10 +393,11 @@ export function nextTaskFromStatus(status: string): string | null {
       if (line.startsWith('## ')) break;
       const match = /^\s*(?:[-*]|\d+\.)\s+(.+?)\s*$/.exec(line);
       if (!match) continue;
-      return match[1].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+      const task = match[1].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+      if (!tasks.includes(task)) tasks.push(task);
     }
   }
-  return null;
+  return tasks;
 }
 
 export function resolveProducerDirection(direction: string, status: string): string {

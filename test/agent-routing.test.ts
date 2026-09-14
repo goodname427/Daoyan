@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   conventionalCommitOrFallback,
+  canResumeCompletedCommit,
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
@@ -16,6 +17,7 @@ import {
   validatePlan,
   validatePolicy,
   validateReview,
+  versionTasksFromStatus,
   type AgentPolicy,
   type PlannedTask,
   type TaskPlan,
@@ -48,6 +50,10 @@ const policy: AgentPolicy = {
       ],
       critical: [{ model: 'sol-review', reasoning: 'high' }],
     },
+  },
+  versionCycle: {
+    maxFeatureRounds: 2,
+    featureRecoveryAttempts: 2,
   },
   limits: { maxTasks: 6, maxEscalationsPerTask: 2, maxReviewRounds: 2 },
   timeouts: {
@@ -133,6 +139,22 @@ describe('agent routing', () => {
     expect(conventionalCommitOrFallback('修复资源释放', '资源释放')).toBe('feat: 完成资源释放');
   });
 
+  it('only resumes the exact clean delivery commit after a Git-phase interruption', () => {
+    const input = {
+      phase: 'Git 交付',
+      baseline: 'base',
+      currentHead: 'head',
+      currentParent: 'base',
+      currentMessage: 'feat: 完成版本迭代',
+      expectedMessage: 'feat: 完成版本迭代',
+      worktreeClean: true,
+    };
+    expect(canResumeCompletedCommit(input)).toBe(true);
+    expect(canResumeCompletedCommit({ ...input, currentParent: 'other' })).toBe(false);
+    expect(canResumeCompletedCommit({ ...input, currentMessage: 'feat: 外部提交' })).toBe(false);
+    expect(canResumeCompletedCommit({ ...input, worktreeClean: false })).toBe(false);
+  });
+
   it('coalesces same-tier work to avoid repeated context reads', () => {
     const optimized = optimizePlan(plan([task('read'), task('write', ['read'])]));
     expect(optimized.tasks).toHaveLength(1);
@@ -215,5 +237,23 @@ describe('agent routing', () => {
       '完成 元法术方案 的关键决策。',
     );
     expect(resolveProducerDirection('继续修复蓝图连线', status)).toBe('继续修复蓝图连线');
+  });
+
+  it('freezes an ordered, deduplicated version queue from status', () => {
+    const status = `
+## 当前首要任务
+
+- 完成 [蓝图编辑](./blueprint.md)。
+
+## 下一阶段候选
+
+1. 完成 [蓝图编辑](./blueprint.md)。
+2. 持久化法术书。
+
+## 已知债务
+
+- 不应该进入版本队列。
+`;
+    expect(versionTasksFromStatus(status)).toEqual(['完成 蓝图编辑。', '持久化法术书。']);
   });
 });

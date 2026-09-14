@@ -6,6 +6,7 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   conventionalCommitOrFallback,
+  canResumeCompletedCommit,
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
@@ -37,7 +38,9 @@ interface CliOptions {
   doctor: boolean;
   noPush: boolean;
   takeover: boolean;
+  decisionConfirmed: boolean;
   resumeDirectory: string | null;
+  runId: string | null;
 }
 
 interface ProcessResult {
@@ -120,7 +123,9 @@ function printHelp() {
   --doctor     检查 Codex 与 npm 子进程入口，不调用模型
   --no-push    完成交付和提交，但不推送远端
   --takeover   强制秘书接管当前现场，记录快照后保留并审查现有改动
+  --decision-confirmed  制作人已对当前不可逆或发布边界给出明确决定
   --resume     从失败运行的恢复点续跑，不重复已完成任务
+  --run-id     为版本级调度指定稳定的运行目录名
   --help       显示帮助
 
 完整执行要求开始时 Git 工作区干净；若上一执行 Agent 异常退出并留下受控恢复点，秘书会自动审查并接管遗留改动。若现场需要人工确认过后直接交给秘书，可使用 --takeover；制作人不需要判断任务复杂度。`);
@@ -132,7 +137,9 @@ function parseArgs(argv: string[]): CliOptions {
   let doctor = false;
   let noPush = false;
   let takeover = false;
+  let decisionConfirmed = false;
   let resumeDirectory: string | null = null;
+  let runId: string | null = null;
   let resumeRequested = false;
   const direction: string[] = [];
   for (let index = 0; index < argv.length; index += 1) {
@@ -146,7 +153,13 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === '--doctor') doctor = true;
     else if (arg === '--no-push') noPush = true;
     else if (arg === '--takeover' || arg === '--force-takeover') takeover = true;
-    else if (arg === '--resume') {
+    else if (arg === '--decision-confirmed') decisionConfirmed = true;
+    else if (arg === '--run-id') {
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--')) throw new Error('--run-id 后需要目录名');
+      runId = value;
+      index += 1;
+    } else if (arg === '--resume') {
       resumeRequested = true;
       const value = argv[index + 1];
       if (value && !value.startsWith('--')) {
@@ -164,6 +177,10 @@ function parseArgs(argv: string[]): CliOptions {
   if (resumeDirectory && (planOnly || deepPlan || doctor)) {
     throw new Error('--resume 不能与 --plan-only、--deep-plan 或 --doctor 同时使用');
   }
+  if (resumeDirectory && runId) throw new Error('--resume 不能与 --run-id 同时使用');
+  if (runId && !/^[a-zA-Z0-9._-]+$/.test(runId)) {
+    throw new Error('--run-id 只能包含字母、数字、点、下划线和连字符');
+  }
   return {
     direction: joined || (doctor ? 'doctor' : 'resume'),
     planOnly,
@@ -171,7 +188,9 @@ function parseArgs(argv: string[]): CliOptions {
     doctor,
     noPush,
     takeover,
+    decisionConfirmed,
     resumeDirectory,
+    runId,
   };
 }
 
@@ -1030,6 +1049,8 @@ if (options.resumeDirectory) {
   if (relativeRun.startsWith('..') || isAbsolute(relativeRun)) {
     throw new Error(`只能恢复 ${runsRoot} 中的运行目录`);
   }
+} else if (options.runId) {
+  runDirectory = resolve(runsRoot, options.runId);
 } else {
   const runId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${options.direction
     .slice(0, 24)
@@ -1098,10 +1119,39 @@ try {
     const checkpoint = await readCheckpoint(runDirectory);
     if (checkpoint.status === 'delivered') throw new Error('该运行已经交付，无需恢复');
     const currentFingerprint = await workspaceFingerprint();
+    const [currentHead, currentStatus, currentParent, currentMessage] = await Promise.all([
+      git(['rev-parse', 'HEAD']),
+      git(['status', '--porcelain']),
+      git(['rev-parse', 'HEAD^']),
+      git(['log', '-1', '--pretty=%s']),
+    ]);
+    const expectedCommitMessage = conventionalCommitOrFallback(
+      checkpoint.plan.commitMessage,
+      checkpoint.plan.title,
+    );
+    const completedCommitCanResume =
+      currentHead.code === 0 &&
+      currentStatus.code === 0 &&
+      currentParent.code === 0 &&
+      currentMessage.code === 0 &&
+      canResumeCompletedCommit({
+        phase: checkpoint.phase,
+        baseline: checkpoint.baseline,
+        currentHead: currentHead.stdout.trim(),
+        currentParent: currentParent.stdout.trim(),
+        currentMessage: currentMessage.stdout.trim(),
+        expectedMessage: expectedCommitMessage,
+        worktreeClean: currentStatus.stdout.trim().length === 0,
+      });
     const canAdoptAbandonedChanges =
       checkpoint.status === 'active' && checkpoint.taskRuns.length === 0;
     const fingerprintMismatch = currentFingerprint !== checkpoint.workspaceFingerprint;
-    if (fingerprintMismatch && !options.takeover && !canAdoptAbandonedChanges) {
+    if (
+      fingerprintMismatch &&
+      !options.takeover &&
+      !canAdoptAbandonedChanges &&
+      !completedCommitCanResume
+    ) {
       throw new Error(
         '当前工作区与恢复点不一致。为避免跳过必要实现或提交无关改动，秘书已拒绝续跑；如需接管当前现场，请追加 --takeover。',
       );
@@ -1113,6 +1163,8 @@ try {
         '制作人显式要求从指定恢复点强制接管当前工作区；秘书放弃旧跳过记录并重新审查。',
       );
       console.log(`[秘书强制接管] 已记录当前工作区现场：${resolve(runDirectory, 'takeover.json')}`);
+    } else if (completedCommitCanResume) {
+      console.log('[秘书接管] 检测到 Git 提交已完成，将续传并重新验证。');
     } else if (fingerprintMismatch) {
       console.log(
         '[秘书接管] 上一执行 Agent 在首个任务中异常退出，放弃旧跳过记录并审查当前遗留改动。',
@@ -1122,13 +1174,18 @@ try {
     activeBaseline = checkpoint.baseline;
     activeDirection = checkpoint.direction;
     activeResolvedDirection = checkpoint.resolvedDirection;
-    activeTaskRuns = fingerprintMismatch || options.takeover ? [] : checkpoint.taskRuns;
-    activeReview = fingerprintMismatch || options.takeover ? null : checkpoint.review;
+    const resetCompletedWork =
+      (fingerprintMismatch && !completedCommitCanResume) || options.takeover;
+    activeTaskRuns = resetCompletedWork ? [] : checkpoint.taskRuns;
+    activeReview = resetCompletedWork ? null : checkpoint.review;
     activePlannerTokens = checkpoint.plannerTokens;
     activeReviewerTokens = checkpoint.reviewerTokens;
     activeRepairerTokens = checkpoint.repairerTokens;
     activeNoPush = options.noPush || checkpoint.noPush;
-    activeTakeover = options.takeover || fingerprintMismatch || checkpoint.takeover === true;
+    activeTakeover =
+      options.takeover ||
+      (fingerprintMismatch && !completedCommitCanResume) ||
+      checkpoint.takeover === true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {
     if (!options.planOnly) await ensureCleanWorktree(runDirectory, options.takeover);
@@ -1187,7 +1244,7 @@ try {
     console.log(`- ${task.id}: ${task.title} -> ${route.model} (${route.reasoning})`);
   }
 
-  if (plan.producerDecisionRequired) {
+  if (plan.producerDecisionRequired && !options.decisionConfirmed) {
     await writeReport(
       runDirectory,
       '等待制作人决策',

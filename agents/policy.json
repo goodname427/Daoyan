@@ -78,6 +78,10 @@
       ]
     }
   },
+  "versionCycle": {
+    "maxFeatureRounds": 2,
+    "featureRecoveryAttempts": 2
+  },
   "limits": {
     "maxTasks": 4,
     "maxEscalationsPerTask": 1,

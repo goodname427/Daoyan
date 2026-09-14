@@ -56,6 +56,33 @@ npm run producer:plan -- "增加法术单步推演和变量观察"
 npm run producer -- "增加法术单步推演和变量观察"
 ```
 
+`producer` 的交付单位是一个 feature。当制作人给出的是一个版本目标，希望秘书持续从 [`status.md`](./status.md) 推进多个 feature 直到可 Review 节点时，使用：
+
+```bash
+npm run producer:version -- "推进到下一个稳定可玩版本"
+```
+
+先只看本次会冻结哪些 feature：
+
+```bash
+npm run producer:version:plan -- "推进到下一个稳定可玩版本"
+```
+
+版本调度不会把所有需求塞给同一个 Agent。它在开始时按优先级冻结有上限的 feature 队列，再为每一项独立调用完整 `producer` 闭环。每轮都必须验证、独立审查、提交并更新 `status.md`；上一轮交付后才会进入下一轮。队列完成后再运行一次跨 feature 完整门禁，然后将状态标记为 `review-ready`。
+默认一次最多两个高层 feature；`--max-rounds` 只能减少轮数，不能超过策略上限。
+
+版本运行中的 feature 失败时，外层秘书先普通续跑，仍失败再使用强制接管，不立即把中间故障丢给制作人。只有需要产品决策、自动恢复次数耗尽或外部条件持续不可用才暂停。暂停后不需重新描述目标：
+
+```bash
+npm run producer:version:resume -- ".daoyan-agent/versions/<运行目录>"
+```
+
+如果是因产品决策暂停，制作人给出决定后直接附在同一条恢复命令后，不用新建版本任务：
+
+```bash
+npm run producer:version:resume -- ".daoyan-agent/versions/<运行目录>" "采用方案 A，保留现有存档兼容"
+```
+
 如果当前工作区已经有执行 Agent 遗留的部分改动，且制作人决定让秘书直接接管现场：
 
 ```bash
@@ -136,6 +163,8 @@ npm run producer:resume -- --takeover ".daoyan-agent/runs/<运行目录>"
 
 报告同时记录规划、执行和审查调用可取得的 token 用量，便于按真实通过率和消耗调整 [`../agents/policy.json`](../agents/policy.json)，而不是凭感觉长期使用最强模型。
 
+多轮版本运行另存于 `.daoyan-agent/versions/<时间-目标>/`：`version.json` 是可恢复的队列真相，`feature-*.log` 聚合各轮终端输出，`verify-full.log` 是最终跨 feature 门禁，`report.md` 是制作人 Review 入口。每个 feature 仍在 `.daoyan-agent/runs/` 保留自己的计划、差异、审查和恢复证据。
+
 长阶段每 20 秒在终端输出一次心跳并更新 `progress.json`。当前默认上限按风险分层：执行 4/6/12/18 分钟，审查 3/4/8/12 分钟，修复 4/6/10/15 分钟；完整门禁上限 10 分钟。超时会停止该子进程，普通执行仍可按既有策略升级一次。CLI 暂不提供调用中的硬 token 上限，因此“聚焦输入 + 较低模型层级 + 时间上限 + 事后 token 记录”共同承担成本控制。
 
 执行者只运行聚焦测试和 `npm run verify`；`npm run verify:full` 由秘书统一运行，避免工作 Agent、审查者和父进程重复做同一轮完整门禁。审查者只读取预生成差异包及必要的直接契约，不运行命令，也不扫描无关文档与历史。超大差异和未跟踪二进制文件只记录清单与大小，不整块注入模型上下文。
@@ -150,3 +179,4 @@ npm run producer:resume -- --takeover ".daoyan-agent/runs/<运行目录>"
 - 时间上限能够约束失控运行，但不能保证精确 token 预算；一次调用可能在超时前已经产生较大上下文消耗。
 - 自动测试与独立审查不能替代产品体验。涉及 UI 时，当前主 Agent仍需启动应用并实际走完受影响路径，再向制作人交付。
 - routine 任务不创建 tag；版本发布继续使用 `npm run release`，大版本发布必须由制作人决定。
+- 版本队列是开始时的有界快照，不会在同一次运行中无限吸收新候选；新发现会写回 `status.md` 留给下一个版本运行。

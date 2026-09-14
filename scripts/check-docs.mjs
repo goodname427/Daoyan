@@ -24,6 +24,7 @@ const required = [
   'docs/specs/README.md',
   'docs/specs/template.md',
   'docs/specs/producer-agent-workflow.md',
+  'docs/specs/version-iteration-workflow.md',
   'agents/README.md',
   'agents/policy.json',
   'agents/plan.schema.json',
@@ -97,6 +98,15 @@ if (pkg.scripts?.['producer:doctor'] !== 'tsx scripts/agent-dispatcher.ts --doct
 }
 if (pkg.scripts?.['producer:plan'] !== 'tsx scripts/agent-dispatcher.ts --plan-only') {
   errors.push('producer:plan 必须复用只读规划入口');
+}
+if (pkg.scripts?.['producer:version'] !== 'tsx scripts/version-dispatcher.ts') {
+  errors.push('producer:version 必须使用版本迭代调度入口');
+}
+if (pkg.scripts?.['producer:version:plan'] !== 'tsx scripts/version-dispatcher.ts --plan-only') {
+  errors.push('producer:version:plan 必须复用版本迭代只读规划入口');
+}
+if (pkg.scripts?.['producer:version:resume'] !== 'tsx scripts/version-dispatcher.ts --resume') {
+  errors.push('producer:version:resume 必须复用版本迭代恢复入口');
 }
 
 const agentPolicy = JSON.parse(readFileSync(resolve(root, 'agents/policy.json'), 'utf8'));

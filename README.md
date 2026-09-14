@@ -65,6 +65,12 @@ npm run producer:plan -- "增加法术单步推演和变量观察"
 npm run producer -- "增加法术单步推演和变量观察"
 ```
 
+需要连续推进 `docs/status.md` 中多个 feature，直到形成可供制作人 Review 的版本节点：
+
+```bash
+npm run producer:version -- "推进到下一个稳定可玩版本"
+```
+
 详细职责、自动升级和恢复方式见 [`docs/agent-workflow.md`](./docs/agent-workflow.md)。
 
 ## 架构
