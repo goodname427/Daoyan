@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -11,6 +11,7 @@ import {
   classifyAgentFailure,
   escalateTier,
   highestTier,
+  isSafeRunId,
   optimizePlan,
   preferredWindowsExecutable,
   resolveProducerDirection,
@@ -178,7 +179,7 @@ function parseArgs(argv: string[]): CliOptions {
     throw new Error('--resume 不能与 --plan-only、--deep-plan 或 --doctor 同时使用');
   }
   if (resumeDirectory && runId) throw new Error('--resume 不能与 --run-id 同时使用');
-  if (runId && !/^[a-zA-Z0-9._-]+$/.test(runId)) {
+  if (runId && !isSafeRunId(runId)) {
     throw new Error('--run-id 只能包含字母、数字、点、下划线和连字符');
   }
   return {
@@ -1059,6 +1060,14 @@ if (options.resumeDirectory) {
   runDirectory = resolve(runsRoot, runId);
 }
 await mkdir(runDirectory, { recursive: true });
+const [canonicalRunsRoot, canonicalRunDirectory] = await Promise.all([
+  realpath(runsRoot),
+  realpath(runDirectory),
+]);
+const canonicalRelativeRun = relative(canonicalRunsRoot, canonicalRunDirectory);
+if (canonicalRelativeRun.startsWith('..') || isAbsolute(canonicalRelativeRun)) {
+  throw new Error(`运行目录的真实路径必须位于 ${runsRoot} 内`);
+}
 
 let activePlan: TaskPlan | null = null;
 let activeBaseline = '';

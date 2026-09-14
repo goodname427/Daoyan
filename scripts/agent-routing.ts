@@ -352,6 +352,49 @@ export function preferredWindowsExecutable(candidates: string[]): string | null 
   );
 }
 
+export function isSafeRunId(runId: string): boolean {
+  return runId !== '.' && runId !== '..' && /^[\p{L}\p{N}._-]+$/u.test(runId);
+}
+
+const VERSION_DISPATCHER_MAINTENANCE_PATHS = new Set([
+  'AGENTS.md',
+  'README.md',
+  'agents/README.md',
+  'agents/policy.json',
+  'docs/agent-workflow.md',
+  'docs/dev/2026-09-14-version-dispatcher.md',
+  'docs/specs/version-iteration-workflow.md',
+  'docs/testing.md',
+  'package-lock.json',
+  'package.json',
+  'scripts/agent-dispatcher.ts',
+  'scripts/agent-routing.ts',
+  'scripts/check-docs.mjs',
+  'scripts/version-dispatcher.ts',
+  'test/agent-routing.test.ts',
+]);
+
+export function canRefreshVersionRecoveryFingerprint(input: {
+  recoverable: boolean;
+  cleanWorktree: boolean;
+  baselineIsAncestor: boolean;
+  hasChildRecovery: boolean;
+  hasChildReport: boolean;
+  changedPaths: string[];
+}): boolean {
+  return (
+    input.recoverable &&
+    input.cleanWorktree &&
+    input.baselineIsAncestor &&
+    !input.hasChildRecovery &&
+    !input.hasChildReport &&
+    input.changedPaths.length > 0 &&
+    input.changedPaths.every((path) =>
+      VERSION_DISPATCHER_MAINTENANCE_PATHS.has(path.replaceAll('\\', '/')),
+    )
+  );
+}
+
 function includesAny(source: string, terms: string[]): boolean {
   return terms.some((term) => source.toLowerCase().includes(term.toLowerCase()));
 }

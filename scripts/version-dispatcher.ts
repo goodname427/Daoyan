@@ -4,7 +4,12 @@ import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validatePolicy, versionTasksFromStatus, type AgentPolicy } from './agent-routing';
+import {
+  canRefreshVersionRecoveryFingerprint,
+  validatePolicy,
+  versionTasksFromStatus,
+  type AgentPolicy,
+} from './agent-routing';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const versionsRoot = resolve(root, '.daoyan-agent', 'versions');
@@ -284,6 +289,52 @@ async function isCleanWorktree(): Promise<boolean> {
   const status = await capture('git', ['status', '--porcelain']);
   if (status.code !== 0) throw new Error('无法检查 Git 工作区');
   return status.stdout.toString('utf8').trim().length === 0;
+}
+
+async function refreshMaintenanceOnlyRecovery(
+  directory: string,
+  manifest: VersionManifest,
+): Promise<boolean> {
+  const feature = manifest.features.find((candidate) => candidate.status !== 'delivered');
+  if (!feature) return false;
+  const currentFingerprint = await workspaceFingerprint();
+  if (
+    manifest.controlledFingerprint === currentFingerprint &&
+    (!feature.controlledFingerprint || feature.controlledFingerprint === currentFingerprint)
+  ) {
+    return false;
+  }
+  const [cleanWorktree, ancestor, changed] = await Promise.all([
+    isCleanWorktree(),
+    capture('git', ['merge-base', '--is-ancestor', manifest.baseline, 'HEAD']),
+    capture('git', [
+      '-c',
+      'core.quotePath=false',
+      'diff',
+      '--name-only',
+      `${manifest.baseline}..HEAD`,
+      '--',
+    ]),
+  ]);
+  if (changed.code !== 0) return false;
+  const changedPaths = changed.stdout.toString('utf8').split(/\r?\n/).filter(Boolean);
+  const canRefresh = canRefreshVersionRecoveryFingerprint({
+    recoverable: manifest.status === 'recoverable' && feature.status === 'recoverable',
+    cleanWorktree,
+    baselineIsAncestor: ancestor.code === 0,
+    hasChildRecovery: existsSync(resolve(feature.runDirectory, 'recovery.json')),
+    hasChildReport: existsSync(resolve(feature.runDirectory, 'report.json')),
+    changedPaths,
+  });
+  if (!canRefresh) return false;
+
+  // The active feature owns recovery protection once maintenance migration succeeds.
+  manifest.controlledFingerprint = '';
+  feature.controlledFingerprint = currentFingerprint;
+  manifest.error = '';
+  await writeManifest(directory, manifest);
+  console.log(`[版本迁移] ${feature.id} 仅因调度器维护提交改变，已安全刷新恢复指纹。`);
+  return true;
 }
 
 async function writeManifest(directory: string, manifest: VersionManifest): Promise<void> {
@@ -639,6 +690,7 @@ try {
   if (manifest.status === 'planned' && !(await isCleanWorktree())) {
     throw new Error('完整版本执行要求 Git 工作区干净；只读规划不受此限制');
   }
+  if (options.resumeDirectory) await refreshMaintenanceOnlyRecovery(directory, manifest);
   if (
     manifest.controlledFingerprint &&
     manifest.controlledFingerprint !== (await workspaceFingerprint())

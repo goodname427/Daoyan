@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import {
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
+  canRefreshVersionRecoveryFingerprint,
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
+  isSafeRunId,
   optimizePlan,
   preferredWindowsExecutable,
   resolveProducerDirection,
@@ -255,5 +257,46 @@ describe('agent routing', () => {
 - 不应该进入版本队列。
 `;
     expect(versionTasksFromStatus(status)).toEqual(['完成 蓝图编辑。', '持久化法术书。']);
+  });
+
+  it('accepts localized run ids without allowing paths to escape the runs directory', () => {
+    expect(isSafeRunId('2026-09-14T01-30-20-725Z-推进到下一个稳定可玩版本-feature-01')).toBe(true);
+    expect(isSafeRunId('release_0.2.1')).toBe(true);
+    expect(isSafeRunId('..')).toBe(false);
+    expect(isSafeRunId('../outside')).toBe(false);
+    expect(isSafeRunId('child/run')).toBe(false);
+    expect(isSafeRunId('child\\run')).toBe(false);
+  });
+
+  it('refreshes an untouched failed version only across dispatcher maintenance commits', () => {
+    const safeRecovery = {
+      recoverable: true,
+      cleanWorktree: true,
+      baselineIsAncestor: true,
+      hasChildRecovery: false,
+      hasChildReport: false,
+      changedPaths: [
+        'scripts/agent-dispatcher.ts',
+        'scripts/agent-routing.ts',
+        'scripts/version-dispatcher.ts',
+        'test/agent-routing.test.ts',
+      ],
+    };
+    expect(canRefreshVersionRecoveryFingerprint(safeRecovery)).toBe(true);
+    expect(
+      canRefreshVersionRecoveryFingerprint({
+        ...safeRecovery,
+        changedPaths: [...safeRecovery.changedPaths, 'src/core/vm.ts'],
+      }),
+    ).toBe(false);
+    expect(canRefreshVersionRecoveryFingerprint({ ...safeRecovery, hasChildRecovery: true })).toBe(
+      false,
+    );
+    expect(canRefreshVersionRecoveryFingerprint({ ...safeRecovery, cleanWorktree: false })).toBe(
+      false,
+    );
+    expect(
+      canRefreshVersionRecoveryFingerprint({ ...safeRecovery, baselineIsAncestor: false }),
+    ).toBe(false);
   });
 });
