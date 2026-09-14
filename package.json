@@ -17,7 +17,7 @@
     "sandbox": "tsx src/demo/playground.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/run-playwright.mjs test",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",

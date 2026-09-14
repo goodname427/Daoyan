@@ -81,6 +81,134 @@ test.describe('blueprint connection regression', () => {
   });
 });
 
+test.describe('blueprint editing tools', () => {
+  test('supports undo, redo, search location, box selection and conditional else ports', async ({
+    page,
+  }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.getByTestId('lab-blueprint-mode').click();
+    const blueprint = page.locator('.blueprint-callout');
+    const before = await blueprint.locator('.react-flow__node').count();
+    await blueprint.getByRole('button', { name: /调用\(施法\)/ }).click();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(before + 1);
+    await blueprint.getByRole('button', { name: '撤销' }).click();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(before);
+    await blueprint.getByRole('button', { name: '重做' }).click();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(before + 1);
+
+    await blueprint.getByLabel('搜索节点').fill('若');
+    await expect(blueprint.locator('.palette-btn', { hasText: '若' })).toBeVisible();
+    await blueprint.locator('.palette-btn', { hasText: '若' }).click();
+    const addedCondition = blueprint.locator('.react-flow__node').last();
+    await expect(addedCondition.getByLabel('条件不成立分支出口')).toBeVisible();
+    const viewport = blueprint.locator('.react-flow__viewport');
+    const beforeLocation = await viewport.getAttribute('style');
+    await blueprint.getByLabel('搜索节点').fill('若');
+    const addedConditionId = await addedCondition.getAttribute('data-id');
+    expect(addedConditionId).not.toBeNull();
+    await blueprint
+      .locator(`.node-search-results button[data-node-id="${addedConditionId}"]`)
+      .click();
+    await expect(addedCondition).toHaveClass(/selected/);
+    await expect(viewport).not.toHaveAttribute('style', beforeLocation ?? '');
+
+    await blueprint.getByLabel('搜索节点').fill('重复');
+    await blueprint.locator('.palette-btn', { hasText: '重复' }).click();
+    const repeat = blueprint.locator('.react-flow__node').last();
+    await repeat.getByLabel('重复次数').fill('3');
+    await blueprint.getByRole('button', { name: '撤销' }).click();
+    await expect(repeat.getByLabel('重复次数')).toHaveValue('1');
+    await blueprint.getByRole('button', { name: '重做' }).click();
+    await expect(repeat.getByLabel('重复次数')).toHaveValue('3');
+
+    const conditionBox = await addedCondition.boundingBox();
+    const repeatBox = await repeat.boundingBox();
+    expect(conditionBox).not.toBeNull();
+    expect(repeatBox).not.toBeNull();
+    if (conditionBox && repeatBox) {
+      const left = Math.min(conditionBox.x, repeatBox.x) - 12;
+      const top = Math.min(conditionBox.y, repeatBox.y) - 12;
+      const right =
+        Math.max(conditionBox.x + conditionBox.width, repeatBox.x + repeatBox.width) + 12;
+      const bottom =
+        Math.max(conditionBox.y + conditionBox.height, repeatBox.y + repeatBox.height) + 12;
+      await page.mouse.move(left, top);
+      await page.mouse.down();
+      await page.mouse.move(right, bottom, { steps: 8 });
+      await page.mouse.up();
+      await expect
+        .poll(() => blueprint.locator('.react-flow__node.selected').count())
+        .toBeGreaterThanOrEqual(2);
+    }
+    sink.assert();
+  });
+
+  test('undoes a node deletion together with its connected edges', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.getByTestId('lab-blueprint-mode').click();
+    const blueprint = page.locator('.blueprint-callout');
+    const initialNodes = await blueprint.locator('.react-flow__node').count();
+    const initialEdges = await blueprint.locator('.react-flow__edge').count();
+    await blueprint.getByRole('button', { name: /调用\(施法\)/ }).click();
+    const added = blueprint.locator('.react-flow__node').last();
+    const source = blueprint
+      .locator('.react-flow__node')
+      .first()
+      .locator('.react-flow__handle.source');
+    const target = added.locator('.react-flow__handle.target').first();
+    const sourceBox = await source.boundingBox();
+    const targetBox = await target.boundingBox();
+    expect(sourceBox).not.toBeNull();
+    expect(targetBox).not.toBeNull();
+    if (!sourceBox || !targetBox) return;
+    await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+      steps: 12,
+    });
+    await page.mouse.up();
+    await expect(blueprint.locator('.react-flow__edge')).toHaveCount(initialEdges + 1);
+
+    // The palette-created call node has a native select in its centre. Select the
+    // node title, not that form control, so this covers the actual Delete flow.
+    await added.locator('.spell-node-title').click();
+    await expect(added).toHaveClass(/selected/);
+    await page.keyboard.press('Delete');
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(initialNodes);
+    await expect(blueprint.locator('.react-flow__edge')).toHaveCount(initialEdges);
+    await blueprint.getByRole('button', { name: '撤销' }).click();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(initialNodes + 1);
+    await expect(blueprint.locator('.react-flow__edge')).toHaveCount(initialEdges + 1);
+    await blueprint.getByRole('button', { name: '重做' }).click();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(initialNodes);
+    await expect(blueprint.locator('.react-flow__edge')).toHaveCount(initialEdges);
+    sink.assert();
+  });
+
+  test('round-trips both conditional branches through the blueprint AST', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    const source = page.locator('.code-input').first();
+    await source.fill(`spell 双分支 {
+  if true {
+    var a: num = 1
+  } else {
+    var a: num = 2
+  }
+}`);
+    await page.getByTestId('lab-blueprint-mode').click();
+    const blueprint = page.locator('.blueprint-callout');
+    await expect(blueprint.getByLabel('条件不成立分支出口')).toBeVisible();
+    await blueprint.getByRole('button', { name: '编译并写回' }).click();
+    await expect(blueprint.locator('.errors')).toContainText('编译通过');
+    await page.getByTestId('lab-code-mode').click();
+    await expect(source).toHaveValue(/else/);
+    sink.assert();
+  });
+});
+
 test.describe('lab functionality', () => {
   test('explains dynamic costs and runs the entity projectile spell', async ({ page }) => {
     const sink = captureErrors(page);

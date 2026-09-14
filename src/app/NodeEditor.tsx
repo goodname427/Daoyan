@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Background,
   Controls,
@@ -6,13 +14,18 @@ import {
   Position,
   ReactFlow,
   addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
+  SelectionMode,
   useEdgesState,
   useNodesState,
-  useReactFlow,
   type Connection,
   type Edge,
+  type EdgeChange,
   type Node,
+  type NodeChange,
   type NodeProps,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -37,7 +50,7 @@ import type { Expr, ListElem, Param, Spell, SpellBook, Stmt, Type } from '../cor
  * 与 DSL 编辑器、节点图（只读视图）三者产出同一份 AST。
  *
  * MVP 范围：声明 / 赋值 / 调用(施法) / 调用(取值) / 常量 / 变量引用 /
- *           若(含 then 体) / 遍历(含体) / 返回。完整控制流与撤销重做后续补。
+ *           若（then/else）/ 遍历 / 重复 / 中断 / 释放 / 返回。
  */
 
 const TYPE_COLOR: Record<string, string> = {
@@ -238,12 +251,16 @@ function Port({ id, label, t, tip }: { id: string; label: string; t: Type; tip: 
   );
 }
 
+const NodeDataContext = createContext<(id: string, patch: Record<string, unknown>) => void>(
+  () => {},
+);
+
 function SpellNode({ id, data }: NodeProps<Node>) {
   const d = data as unknown as Nd;
   const isStmt = isStmtKind(d.kind) || d.kind === 'entry';
   const outT = outTypeOf({ id, data } as Node);
   const metas = allMetas();
-  const { updateNodeData } = useReactFlow();
+  const updateNodeData = useContext(NodeDataContext);
   const nodeTip = descriptionOf(d);
 
   const setMeta = (m: string): void => {
@@ -276,9 +293,9 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">法术·入口</div>
           <input
             className="node-input"
-            defaultValue={d.name}
+            value={d.name}
             placeholder="法术名"
-            onChange={(e) => ((data as unknown as EntryData).name = e.target.value)}
+            onChange={(e) => updateNodeData(id, { name: e.target.value })}
           />
         </>
       )}
@@ -288,7 +305,7 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">{d.meta}</div>
           <select
             className="node-input"
-            defaultValue={d.meta}
+            value={d.meta}
             title={getMeta(d.meta)?.desc}
             onChange={(e) => setMeta(e.target.value)}
           >
@@ -306,10 +323,8 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">常量</div>
           <select
             className="node-input"
-            defaultValue={d.ctype}
-            onChange={(e) =>
-              ((data as unknown as ConstData).ctype = e.target.value as ConstData['ctype'])
-            }
+            value={d.ctype}
+            onChange={(e) => updateNodeData(id, { ctype: e.target.value as ConstData['ctype'] })}
           >
             <option value="num">数</option>
             <option value="bool">布尔</option>
@@ -317,9 +332,9 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           </select>
           <input
             className="node-input"
-            defaultValue={d.value}
+            value={d.value}
             placeholder={d.ctype === 'bool' ? 'true/false' : d.ctype === 'entity' ? '空' : '0'}
-            onChange={(e) => ((data as unknown as ConstData).value = e.target.value)}
+            onChange={(e) => updateNodeData(id, { value: e.target.value })}
           />
         </>
       )}
@@ -329,9 +344,9 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">变量引用</div>
           <input
             className="node-input"
-            defaultValue={d.name}
+            value={d.name}
             placeholder="变量名"
-            onChange={(e) => ((data as unknown as VarData).name = e.target.value)}
+            onChange={(e) => updateNodeData(id, { name: e.target.value })}
           />
         </>
       )}
@@ -341,13 +356,13 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">声明</div>
           <input
             className="node-input"
-            defaultValue={d.name}
+            value={d.name}
             placeholder="变量名"
-            onChange={(e) => ((data as unknown as DeclData).name = e.target.value)}
+            onChange={(e) => updateNodeData(id, { name: e.target.value })}
           />
           <select
             className="node-input"
-            defaultValue={d.dtype}
+            value={d.dtype}
             onChange={(e) => {
               const dtype = e.target.value as DeclData['dtype'];
               updateNodeData(id, {
@@ -369,7 +384,7 @@ function SpellNode({ id, data }: NodeProps<Node>) {
               <select
                 className="node-input"
                 aria-label="列表元素类型"
-                defaultValue={d.elem ?? 'any'}
+                value={d.elem ?? 'any'}
                 onChange={(e) => updateNodeData(id, { ...data, elem: e.target.value as ListElem })}
               >
                 <option value="any">任意</option>
@@ -383,7 +398,7 @@ function SpellNode({ id, data }: NodeProps<Node>) {
                 type="number"
                 min={1}
                 aria-label="列表容量"
-                defaultValue={d.cap ?? 4}
+                value={d.cap ?? 4}
                 onChange={(e) =>
                   updateNodeData(id, { ...data, cap: Math.max(1, Number(e.target.value) || 1) })
                 }
@@ -398,9 +413,9 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">赋值</div>
           <input
             className="node-input"
-            defaultValue={d.name}
+            value={d.name}
             placeholder="变量名"
-            onChange={(e) => ((data as unknown as AssignData).name = e.target.value)}
+            onChange={(e) => updateNodeData(id, { name: e.target.value })}
           />
         </>
       )}
@@ -410,9 +425,36 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           <div className="spell-node-title">遍历</div>
           <input
             className="node-input"
-            defaultValue={d.varName}
+            value={d.varName}
             placeholder="元素变量名"
-            onChange={(e) => ((data as unknown as ForData).varName = e.target.value)}
+            onChange={(e) => updateNodeData(id, { varName: e.target.value })}
+          />
+        </>
+      )}
+
+      {d.kind === 'repeat' && (
+        <>
+          <div className="spell-node-title">重复</div>
+          <input
+            className="node-input"
+            type="number"
+            min={0}
+            aria-label="重复次数"
+            value={d.count}
+            onChange={(e) =>
+              updateNodeData(id, { count: Math.max(0, Number(e.target.value) || 0) })
+            }
+          />
+        </>
+      )}
+      {d.kind === 'free' && (
+        <>
+          <div className="spell-node-title">释放</div>
+          <input
+            className="node-input"
+            value={d.name}
+            placeholder="变量名"
+            onChange={(e) => updateNodeData(id, { name: e.target.value })}
           />
         </>
       )}
@@ -457,9 +499,22 @@ function SpellNode({ id, data }: NodeProps<Node>) {
           type="source"
           position={Position.Right}
           id="body"
-          aria-label="分支体出口"
-          title="分支体出口：连接条件或循环内部首先执行的语句"
+          aria-label={d.kind === 'if' ? '条件成立分支出口' : '循环体出口'}
+          title={
+            d.kind === 'if' ? '条件成立时从此处连接首先执行的语句' : '连接循环内部首先执行的语句'
+          }
           style={{ top: 'auto', bottom: 8, background: '#6aa9ff' }}
+        />
+      )}
+      {d.kind === 'if' && (
+        <Handle
+          className="pin pin-body"
+          type="source"
+          position={Position.Right}
+          id="else"
+          aria-label="条件不成立分支出口"
+          title="条件不成立时从此处连接首先执行的语句"
+          style={{ top: 28, background: '#c39bff' }}
         />
       )}
 
@@ -529,7 +584,7 @@ const NODE_DESCRIPTIONS: Record<NodeKind, string> = {
   index: '按索引读取列表中的值',
   decl: '声明变量，可从左侧接入初始值',
   assign: '把左侧输入写入指定变量',
-  if: '条件成立时执行右侧分支体',
+  if: '条件成立或不成立时，分别执行对应分支体',
   for: '遍历左侧输入的列表，并执行右侧循环体',
   repeat: '按固定次数重复执行右侧循环体',
   break: '立即结束当前循环',
@@ -711,9 +766,19 @@ function compileStmt(
     case 'if': {
       const cond = valIn();
       if (!cond) return { ok: false, error: '若 缺条件' };
-      const result = compileStmtChain(nodes, edges, outTarget(edges, nodeId, 'body'));
-      if (!result.ok) return result;
-      return { ok: true, s: { k: 'if', cond, then: result.body, els: null } };
+      const thenResult = compileStmtChain(nodes, edges, outTarget(edges, nodeId, 'body'));
+      if (!thenResult.ok) return thenResult;
+      const elseResult = compileStmtChain(nodes, edges, outTarget(edges, nodeId, 'else'));
+      if (!elseResult.ok) return elseResult;
+      return {
+        ok: true,
+        s: {
+          k: 'if',
+          cond,
+          then: thenResult.body,
+          els: elseResult.body.length ? elseResult.body : null,
+        },
+      };
     }
     case 'for': {
       const list = valIn();
@@ -840,13 +905,21 @@ function graphFromSpell(spell: Spell): { nodes: Node[]; edges: Edge[] } {
   const statementDepth = (stmts: Stmt[], depth = 0): number =>
     stmts.reduce((max, stmt) => {
       const child =
-        stmt.k === 'if' ? stmt.then : stmt.k === 'for' || stmt.k === 'repeat' ? stmt.body : [];
+        stmt.k === 'if'
+          ? [...stmt.then, ...(stmt.els ?? [])]
+          : stmt.k === 'for' || stmt.k === 'repeat'
+            ? stmt.body
+            : [];
       return Math.max(max, child.length > 0 ? statementDepth(child, depth + 1) : depth);
     }, depth);
   const expressionX = 430 + statementDepth(spell.body) * 330;
   const statementSpan = (stmt: Stmt): number => {
     const child =
-      stmt.k === 'if' ? stmt.then : stmt.k === 'for' || stmt.k === 'repeat' ? stmt.body : [];
+      stmt.k === 'if'
+        ? [...stmt.then, ...(stmt.els ?? [])]
+        : stmt.k === 'for' || stmt.k === 'repeat'
+          ? stmt.body
+          : [];
     return Math.max(
       145,
       child.reduce((sum, nested) => sum + statementSpan(nested), 0),
@@ -981,6 +1054,14 @@ function graphFromSpell(spell: Spell): { nodes: Node[]; edges: Edge[] } {
       const child = stmt.k === 'if' ? stmt.then : stmt.body;
       const body = addStmtList(child, x + 330, y + 20);
       if (body.first) pushEdge(id, 'body', body.first, 'flow-in', '#7bd88f');
+      if (stmt.k === 'if' && stmt.els) {
+        const thenSpan = Math.max(
+          145,
+          stmt.then.reduce((sum, nested) => sum + statementSpan(nested), 0),
+        );
+        const elseBody = addStmtList(stmt.els, x + 330, y + thenSpan + 20);
+        if (elseBody.first) pushEdge(id, 'else', elseBody.first, 'flow-in', '#c39bff');
+      }
     }
     return id;
   };
@@ -1039,11 +1120,61 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
     () => (spell ? graphFromSpell(spell) : { nodes: initialNodes, edges: [] as Edge[] }),
     [spell],
   );
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(graph.nodes as Node[]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(graph.edges);
+  const [nodes, setNodes] = useNodesState<Node>(graph.nodes as Node[]);
+  const [edges, setEdges] = useEdgesState<Edge>(graph.edges);
   const [compileMsg, setCompileMsg] = useState('');
   const [dsl, setDsl] = useState('');
+  const [search, setSearch] = useState('');
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [flow, setFlow] = useState<ReactFlowInstance | null>(null);
   const loadedSpellName = useRef<string | null>(null);
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  const historyRef = useRef<Array<{ nodes: Node[]; edges: Edge[] }>>([{ nodes, edges }]);
+  const historyIndexRef = useRef(0);
+  const deletionHistoryQueuedRef = useRef(false);
+
+  const clone = (nextNodes: Node[], nextEdges: Edge[]) => ({
+    nodes: nextNodes.map((node) => ({
+      ...node,
+      position: { ...node.position },
+      data: { ...node.data },
+    })),
+    edges: nextEdges.map((edge) => ({
+      ...edge,
+      style: edge.style ? { ...edge.style } : undefined,
+    })),
+  });
+  const appendHistory = (nextNodes: Node[], nextEdges: Edge[]): void => {
+    const next = [
+      ...historyRef.current.slice(0, historyIndexRef.current + 1),
+      clone(nextNodes, nextEdges),
+    ].slice(-60);
+    historyRef.current = next;
+    historyIndexRef.current = next.length - 1;
+    setHistoryIndex(next.length - 1);
+  };
+  const restoreHistory = (index: number): void => {
+    const saved = historyRef.current[index];
+    if (!saved) return;
+    const restored = clone(saved.nodes, saved.edges);
+    nodesRef.current = restored.nodes;
+    edgesRef.current = restored.edges;
+    setNodes(restored.nodes);
+    setEdges(restored.edges);
+    historyIndexRef.current = index;
+    setHistoryIndex(index);
+  };
+  const scheduleDeletionHistory = (): void => {
+    if (deletionHistoryQueuedRef.current) return;
+    deletionHistoryQueuedRef.current = true;
+    queueMicrotask(() => {
+      deletionHistoryQueuedRef.current = false;
+      // React Flow removes connected edges and their node in separate callbacks.
+      // Wait until that transaction has settled, so one undo restores the whole graph.
+      appendHistory(nodesRef.current, edgesRef.current);
+    });
+  };
 
   useEffect(() => {
     const nextName = spell?.name ?? null;
@@ -1051,15 +1182,41 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
     loadedSpellName.current = nextName;
     setNodes(graph.nodes as Node[]);
     setEdges(graph.edges);
+    nodesRef.current = graph.nodes as Node[];
+    edgesRef.current = graph.edges;
+    historyRef.current = [clone(graph.nodes as Node[], graph.edges)];
+    historyIndexRef.current = 0;
+    setHistoryIndex(0);
     setCompileMsg('');
     setDsl('');
   }, [graph, setEdges, setNodes, spell?.name]);
 
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const next = applyNodeChanges(changes, nodesRef.current);
+      nodesRef.current = next;
+      setNodes(next);
+      if (changes.some((change) => change.type === 'remove')) scheduleDeletionHistory();
+    },
+    [setNodes],
+  );
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const next = applyEdgeChanges(changes, edgesRef.current);
+      edgesRef.current = next;
+      setEdges(next);
+      if (changes.some((change) => change.type === 'remove')) scheduleDeletionHistory();
+    },
+    [setEdges],
+  );
+
   const onConnect = useCallback(
     (c: Connection) => {
       if (!c.source || !c.target || !c.sourceHandle || !c.targetHandle) return;
-      const srcNode = nodes.find((n) => n.id === c.source) as unknown as Node | undefined;
-      const tgtNode = nodes.find((n) => n.id === c.target) as unknown as Node | undefined;
+      const srcNode = nodesRef.current.find((n) => n.id === c.source) as unknown as
+        Node | undefined;
+      const tgtNode = nodesRef.current.find((n) => n.id === c.target) as unknown as
+        Node | undefined;
       if (!srcNode || !tgtNode) return;
       const sKind = (srcNode.data as unknown as Nd).kind;
       const tKind = (tgtNode.data as unknown as Nd).kind;
@@ -1071,6 +1228,8 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
         // 体端口：if/for → 语句
         if (sKind !== 'if' && sKind !== 'for' && sKind !== 'repeat') return;
         if (!isStmtKind(tKind)) return;
+      } else if (c.sourceHandle === 'else' && c.targetHandle === 'flow-in') {
+        if (sKind !== 'if' || !isStmtKind(tKind)) return;
       } else if (c.sourceHandle === 'out' && c.targetHandle.startsWith('in')) {
         // 值连接：类型校验
         const st = outTypeOf(srcNode);
@@ -1083,14 +1242,56 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
         return;
       }
       setCompileMsg('');
-      setEdges((eds) => addEdge({ ...c, style: { stroke: '#6aa9ff' } } as Edge, eds));
+      const next = addEdge({ ...c, style: { stroke: '#6aa9ff' } } as Edge, edgesRef.current);
+      edgesRef.current = next;
+      setEdges(next);
+      appendHistory(nodesRef.current, next);
     },
-    [nodes, setEdges],
+    [setEdges],
   );
 
   const addNode = (kind: NodeKind): void => {
-    setNodes((ns) => [...ns, makeNode(kind)]);
+    const next = [...nodesRef.current, makeNode(kind)];
+    nodesRef.current = next;
+    setNodes(next);
+    appendHistory(next, edgesRef.current);
   };
+
+  const updateNodeData = useCallback(
+    (id: string, patch: Record<string, unknown>): void => {
+      const next = nodesRef.current.map((node) =>
+        node.id === id ? { ...node, data: { ...node.data, ...patch } } : node,
+      );
+      nodesRef.current = next;
+      setNodes(next);
+      appendHistory(next, edgesRef.current);
+    },
+    [setNodes],
+  );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        restoreHistory(event.shiftKey ? historyIndex + 1 : historyIndex - 1);
+      } else if (event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        restoreHistory(historyIndex + 1);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [historyIndex]);
 
   const compile = (): void => {
     const r = compileGraph(nodes as unknown as Node[], edges);
@@ -1130,58 +1331,119 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
     }
   };
 
-  const palette = useMemo(() => PALETTE, []);
+  const palette = useMemo(
+    () => PALETTE.filter((item) => item.label.includes(search.trim())),
+    [search],
+  );
+  const matches = useMemo(
+    () =>
+      search.trim()
+        ? nodes.filter((node) =>
+            `${titleOf((node.data as unknown as Nd).kind)} ${descriptionOf(node.data as unknown as Nd)}`.includes(
+              search.trim(),
+            ),
+          )
+        : [],
+    [nodes, search],
+  );
+  const selectNode = (id: string): void => {
+    const next = nodesRef.current.map((node) => ({ ...node, selected: node.id === id }));
+    nodesRef.current = next;
+    setNodes(next);
+    const node = next.find((item) => item.id === id);
+    if (node) void flow?.setCenter(node.position.x + 90, node.position.y + 48, { zoom: 1 });
+  };
 
   return (
-    <div className="blueprint-editor">
-      <div className="blueprint-toolbar">
-        <strong>{spell?.name ?? 'BluePrint'}</strong>
-        <span className="muted small">修改当前法术，编译后同步回法术书</span>
-        <button className="run" onClick={compile} disabled={!spell}>
-          编译并写回
-        </button>
-      </div>
-
-      <div className="editor-wrap">
-        <aside className="palette">
-          <h3>节点</h3>
-          {palette.map((p) => (
-            <button
-              key={p.kind}
-              className="palette-btn"
-              title={NODE_DESCRIPTIONS[p.kind]}
-              onClick={() => addNode(p.kind)}
-            >
-              + {p.label}
-            </button>
-          ))}
-          {compileMsg && <pre className="errors">{compileMsg}</pre>}
-          {dsl && (
-            <details>
-              <summary>生成的 DSL（点击展开，可复制）</summary>
-              <textarea className="editor" value={dsl} readOnly rows={14} />
-            </details>
-          )}
-        </aside>
-
-        <div className="graph-wrap">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            nodeTypes={nodeTypes}
-            minZoom={0.45}
-            maxZoom={1.5}
-            defaultViewport={{ x: 28, y: 16, zoom: 0.68 }}
-            deleteKeyCode={['Backspace', 'Delete']}
+    <NodeDataContext.Provider value={updateNodeData}>
+      <div className="blueprint-editor">
+        <div className="blueprint-toolbar">
+          <strong>{spell?.name ?? 'BluePrint'}</strong>
+          <span className="muted small">修改当前法术，编译后同步回法术书</span>
+          <button
+            onClick={() => restoreHistory(historyIndex - 1)}
+            disabled={historyIndex === 0}
+            title="Ctrl/Cmd + Z"
           >
-            <Background color="#262e3a" gap={20} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
+            撤销
+          </button>
+          <button
+            onClick={() => restoreHistory(historyIndex + 1)}
+            disabled={historyIndex >= historyRef.current.length - 1}
+            title="Ctrl/Cmd + Shift + Z"
+          >
+            重做
+          </button>
+          <button className="run" onClick={compile} disabled={!spell}>
+            编译并写回
+          </button>
+        </div>
+
+        <div className="editor-wrap">
+          <aside className="palette">
+            <h3>节点</h3>
+            <input
+              className="node-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="搜索节点或调色板"
+              aria-label="搜索节点"
+            />
+            {matches.length > 0 && (
+              <div className="node-search-results" aria-label="节点搜索结果">
+                {matches.map((node) => (
+                  <button key={node.id} data-node-id={node.id} onClick={() => selectNode(node.id)}>
+                    定位 {titleOf((node.data as unknown as Nd).kind)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {palette.map((p) => (
+              <button
+                key={p.kind}
+                className="palette-btn"
+                title={NODE_DESCRIPTIONS[p.kind]}
+                onClick={() => addNode(p.kind)}
+              >
+                + {p.label}
+              </button>
+            ))}
+            {compileMsg && <pre className="errors">{compileMsg}</pre>}
+            {dsl && (
+              <details>
+                <summary>生成的 DSL（点击展开，可复制）</summary>
+                <textarea className="editor" value={dsl} readOnly rows={14} />
+              </details>
+            )}
+          </aside>
+
+          <div className="graph-wrap">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeDragStop={() => appendHistory(nodesRef.current, edgesRef.current)}
+              onInit={setFlow}
+              nodeTypes={nodeTypes}
+              selectionOnDrag
+              selectionMode={SelectionMode.Partial}
+              // React Flow gives panning priority when both props are enabled.
+              // This editor reserves a bare drag on the pane for box selection;
+              // search-to-center and the controls remain available for navigation.
+              panOnDrag={false}
+              minZoom={0.45}
+              maxZoom={1.5}
+              defaultViewport={{ x: 28, y: 16, zoom: 0.68 }}
+              deleteKeyCode={['Backspace', 'Delete']}
+            >
+              <Background color="#262e3a" gap={20} />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
         </div>
       </div>
-    </div>
+    </NodeDataContext.Provider>
   );
 }

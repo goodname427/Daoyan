@@ -15,6 +15,7 @@
 - `npm run verify`：开发与提交前的快速门禁，包含类型、lint、格式、文档和单元测试。
 - `npm run verify:full`：推送、交付和 CI 门禁，在快速门禁基础上增加覆盖率、沙盒、E2E 和生产构建。
 - `npm run verify:ci`：CI 对完整门禁的稳定别名，必须与 `verify:full` 等价。
+- `npm run test:e2e` 会在启动 Playwright 前移除外部 `NO_COLOR`：Playwright 对其 WebServer 与 worker 固定启用 `FORCE_COLOR`，两者同时存在会让 Node 为每个子进程输出无关警告。
 
 ## 新改动如何选测试
 
