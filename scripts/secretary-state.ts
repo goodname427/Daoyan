@@ -1,6 +1,7 @@
 import { buildLocalPlan } from './agent-routing';
 
 export type SecretaryScope = 'feature' | 'version';
+export type SecretaryMessageIntent = 'question' | 'direction' | 'reply' | 'continue';
 export type SecretaryItemStatus =
   | 'queued'
   | 'tracking'
@@ -20,8 +21,6 @@ export interface ProjectFact {
 export interface IntakeRequest {
   id: string;
   idea: string;
-  scope: SecretaryScope;
-  decision: boolean;
   createdAt: string;
 }
 
@@ -56,15 +55,23 @@ export interface SecretaryTaskCompletion {
   runDirectory: string;
 }
 
+export interface SecretaryConversationMessage {
+  id: string;
+  role: 'producer' | 'secretary';
+  content: string;
+  intent: SecretaryMessageIntent;
+  createdAt: string;
+}
+
 export interface SecretaryState {
   version: 1;
   status: 'running' | 'stopped';
   pid: number;
   processIdentity: string;
   lastEventAt: string;
-  reviewRequired: boolean;
   activeItemId: string;
   items: SecretaryItem[];
+  messages: SecretaryConversationMessage[];
   updatedAt: string;
 }
 
@@ -143,6 +150,50 @@ export function intentSimilarity(left: string, right: string): number {
   return overlap / Math.min(a.size, b.size);
 }
 
+export function inferMessageIntent(
+  message: string,
+  hasWaitingItem: boolean,
+): SecretaryMessageIntent {
+  const normalized = message.trim().toLowerCase();
+  if (hasWaitingItem) {
+    if (
+      /[?？]$/.test(normalized) ||
+      /(进度|状态|做到|为什么|为何|怎么|如何|是否|有没有|哪些)/.test(normalized)
+    )
+      return 'question';
+    if (/(继续|接着|恢复|往下|按计划|照常|可以推进|可以开始)/.test(normalized)) return 'continue';
+    return 'reply';
+  }
+  if (
+    /[?？]$/.test(normalized) ||
+    /^(现在|目前|为什么|为何|怎么|如何|是否|有没有|进度|状态|哪些)/.test(normalized)
+  )
+    return 'question';
+  if (/(继续|接着|恢复|往下|按计划|照常|可以推进|可以开始)/.test(normalized)) return 'continue';
+  return 'direction';
+}
+
+export function applyWaitingReply(
+  state: SecretaryState,
+  request: IntakeRequest,
+  intent: SecretaryMessageIntent,
+): SecretaryItem | null {
+  if (intent !== 'reply' && intent !== 'continue') return null;
+  const waiting = state.items.find(
+    (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
+  );
+  if (!waiting) return null;
+  waiting.producerGuidance = request.idea;
+  waiting.status = 'retry-wait';
+  waiting.retryAt = request.createdAt;
+  waiting.summary =
+    intent === 'continue'
+      ? '已恢复当前工作，将从原恢复点继续。'
+      : '已理解你的回复，将从原恢复点继续。';
+  state.activeItemId = '';
+  return waiting;
+}
+
 function bestMatchingFact(idea: string, facts: ProjectFact[]): ProjectFact | null {
   const normalizedIdea = cleanMarkdown(idea).replace(/\s/g, '');
   let best: { fact: ProjectFact; score: number } | null = null;
@@ -218,9 +269,9 @@ export function createSecretaryState(now: string): SecretaryState {
     pid: 0,
     processIdentity: '',
     lastEventAt: now,
-    reviewRequired: false,
     activeItemId: '',
     items: [],
+    messages: [],
     updatedAt: now,
   };
 }
@@ -228,13 +279,14 @@ export function createSecretaryState(now: string): SecretaryState {
 export function itemFromIntake(
   request: IntakeRequest,
   facts: ProjectFact[],
+  scope: SecretaryScope = 'feature',
 ): { item: SecretaryItem; response: string } {
   const decision = decideIntake(request.idea, facts);
   const plan = buildLocalPlan(decision.fact?.text ?? request.idea);
   const base = {
     id: request.id,
     idea: decision.fact?.text ?? request.idea,
-    scope: request.scope,
+    scope,
     plannedTasks: plan.tasks.map((task) => task.title),
     matchedFact: decision.fact,
     runDirectory: '',
@@ -270,6 +322,24 @@ export function itemFromIntake(
   return { item: { ...base, status: 'queued', summary }, response: summary };
 }
 
+export function firstUntrackedScheduledFact(
+  facts: ProjectFact[],
+  items: SecretaryItem[],
+): ProjectFact | null {
+  return (
+    facts.find(
+      (fact) =>
+        fact.kind === 'scheduled' &&
+        !items.some(
+          (item) =>
+            item.status !== 'answered' &&
+            (intentSimilarity(item.idea, fact.text) >= 0.9 ||
+              intentSimilarity(item.matchedFact?.text ?? '', fact.text) >= 0.9),
+        ),
+    ) ?? null
+  );
+}
+
 export function nextRunnableItem(state: SecretaryState, now: string): SecretaryItem | null {
   if (state.activeItemId) return null;
   const timestamp = Date.parse(now);
@@ -290,8 +360,8 @@ export function publicSecretaryState(state: SecretaryState): object {
   return {
     status: state.status,
     lastEventAt: state.lastEventAt,
-    reviewRequired: state.reviewRequired,
     activeItemId: state.activeItemId,
+    recentMessages: state.messages.slice(-20),
     items: state.items.map(
       ({ processPid: _processPid, processIdentity: _processIdentity, ...item }) => item,
     ),

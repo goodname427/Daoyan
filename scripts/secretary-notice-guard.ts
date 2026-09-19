@@ -21,7 +21,10 @@ import {
   waitForProcessIdentity,
 } from './process-identity';
 import {
+  applyWaitingReply,
   createSecretaryState,
+  firstUntrackedScheduledFact,
+  inferMessageIntent,
   itemFromIntake,
   nextRunnableItem,
   projectFactsFromItems,
@@ -32,6 +35,7 @@ import {
   type IntakeRequest,
   type ProjectFact,
   type SecretaryItem,
+  type SecretaryMessageIntent,
   type SecretaryScope,
   type SecretaryState,
   type SecretaryTaskCompletion,
@@ -65,7 +69,6 @@ interface SecretaryConfig {
     timeoutSeconds: number;
   };
   guard: {
-    externalRetryMinutes: number;
     executionRetryMinutes: number;
     orphanRecoveryMinutes: number;
     maxRecoveryAttempts: number;
@@ -85,6 +88,7 @@ interface RunSnapshot {
 }
 
 interface TriageResult {
+  intent: SecretaryMessageIntent;
   disposition: 'completed' | 'active' | 'scheduled' | 'new' | 'waiting-producer';
   response: string;
   direction: string;
@@ -122,15 +126,18 @@ async function loadState(): Promise<SecretaryState> {
   try {
     const value = JSON.parse(await readFile(stateFile, 'utf8')) as Partial<SecretaryState>;
     if (value.version !== 1 || !Array.isArray(value.items)) throw new Error('invalid state');
+    const current = { ...value } as Partial<SecretaryState> & { reviewRequired?: boolean };
+    delete current.reviewRequired;
     return {
       ...createSecretaryState(new Date().toISOString()),
-      ...value,
+      ...current,
       processIdentity: getProcessIdentity(process.pid),
       items: value.items.map((item) => ({
         ...item,
         processIdentity: item.processIdentity ?? '',
         completedTasks: Array.isArray(item.completedTasks) ? item.completedTasks : [],
       })),
+      messages: Array.isArray(value.messages) ? value.messages : [],
       status: 'running',
       pid: process.pid,
     } as SecretaryState;
@@ -169,7 +176,6 @@ function validateConfig(value: unknown): SecretaryConfig {
     typeof triage.model !== 'string' ||
     !['low', 'medium', 'high'].includes(String(triage.reasoning)) ||
     typeof triage.timeoutSeconds !== 'number' ||
-    typeof guard.externalRetryMinutes !== 'number' ||
     typeof guard.executionRetryMinutes !== 'number' ||
     typeof guard.orphanRecoveryMinutes !== 'number' ||
     typeof guard.maxRecoveryAttempts !== 'number'
@@ -239,8 +245,10 @@ function codexExecutable(): string | null {
 
 function validateTriage(value: unknown): TriageResult | null {
   if (!isRecord(value)) return null;
+  const intents = ['question', 'direction', 'reply', 'continue'];
   const dispositions = ['completed', 'active', 'scheduled', 'new', 'waiting-producer'];
   if (
+    !intents.includes(String(value.intent)) ||
     !dispositions.includes(String(value.disposition)) ||
     typeof value.response !== 'string' ||
     typeof value.direction !== 'string' ||
@@ -256,6 +264,7 @@ function validateTriage(value: unknown): TriageResult | null {
 async function modelTriage(
   request: IntakeRequest,
   facts: ProjectFact[],
+  waiting: SecretaryItem | null,
 ): Promise<TriageResult | null> {
   if (!config.triage.enabled || process.env.DAOYAN_SECRETARY_LOCAL_ONLY === '1') return null;
   const executable = codexExecutable();
@@ -264,7 +273,14 @@ async function modelTriage(
   const factText = facts
     .map((fact) => `- [${fact.kind}] ${fact.text} (${fact.reference})`)
     .join('\n');
-  const prompt = `你是道衍项目的常驻制作人秘书。你只在收到 notice guard 事件时运行，本次只处理一条制作人想法，不修改文件、不执行代码。\n\n根据项目事实判断：已经完成则回答现状；正在执行则关联当前任务；已经排期则避免重复；尚未安排则形成后续方向和简短任务标题。只有确实需要产品取舍时才 waiting-producer。不要把技术细节选择交还制作人。\n\n制作人消息：${request.idea}\n期望范围：${request.scope}\n\n项目事实：\n${factText || '- 暂无匹配事实'}\n`;
+  const waitingText = waiting
+    ? `当前正等待制作人回复：${waiting.idea}\n等待原因：${waiting.summary}`
+    : '当前没有等待制作人回复的事项。';
+  const recentConversation = state.messages
+    .slice(-12)
+    .map((message) => `- ${message.role === 'producer' ? '制作人' : '秘书'}：${message.content}`)
+    .join('\n');
+  const prompt = `你是道衍项目的常驻制作人秘书。你只在收到 notice guard 事件时运行，本次只理解一条自然语言消息，不修改文件、不执行代码。\n\n先结合上下文判断消息意图：question 是询问项目情况；direction 是新的产品方向；reply 是对当前等待事项的回复；continue 是要求继续现有排期。制作人不会提供类型参数，你必须自行判断。然后根据项目事实回答：已完成则说明现状；正在执行则关联当前任务；已有排期则避免重复；新方向才形成后续任务。scope 也由你内部决定：只有消息本身明确包含多个独立 Feature 的阶段目标时才选 version，否则选 feature。只有确实需要产品取舍时才 waiting-producer，不要把技术实现选择交还制作人。\n\n制作人消息：${request.idea}\n\n当前等待事项：\n${waitingText}\n\n近期对话：\n${recentConversation || '- 暂无历史对话'}\n\n项目事实：\n${factText || '- 暂无匹配事实'}\n`;
   const args = [
     'exec',
     '--ephemeral',
@@ -272,8 +288,6 @@ async function modelTriage(
     'never',
     '--sandbox',
     'read-only',
-    '--ask-for-approval',
-    'never',
     '--model',
     config.triage.model,
     '-c',
@@ -460,12 +474,34 @@ async function projectFacts(): Promise<{ facts: ProjectFact[]; runs: RunSnapshot
   return { facts: [...activeFacts, ...queueFacts, ...projectFactsFromStatus(markdown)], runs };
 }
 
+async function enqueueNextStatusItem(): Promise<SecretaryItem | null> {
+  const markdown = await readFile(resolve(root, 'docs/status.md'), 'utf8');
+  const fact = firstUntrackedScheduledFact(projectFactsFromStatus(markdown), state.items);
+  if (!fact) return null;
+  const now = new Date().toISOString();
+  const request: IntakeRequest = {
+    id: `status-${randomUUID()}`,
+    idea: fact.text,
+    createdAt: now,
+  };
+  const { item } = itemFromIntake(request, [fact]);
+  item.summary = `秘书从项目状态自动承接下一项：${fact.text}`;
+  state.items.push(item);
+  await saveState();
+  await emitNotice('auto-scheduled', item.summary, item);
+  return item;
+}
+
 function applyModelTriage(item: SecretaryItem, result: TriageResult): string {
   item.idea = result.direction || item.idea;
   item.scope = result.scope;
   item.plannedTasks = result.taskTitles.length > 0 ? result.taskTitles : item.plannedTasks;
   item.summary = result.response;
-  if (result.disposition === 'completed') {
+  if (result.intent === 'question' || result.intent === 'continue' || result.intent === 'reply') {
+    item.status = 'answered';
+    item.plannedTasks = [];
+    item.completedAt = new Date().toISOString();
+  } else if (result.disposition === 'completed') {
     item.status = 'answered';
     item.completedAt = new Date().toISOString();
   } else if (result.disposition === 'active') {
@@ -474,6 +510,70 @@ function applyModelTriage(item: SecretaryItem, result: TriageResult): string {
   } else if (result.disposition === 'waiting-producer') item.status = 'waiting-producer';
   else item.status = 'queued';
   return result.response;
+}
+
+function localQuestionResponse(message: string, facts: ProjectFact[]): string {
+  if (!/(进度|状态|做到|当前|现在|排期)/.test(message))
+    return '当前项目记录里没有足够信息直接回答这个问题；秘书不会把它误排成开发任务。';
+  const summarize = (fact: ProjectFact): string => {
+    const text = fact.text.replace(/[。；，,.]+$/g, '');
+    return text.length > 72 ? `${text.slice(0, 72)}...` : text;
+  };
+  const active = facts.filter((fact) => fact.kind === 'active').slice(0, 2);
+  const scheduled = facts.filter((fact) => fact.kind === 'scheduled').slice(0, 2);
+  const parts = [
+    active.length > 0
+      ? `正在推进：${active.map(summarize).join('；')}`
+      : '当前没有登记中的运行任务',
+    scheduled.length > 0
+      ? `后续排期：${scheduled.map(summarize).join('；')}`
+      : '项目状态中没有未承接的后续排期',
+  ];
+  return `根据当前项目记录，${parts.join('。')}。`;
+}
+
+async function writeInboxResponse(
+  request: IntakeRequest,
+  response: string,
+  status: SecretaryItem['status'],
+  intent: SecretaryMessageIntent,
+  plannedTasks: string[] = [],
+): Promise<void> {
+  state.messages.push(
+    {
+      id: request.id,
+      role: 'producer',
+      content: request.idea,
+      intent,
+      createdAt: request.createdAt,
+    },
+    {
+      id: `${request.id}-response`,
+      role: 'secretary',
+      content: response,
+      intent,
+      createdAt: new Date().toISOString(),
+    },
+  );
+  if (state.messages.length > 200) state.messages.splice(0, state.messages.length - 200);
+  await saveState();
+  await writeJsonAtomic(resolve(responseRoot, `${request.id}.json`), {
+    id: request.id,
+    response,
+    status,
+    plannedTasks,
+  });
+}
+
+async function resumeWaitingItem(
+  request: IntakeRequest,
+  intent: 'reply' | 'continue',
+): Promise<void> {
+  const waiting = applyWaitingReply(state, request, intent);
+  if (!waiting) throw new Error('等待事项已变化，无法应用当前回复');
+  await saveState();
+  await writeInboxResponse(request, waiting.summary, waiting.status, intent, waiting.plannedTasks);
+  await emitNotice('reply-accepted', waiting.summary, waiting);
 }
 
 async function processInbox(): Promise<void> {
@@ -494,37 +594,44 @@ async function processInbox(): Promise<void> {
           !raw ||
           typeof raw.id !== 'string' ||
           typeof raw.idea !== 'string' ||
-          !['feature', 'version'].includes(String(raw.scope)) ||
           typeof raw.createdAt !== 'string'
         ) {
           await rm(path, { force: true });
           continue;
         }
-        const request = { ...raw, decision: raw.decision === true } as unknown as IntakeRequest;
-        const waiting = state.items.find(
-          (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
-        );
-        if (waiting && request.decision) {
-          waiting.producerGuidance = request.idea;
-          waiting.status = 'retry-wait';
-          waiting.retryAt = request.createdAt;
-          waiting.summary = '已收到制作人决策，将从原恢复点继续。';
-          state.activeItemId = '';
-          await saveState();
-          await writeJsonAtomic(resolve(responseRoot, `${request.id}.json`), {
-            id: request.id,
-            response: waiting.summary,
-            status: waiting.status,
-            plannedTasks: waiting.plannedTasks,
-          });
+        const request = raw as unknown as IntakeRequest;
+        const waiting =
+          state.items.find(
+            (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
+          ) ?? null;
+        const known = await projectFacts();
+        const fallbackIntent = inferMessageIntent(request.idea, Boolean(waiting));
+        const local = itemFromIntake(request, known.facts);
+        const needsSemanticTriage = !local.item.matchedFact || Boolean(waiting);
+        const model = needsSemanticTriage ? await modelTriage(request, known.facts, waiting) : null;
+        const intent = model?.intent ?? fallbackIntent;
+        if (waiting && (intent === 'reply' || intent === 'continue')) {
+          await resumeWaitingItem(request, intent);
           await rm(path, { force: true });
-          await emitNotice('decision-accepted', waiting.summary, waiting);
           continue;
         }
-        const known = await projectFacts();
-        const local = itemFromIntake(request, known.facts);
-        const model = local.item.matchedFact ? null : await modelTriage(request, known.facts);
+        if (intent === 'continue') {
+          const response = '收到，我会继续推进现有排期；没有待办时会从项目状态中承接下一项。';
+          await saveState();
+          await writeInboxResponse(request, response, 'answered', intent);
+          await rm(path, { force: true });
+          await emitNotice('continue-accepted', response);
+          continue;
+        }
+        if (model) local.item.scope = model.scope;
         let response = model ? applyModelTriage(local.item, model) : local.response;
+        if (!model && intent === 'question') {
+          local.item.status = 'answered';
+          local.item.plannedTasks = [];
+          local.item.completedAt = request.createdAt;
+          if (!local.item.matchedFact) response = localQuestionResponse(request.idea, known.facts);
+          local.item.summary = response;
+        }
         if (local.item.matchedFact?.reference.startsWith('secretary:')) {
           local.item.status = 'answered';
           local.item.completedAt = request.createdAt;
@@ -532,15 +639,17 @@ async function processInbox(): Promise<void> {
           local.item.summary = response;
         }
         state.items.push(local.item);
-        if (local.item.status === 'queued') state.reviewRequired = false;
         if (local.item.status === 'waiting-producer') state.activeItemId = local.item.id;
         await saveState();
-        await writeJsonAtomic(resolve(responseRoot, `${request.id}.json`), {
-          id: request.id,
+        await writeInboxResponse(
+          request,
           response,
-          status: local.item.status,
-          plannedTasks: local.item.plannedTasks,
-        });
+          local.item.status,
+          intent,
+          local.item.status === 'queued' || local.item.status === 'waiting-producer'
+            ? local.item.plannedTasks
+            : [],
+        );
         await rm(path, { force: true });
         await emitNotice('intake', response, local.item);
       }
@@ -718,13 +827,12 @@ async function reconcileItem(
     item.processIdentity = '';
     state.activeItemId = '';
     const queued = state.items.some((candidate) => candidate.status === 'queued');
-    if (item.scope === 'version') state.reviewRequired = true;
     if (orphanTimer) clearTimeout(orphanTimer);
     orphanTimer = null;
     if (firstDelivery)
       await emitNotice(
         'delivery-complete',
-        `${item.scope === 'version' ? '版本' : 'Feature'} 已完成，可以 Review：${item.idea}。${item.scope === 'version' ? '秘书已暂停后续排期，等待你的 Review 或新方向。' : queued ? '队列中的下一项将自动开始。' : '当前队列已空，秘书等待你的新方向。'}`,
+        `${item.scope === 'version' ? '版本' : 'Feature'} 已完成，可以 Review：${item.idea}。${queued ? '队列中的下一项将自动开始。' : '秘书会从项目状态承接下一项；没有待办时进入休眠。'}`,
         item,
       );
     return true;
@@ -746,15 +854,22 @@ async function reconcileItem(
     orphanTimer = null;
     item.processPid = 0;
     item.processIdentity = '';
+    if (externalBlocker(run.error)) {
+      const firstBlock = item.status !== 'waiting-producer';
+      item.status = 'waiting-producer';
+      item.retryAt = '';
+      item.summary = `${run.error || '账号、鉴权或额度暂不可用'}。秘书已暂停当前工作；条件恢复后直接回复秘书即可继续。`;
+      state.activeItemId = item.id;
+      if (firstBlock) await emitNotice('external-blocker', item.summary, item);
+      return true;
+    }
     if (item.recoveryAttempts >= config.guard.maxRecoveryAttempts) {
       item.status = 'waiting-producer';
       item.summary = `自动恢复已达到 ${config.guard.maxRecoveryAttempts} 次：${run.error}`;
       await emitNotice('recovery-exhausted', item.summary, item);
       return true;
     }
-    const minutes = externalBlocker(run.error)
-      ? config.guard.externalRetryMinutes
-      : config.guard.executionRetryMinutes;
+    const minutes = config.guard.executionRetryMinutes;
     item.status = 'retry-wait';
     item.summary = run.error || '调度运行可恢复，等待下一次自动接管。';
     item.retryAt = new Date(Date.now() + minutes * 60_000).toISOString();
@@ -897,9 +1012,13 @@ async function coordinateOnce(): Promise<void> {
       return;
     }
   }
-  if (state.reviewRequired || process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
+  if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
   if (await adoptExistingRun()) return;
-  const next = nextRunnableItem(state, new Date().toISOString());
+  let next = nextRunnableItem(state, new Date().toISOString());
+  const hasPending = state.items.some((item) =>
+    ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),
+  );
+  if (!next && !hasPending) next = await enqueueNextStatusItem();
   if (next) await launch(next);
   else scheduleRetry();
 }
@@ -934,12 +1053,10 @@ function readBody(request: IncomingMessage): Promise<string> {
   });
 }
 
-async function enqueueIdea(idea: string, scope: SecretaryScope, decision = false): Promise<string> {
+async function enqueueIdea(idea: string): Promise<string> {
   const request: IntakeRequest = {
     id: randomUUID(),
     idea,
-    scope,
-    decision,
     createdAt: new Date().toISOString(),
   };
   await writeJsonAtomic(resolve(inboxRoot, `${request.id}.json`), request);
@@ -972,8 +1089,7 @@ function startHttpServer(): void {
         if (!isRecord(value) || typeof value.idea !== 'string' || !value.idea.trim()) {
           throw new Error('idea is required');
         }
-        const scope = value.scope === 'version' ? 'version' : 'feature';
-        const id = await enqueueIdea(value.idea.trim(), scope, value.decision === true);
+        const id = await enqueueIdea(value.idea.trim());
         response.writeHead(202, { 'content-type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify({ id, status: 'accepted' }));
       } catch (error) {

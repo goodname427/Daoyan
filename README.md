@@ -61,7 +61,7 @@ npm run secretary -- "增加法术单步推演和变量观察"
 npm run secretary:status
 ```
 
-提交版本方向时使用 `npm run secretary -- --version "推进到下一个稳定可玩版本"`。直接提交想法会自动启动尚未运行的 notice guard。制作人不需要使用底层 `producer*` 命令。
+后续无论是提出方向、询问进度、回答秘书还是要求继续，都使用同一个自然语言入口。消息会自动启动尚未运行的 notice guard；制作人不需要使用底层 `producer*` 命令。
 
 唯一工作范式和汇报节奏见 [`docs/agent-workflow.md`](./docs/agent-workflow.md)；Feature PM 的低频恢复与诊断入口见 [`docs/operations/feature-pm.md`](./docs/operations/feature-pm.md)。
 
