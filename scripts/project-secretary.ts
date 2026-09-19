@@ -5,12 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { isOwnedProcessAlive, isProcessAlive } from './process-identity';
-import {
-  publicSecretaryState,
-  type IntakeRequest,
-  type SecretaryScope,
-  type SecretaryState,
-} from './secretary-state';
+import { publicSecretaryState, type IntakeRequest, type SecretaryState } from './secretary-state';
 import { runNoticeGuard } from './secretary-notice-guard';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,14 +25,12 @@ function printHelp(): void {
   console.log(`道衍常驻秘书（外部 notice guard）
 
 用法：
-  npm run secretary -- "新的产品想法"
-  npm run secretary -- --version "推进到下一个稳定版本"
-  npm run secretary -- --decision "采用兼容旧存档的方案"
+  npm run secretary -- "想说的话"
   npm run secretary:start
   npm run secretary:status
   npm run secretary:stop
 
-notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。新消息到达时才以低成本模型做一次语义查重，随后将交付交给 producer。`);
+秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
 }
 
 async function readState(): Promise<SecretaryState | null> {
@@ -150,13 +143,11 @@ async function stopGuard(): Promise<void> {
   console.log('[常驻秘书] notice guard 已停止；正在运行的 PM 会收到终止信号并保留恢复点。');
 }
 
-async function enqueue(idea: string, scope: SecretaryScope, decision: boolean): Promise<void> {
+async function enqueue(idea: string): Promise<void> {
   await startGuard();
   const request: IntakeRequest = {
     id: randomUUID(),
     idea,
-    scope,
-    decision,
     createdAt: new Date().toISOString(),
   };
   const path = resolve(inboxRoot, `${request.id}.json`);
@@ -194,7 +185,6 @@ async function printStatus(): Promise<void> {
     status: string;
     lastEventAt: string;
     activeItemId: string;
-    reviewRequired: boolean;
     items: Array<{
       status: string;
       idea: string;
@@ -210,7 +200,6 @@ async function printStatus(): Promise<void> {
   );
   console.log(`最近事件：${publicState.lastEventAt}`);
   console.log(`当前任务：${publicState.activeItemId || '无'}`);
-  if (publicState.reviewRequired) console.log('Review：版本已就绪，等待制作人反馈或新方向。');
   for (const item of publicState.items.slice(-12)) {
     console.log(
       `- [${item.status}] ${item.idea}${item.retryAt ? `（${item.retryAt} 后恢复）` : ''}`,
@@ -242,13 +231,7 @@ if (command === 'run') {
 } else if (command === 'help' || command === '--help' || command === '-h') {
   printHelp();
 } else {
-  const versionIndex = args.indexOf('--version');
-  const decisionIndex = args.indexOf('--decision');
-  const scope: SecretaryScope = versionIndex >= 0 ? 'version' : 'feature';
-  const idea = args
-    .filter((arg) => arg !== '--version' && arg !== '--decision')
-    .join(' ')
-    .trim();
-  if (!idea) throw new Error('请提供产品想法或版本方向');
-  await enqueue(idea, scope, decisionIndex >= 0);
+  const idea = args.join(' ').trim();
+  if (!idea) throw new Error('请直接告诉秘书你想说的话');
+  await enqueue(idea);
 }
