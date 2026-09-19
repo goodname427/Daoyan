@@ -4,6 +4,7 @@ import { ATTR_LABELS, describeMeta, parseSpellbook, SPELL_KIND_LABELS } from '..
 import type { Actor, AttrKey, Attributes, SpellBook } from '../core/index';
 import { sfx } from '../game/audio';
 import { Battle } from '../game/battle';
+import { ARENA_ATTR_CONSTRAINTS } from './arenaConfig';
 import { Renderer } from './renderer';
 
 const VIEW_W = 900;
@@ -29,19 +30,7 @@ const MOVEMENT_KEYS: Record<string, keyof BattleInputLike> = {
   ArrowRight: 'right',
 };
 
-const ATTR_CONTROLS: Array<{ key: AttrKey; min: number; max: number; step: number }> = [
-  { key: 'hpMax', min: 20, max: 500, step: 10 },
-  { key: 'manaMax', min: 20, max: 800, step: 10 },
-  { key: 'manaRegen', min: 0, max: 120, step: 1 },
-  { key: 'shenshiMax', min: 8, max: 160, step: 1 },
-  { key: 'speed', min: 0, max: 360, step: 5 },
-  { key: 'castSpeed', min: 0.1, max: 5, step: 0.05 },
-  { key: 'power', min: 0.1, max: 5, step: 0.05 },
-  { key: 'manaCostMul', min: 0.1, max: 3, step: 0.05 },
-  { key: 'cooldownMul', min: 0.1, max: 3, step: 0.05 },
-  { key: 'perception', min: 0.1, max: 3, step: 0.05 },
-  { key: 'armor', min: 0, max: 120, step: 1 },
-];
+const ATTR_CONTROLS = ARENA_ATTR_CONSTRAINTS;
 
 interface BattleInputLike {
   up: boolean;
@@ -426,17 +415,21 @@ function BindingPanel({
   bindings: Record<string, string>;
   onChange: (slot: string, spell: string) => void;
 }) {
+  const spellNames = battle.spellNames();
+
   return (
     <div className="bindings">
       {SLOTS.map((s) => {
         const spell = bindings[s.key] ?? '';
         const cd = spell ? battle.cooldownLeft(battle.player.id, spell) : 0;
+        const missingFromBook = spell !== '' && !spellNames.includes(spell);
         return (
           <label key={s.key} className="binding">
             <span>{s.label}</span>
             <select value={spell} onChange={(e) => onChange(s.key, e.target.value)}>
               <option value="">—</option>
-              {battle.spellNames().map((n) => (
+              {missingFromBook && <option value={spell}>{spell}（当前法术书中不存在）</option>}
+              {spellNames.map((n) => (
                 <option key={n} value={n}>
                   {n} · {SPELL_KIND_LABELS[battle.metaOf(n).kind]}
                 </option>
@@ -532,6 +525,14 @@ export function CombatView({
       }),
     );
   }, [parsed.book]);
+
+  // 导入可以恢复与当前 source 完全相同的法术书；此时 parsed.book 保持
+  // 引用不变，不能只依靠重建 Battle 来应用新的演武配置。
+  useEffect(() => {
+    if (!battle) return;
+    battle.setPlayerBaseAttrs(attrs, true);
+    for (const slot of SLOTS) battle.setBinding(slot.key, bindings[slot.key] ?? '');
+  }, [battle, attrs, bindings]);
 
   const updateAttr = (key: AttrKey, value: number): void => {
     onAttrsChange({ ...attrs, [key]: value });

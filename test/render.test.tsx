@@ -51,4 +51,36 @@ describe('app rendering smoke test', () => {
     fireEvent.click(getByTestId('lab-blueprint-mode'));
     fireEvent.click(getByTestId('lab-code-mode'));
   });
+
+  it('keeps an imported binding visible when its spell is absent from that save book', async () => {
+    localStorage.clear();
+    localStorage.setItem(
+      'daoyan.player-state',
+      JSON.stringify({
+        version: 1,
+        spellSource: 'spell 基础剑气 {}',
+        arenaAttrs: { hpMax: 180 },
+        arenaBindings: { '1': '疾风步' },
+      }),
+    );
+
+    const { App } = await import('../src/app/App');
+    const { getAllByRole } = render(<App />);
+    const tabs = getAllByRole('button', { name: /^(推演台|演武场)/ });
+    fireEvent.click(tabs[1]);
+
+    expect((getAllByRole('combobox')[1] as HTMLSelectElement).value).toBe('疾风步');
+  });
+
+  it('does not overwrite a rejected future local save during initial mount', async () => {
+    localStorage.clear();
+    const futureSave = JSON.stringify({ version: 99, spellSource: 'spell 未来法术 {}' });
+    localStorage.setItem('daoyan.player-state', futureSave);
+
+    const { App } = await import('../src/app/App');
+    const { getByRole } = render(<App />);
+
+    expect(getByRole('status').textContent).toContain('存档来自更新版本');
+    expect(localStorage.getItem('daoyan.player-state')).toBe(futureSave);
+  });
 });

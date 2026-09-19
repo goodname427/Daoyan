@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { captureErrors } from './helpers';
 
 test.describe('main view smoke', () => {
@@ -35,6 +36,110 @@ test.describe('arena round trip workflow', () => {
     await page.locator('.tabs .tab').nth(1).click();
     await expect(page.locator('.attr-editor input').first()).toHaveValue('240');
     await expect(page.locator('.synced-spells li').first()).toBeAttached();
+    sink.assert();
+  });
+});
+
+test.describe('player state persistence', () => {
+  test('restores, exports and imports the shared spellbook and arena setup', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+
+    const editor = page.locator('.code-input').first();
+    // The editor persists the parsed AST, whose serializer deliberately does
+    // not retain comments. Change a spell semantic that survives that boundary.
+    await editor.fill((await editor.inputValue()).replace('@cooldown=0.4', '@cooldown=0.5'));
+    await page.locator('.tabs .tab').nth(1).click();
+    await page.locator('.attr-editor input').first().fill('240');
+    await page.locator('.bindings select').nth(1).selectOption('三连剑');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '导出存档' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('daoyan-save.json');
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    if (!downloadPath) return;
+    const exportedSave = JSON.parse(await readFile(downloadPath, 'utf8'));
+
+    await page.reload();
+    await page.locator('.tabs .tab').nth(1).click();
+    await expect(page.locator('.attr-editor input').first()).toHaveValue('240');
+    await expect(page.locator('.bindings select').nth(1)).toHaveValue('三连剑');
+    await page.locator('.tabs .tab').first().click();
+    await expect(editor).toHaveValue(/@cooldown=0.5/);
+
+    const imported = JSON.stringify({
+      ...exportedSave,
+      arenaAttrs: { hpMax: 180 },
+      arenaBindings: { '1': '疾风步' },
+    });
+    await page.getByLabel('选择存档文件').setInputFiles({
+      name: 'import.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(imported),
+    });
+    await expect(page.getByRole('status')).toContainText('已导入存档');
+    await page.locator('.tabs .tab').nth(1).click();
+    await expect(page.locator('.attr-editor input').first()).toHaveValue('180');
+    await expect(page.locator('.bindings select').nth(1)).toHaveValue('疾风步');
+    sink.assert();
+  });
+
+  test('applies same-spellbook imports to the battle already open in the arena', async ({
+    page,
+  }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.locator('.tabs .tab').nth(1).click();
+
+    // SpellEditor exposes only the selected spell, not the complete shared
+    // spellbook. Export the current save to obtain the exact canonical source
+    // used by the already-open Battle before importing altered arena settings.
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '导出存档' }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    if (!downloadPath) return;
+    const currentSave = JSON.parse(await readFile(downloadPath, 'utf8'));
+
+    await page.getByLabel('选择存档文件').setInputFiles({
+      name: 'same-spellbook.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        JSON.stringify({
+          ...currentSave,
+          arenaAttrs: { castSpeed: 2 },
+          arenaBindings: { '5': '天雷引' },
+        }),
+      ),
+    });
+
+    // The editor values alone only prove React state changed. These assertions
+    // read Battle-owned output, then trigger its newly imported slot binding.
+    await expect(
+      page.locator('.attrs .attr-row').filter({ hasText: '施法速度' }).locator('b'),
+    ).toHaveText('2.00');
+    await page.locator('.battle-controls .run').click();
+    await page.keyboard.press('Digit5');
+    await expect(page.getByTestId('active-casts')).toContainText('天雷引');
+    sink.assert();
+  });
+
+  test('does not replace current setup with an unsupported save', async ({ page }) => {
+    const sink = captureErrors(page);
+    await page.goto('/');
+    await page.getByLabel('选择存档文件').setInputFiles({
+      name: 'future.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ version: 99, spellSource: 'spell {' })),
+    });
+    await expect(page.getByRole('status')).toContainText('导入失败');
+    await expect(page.getByRole('status')).toContainText('更新版本');
+    await expect(page.locator('.code-input').first()).toBeVisible();
     sink.assert();
   });
 });
@@ -127,6 +232,10 @@ test.describe('blueprint editing tools', () => {
     expect(conditionBox).not.toBeNull();
     expect(repeatBox).not.toBeNull();
     if (conditionBox && repeatBox) {
+      // Bare drags begin selection only on the React Flow pane. Holding Shift
+      // also covers a start point that React Flow resolves to another element
+      // while the graph is being laid out.
+      await page.keyboard.down('Shift');
       const left = Math.min(conditionBox.x, repeatBox.x) - 12;
       const top = Math.min(conditionBox.y, repeatBox.y) - 12;
       const right =
@@ -137,6 +246,7 @@ test.describe('blueprint editing tools', () => {
       await page.mouse.down();
       await page.mouse.move(right, bottom, { steps: 8 });
       await page.mouse.up();
+      await page.keyboard.up('Shift');
       await expect
         .poll(() => blueprint.locator('.react-flow__node.selected').count())
         .toBeGreaterThanOrEqual(2);
