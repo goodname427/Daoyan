@@ -57,9 +57,12 @@ npm run verify:full  # 再加覆盖率、沙盒、E2E 和生产构建
 
 ```bash
 npm run secretary:start
+npm run secretary:open
 npm run secretary -- "增加法术单步推演和变量观察"
 npm run secretary:status
 ```
+
+`secretary:open` 会打开本机项目中枢，可以查看正式版本阶段、节点证据、制作人待办、开发任务和缺陷，并直接与秘书交流。
 
 后续无论是提出方向、询问进度、回答秘书还是要求继续，都使用同一个自然语言入口。消息会自动启动尚未运行的 notice guard；制作人不需要使用底层 `producer*` 命令。
 

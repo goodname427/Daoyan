@@ -22,11 +22,11 @@ npm run producer:plan -- "增加法术单步推演和变量观察"
 npm run producer:plan -- --deep-plan "重新考虑实体与资源架构"
 ```
 
-版本目标会冻结一个有上限的 Feature 队列，每项仍独立执行完整交付闭环：
+正式版本开发阶段可以冻结一个有上限的 Feature 批次，每项仍独立执行完整交付闭环：
 
 ```bash
-npm run producer:version -- "推进到下一个稳定可玩版本"
-npm run producer:version:plan -- "推进到下一个稳定可玩版本"
+npm run producer:batch -- "交付已批准的开发批次"
+npm run producer:batch:plan -- "交付已批准的开发批次"
 ```
 
 Feature PM 负责形成任务合同、选择模型、执行、完整门禁、独立审查、自动修复、文档和 Git 收束。执行 Agent 不提交代码；完整验证只由 PM 统一运行。
@@ -39,16 +39,16 @@ Feature PM 负责形成任务合同、选择模型、执行、完整门禁、独
 npm run producer:resume -- ".daoyan-agent/runs/<运行目录>"
 ```
 
-恢复版本：
+恢复开发批次：
 
 ```bash
-npm run producer:version:resume -- ".daoyan-agent/versions/<运行目录>"
+npm run producer:batch:resume -- ".daoyan-agent/versions/<运行目录>"
 ```
 
 产品决定应回填原恢复点，不创建重复任务：
 
 ```bash
-npm run producer:version:resume -- ".daoyan-agent/versions/<运行目录>" "采用方案 A"
+npm run producer:batch:resume -- ".daoyan-agent/versions/<运行目录>" "采用方案 A"
 ```
 
 恢复会核对基线提交和工作区指纹。当前现场确实属于该运行，但指纹已经变化时才使用强制接管：

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>道衍项目中枢</title>
+    <link rel="stylesheet" href="/dashboard.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">DAOYAN PROJECT OFFICE</p>
+        <h1>道衍项目中枢</h1>
+      </div>
+      <div class="guard-state" id="guard-state"><span></span>正在连接秘书</div>
+    </header>
+
+    <main>
+      <section class="version-hero" aria-labelledby="version-title">
+        <div class="version-summary">
+          <p class="section-label">当前正式版本</p>
+          <h2 id="version-title">尚未载入</h2>
+          <p id="version-direction" class="version-direction"></p>
+          <div class="summary-line">
+            <strong id="current-stage">等待状态</strong>
+            <span id="version-health"></span>
+            <time id="version-updated"></time>
+          </div>
+        </div>
+        <div class="progress-block">
+          <div class="progress-heading">
+            <span>版本进度</span><strong id="progress-value">0%</strong>
+          </div>
+          <div class="progress-track"><span id="progress-bar"></span></div>
+          <p id="next-action">正在读取下一步</p>
+        </div>
+      </section>
+
+      <section class="producer-strip" aria-labelledby="todo-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">需要你处理</p>
+            <h2 id="todo-title">制作人待办</h2>
+          </div>
+          <span class="count" id="todo-count">0</span>
+        </div>
+        <div id="producer-todos" class="todo-list"></div>
+      </section>
+
+      <section class="workspace">
+        <div class="flow-column">
+          <div class="section-heading">
+            <div>
+              <p class="section-label">VERSION FLOW</p>
+              <h2>版本流程</h2>
+            </div>
+            <p>点击节点查看状态与证据</p>
+          </div>
+          <div id="stage-flow" class="stage-flow" role="list"></div>
+        </div>
+
+        <aside class="detail-panel" aria-live="polite">
+          <p class="section-label" id="detail-kicker">节点详情</p>
+          <h2 id="detail-title">选择一个流程节点</h2>
+          <dl id="detail-meta"></dl>
+          <p id="detail-summary" class="detail-summary">这里会显示负责人、处理结果和对应证据。</p>
+          <button id="artifact-button" class="secondary-button" type="button" hidden>
+            查看节点文档
+          </button>
+          <pre id="artifact-content" hidden></pre>
+        </aside>
+      </section>
+
+      <section class="delivery-grid">
+        <div>
+          <div class="section-heading compact">
+            <div>
+              <p class="section-label">DELIVERY</p>
+              <h2>开发任务</h2>
+            </div>
+            <span class="count" id="work-count">0</span>
+          </div>
+          <div id="work-items" class="data-list"></div>
+        </div>
+        <div>
+          <div class="section-heading compact">
+            <div>
+              <p class="section-label">QUALITY</p>
+              <h2>版本缺陷</h2>
+            </div>
+            <span class="count danger" id="bug-count">0</span>
+          </div>
+          <div id="bugs" class="data-list"></div>
+        </div>
+      </section>
+
+      <section class="secretary-panel" aria-labelledby="conversation-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">SECRETARY</p>
+            <h2 id="conversation-title">与秘书交流</h2>
+          </div>
+          <p>方向、问题、反馈和回复都直接说</p>
+        </div>
+        <div id="conversation" class="conversation" aria-live="polite"></div>
+        <form id="message-form" class="message-form">
+          <label for="message-input">发给秘书</label>
+          <textarea
+            id="message-input"
+            rows="3"
+            placeholder="例如：这个版本目前最大的风险是什么？"
+            required
+          ></textarea>
+          <div class="composer-actions">
+            <span id="send-state"></span>
+            <button id="send-button" type="submit">发送</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <template id="empty-template"><p class="empty">暂无记录</p></template>
+    <script type="module" src="/dashboard.js"></script>
+  </body>
+</html>

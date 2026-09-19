@@ -23,6 +23,6 @@
 
 `policy.json` 同时定义心跳频率及规划、执行、审查、修复和完整门禁的时间上限。运行中的阶段会写入 `.daoyan-agent/runs/<运行>/progress.json`，终端每个心跳周期也会确认进程仍在工作；超时退出码固定为 124，便于报告和后续诊断区分一般失败。
 
-`policy.json` 的 `versionCycle` 定义一次版本运行最多包含的 feature 数和 feature 级自动恢复次数。`npm run producer:version` 只编排多个现有 `producer` 运行，不绕过任何 feature 的独立审查、Git 交付和最终跨 feature 门禁。
+`policy.json` 的 `versionCycle` 定义一次开发批次最多包含的 Feature 数和 Feature 级自动恢复次数。`npm run producer:batch` 只编排多个现有 `producer` 运行，不代表正式版本，也不绕过任何 Feature 的独立审查、Git 交付和最终跨 Feature 门禁。
 
 显式现场接管使用 `npm run producer -- --takeover "方向"`，或使用 `npm run producer:resume -- --takeover ".daoyan-agent/runs/<运行目录>"`。秘书会在运行目录保存 `takeover.json`，清空旧任务跳过记录并重新审查当前工作区；强制模式是制作人交给秘书处理遗留现场的入口，不是绕过验证或 Git 审查的快捷方式。

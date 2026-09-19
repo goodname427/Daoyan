@@ -8,6 +8,7 @@ export type SecretaryItemStatus =
   | 'active'
   | 'retry-wait'
   | 'waiting-producer'
+  | 'backlog'
   | 'answered'
   | 'delivered'
   | 'failed';
@@ -235,10 +236,12 @@ export function projectFactsFromStatus(markdown: string): ProjectFact[] {
 export function projectFactsFromItems(items: SecretaryItem[]): ProjectFact[] {
   return items
     .filter((item) =>
-      ['queued', 'active', 'tracking', 'retry-wait', 'waiting-producer'].includes(item.status),
+      ['queued', 'backlog', 'active', 'tracking', 'retry-wait', 'waiting-producer'].includes(
+        item.status,
+      ),
     )
     .map((item) => ({
-      kind: item.status === 'queued' ? 'scheduled' : 'active',
+      kind: item.status === 'queued' || item.status === 'backlog' ? 'scheduled' : 'active',
       text: item.idea,
       reference: `secretary:${item.id}`,
     }));

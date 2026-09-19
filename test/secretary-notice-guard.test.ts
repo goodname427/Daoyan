@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { featureTaskCompletions } from '../scripts/secretary-notice-guard';
+import {
+  featureTaskCompletions,
+  versionMessageIsNewDirection,
+  versionProducerDecision,
+} from '../scripts/secretary-notice-guard';
 
 describe('secretary task milestone extraction', () => {
   it('turns passed Feature PM task runs into visualization-ready milestones', () => {
@@ -51,5 +55,16 @@ describe('secretary task milestone extraction', () => {
     );
 
     expect(completion.completedAt).toBe('2026-09-19T02:00:00.000Z');
+  });
+});
+
+describe('formal version producer decisions', () => {
+  it('requires explicit approval or explicit requested changes', () => {
+    expect(versionProducerDecision('通过，可以继续推进')).toBe('approved');
+    expect(versionProducerDecision('这里有问题，需要调整范围')).toBe('changes-requested');
+    expect(versionProducerDecision('我再看看，晚点回复')).toBeNull();
+    expect(versionProducerDecision('另外我有一个新方向')).toBeNull();
+    expect(versionMessageIsNewDirection('另外我有一个新方向')).toBe(true);
+    expect(versionMessageIsNewDirection('我再看看，晚点回复')).toBe(false);
   });
 });

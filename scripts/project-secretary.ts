@@ -27,10 +27,47 @@ function printHelp(): void {
 用法：
   npm run secretary -- "想说的话"
   npm run secretary:start
+  npm run secretary:open
   npm run secretary:status
   npm run secretary:stop
 
 秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
+}
+
+async function dashboardReachable(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/dashboard`, {
+      signal: AbortSignal.timeout(1_500),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function openDashboard(): Promise<void> {
+  const port = Number(process.env.DAOYAN_SECRETARY_HTTP_PORT ?? 4317);
+  await startGuard();
+  if (!(await dashboardReachable(port))) {
+    // A guard started by older code does not have the dashboard server; restart once after upgrade.
+    await stopGuard();
+    await startGuard();
+  }
+  const target = `http://127.0.0.1:${port}/`;
+  const command =
+    process.platform === 'win32'
+      ? { file: 'cmd.exe', args: ['/d', '/s', '/c', 'start', '', target] }
+      : process.platform === 'darwin'
+        ? { file: 'open', args: [target] }
+        : { file: 'xdg-open', args: [target] };
+  const child = spawn(command.file, command.args, {
+    cwd: root,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  child.unref();
+  console.log(`[常驻秘书] 项目中枢：${target}`);
 }
 
 async function readState(): Promise<SecretaryState | null> {
@@ -224,6 +261,8 @@ if (command === 'run') {
   await runNoticeGuard();
 } else if (command === 'start') {
   await startGuard();
+} else if (command === 'open') {
+  await openDashboard();
 } else if (command === 'stop') {
   await stopGuard();
 } else if (command === 'status') {

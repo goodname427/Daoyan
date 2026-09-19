@@ -35,6 +35,6 @@
 - `npm run producer:doctor` 在不调用模型的情况下验证 Windows Codex/npm shim 与真实子进程入口。
 - `npm run producer:plan -- "方向"` 是零-token、只读集成冒烟；增加 `--deep-plan` 才会真实调用配置中的规划模型并校验 JSON Schema。
 - `npm run producer:resume -- "<运行目录>"` 只在工作区指纹与 `recovery.json` 一致时续跑，避免跳过实现或混入外部改动。
-- `npm run producer:version:plan -- "版本目标"` 从 `status.md` 冻结有界 feature 队列；`producer:version:resume` 跳过已交付轮次，并复用各 feature 的 `recovery.json`。
+- `npm run producer:batch:plan -- "批次目标"` 从 `status.md` 冻结有界 Feature 队列；`producer:batch:resume` 跳过已交付轮次，并复用各 Feature 的 `recovery.json`。该命令只用于正式版本的开发阶段。
 - 版本运行完成全部 feature 后再运行一次 `verify:full`，只有通过才标记为 `review-ready`。
 - 完整调度仍必须通过固定的 `verify:full`，计划中的文本验证建议不会被当作 shell 命令直接执行。

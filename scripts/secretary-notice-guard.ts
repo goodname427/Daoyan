@@ -6,13 +6,14 @@ import {
   mkdir,
   open,
   readFile,
+  realpath,
   readdir,
   rename,
   rm,
   writeFile,
 } from 'node:fs/promises';
-import { createServer, type IncomingMessage, type Server } from 'node:http';
-import { basename, dirname, relative, resolve } from 'node:path';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildLocalPlan, classifyAgentFailure, preferredWindowsExecutable } from './agent-routing';
 import {
@@ -23,7 +24,6 @@ import {
 import {
   applyWaitingReply,
   createSecretaryState,
-  firstUntrackedScheduledFact,
   inferMessageIntent,
   isRunEligibleForAdoption,
   itemFromIntake,
@@ -41,6 +41,15 @@ import {
   type SecretaryState,
   type SecretaryTaskCompletion,
 } from './secretary-state';
+import {
+  advanceVersion,
+  publicVersionState,
+  readFormalVersion,
+  recordApproval,
+  writeFormalVersion,
+  type FormalVersion,
+  type VersionTodo,
+} from './version-lifecycle';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const agentRoot = resolve(root, '.daoyan-agent');
@@ -60,6 +69,7 @@ const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
 const agentDispatcherPath = resolve(root, 'scripts/agent-dispatcher.ts');
 const versionDispatcherPath = resolve(root, 'scripts/version-dispatcher.ts');
 const triageSchemaPath = resolve(root, 'agents/secretary-triage.schema.json');
+const dashboardRoot = resolve(root, 'secretary-dashboard');
 
 interface SecretaryConfig {
   version: 1;
@@ -483,24 +493,6 @@ async function projectFacts(): Promise<{ facts: ProjectFact[]; runs: RunSnapshot
   return { facts: [...activeFacts, ...queueFacts, ...projectFactsFromStatus(markdown)], runs };
 }
 
-async function enqueueNextStatusItem(): Promise<SecretaryItem | null> {
-  const markdown = await readFile(resolve(root, 'docs/status.md'), 'utf8');
-  const fact = firstUntrackedScheduledFact(projectFactsFromStatus(markdown), state.items);
-  if (!fact) return null;
-  const now = new Date().toISOString();
-  const request: IntakeRequest = {
-    id: `status-${randomUUID()}`,
-    idea: fact.text,
-    createdAt: now,
-  };
-  const { item } = itemFromIntake(request, [fact]);
-  item.summary = `秘书从项目状态自动承接下一项：${fact.text}`;
-  state.items.push(item);
-  await saveState();
-  await emitNotice('auto-scheduled', item.summary, item);
-  return item;
-}
-
 function applyModelTriage(item: SecretaryItem, result: TriageResult): string {
   item.idea = result.direction || item.idea;
   item.scope = result.scope;
@@ -539,6 +531,20 @@ function localQuestionResponse(message: string, facts: ProjectFact[]): string {
       : '项目状态中没有未承接的后续排期',
   ];
   return `根据当前项目记录，${parts.join('。')}。`;
+}
+
+async function localVersionQuestionResponse(message: string): Promise<string | null> {
+  if (!/(正式版本|版本).*(阶段|环节|进度|状态)|(?:阶段|环节).*(版本)/.test(message)) {
+    return null;
+  }
+  const version = await readFormalVersion(root);
+  if (!version) return '当前尚未建立正式版本；秘书正在等待制作人给出下一版本方向。';
+  const node = version.nodes.find((candidate) => candidate.id === version.currentStage);
+  const openTodos = version.todos.filter(
+    (todo) => todo.assignee === 'producer' && todo.status === 'open',
+  ).length;
+  const progress = (publicVersionState(version) as { progress: number }).progress;
+  return `当前正式版本是“${version.title}”，位于“${node?.title ?? version.currentStage}”，总体进度 ${progress}%。${openTodos > 0 ? `你有 ${openTodos} 项待办。` : '目前没有需要你处理的事项。'}`;
 }
 
 async function writeInboxResponse(
@@ -585,6 +591,82 @@ async function resumeWaitingItem(
   await emitNotice('reply-accepted', waiting.summary, waiting);
 }
 
+export function versionProducerDecision(message: string): 'approved' | 'changes-requested' | null {
+  const normalized = message.replace(/\s/g, '');
+  if (/(不通过|不能通过|先别|不要继续|需要修改|需要调整|有问题|不行)/.test(normalized)) {
+    return 'changes-requested';
+  }
+  if (/(通过|批准|确认|没问题|可以继续|可以推进|验收完成|同意|就这样)/.test(normalized)) {
+    return 'approved';
+  }
+  return null;
+}
+
+export function versionMessageIsNewDirection(message: string): boolean {
+  const normalized = message.replace(/\s/g, '');
+  return /(新方向|新需求|新增.{0,12}(系统|功能|玩法|模块)|(?:另外|后续|以后).{0,12}(系统|功能|玩法|方向)|我希望.{0,12}(新增|增加|加入|开发|实现))/.test(
+    normalized,
+  );
+}
+
+async function currentProducerGate(): Promise<{
+  version: FormalVersion;
+  todo: VersionTodo;
+} | null> {
+  const version = await readFormalVersion(root);
+  if (!version || version.status !== 'waiting-producer') return null;
+  const todo = version.todos.find(
+    (candidate) =>
+      candidate.assignee === 'producer' &&
+      candidate.status === 'open' &&
+      candidate.stage === version.currentStage,
+  );
+  return todo ? { version, todo } : null;
+}
+
+async function handleVersionProducerReply(
+  request: IntakeRequest,
+  intent: SecretaryMessageIntent,
+): Promise<boolean> {
+  if (intent === 'question') return false;
+  const gate = await currentProducerGate();
+  if (!gate) return false;
+  const decision = versionProducerDecision(request.idea);
+  if (!decision && versionMessageIsNewDirection(request.idea)) return false;
+  if (!decision) {
+    const response =
+      '已记录你的补充，当前评审保持等待。明确回复“通过”，或指出需要修改的内容后，秘书再推进版本。';
+    await writeInboxResponse(request, response, 'answered', 'reply');
+    await emitNotice('version-comment-recorded', response);
+    return true;
+  }
+  const approved = decision === 'approved';
+  recordApproval(gate.version, {
+    stage: gate.version.currentStage,
+    reviewer: 'producer',
+    decision,
+    documentRevision: gate.version.charterRevision,
+    comment: request.idea,
+  });
+  if (approved) {
+    const currentIndex = gate.version.nodes.findIndex(
+      (node) => node.id === gate.version.currentStage,
+    );
+    const next = gate.version.nodes[currentIndex + 1];
+    if (next) advanceVersion(gate.version, next.id);
+  }
+  await writeFormalVersion(root, gate.version);
+  const stageTitle =
+    gate.version.nodes.find((node) => node.id === gate.version.currentStage)?.title ??
+    gate.version.currentStage;
+  const response = approved
+    ? `已记录版本评审通过，当前进入“${stageTitle}”。`
+    : `已记录你的反馈，版本已退回“${stageTitle}”调整。`;
+  await writeInboxResponse(request, response, 'answered', 'reply');
+  await emitNotice(approved ? 'version-approved' : 'version-changes-requested', response);
+  return true;
+}
+
 async function processInbox(): Promise<void> {
   if (processingInbox) {
     inboxPending = true;
@@ -616,6 +698,23 @@ async function processInbox(): Promise<void> {
         const known = await projectFacts();
         const fallbackIntent = inferMessageIntent(request.idea, Boolean(waiting));
         const local = itemFromIntake(request, known.facts);
+        const versionAnswer =
+          fallbackIntent === 'question' ? await localVersionQuestionResponse(request.idea) : null;
+        if (versionAnswer) {
+          local.item.status = 'answered';
+          local.item.plannedTasks = [];
+          local.item.completedAt = request.createdAt;
+          local.item.summary = versionAnswer;
+          state.items.push(local.item);
+          await writeInboxResponse(request, versionAnswer, local.item.status, fallbackIntent);
+          await rm(path, { force: true });
+          await emitNotice('question-answered', versionAnswer, local.item);
+          continue;
+        }
+        if (await handleVersionProducerReply(request, fallbackIntent)) {
+          await rm(path, { force: true });
+          continue;
+        }
         const needsSemanticTriage = !local.item.matchedFact || Boolean(waiting);
         const model = needsSemanticTriage ? await modelTriage(request, known.facts, waiting) : null;
         const intent = model?.intent ?? fallbackIntent;
@@ -625,7 +724,7 @@ async function processInbox(): Promise<void> {
           continue;
         }
         if (intent === 'continue') {
-          const response = '收到，我会继续推进现有排期；没有待办时会从项目状态中承接下一项。';
+          const response = '收到，我会继续推进当前正式版本已经批准的排期。';
           await saveState();
           await writeInboxResponse(request, response, 'answered', intent);
           await rm(path, { force: true });
@@ -647,6 +746,11 @@ async function processInbox(): Promise<void> {
           response = `该方向已经在秘书队列中，不会重复派发：${local.item.idea}`;
           local.item.summary = response;
         }
+        if (local.item.status === 'queued') {
+          local.item.status = 'backlog';
+          response = `已加入后续版本候选池，不会绕过正式立项直接开发：${local.item.idea}`;
+          local.item.summary = response;
+        }
         state.items.push(local.item);
         if (local.item.status === 'waiting-producer') state.activeItemId = local.item.id;
         await saveState();
@@ -655,7 +759,7 @@ async function processInbox(): Promise<void> {
           response,
           local.item.status,
           intent,
-          local.item.status === 'queued' || local.item.status === 'waiting-producer'
+          local.item.status === 'backlog' || local.item.status === 'waiting-producer'
             ? local.item.plannedTasks
             : [],
         );
@@ -1032,11 +1136,7 @@ async function coordinateOnce(): Promise<void> {
   }
   if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
   if (await adoptExistingRun()) return;
-  let next = nextRunnableItem(state, new Date().toISOString());
-  const hasPending = state.items.some((item) =>
-    ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),
-  );
-  if (!next && !hasPending) next = await enqueueNextStatusItem();
+  const next = nextRunnableItem(state, new Date().toISOString());
   if (next) await launch(next);
   else scheduleRetry();
 }
@@ -1071,6 +1171,66 @@ function readBody(request: IncomingMessage): Promise<string> {
   });
 }
 
+function sendJson(response: ServerResponse, status: number, value: unknown): void {
+  response.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+  });
+  response.end(JSON.stringify(value));
+}
+
+async function dashboardPayload(): Promise<object> {
+  const version = await readFormalVersion(root);
+  return {
+    generatedAt: new Date().toISOString(),
+    secretary: publicSecretaryState(state),
+    version: version ? publicVersionState(version) : null,
+  };
+}
+
+async function serveDashboardAsset(pathname: string, response: ServerResponse): Promise<boolean> {
+  const assets: Record<string, { file: string; type: string }> = {
+    '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
+    '/dashboard.css': { file: 'dashboard.css', type: 'text/css; charset=utf-8' },
+    '/dashboard.js': { file: 'dashboard.js', type: 'text/javascript; charset=utf-8' },
+  };
+  const asset = assets[pathname];
+  if (!asset) return false;
+  try {
+    const content = await readFile(resolve(dashboardRoot, asset.file));
+    response.writeHead(200, { 'content-type': asset.type, 'cache-control': 'no-store' });
+    response.end(content);
+  } catch {
+    response.writeHead(503).end('dashboard unavailable');
+  }
+  return true;
+}
+
+async function serveArtifact(requestedPath: string, response: ServerResponse): Promise<void> {
+  const versionsDocsRoot = resolve(root, 'docs/versions');
+  const absolute = resolve(root, requestedPath);
+  const child = relative(versionsDocsRoot, absolute);
+  if (!requestedPath || child.startsWith('..') || isAbsolute(child)) {
+    sendJson(response, 403, { error: '只能查看正式版本档案中的文档' });
+    return;
+  }
+  try {
+    const [realRoot, realTarget] = await Promise.all([
+      realpath(versionsDocsRoot),
+      realpath(absolute),
+    ]);
+    const realChild = relative(realRoot, realTarget);
+    if (realChild.startsWith('..') || isAbsolute(realChild)) {
+      sendJson(response, 403, { error: '版本文档链接不能指向档案目录之外' });
+      return;
+    }
+    const content = await readFile(realTarget, 'utf8');
+    sendJson(response, 200, { path: requestedPath, content });
+  } catch {
+    sendJson(response, 404, { error: '节点文档不存在' });
+  }
+}
+
 async function enqueueIdea(idea: string): Promise<string> {
   const request: IntakeRequest = {
     id: randomUUID(),
@@ -1082,7 +1242,7 @@ async function enqueueIdea(idea: string): Promise<string> {
 }
 
 function startHttpServer(): void {
-  const port = Number(process.env.DAOYAN_SECRETARY_HTTP_PORT ?? 0);
+  const port = Number(process.env.DAOYAN_SECRETARY_HTTP_PORT ?? 4317);
   if (!Number.isInteger(port) || port <= 0) return;
   const token = process.env.DAOYAN_SECRETARY_TOKEN ?? '';
   const host = process.env.DAOYAN_SECRETARY_HTTP_HOST ?? '127.0.0.1';
@@ -1090,33 +1250,49 @@ function startHttpServer(): void {
   if (!token && !loopbackHosts.has(host.toLowerCase())) {
     throw new Error('秘书 HTTP 监听非本机地址时必须设置 DAOYAN_SECRETARY_TOKEN');
   }
-  httpServer = createServer(async (request, response) => {
-    const authorized = !token || request.headers.authorization === `Bearer ${token}`;
-    if (!authorized) {
-      response.writeHead(401).end('unauthorized');
-      return;
-    }
-    if (request.method === 'GET' && request.url === '/status') {
-      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-      response.end(JSON.stringify(publicSecretaryState(state)));
-      return;
-    }
-    if (request.method === 'POST' && request.url === '/intake') {
-      try {
-        const value = JSON.parse(await readBody(request)) as unknown;
-        if (!isRecord(value) || typeof value.idea !== 'string' || !value.idea.trim()) {
-          throw new Error('idea is required');
-        }
-        const id = await enqueueIdea(value.idea.trim());
-        response.writeHead(202, { 'content-type': 'application/json; charset=utf-8' });
-        response.end(JSON.stringify({ id, status: 'accepted' }));
-      } catch (error) {
-        response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-        response.end(JSON.stringify({ error: String(error) }));
+  httpServer = createServer((request, response) => {
+    void (async () => {
+      const authorized = !token || request.headers.authorization === `Bearer ${token}`;
+      if (!authorized) {
+        response.writeHead(401).end('unauthorized');
+        return;
       }
-      return;
-    }
-    response.writeHead(404).end('not found');
+      const target = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+      if (request.method === 'GET' && (await serveDashboardAsset(target.pathname, response)))
+        return;
+      if (request.method === 'GET' && target.pathname === '/status') {
+        sendJson(response, 200, publicSecretaryState(state));
+        return;
+      }
+      if (request.method === 'GET' && target.pathname === '/api/dashboard') {
+        sendJson(response, 200, await dashboardPayload());
+        return;
+      }
+      if (request.method === 'GET' && target.pathname === '/api/artifact') {
+        await serveArtifact(target.searchParams.get('path') ?? '', response);
+        return;
+      }
+      if (
+        request.method === 'POST' &&
+        (target.pathname === '/intake' || target.pathname === '/api/intake')
+      ) {
+        try {
+          const value = JSON.parse(await readBody(request)) as unknown;
+          if (!isRecord(value) || typeof value.idea !== 'string' || !value.idea.trim()) {
+            throw new Error('idea is required');
+          }
+          const id = await enqueueIdea(value.idea.trim());
+          sendJson(response, 202, { id, status: 'accepted' });
+        } catch (error) {
+          sendJson(response, 400, { error: String(error) });
+        }
+        return;
+      }
+      response.writeHead(404).end('not found');
+    })().catch((error) => {
+      if (!response.headersSent) sendJson(response, 500, { error: String(error) });
+      else response.end();
+    });
   });
   httpServer.listen(port, host, () => console.log(`[notice guard] HTTP 监听 ${host}:${port}`));
 }

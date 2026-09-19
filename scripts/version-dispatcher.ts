@@ -74,13 +74,12 @@ interface FeatureRecovery {
 }
 
 function printHelp(): void {
-  console.log(`道衍版本迭代工作流
+  console.log(`道衍开发批次调度（Version PM 内部能力）
 
 用法：
-  npm run producer:version -- "推进到下一个可玩版本"
-  npm run producer:version:plan -- "推进到下一个可玩版本"
-  npm run producer:version:resume -- ".daoyan-agent/versions/<运行目录>"
-  npm run producer:version:resume -- ".daoyan-agent/versions/<运行目录>" "制作人补充决策"
+  npm run producer:batch -- "交付已批准的开发批次"
+  npm run producer:batch:plan -- "交付已批准的开发批次"
+  npm run producer:batch:resume -- ".daoyan-agent/versions/<运行目录>"
 
 选项：
   --plan-only   只冻结版本 feature 队列，不修改工作区
@@ -89,7 +88,7 @@ function printHelp(): void {
   --no-push     各 feature 仍提交，但不推送远端
   --help        显示帮助
 
-默认从 docs/status.md 按顺序冻结候选队列。每个 feature 都由现有 producer 完成实现、完整门禁、独立审查、提交和推送。`);
+本工具不是正式版本入口。正式版本必须经过策划、评审、排期、开发、测试、缺陷修复和制作人体验；本工具只在其开发阶段顺序执行已批准的 Feature。`);
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -124,7 +123,7 @@ function parseArgs(argv: string[]): CliOptions {
   }
   const joined = objective.join(' ').trim();
   if (!joined && !resumeDirectory) {
-    throw new Error('请提供版本目标，例如：npm run producer:version -- "推进到下一个可玩版本"');
+    throw new Error('请提供开发批次目标，例如：npm run producer:batch -- "交付已批准的开发批次"');
   }
   return { objective: joined, planOnly, noPush, resumeDirectory, maxRounds };
 }
@@ -720,7 +719,7 @@ try {
     if (!(await executeFeature(directory, manifest, feature, policy))) {
       await writeReport(directory, manifest);
       console.error(`\n[版本暂停] ${manifest.error}`);
-      console.error(`恢复：npm run producer:version:resume -- "${relative(root, directory)}"`);
+      console.error(`恢复：npm run producer:batch:resume -- "${relative(root, directory)}"`);
       process.exit(manifest.status === 'waiting-producer' ? 2 : 1);
     }
   }
@@ -746,6 +745,6 @@ try {
   await writeManifest(directory, manifest);
   await writeReport(directory, manifest);
   console.error(`\n[版本暂停] ${manifest.error}`);
-  console.error(`恢复：npm run producer:version:resume -- "${relative(root, directory)}"`);
+  console.error(`恢复：npm run producer:batch:resume -- "${relative(root, directory)}"`);
   process.exitCode = process.exitCode || 1;
 }

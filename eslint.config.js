@@ -34,6 +34,19 @@ export default tseslint.config(
     },
   },
   {
+    files: ['secretary-dashboard/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        document: 'readonly',
+        fetch: 'readonly',
+        setInterval: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
+  {
     // 脚本与 Electron 主进程：Node 环境，放宽
     files: ['**/*.{mjs,cjs}'],
     languageOptions: {
