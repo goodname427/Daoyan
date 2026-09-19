@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   featureTaskCompletions,
+  runArgs,
   versionMessageIsNewDirection,
   versionProducerDecision,
 } from '../scripts/secretary-notice-guard';
@@ -66,5 +67,39 @@ describe('formal version producer decisions', () => {
     expect(versionProducerDecision('另外我有一个新方向')).toBeNull();
     expect(versionMessageIsNewDirection('另外我有一个新方向')).toBe(true);
     expect(versionMessageIsNewDirection('我再看看，晚点回复')).toBe(false);
+  });
+
+  it('passes the producer decision text into a resumed Feature PM', () => {
+    const args = runArgs(
+      {
+        id: 'decision',
+        idea: '调整存档结构',
+        scope: 'feature',
+        status: 'retry-wait',
+        summary: '等待决定',
+        plannedTasks: [],
+        matchedFact: null,
+        runDirectory: 'E:\\repo\\.daoyan-agent\\runs\\decision',
+        processPid: 0,
+        processIdentity: '',
+        recoveryAttempts: 0,
+        retryAt: '',
+        producerGuidance: '兼容旧存档',
+        createdAt: '',
+        updatedAt: '',
+        completedAt: '',
+        completedTasks: [],
+      },
+      true,
+    );
+
+    expect(args).toEqual(
+      expect.arrayContaining([
+        '--resume',
+        '--decision-confirmed',
+        '--producer-guidance',
+        '兼容旧存档',
+      ]),
+    );
   });
 });

@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
+const ownershipCache = new Map<string, { alive: boolean; checkedAt: number }>();
+
 export function isProcessAlive(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
@@ -39,8 +41,14 @@ export function getProcessIdentity(pid: number): string {
   }
 }
 
-export function isOwnedProcessAlive(pid: number, identity: string): boolean {
-  return Boolean(identity) && getProcessIdentity(pid) === identity;
+export function isOwnedProcessAlive(pid: number, identity: string, cacheMs = 5_000): boolean {
+  if (!identity) return false;
+  const key = `${pid}:${identity}`;
+  const cached = ownershipCache.get(key);
+  if (cached && Date.now() - cached.checkedAt <= cacheMs) return cached.alive;
+  const alive = getProcessIdentity(pid) === identity;
+  ownershipCache.set(key, { alive, checkedAt: Date.now() });
+  return alive;
 }
 
 export async function waitForProcessIdentity(pid: number, timeoutMs = 1_000): Promise<string> {

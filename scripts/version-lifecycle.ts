@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { getProcessIdentity, isOwnedProcessAlive, isProcessAlive } from './process-identity';
 
 export const VERSION_STAGES = [
   'direction',
@@ -188,6 +189,7 @@ export interface VersionBug {
 
 export interface FormalVersion {
   schemaVersion: 1;
+  stateRevision: number;
   id: string;
   title: string;
   direction: string;
@@ -206,6 +208,45 @@ export interface FormalVersion {
   completedAt: string;
 }
 
+const versionWriteQueues = new Map<string, Promise<void>>();
+const versionWriterIdentity = getProcessIdentity(process.pid);
+
+async function withVersionWriteLock<T>(stateRoot: string, action: () => Promise<T>): Promise<T> {
+  await mkdir(stateRoot, { recursive: true });
+  const lockPath = resolve(stateRoot, '.write.lock');
+  const deadline = Date.now() + 5_000;
+  let handle: Awaited<ReturnType<typeof open>> | null = null;
+  while (!handle && Date.now() < deadline) {
+    try {
+      handle = await open(lockPath, 'wx');
+      await handle.writeFile(
+        `${JSON.stringify({ pid: process.pid, processIdentity: versionWriterIdentity, createdAt: new Date().toISOString() })}\n`,
+        'utf8',
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      const lockAge =
+        Date.now() - (await stat(lockPath).catch(() => ({ mtimeMs: Date.now() }))).mtimeMs;
+      const owner = await readFile(lockPath, 'utf8')
+        .then((value) => JSON.parse(value) as { pid?: number; processIdentity?: string })
+        .catch(() => null);
+      const ownerAlive = owner?.processIdentity
+        ? isOwnedProcessAlive(Number(owner.pid ?? 0), owner.processIdentity, 0)
+        : isProcessAlive(Number(owner?.pid ?? 0));
+      if ((owner && !ownerAlive) || (!owner && lockAge > 1_000)) {
+        await rm(lockPath, { force: true });
+      } else await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+    }
+  }
+  if (!handle) throw new Error('正式版本状态正被另一个进程更新，请稍后重试');
+  try {
+    return await action();
+  } finally {
+    await handle.close();
+    await rm(lockPath, { force: true });
+  }
+}
+
 function nowIso(now?: string): string {
   return now ?? new Date().toISOString();
 }
@@ -216,6 +257,7 @@ function stageIndex(stage: VersionStage): number {
 
 function stageStatus(stage: VersionStage, current: VersionStage): LifecycleStatus {
   if (stageIndex(stage) < stageIndex(current)) return 'completed';
+  if (stage === 'archived' && current === 'archived') return 'completed';
   if (stage === current) return 'active';
   return 'pending';
 }
@@ -257,12 +299,16 @@ export function createFormalVersion(input: {
   const currentStage = input.currentStage ?? 'direction';
   const version: FormalVersion = {
     schemaVersion: 1,
+    stateRevision: 0,
     id: input.id,
     title: input.title,
     direction: input.direction,
-    status: VERSION_STAGE_DEFINITIONS.find((stage) => stage.id === currentStage)?.producerGate
-      ? 'waiting-producer'
-      : 'running',
+    status:
+      currentStage === 'archived'
+        ? 'archived'
+        : VERSION_STAGE_DEFINITIONS.find((stage) => stage.id === currentStage)?.producerGate
+          ? 'waiting-producer'
+          : 'running',
     currentStage,
     scopeFrozen: stageIndex(currentStage) > stageIndex('version-planning'),
     charterRevision: '1',
@@ -273,7 +319,11 @@ export function createFormalVersion(input: {
       summary: '',
       artifact: '',
       startedAt: definition.id === currentStage ? createdAt : '',
-      completedAt: stageIndex(definition.id) < stageIndex(currentStage) ? createdAt : '',
+      completedAt:
+        stageIndex(definition.id) < stageIndex(currentStage) ||
+        (definition.id === 'archived' && currentStage === 'archived')
+          ? createdAt
+          : '',
     })),
     approvals: [],
     todos: [],
@@ -281,7 +331,7 @@ export function createFormalVersion(input: {
     bugs: [],
     createdAt,
     updatedAt: createdAt,
-    completedAt: '',
+    completedAt: currentStage === 'archived' ? createdAt : '',
   };
   ensureProducerTodo(version, currentStage, createdAt);
   return version;
@@ -334,7 +384,11 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
       : 'running';
   version.updatedAt = timestamp;
   ensureProducerTodo(version, target, timestamp);
-  if (target === 'archived') version.completedAt = timestamp;
+  if (target === 'archived') {
+    next.status = 'completed';
+    next.completedAt = timestamp;
+    version.completedAt = timestamp;
+  }
 }
 
 export function recordApproval(
@@ -457,31 +511,184 @@ export function publicVersionState(version: FormalVersion): object {
   };
 }
 
-export async function readFormalVersion(root: string): Promise<FormalVersion | null> {
-  const runtime = resolve(
-    root,
-    process.env.DAOYAN_RELEASE_STATE_DIR ?? '.daoyan-agent/releases',
-    'current.json',
-  );
-  const seed = resolve(root, 'docs/versions/current.json');
-  const path = existsSync(runtime) ? runtime : seed;
+export function normalizeFormalVersion(version: FormalVersion): boolean {
+  if (version.currentStage !== 'archived') {
+    if (version.status !== 'archived') return false;
+    const current = VERSION_STAGE_DEFINITIONS.find((stage) => stage.id === version.currentStage);
+    version.status = current?.producerGate ? 'waiting-producer' : 'running';
+    version.completedAt = '';
+    return true;
+  }
+  let changed = version.status !== 'archived';
+  version.status = 'archived';
+  const archived = version.nodes.find((node) => node.id === 'archived');
+  const timestamp = version.completedAt || version.updatedAt || new Date().toISOString();
+  if (archived) {
+    if (archived.status !== 'completed') {
+      archived.status = 'completed';
+      changed = true;
+    }
+    if (!archived.startedAt) {
+      archived.startedAt = timestamp;
+      changed = true;
+    }
+    if (!archived.completedAt) {
+      archived.completedAt = timestamp;
+      changed = true;
+    }
+  }
+  if (!version.completedAt) {
+    version.completedAt = timestamp;
+    changed = true;
+  }
+  return changed;
+}
+
+function releaseStateRoot(root: string): string {
+  return resolve(root, process.env.DAOYAN_RELEASE_STATE_DIR ?? '.daoyan-agent/releases');
+}
+
+async function readVersionFile(path: string): Promise<FormalVersion | null> {
   try {
     const parsed = JSON.parse(await readFile(path, 'utf8')) as FormalVersion;
     if (parsed.schemaVersion !== 1 || !VERSION_STAGES.includes(parsed.currentStage)) return null;
+    parsed.stateRevision = Number.isSafeInteger(parsed.stateRevision) ? parsed.stateRevision : 0;
+    normalizeFormalVersion(parsed);
     return parsed;
   } catch {
     return null;
   }
 }
 
-export async function writeFormalVersion(root: string, version: FormalVersion): Promise<void> {
-  const path = resolve(
-    root,
-    process.env.DAOYAN_RELEASE_STATE_DIR ?? '.daoyan-agent/releases',
-    'current.json',
-  );
-  await mkdir(dirname(path), { recursive: true });
-  const temporary = `${path}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(version, null, 2)}\n`, 'utf8');
-  await rename(temporary, path);
+async function writeVersionSnapshotFiles(
+  stateRoot: string,
+  snapshot: FormalVersion,
+): Promise<void> {
+  const currentPath = resolve(stateRoot, 'current.json');
+  const historyPath = resolve(stateRoot, 'versions', `${snapshot.id}.json`);
+  const payload = `${JSON.stringify(snapshot, null, 2)}\n`;
+  for (const path of [historyPath, currentPath]) {
+    await mkdir(dirname(path), { recursive: true });
+    const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    await writeFile(temporary, payload, 'utf8');
+    await rename(temporary, path);
+  }
+}
+
+async function recoverPendingVersionWrite(stateRoot: string): Promise<void> {
+  const transactionPath = resolve(stateRoot, '.write-transaction.json');
+  if (!existsSync(transactionPath)) return;
+  const transaction = await readFile(transactionPath, 'utf8')
+    .then((value) => JSON.parse(value) as { version?: FormalVersion })
+    .catch(() => null);
+  const snapshot = transaction?.version;
+  if (
+    !snapshot ||
+    snapshot.schemaVersion !== 1 ||
+    !/^[a-z0-9._-]+$/i.test(snapshot.id) ||
+    !VERSION_STAGES.includes(snapshot.currentStage)
+  ) {
+    throw new Error('正式版本写入事务损坏，需要保留现场并人工检查');
+  }
+  await writeVersionSnapshotFiles(stateRoot, snapshot);
+  await rm(transactionPath, { force: true });
+}
+
+async function recoverFormalVersionWrite(root: string): Promise<void> {
+  const stateRoot = releaseStateRoot(root);
+  if (!existsSync(resolve(stateRoot, '.write-transaction.json'))) return;
+  const previous = versionWriteQueues.get(stateRoot) ?? Promise.resolve();
+  const queued = previous
+    .catch(() => undefined)
+    .then(() => withVersionWriteLock(stateRoot, () => recoverPendingVersionWrite(stateRoot)));
+  versionWriteQueues.set(stateRoot, queued);
+  try {
+    await queued;
+  } finally {
+    if (versionWriteQueues.get(stateRoot) === queued) versionWriteQueues.delete(stateRoot);
+  }
+}
+
+export async function readFormalVersion(root: string): Promise<FormalVersion | null> {
+  await recoverFormalVersionWrite(root);
+  const runtime = resolve(releaseStateRoot(root), 'current.json');
+  const seed = resolve(root, 'docs/versions/current.json');
+  const path = existsSync(runtime) ? runtime : seed;
+  return await readVersionFile(path);
+}
+
+export async function listFormalVersions(root: string): Promise<FormalVersion[]> {
+  const byId = new Map<string, FormalVersion>();
+  const current = await readFormalVersion(root);
+  if (current) byId.set(current.id, current);
+  const directory = resolve(releaseStateRoot(root), 'versions');
+  if (existsSync(directory)) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+      const version = await readVersionFile(resolve(directory, entry.name));
+      if (!version) continue;
+      const existing = byId.get(version.id);
+      if (!existing || version.updatedAt > existing.updatedAt) byId.set(version.id, version);
+    }
+  }
+  return [...byId.values()].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+export async function readFormalVersionById(
+  root: string,
+  versionId: string,
+): Promise<FormalVersion | null> {
+  const versions = await listFormalVersions(root);
+  return versions.find((version) => version.id === versionId) ?? null;
+}
+
+export async function writeFormalVersion(
+  root: string,
+  version: FormalVersion,
+  options: { allowVersionSwitch?: boolean } = {},
+): Promise<void> {
+  if (!/^[a-z0-9._-]+$/i.test(version.id)) throw new Error(`版本 ID 不安全：${version.id}`);
+  normalizeFormalVersion(version);
+  const stateRoot = releaseStateRoot(root);
+  const expectedRevision = version.stateRevision;
+  const previous = versionWriteQueues.get(stateRoot) ?? Promise.resolve();
+  const queued = previous
+    .catch(() => undefined)
+    .then(() =>
+      withVersionWriteLock(stateRoot, async () => {
+        await recoverPendingVersionWrite(stateRoot);
+        const currentPath = resolve(stateRoot, 'current.json');
+        const existing = await readVersionFile(currentPath);
+        if (existing?.id === version.id && existing.stateRevision !== expectedRevision) {
+          throw new Error(`版本 ${version.id} 已被其他操作更新，请刷新后重试`);
+        }
+        if (existing && existing.id !== version.id && !options.allowVersionSwitch) {
+          throw new Error(`当前正式版本是 ${existing.id}，切换版本必须使用显式立项操作`);
+        }
+        const historyPath = resolve(stateRoot, 'versions', `${version.id}.json`);
+        const historical = await readVersionFile(historyPath);
+        if (existing?.id !== version.id && historical) {
+          throw new Error(`版本 ID ${version.id} 已存在，不能覆盖历史正式版本`);
+        }
+        const nextRevision = existing?.id === version.id ? existing.stateRevision + 1 : 1;
+        const snapshot = { ...version, stateRevision: nextRevision };
+        const transactionPath = resolve(stateRoot, '.write-transaction.json');
+        const transactionTemporary = `${transactionPath}.${process.pid}.${randomUUID()}.tmp`;
+        await writeFile(
+          transactionTemporary,
+          `${JSON.stringify({ version: snapshot }, null, 2)}\n`,
+          'utf8',
+        );
+        await rename(transactionTemporary, transactionPath);
+        await writeVersionSnapshotFiles(stateRoot, snapshot);
+        await rm(transactionPath, { force: true });
+        version.stateRevision = nextRevision;
+      }),
+    );
+  versionWriteQueues.set(stateRoot, queued);
+  try {
+    await queued;
+  } finally {
+    if (versionWriteQueues.get(stateRoot) === queued) versionWriteQueues.delete(stateRoot);
+  }
 }

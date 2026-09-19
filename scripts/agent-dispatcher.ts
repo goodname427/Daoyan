@@ -26,7 +26,7 @@ import {
   type ReviewResult,
   type TaskPlan,
 } from './agent-routing';
-import { getProcessIdentity } from './process-identity';
+import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const policyPath = resolve(root, 'agents/policy.json');
@@ -41,6 +41,7 @@ interface CliOptions {
   noPush: boolean;
   takeover: boolean;
   decisionConfirmed: boolean;
+  producerGuidance: string;
   resumeDirectory: string | null;
   runId: string | null;
 }
@@ -58,6 +59,8 @@ interface ProcessOptions {
   heartbeatLabel?: string;
   progressFile?: string;
   timeoutMs?: number;
+  workerModel?: string;
+  workerRole?: string;
 }
 
 interface TaskRun {
@@ -129,6 +132,7 @@ function printHelp() {
   --no-push    完成交付和提交，但不推送远端
   --takeover   强制秘书接管当前现场，记录快照后保留并审查现有改动
   --decision-confirmed  制作人已对当前不可逆或发布边界给出明确决定
+  --producer-guidance  传入制作人决定正文，供恢复后的 Agent 执行
   --resume     从失败运行的恢复点续跑，不重复已完成任务
   --run-id     为版本级调度指定稳定的运行目录名
   --help       显示帮助
@@ -143,6 +147,7 @@ function parseArgs(argv: string[]): CliOptions {
   let noPush = false;
   let takeover = false;
   let decisionConfirmed = false;
+  let producerGuidance = '';
   let resumeDirectory: string | null = null;
   let runId: string | null = null;
   let resumeRequested = false;
@@ -159,7 +164,12 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === '--no-push') noPush = true;
     else if (arg === '--takeover' || arg === '--force-takeover') takeover = true;
     else if (arg === '--decision-confirmed') decisionConfirmed = true;
-    else if (arg === '--run-id') {
+    else if (arg === '--producer-guidance') {
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--')) throw new Error('--producer-guidance 后需要决定正文');
+      producerGuidance = value;
+      index += 1;
+    } else if (arg === '--run-id') {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error('--run-id 后需要目录名');
       runId = value;
@@ -194,6 +204,7 @@ function parseArgs(argv: string[]): CliOptions {
     noPush,
     takeover,
     decisionConfirmed,
+    producerGuidance,
     resumeDirectory,
     runId,
   };
@@ -240,6 +251,8 @@ async function runProcess(
     let stderr = '';
     let timedOut = false;
     let spawnFailed = false;
+    let workerFinished = false;
+    let workerProcessIdentity = '';
     let progressWrites = Promise.resolve();
     const recordProgress = (
       status: 'running' | 'finished' | 'failed' | 'timed_out',
@@ -252,6 +265,10 @@ async function runProcess(
         startedAt: new Date(startedAt).toISOString(),
         updatedAt: new Date().toISOString(),
         elapsedSeconds: Math.round((Date.now() - startedAt) / 1000),
+        workerPid: status === 'running' ? (child.pid ?? 0) : 0,
+        workerProcessIdentity: status === 'running' ? workerProcessIdentity : '',
+        workerModel: status === 'running' ? (options.workerModel ?? '') : '',
+        workerRole: status === 'running' ? (options.workerRole ?? '') : '',
         ...(code === undefined ? {} : { code }),
       };
       progressWrites = progressWrites.then(() =>
@@ -259,6 +276,13 @@ async function runProcess(
       );
     };
     recordProgress('running');
+    if (child.pid) {
+      void waitForProcessIdentity(child.pid).then((identity) => {
+        if (workerFinished) return;
+        workerProcessIdentity = identity;
+        recordProgress('running');
+      });
+    }
     const heartbeat = options.heartbeatLabel
       ? setInterval(() => {
           const elapsed = Math.round((Date.now() - startedAt) / 1000);
@@ -294,6 +318,7 @@ async function runProcess(
       if (options.stream) process.stderr.write(text);
     });
     child.on('error', (error) => {
+      workerFinished = true;
       spawnFailed = true;
       if (heartbeat) clearInterval(heartbeat);
       if (timeout) clearTimeout(timeout);
@@ -302,6 +327,7 @@ async function runProcess(
     });
     child.on('close', async (code) => {
       try {
+        workerFinished = true;
         if (heartbeat) clearInterval(heartbeat);
         if (timeout) clearTimeout(timeout);
         if (options.logFile) {
@@ -495,6 +521,8 @@ ${direction}
       input: prompt,
       logFile,
       heartbeatLabel: '深度规划',
+      workerModel: route.model,
+      workerRole: '规划 Agent',
       progressFile: resolve(dirname(outputFile), 'progress.json'),
       timeoutMs: minutes(policy.timeouts.plannerMinutes),
     },
@@ -565,6 +593,8 @@ async function runTask(
           logFile,
           stream: true,
           heartbeatLabel: `执行 ${task.id} / ${route.model}`,
+          workerModel: route.model,
+          workerRole: '执行 Agent',
           progressFile: resolve(runDirectory, 'progress.json'),
           timeoutMs: minutes(policy.timeouts.workers[tier]),
         },
@@ -712,6 +742,8 @@ ${plan.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}
       input: prompt,
       logFile,
       heartbeatLabel: `独立审查 / 第 ${round} 轮 / ${route.model}`,
+      workerModel: route.model,
+      workerRole: '审查 Agent',
       progressFile: resolve(runDirectory, 'progress.json'),
       timeoutMs: minutes(policy.timeouts.reviewers[highestTier(plan.tasks)]),
     },
@@ -815,6 +847,8 @@ ${review.findings
       logFile,
       stream: true,
       heartbeatLabel: `审查修复 / 第 ${round} 轮 / ${route.model}`,
+      workerModel: route.model,
+      workerRole: '修复 Agent',
       progressFile: resolve(runDirectory, 'progress.json'),
       timeoutMs: minutes(policy.timeouts.repairs[highestTier(plan.tasks)]),
     },
@@ -1091,6 +1125,12 @@ let activeTakeover = options.takeover;
 let currentPhase = '初始化';
 const currentProcessIdentity = getProcessIdentity(process.pid);
 
+function applyProducerGuidance(direction: string): string {
+  return options.producerGuidance
+    ? `${direction}\n\n制作人已确认的决定：${options.producerGuidance}`
+    : direction;
+}
+
 async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = ''): Promise<void> {
   if (!activePlan || !activeBaseline) return;
   await writeCheckpoint(runDirectory, {
@@ -1193,7 +1233,7 @@ try {
     activePlan = checkpoint.plan;
     activeBaseline = checkpoint.baseline;
     activeDirection = checkpoint.direction;
-    activeResolvedDirection = checkpoint.resolvedDirection;
+    activeResolvedDirection = applyProducerGuidance(checkpoint.resolvedDirection);
     const resetCompletedWork =
       (fingerprintMismatch && !completedCommitCanResume) || options.takeover;
     activeTaskRuns = resetCompletedWork ? [] : checkpoint.taskRuns;
@@ -1211,7 +1251,9 @@ try {
     if (!options.planOnly) await ensureCleanWorktree(runDirectory, options.takeover);
     console.log(`[秘书] 正在分析制作人方向，运行记录：${runDirectory}`);
     const statusSource = await readFile(resolve(root, 'docs/status.md'), 'utf8');
-    activeResolvedDirection = resolveProducerDirection(options.direction, statusSource);
+    activeResolvedDirection = applyProducerGuidance(
+      resolveProducerDirection(options.direction, statusSource),
+    );
     if (activeResolvedDirection !== options.direction.trim()) {
       console.log(`[秘书] 已将模糊续作解析为：${activeResolvedDirection}`);
     }

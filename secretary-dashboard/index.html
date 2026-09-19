@@ -8,24 +8,28 @@
   </head>
   <body>
     <header class="topbar">
-      <div>
+      <div class="brand-block">
         <p class="eyebrow">DAOYAN PROJECT OFFICE</p>
         <h1>道衍项目中枢</h1>
       </div>
+      <label class="version-picker" for="version-select">
+        <span>查看版本</span>
+        <select id="version-select" aria-label="选择正式版本"></select>
+      </label>
       <div class="guard-state" id="guard-state"><span></span>正在连接秘书</div>
     </header>
 
-    <main>
-      <section class="version-hero" aria-labelledby="version-title">
+    <main class="dashboard-shell">
+      <section class="version-strip" aria-labelledby="version-title">
         <div class="version-summary">
-          <p class="section-label">当前正式版本</p>
+          <p class="section-label">当前视图</p>
           <h2 id="version-title">尚未载入</h2>
           <p id="version-direction" class="version-direction"></p>
-          <div class="summary-line">
-            <strong id="current-stage">等待状态</strong>
-            <span id="version-health"></span>
-            <time id="version-updated"></time>
-          </div>
+        </div>
+        <div class="version-state">
+          <strong id="current-stage">等待状态</strong>
+          <span id="version-health"></span>
+          <time id="version-updated"></time>
         </div>
         <div class="progress-block">
           <div class="progress-heading">
@@ -34,90 +38,129 @@
           <div class="progress-track"><span id="progress-bar"></span></div>
           <p id="next-action">正在读取下一步</p>
         </div>
-      </section>
-
-      <section class="producer-strip" aria-labelledby="todo-title">
-        <div class="section-heading">
-          <div>
-            <p class="section-label">需要你处理</p>
-            <h2 id="todo-title">制作人待办</h2>
-          </div>
-          <span class="count" id="todo-count">0</span>
+        <div class="quick-metrics" aria-label="项目概览">
+          <div><strong id="running-agent-count">0</strong><span>执行中 Agent</span></div>
+          <div><strong id="todo-count">0</strong><span>制作人待办</span></div>
+          <div><strong id="bug-count">0</strong><span>开放缺陷</span></div>
         </div>
-        <div id="producer-todos" class="todo-list"></div>
       </section>
 
-      <section class="workspace">
-        <div class="flow-column">
-          <div class="section-heading">
+      <nav class="mobile-pane-nav" aria-label="项目中枢区域">
+        <button type="button" class="active" data-pane-target="flow">流程</button>
+        <button type="button" data-pane-target="focus">详情</button>
+        <button type="button" data-pane-target="control">控制台</button>
+      </nav>
+
+      <div class="workbench">
+        <aside class="flow-pane pane" data-pane="flow" aria-labelledby="flow-title">
+          <div class="pane-heading">
             <div>
               <p class="section-label">VERSION FLOW</p>
-              <h2>版本流程</h2>
+              <h2 id="flow-title">版本流程</h2>
             </div>
-            <p>点击节点查看状态与证据</p>
+            <span id="history-badge" class="quiet-badge" hidden>历史只读</span>
           </div>
           <div id="stage-flow" class="stage-flow" role="list"></div>
-        </div>
-
-        <aside class="detail-panel" aria-live="polite">
-          <p class="section-label" id="detail-kicker">节点详情</p>
-          <h2 id="detail-title">选择一个流程节点</h2>
-          <dl id="detail-meta"></dl>
-          <p id="detail-summary" class="detail-summary">这里会显示负责人、处理结果和对应证据。</p>
-          <button id="artifact-button" class="secondary-button" type="button" hidden>
-            查看节点文档
-          </button>
-          <pre id="artifact-content" hidden></pre>
         </aside>
-      </section>
 
-      <section class="delivery-grid">
-        <div>
-          <div class="section-heading compact">
+        <section class="focus-pane pane" data-pane="focus" aria-live="polite">
+          <div class="node-heading">
             <div>
-              <p class="section-label">DELIVERY</p>
-              <h2>开发任务</h2>
+              <p class="section-label" id="detail-kicker">节点详情</p>
+              <h2 id="detail-title">选择一个流程节点</h2>
             </div>
-            <span class="count" id="work-count">0</span>
+            <dl id="detail-meta"></dl>
           </div>
-          <div id="work-items" class="data-list"></div>
-        </div>
-        <div>
-          <div class="section-heading compact">
-            <div>
-              <p class="section-label">QUALITY</p>
-              <h2>版本缺陷</h2>
+          <p id="detail-summary" class="detail-summary">这里会显示负责人、处理结果和对应证据。</p>
+          <div class="document-workspace">
+            <nav id="node-documents" class="document-list" aria-label="节点相关文档"></nav>
+            <div class="document-reader">
+              <div class="reader-heading">
+                <strong id="document-title">选择文档</strong>
+                <select id="all-documents" aria-label="查看版本全部文档"></select>
+              </div>
+              <pre id="artifact-content">选择左侧关联文档，或从右上角查看整个版本档案。</pre>
             </div>
-            <span class="count danger" id="bug-count">0</span>
           </div>
-          <div id="bugs" class="data-list"></div>
-        </div>
-      </section>
+          <div class="delivery-workspace">
+            <div class="segmented" role="tablist" aria-label="版本交付信息">
+              <button type="button" class="active" data-delivery-tab="work">开发任务</button>
+              <button type="button" data-delivery-tab="bugs">版本缺陷</button>
+            </div>
+            <div id="work-items" class="data-list"></div>
+            <div id="bugs" class="data-list" hidden></div>
+          </div>
+        </section>
 
-      <section class="secretary-panel" aria-labelledby="conversation-title">
-        <div class="section-heading">
-          <div>
-            <p class="section-label">SECRETARY</p>
-            <h2 id="conversation-title">与秘书交流</h2>
-          </div>
-          <p>方向、问题、反馈和回复都直接说</p>
-        </div>
-        <div id="conversation" class="conversation" aria-live="polite"></div>
-        <form id="message-form" class="message-form">
-          <label for="message-input">发给秘书</label>
-          <textarea
-            id="message-input"
-            rows="3"
-            placeholder="例如：这个版本目前最大的风险是什么？"
-            required
-          ></textarea>
-          <div class="composer-actions">
-            <span id="send-state"></span>
-            <button id="send-button" type="submit">发送</button>
-          </div>
-        </form>
-      </section>
+        <aside class="control-pane pane" data-pane="control">
+          <section class="agent-section" aria-labelledby="agent-title">
+            <div class="pane-heading compact">
+              <div>
+                <p class="section-label">RUNTIME</p>
+                <h2 id="agent-title">当前 Agent</h2>
+              </div>
+              <span id="agent-summary" class="quiet-badge">读取中</span>
+            </div>
+            <div id="agent-list" class="agent-list"></div>
+          </section>
+
+          <section class="todo-section" aria-labelledby="todo-title">
+            <div class="pane-heading compact">
+              <div>
+                <p class="section-label">PRODUCER</p>
+                <h2 id="todo-title">制作人待办</h2>
+              </div>
+            </div>
+            <div id="producer-todos" class="todo-list"></div>
+          </section>
+
+          <section class="secretary-section" aria-labelledby="conversation-title">
+            <div class="pane-heading compact">
+              <div>
+                <p class="section-label">SECRETARY</p>
+                <h2 id="conversation-title">与秘书交流</h2>
+              </div>
+            </div>
+            <div id="conversation" class="conversation" aria-live="polite"></div>
+            <form id="message-form" class="message-form">
+              <label for="message-input">发给秘书</label>
+              <textarea
+                id="message-input"
+                rows="2"
+                placeholder="方向、问题、反馈和回复都直接说"
+                required
+              ></textarea>
+              <div class="composer-actions">
+                <span id="send-state"></span>
+                <button id="send-button" type="submit">发送</button>
+              </div>
+            </form>
+          </section>
+        </aside>
+      </div>
     </main>
+
+    <dialog id="agent-dialog" class="agent-dialog">
+      <form method="dialog" class="dialog-heading">
+        <div>
+          <p class="section-label" id="agent-detail-type">AGENT</p>
+          <h2 id="agent-detail-title">Agent 详情</h2>
+        </div>
+        <button type="submit" aria-label="关闭 Agent 详情">关闭</button>
+      </form>
+      <div class="agent-detail-body">
+        <dl id="agent-detail-meta"></dl>
+        <section>
+          <h3>任务上下文</h3>
+          <p id="agent-detail-objective"></p>
+          <div id="agent-context"></div>
+        </section>
+        <section>
+          <h3>近期运行输出</h3>
+          <pre id="agent-output"></pre>
+        </section>
+      </div>
+    </dialog>
 
     <template id="empty-template"><p class="empty">暂无记录</p></template>
     <script type="module" src="/dashboard.js"></script>

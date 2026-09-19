@@ -4,6 +4,8 @@ import {
   addVersionTodo,
   advanceVersion,
   createFormalVersion,
+  listFormalVersions,
+  normalizeFormalVersion,
   publicVersionState,
   readFormalVersion,
   recordApproval,
@@ -25,6 +27,8 @@ function usage(): never {
   tsx scripts/version-manager.ts evidence <stage> <artifact> <summary>
   tsx scripts/version-manager.ts approve <stage> <producer|lead-designer> <comment>
   tsx scripts/version-manager.ts reject <stage> <producer|lead-designer> <comment>
+  tsx scripts/version-manager.ts repair
+  tsx scripts/version-manager.ts list
   tsx scripts/version-manager.ts status`);
   process.exit(0);
 }
@@ -152,7 +156,7 @@ async function bootstrapWorkflow(): Promise<void> {
     },
   ];
   version.workItems.push(...workItems);
-  await writeFormalVersion(root, version);
+  await writeFormalVersion(root, version, { allowVersionSwitch: true });
   console.log(`已建立正式版本：${version.title}`);
 }
 
@@ -162,7 +166,9 @@ if (!command || command === '--help' || command === '-h') usage();
 if (command === 'init') {
   if (args.length < 4) usage();
   const [id, title, direction, documentRoot] = args;
-  await writeFormalVersion(root, createFormalVersion({ id, title, direction, documentRoot }));
+  await writeFormalVersion(root, createFormalVersion({ id, title, direction, documentRoot }), {
+    allowVersionSwitch: true,
+  });
 } else if (command === 'bootstrap-workflow') {
   await bootstrapWorkflow();
 } else if (command === 'advance') {
@@ -210,4 +216,23 @@ if (command === 'init') {
 } else if (command === 'status') {
   const version = await requireVersion();
   console.log(JSON.stringify(publicVersionState(version), null, 2));
+} else if (command === 'repair') {
+  const version = await requireVersion();
+  normalizeFormalVersion(version);
+  await writeFormalVersion(root, version);
+  console.log(`已校准正式版本状态：${version.title}`);
+} else if (command === 'list') {
+  const versions = await listFormalVersions(root);
+  console.log(
+    JSON.stringify(
+      versions.map((version) => ({
+        id: version.id,
+        title: version.title,
+        status: version.status,
+        updatedAt: version.updatedAt,
+      })),
+      null,
+      2,
+    ),
+  );
 } else usage();

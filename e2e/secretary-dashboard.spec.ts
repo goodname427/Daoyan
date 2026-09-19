@@ -39,13 +39,27 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     title: '可视化秘书验收版本',
     direction: '验证完整项目中枢体验',
     documentRoot: 'docs/versions/workflow-foundation-2026-09-20',
-    currentStage: 'development',
+    currentStage: 'producer-acceptance',
   });
   setNodeEvidence(version, 'charter-review', {
     artifact: 'docs/versions/workflow-foundation-2026-09-20/charter.md',
     summary: '制作人已批准版本策划案。',
   });
   await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version), 'utf8');
+  const previous = createFormalVersion({
+    id: 'dashboard-e2e-previous',
+    title: '上一轮工作流版本',
+    direction: '验证版本历史查阅',
+    documentRoot: 'docs/versions/workflow-foundation-2026-09-20',
+    currentStage: 'archived',
+    now: '2026-09-19T00:00:00.000Z',
+  });
+  await mkdir(resolve(releaseState, 'versions'), { recursive: true });
+  await writeFile(
+    resolve(releaseState, 'versions', `${previous.id}.json`),
+    JSON.stringify(previous),
+    'utf8',
+  );
   const port = await freePort();
   const child: ChildProcess = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
     cwd: root,
@@ -74,25 +88,73 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
       .toBe(true);
     await page.goto(`http://127.0.0.1:${port}`);
     await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
-    await expect(page.locator('#current-stage')).toContainText('开发执行');
+    await expect(page.locator('#current-stage')).toContainText('制作人体验');
+    const hasPageScroll = await page.evaluate(
+      () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+    );
+    expect(hasPageScroll).toBe(false);
 
     await page.locator('[data-stage="charter-review"]').click();
     await expect(page.locator('#detail-title')).toHaveText('立项评审');
-    await page.getByRole('button', { name: '查看节点文档' }).click();
+    await page.getByRole('button', { name: '版本策划案' }).click();
     await expect(page.locator('#artifact-content')).toContainText('版本策划案');
+
+    await page.locator('#agent-list button').filter({ hasText: '常驻秘书' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.locator('#agent-detail-meta')).toContainText('无模型常驻');
+    await page.getByRole('button', { name: '关闭 Agent 详情' }).click();
 
     await page.getByLabel('发给秘书').fill('现在正式版本处于什么阶段？');
     await page.getByRole('button', { name: '发送' }).click();
     await expect(page.locator('#send-state')).toHaveText('秘书已收到');
-    await expect(page.locator('.message.secretary').last()).toContainText('开发执行', {
+    await expect(page.locator('.message.secretary').last()).toContainText('制作人体验', {
       timeout: 5_000,
     });
+
+    await page.locator('#producer-todos .recommended').click();
+    await expect(page.locator('#progress-value')).toHaveText('100%');
+    await expect(page.locator('#current-stage')).toContainText('版本归档');
+
+    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e-previous');
+    await expect(page.getByRole('heading', { name: '上一轮工作流版本' })).toBeVisible();
+    await expect(page.locator('#history-badge')).toBeVisible();
+    await expect(page.locator('#producer-todos')).toContainText('暂无记录');
+    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e');
+    await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
+
+    await page.route('**/api/dashboard?version=dashboard-e2e-previous', async (route) => {
+      await new Promise((resolveWait) => setTimeout(resolveWait, 300));
+      await route.continue();
+    });
+    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e-previous');
+    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e');
+    await page.waitForTimeout(450);
+    await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
+    await page.unroute('**/api/dashboard?version=dashboard-e2e-previous');
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+      ),
+    ).toBe(false);
+
+    await page.setViewportSize({ width: 721, height: 768 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
 
     await page.setViewportSize({ width: 390, height: 844 });
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );
     expect(hasHorizontalOverflow).toBe(false);
+    await page.getByRole('button', { name: '详情', exact: true }).click();
+    await expect
+      .poll(() => page.locator('.workbench').evaluate((node) => node.scrollLeft))
+      .toBeGreaterThan(0);
     errors.assert();
   } finally {
     if (child.exitCode === null) child.kill('SIGTERM');
