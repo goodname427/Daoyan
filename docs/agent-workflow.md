@@ -1,6 +1,16 @@
 # 制作人工作流
 
-这套流程让制作人只负责方向，由一个秘书 Agent 负责理解、分派、验收和汇报。模型选择和任务复杂度是执行层问题，不是制作人的输入要求。
+这套流程让制作人只负责方向。事件驱动的常驻秘书负责跨 feature/version 的项目现状、收件、排期和通知；`producer` 与 `producer:version` 是单次交付 PM，负责理解、分派、验收和 Git 收束。模型选择和任务复杂度是执行层问题，不是制作人的输入要求。
+
+## 三层职责
+
+| 层级                    | 生命周期            | 职责                                           | 空闲成本   |
+| ----------------------- | ------------------- | ---------------------------------------------- | ---------- |
+| 常驻秘书 / notice guard | 跨版本              | 查重、队列、唤醒、恢复时间、通知与 Review 暂停 | 0 token    |
+| 交付 PM                 | 一个 feature 或版本 | 拆分、模型路由、门禁、独立审查、修复与 Git     | 运行时计费 |
+| 执行 Agent              | 一个独立子任务      | 实现、聚焦测试或审查                           | 运行时计费 |
+
+常驻不等于常驻模型。外部 notice guard 使用文件事件、HTTP 请求、子进程退出和单次恢复定时器阻塞监听；只有事件到达才短暂唤醒语义 Agent。该边界由 [ADR-0012](./adr/0012-事件驱动常驻秘书与交付PM分层.md) 固定。
 
 ## 最常用方式
 
@@ -9,6 +19,32 @@
 > 我希望推演台可以单步执行法术，并看到每一步的变量和资源变化。
 
 不需要补充“这个任务复杂吗”“该用哪个模型”“怎么拆分”或测试命令。当前主 Agent 应自动作为秘书完成后续工作，只在产品方向冲突、不可逆选择或大版本发布时请求决定。
+
+本机常驻入口：
+
+```bash
+npm run secretary:start
+npm run secretary -- "我希望法术可以组合出持续护盾"
+npm run secretary:status
+```
+
+`secretary` 会自动启动未运行的 guard。精确命中 `docs/status.md` 或正在运行清单时直接答复，不创建重复任务；新方向进入持久队列，当前 PM 结束后再启动。版本方向使用：
+
+```bash
+npm run secretary -- --version "推进到下一个稳定可玩版本"
+```
+
+秘书明确请求产品取舍后，用同一入口回复并标记为决策；它会把内容送回原恢复点，而不是新建任务：
+
+```bash
+npm run secretary -- --decision "采用方案 A，兼容已有存档"
+```
+
+停止本机 guard：
+
+```bash
+npm run secretary:stop
+```
 
 ## 秘书交付循环
 
@@ -49,6 +85,30 @@
 ```bash
 npm run producer:plan -- "增加法术单步推演和变量观察"
 ```
+
+这些 `producer*` 命令是交付 PM 的底层入口。日常方向优先交给 `secretary`，这样新消息可以在已有工作运行期间排队，不会打断当前 feature。
+
+## 通讯软件接入
+
+notice guard 可选开启本机 HTTP 收件口：
+
+```powershell
+$env:DAOYAN_SECRETARY_HTTP_PORT = "17321"
+$env:DAOYAN_SECRETARY_TOKEN = "<local-secret>"
+npm run secretary:start
+```
+
+通讯机器人或网关向 `POST /intake` 发送：
+
+```json
+{ "idea": "增加持续护盾法术", "scope": "feature", "decision": false }
+```
+
+使用 `Authorization: Bearer <local-secret>`；`GET /status` 返回脱敏后的项目组合状态。服务默认仅绑定 `127.0.0.1`；若显式绑定非本机地址，notice guard 会强制要求设置 token。公网接入应由已有机器人、反向代理或隧道负责认证和 TLS。
+
+出站通知设置 `DAOYAN_SECRETARY_WEBHOOK_URL`，并通过 `DAOYAN_SECRETARY_WEBHOOK_KIND=generic|feishu|wecom|discord` 选择载荷格式。凭据只放环境变量，不提交仓库。没有 webhook 时，事件仍写入 `.daoyan-agent/secretary/events.jsonl`。
+
+语义查重默认仅在新消息到达时调用 `agents/secretary.json` 指定的低成本模型。设置 `DAOYAN_SECRETARY_LOCAL_ONLY=1` 可完全禁用该调用，使用本地保守查重；无论哪种模式，空闲期间都不会调用模型。
 
 让秘书完成规划、实现、验证、审查、提交与推送：
 
@@ -165,6 +225,8 @@ npm run producer:resume -- --takeover ".daoyan-agent/runs/<运行目录>"
 
 多轮版本运行另存于 `.daoyan-agent/versions/<时间-目标>/`：`version.json` 是可恢复的队列真相，`feature-*.log` 聚合各轮终端输出，`verify-full.log` 是最终跨 feature 门禁，`report.md` 是制作人 Review 入口。每个 feature 仍在 `.daoyan-agent/runs/` 保留自己的计划、差异、审查和恢复证据。
 
+跨版本的常驻秘书另存于 `.daoyan-agent/secretary/`：`state.json` 是队列真相，`inbox/` 与 `responses/` 是可靠收件协议，`events.jsonl` 是待通知历史，`notice-guard.log` 和每项任务日志用于诊断。notice guard 重启时会接管已有的未完成版本或 feature；外部额度阻塞只登记一次恢复定时器，不循环唤醒模型。
+
 长阶段每 20 秒在终端输出一次心跳并更新 `progress.json`。当前默认上限按风险分层：执行 4/6/12/18 分钟，审查 3/4/8/12 分钟，修复 4/6/10/15 分钟；完整门禁上限 10 分钟。超时会停止该子进程，普通执行仍可按既有策略升级一次。CLI 暂不提供调用中的硬 token 上限，因此“聚焦输入 + 较低模型层级 + 时间上限 + 事后 token 记录”共同承担成本控制。
 
 执行者只运行聚焦测试和 `npm run verify`；`npm run verify:full` 由秘书统一运行，避免工作 Agent、审查者和父进程重复做同一轮完整门禁。审查者只读取预生成差异包及必要的直接契约，不运行命令，也不扫描无关文档与历史。超大差异和未跟踪二进制文件只记录清单与大小，不整块注入模型上下文。
@@ -180,3 +242,5 @@ npm run producer:resume -- --takeover ".daoyan-agent/runs/<运行目录>"
 - 自动测试与独立审查不能替代产品体验。涉及 UI 时，当前主 Agent仍需启动应用并实际走完受影响路径，再向制作人交付。
 - routine 任务不创建 tag；版本发布继续使用 `npm run release`，大版本发布必须由制作人决定。
 - 版本队列是开始时的有界快照，不会在同一次运行中无限吸收新候选；新发现会写回 `status.md` 留给下一个版本运行。
+- notice guard 是本机进程，系统重启后需由登录启动项、进程管理器或 `npm run secretary:start` 拉起；持久队列不会因此丢失。
+- 仓库提供聊天平台无关的 HTTP/webhook 边界，但平台机器人、公网入口、凭据和 TLS 仍属于部署配置。

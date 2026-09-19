@@ -26,6 +26,7 @@ import {
   type ReviewResult,
   type TaskPlan,
 } from './agent-routing';
+import { getProcessIdentity } from './process-identity';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const policyPath = resolve(root, 'agents/policy.json');
@@ -83,6 +84,8 @@ interface ReviewRun {
 interface RecoveryCheckpoint {
   version: 1;
   status: 'active' | 'recoverable' | 'delivered';
+  processPid: number;
+  processIdentity: string;
   phase: string;
   direction: string;
   resolvedDirection: string;
@@ -411,6 +414,8 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
         : value.status === 'active'
           ? 'active'
           : 'recoverable',
+    processPid: Number.isInteger(value.processPid) ? value.processPid! : 0,
+    processIdentity: value.processIdentity ?? '',
     phase: value.phase ?? '未知阶段',
     direction: value.direction ?? value.plan.summary,
     resolvedDirection: value.resolvedDirection ?? value.plan.summary,
@@ -1081,12 +1086,15 @@ let activeRepairerTokens: number | null = null;
 let activeNoPush = options.noPush;
 let activeTakeover = options.takeover;
 let currentPhase = '初始化';
+const currentProcessIdentity = getProcessIdentity(process.pid);
 
 async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = ''): Promise<void> {
   if (!activePlan || !activeBaseline) return;
   await writeCheckpoint(runDirectory, {
     version: 1,
     status,
+    processPid: status === 'active' ? process.pid : 0,
+    processIdentity: status === 'active' ? currentProcessIdentity : '',
     phase: currentPhase,
     direction: activeDirection,
     resolvedDirection: activeResolvedDirection,

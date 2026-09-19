@@ -10,6 +10,7 @@ import {
   versionTasksFromStatus,
   type AgentPolicy,
 } from './agent-routing';
+import { getProcessIdentity } from './process-identity';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const versionsRoot = resolve(root, '.daoyan-agent', 'versions');
@@ -45,6 +46,8 @@ interface VersionManifest {
   version: 1;
   objective: string;
   status: VersionStatus;
+  processPid: number;
+  processIdentity: string;
   baseline: string;
   maxFeatureRounds: number;
   deferredTasks: string[];
@@ -339,6 +342,8 @@ async function refreshMaintenanceOnlyRecovery(
 
 async function writeManifest(directory: string, manifest: VersionManifest): Promise<void> {
   manifest.updatedAt = new Date().toISOString();
+  manifest.processPid = manifest.status === 'running' ? process.pid : 0;
+  manifest.processIdentity = manifest.status === 'running' ? currentProcessIdentity : '';
   const target = resolve(directory, 'version.json');
   const temporary = `${target}.tmp`;
   await writeFile(temporary, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
@@ -598,6 +603,8 @@ async function createManifest(
     version: 1,
     objective: options.objective,
     status: 'planned',
+    processPid: 0,
+    processIdentity: '',
     baseline: await gitHead(),
     maxFeatureRounds,
     deferredTasks: candidates.slice(maxFeatureRounds),
@@ -624,6 +631,7 @@ async function createManifest(
 }
 
 const options = parseArgs(process.argv.slice(2));
+const currentProcessIdentity = getProcessIdentity(process.pid);
 const policy = validatePolicy(
   JSON.parse(await readFile(resolve(root, 'agents/policy.json'), 'utf8')),
 );
@@ -640,6 +648,8 @@ if (options.resumeDirectory) {
   manifest = JSON.parse(
     await readFile(resolve(directory, 'version.json'), 'utf8'),
   ) as VersionManifest;
+  manifest.processPid = Number.isInteger(manifest.processPid) ? manifest.processPid : 0;
+  manifest.processIdentity = manifest.processIdentity ?? '';
   if (manifest.status === 'review-ready') throw new Error('该版本运行已到达 Review 节点，无需恢复');
   const waitingFeatures = manifest.features.filter(
     (feature) => feature.status === 'waiting-producer',

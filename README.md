@@ -51,7 +51,17 @@ npm run verify:full  # 再加覆盖率、沙盒、E2E 和生产构建
 
 ## 制作人工作流
 
-制作人只需要在 Codex 主任务中描述产品方向或体验问题，不需要判断复杂度、拆分任务或选择模型。主 Agent 默认作为秘书，负责分派、实现、验证、Git 和最终汇报。
+制作人只需要描述产品方向或体验问题，不需要判断复杂度、拆分任务或选择模型。常驻秘书跨版本维护现状、排期和通知，单次交付 PM 负责分派、实现、验证、Git 和最终汇报。notice guard 空闲时不调用模型，只有新消息、交付完成或恢复时间到达时才唤醒。
+
+启动常驻秘书并提交想法：
+
+```bash
+npm run secretary:start
+npm run secretary -- "增加法术单步推演和变量观察"
+npm run secretary:status
+```
+
+提交一个版本方向时追加 `--version`。直接运行 `npm run secretary -- "..."` 会自动启动尚未运行的 notice guard。
 
 只预览自动拆分结果：
 
