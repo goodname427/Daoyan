@@ -51,7 +51,7 @@ npm run verify:full  # 再加覆盖率、沙盒、E2E 和生产构建
 
 ## 制作人工作流
 
-制作人只需要描述产品方向或体验问题，不需要判断复杂度、拆分任务或选择模型。常驻秘书跨版本维护现状、排期和通知，单次交付 PM 负责分派、实现、验证、Git 和最终汇报。notice guard 空闲时不调用模型，只有新消息、交付完成或恢复时间到达时才唤醒。
+制作人只需要向常驻秘书描述产品方向或体验问题，不需要判断复杂度、拆分任务、选择模型或管理 Git。秘书跨版本维护现状、排期和简短通知，内部 Feature PM 负责实际交付。notice guard 空闲时不调用模型，只有新消息、任务进度、PM 退出或恢复时间到达时才唤醒。
 
 启动常驻秘书并提交想法：
 
@@ -61,27 +61,9 @@ npm run secretary -- "增加法术单步推演和变量观察"
 npm run secretary:status
 ```
 
-提交一个版本方向时追加 `--version`。直接运行 `npm run secretary -- "..."` 会自动启动尚未运行的 notice guard。
+提交版本方向时使用 `npm run secretary -- --version "推进到下一个稳定可玩版本"`。直接提交想法会自动启动尚未运行的 notice guard。制作人不需要使用底层 `producer*` 命令。
 
-只预览自动拆分结果：
-
-```bash
-npm run producer:plan -- "增加法术单步推演和变量观察"
-```
-
-完整的仓库级自动交付入口：
-
-```bash
-npm run producer -- "增加法术单步推演和变量观察"
-```
-
-需要连续推进 `docs/status.md` 中多个 feature，直到形成可供制作人 Review 的版本节点：
-
-```bash
-npm run producer:version -- "推进到下一个稳定可玩版本"
-```
-
-详细职责、自动升级和恢复方式见 [`docs/agent-workflow.md`](./docs/agent-workflow.md)。
+唯一工作范式和汇报节奏见 [`docs/agent-workflow.md`](./docs/agent-workflow.md)；Feature PM 的低频恢复与诊断入口见 [`docs/operations/feature-pm.md`](./docs/operations/feature-pm.md)。
 
 ## 架构
 

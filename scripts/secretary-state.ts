@@ -42,6 +42,18 @@ export interface SecretaryItem {
   createdAt: string;
   updatedAt: string;
   completedAt: string;
+  completedTasks: SecretaryTaskCompletion[];
+}
+
+export interface SecretaryTaskCompletion {
+  key: string;
+  taskId: string;
+  taskTitle: string;
+  parentScope: SecretaryScope;
+  parentTitle: string;
+  versionTitle: string;
+  completedAt: string;
+  runDirectory: string;
 }
 
 export interface SecretaryState {
@@ -59,6 +71,25 @@ export interface SecretaryState {
 export interface IntakeDecision {
   action: 'answer-completed' | 'track-active' | 'queue-scheduled' | 'queue-new';
   fact: ProjectFact | null;
+}
+
+export function taskCompletionKey(runDirectory: string, taskId: string): string {
+  const normalizedDirectory = runDirectory.replace(/\\/g, '/').replace(/\/+$/, '');
+  return `${normalizedDirectory}#${taskId}`;
+}
+
+export function unrecordedTaskCompletions(
+  recorded: SecretaryTaskCompletion[],
+  discovered: SecretaryTaskCompletion[],
+): SecretaryTaskCompletion[] {
+  const known = new Set(recorded.map((completion) => completion.key));
+  const pending: SecretaryTaskCompletion[] = [];
+  for (const completion of discovered) {
+    if (known.has(completion.key)) continue;
+    known.add(completion.key);
+    pending.push(completion);
+  }
+  return pending;
 }
 
 const COMPLETED_SECTIONS = new Set(['已具备', '当前迭代']);
@@ -215,6 +246,7 @@ export function itemFromIntake(
     createdAt: request.createdAt,
     updatedAt: request.createdAt,
     completedAt: '',
+    completedTasks: [],
   };
   if (decision.action === 'answer-completed') {
     const summary = `该方向已经完成：${decision.fact!.text}`;

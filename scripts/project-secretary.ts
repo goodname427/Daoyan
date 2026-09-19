@@ -50,6 +50,7 @@ async function readState(): Promise<SecretaryState | null> {
       items: value.items.map((item) => ({
         ...item,
         processIdentity: item.processIdentity ?? '',
+        completedTasks: Array.isArray(item.completedTasks) ? item.completedTasks : [],
       })),
     };
   } catch {
@@ -194,7 +195,13 @@ async function printStatus(): Promise<void> {
     lastEventAt: string;
     activeItemId: string;
     reviewRequired: boolean;
-    items: Array<{ status: string; idea: string; summary: string; retryAt: string }>;
+    items: Array<{
+      status: string;
+      idea: string;
+      summary: string;
+      retryAt: string;
+      completedTasks: Array<{ taskTitle: string; parentTitle: string; completedAt: string }>;
+    }>;
   };
   const running =
     current.status === 'running' && isOwnedProcessAlive(current.pid, current.processIdentity);
@@ -208,6 +215,16 @@ async function printStatus(): Promise<void> {
     console.log(
       `- [${item.status}] ${item.idea}${item.retryAt ? `（${item.retryAt} 后恢复）` : ''}`,
     );
+  }
+  const completedTasks = publicState.items
+    .flatMap((item) => item.completedTasks)
+    .sort((left, right) => right.completedAt.localeCompare(left.completedAt))
+    .slice(0, 5);
+  if (completedTasks.length > 0) {
+    console.log('最近完成：');
+    for (const task of completedTasks) {
+      console.log(`- ${task.taskTitle}（${task.parentTitle}，${task.completedAt}）`);
+    }
   }
 }
 
