@@ -65,6 +65,7 @@ export interface SecretaryConversationMessage {
 
 export interface SecretaryState {
   version: 1;
+  initializedAt: string;
   status: 'running' | 'stopped';
   pid: number;
   processIdentity: string;
@@ -265,6 +266,7 @@ export function decideIntake(idea: string, facts: ProjectFact[]): IntakeDecision
 export function createSecretaryState(now: string): SecretaryState {
   return {
     version: 1,
+    initializedAt: now,
     status: 'running',
     pid: 0,
     processIdentity: '',
@@ -274,6 +276,22 @@ export function createSecretaryState(now: string): SecretaryState {
     messages: [],
     updatedAt: now,
   };
+}
+
+export function isRunEligibleForAdoption(
+  updatedAt: string,
+  initializedAt: string,
+  hasLiveProcess: boolean,
+  graceMs = 5 * 60_000,
+): boolean {
+  if (hasLiveProcess) return true;
+  const updated = Date.parse(updatedAt);
+  const initialized = Date.parse(initializedAt);
+  return (
+    Number.isFinite(updated) &&
+    Number.isFinite(initialized) &&
+    updated >= initialized - Math.max(0, graceMs)
+  );
 }
 
 export function itemFromIntake(

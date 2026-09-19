@@ -6,6 +6,7 @@ import {
   firstUntrackedScheduledFact,
   inferMessageIntent,
   intentSimilarity,
+  isRunEligibleForAdoption,
   itemFromIntake,
   nextRunnableItem,
   projectFactsFromItems,
@@ -143,6 +144,13 @@ describe('persistent secretary state', () => {
       '继续迁移旧元法术到统一实体能力。',
     );
     expect(firstUntrackedScheduledFact(facts, [])?.text).toBe('继续迁移旧元法术到统一实体能力。');
+  });
+
+  it('ignores unowned runs that predate the persistent secretary', () => {
+    const initialized = '2026-09-20T00:00:00.000Z';
+    expect(isRunEligibleForAdoption('2026-09-13T00:00:00.000Z', initialized, false)).toBe(false);
+    expect(isRunEligibleForAdoption('2026-09-19T23:58:00.000Z', initialized, false)).toBe(true);
+    expect(isRunEligibleForAdoption('2026-09-13T00:00:00.000Z', initialized, true)).toBe(true);
   });
 
   it('deduplicates completed task notifications across guard restarts', () => {

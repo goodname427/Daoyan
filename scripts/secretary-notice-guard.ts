@@ -25,6 +25,7 @@ import {
   createSecretaryState,
   firstUntrackedScheduledFact,
   inferMessageIntent,
+  isRunEligibleForAdoption,
   itemFromIntake,
   nextRunnableItem,
   projectFactsFromItems,
@@ -465,9 +466,17 @@ async function scanRuns(): Promise<RunSnapshot[]> {
 async function projectFacts(): Promise<{ facts: ProjectFact[]; runs: RunSnapshot[] }> {
   const markdown = await readFile(resolve(root, 'docs/status.md'), 'utf8');
   const runs = await scanRuns();
+  const managedDirectories = new Set(state.items.map((item) => item.runDirectory).filter(Boolean));
   const activeFacts = runs
-    .filter((run) =>
-      ['planned', 'running', 'recoverable', 'waiting-producer', 'active'].includes(run.status),
+    .filter(
+      (run) =>
+        ['planned', 'running', 'recoverable', 'waiting-producer', 'active'].includes(run.status) &&
+        (managedDirectories.has(run.directory) ||
+          isRunEligibleForAdoption(
+            run.updatedAt,
+            state.initializedAt,
+            isOwnedProcessAlive(run.processPid, run.processIdentity),
+          )),
     )
     .map<ProjectFact>((run) => ({ kind: 'active', text: run.objective, reference: run.directory }));
   const queueFacts = projectFactsFromItems(state.items);
@@ -668,7 +677,16 @@ async function adoptExistingRun(): Promise<boolean> {
   if (state.activeItemId) return false;
   const knownDirectories = new Set(state.items.map((item) => item.runDirectory).filter(Boolean));
   const runs = (await scanRuns())
-    .filter((run) => unfinished(run) && !knownDirectories.has(run.directory))
+    .filter(
+      (run) =>
+        unfinished(run) &&
+        !knownDirectories.has(run.directory) &&
+        isRunEligibleForAdoption(
+          run.updatedAt,
+          state.initializedAt,
+          isOwnedProcessAlive(run.processPid, run.processIdentity),
+        ),
+    )
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   const version = runs.find((run) => run.scope === 'version');
   const selected = version ?? runs[0];
