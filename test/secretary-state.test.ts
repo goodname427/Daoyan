@@ -7,7 +7,10 @@ import {
   nextRunnableItem,
   projectFactsFromItems,
   projectFactsFromStatus,
+  taskCompletionKey,
+  unrecordedTaskCompletions,
   type IntakeRequest,
+  type SecretaryTaskCompletion,
 } from '../scripts/secretary-state';
 
 const status = `
@@ -86,5 +89,31 @@ describe('persistent secretary state', () => {
     expect(nextRunnableItem(state, '2026-09-14T03:00:00.000Z')?.id).toBe('retry');
     state.activeItemId = 'active';
     expect(nextRunnableItem(state, '2026-09-14T03:00:00.000Z')).toBeNull();
+  });
+
+  it('deduplicates completed task notifications across guard restarts', () => {
+    const first: SecretaryTaskCompletion = {
+      key: taskCompletionKey('E:\\repo\\.daoyan-agent\\runs\\one', 'core'),
+      taskId: 'core',
+      taskTitle: '实现核心契约',
+      parentScope: 'feature',
+      parentTitle: '完善常驻秘书',
+      versionTitle: '',
+      completedAt: '2026-09-14T01:00:00.000Z',
+      runDirectory: 'E:\\repo\\.daoyan-agent\\runs\\one',
+    };
+    const duplicateFromRestart = {
+      ...first,
+      completedAt: '2026-09-14T02:00:00.000Z',
+    };
+    const next = {
+      ...first,
+      key: taskCompletionKey(first.runDirectory, 'experience'),
+      taskId: 'experience',
+      taskTitle: '完成体验闭环',
+    };
+
+    expect(unrecordedTaskCompletions([first], [duplicateFromRestart, next])).toEqual([next]);
+    expect(first.key).toBe('E:/repo/.daoyan-agent/runs/one#core');
   });
 });

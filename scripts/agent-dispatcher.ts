@@ -67,6 +67,7 @@ interface TaskRun {
   result: 'passed' | 'failed';
   outputFile: string;
   tokensUsed: number | null;
+  completedAt: string;
 }
 
 interface PlannerRun {
@@ -577,6 +578,7 @@ async function runTask(
           result: 'passed',
           outputFile,
           tokensUsed,
+          completedAt: new Date().toISOString(),
         };
       }
 
@@ -605,6 +607,7 @@ async function runTask(
         result: 'failed',
         outputFile: lastOutputFile,
         tokensUsed,
+        completedAt: new Date().toISOString(),
       };
     }
     failureContext = `上一条执行路由失败，请接管当前工作区并完成任务，不要简单重复。失败摘要：\n${routeFailure}`;

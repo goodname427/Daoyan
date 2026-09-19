@@ -40,6 +40,7 @@ interface VersionFeature {
   controlledFingerprint: string;
   decisionConfirmed: boolean;
   producerGuidance: string;
+  completedAt: string;
 }
 
 interface VersionManifest {
@@ -399,6 +400,7 @@ async function executeFeature(
     feature.reportStatus = existingReport.status ?? '已交付';
     feature.commit = await gitHead();
     feature.controlledFingerprint = '';
+    feature.completedAt ||= new Date().toISOString();
     await writeManifest(directory, manifest);
     console.log(`[版本恢复] ${feature.id} 子运行已交付，外层清单已补记。`);
     return true;
@@ -509,6 +511,7 @@ async function executeFeature(
     feature.status = 'delivered';
     feature.commit = await gitHead();
     feature.controlledFingerprint = '';
+    feature.completedAt = new Date().toISOString();
     await writeManifest(directory, manifest);
     return true;
   }
@@ -619,6 +622,7 @@ async function createManifest(
       controlledFingerprint: '',
       decisionConfirmed: false,
       producerGuidance: '',
+      completedAt: '',
     })),
     noPush: options.noPush,
     finalVerification: 'pending',

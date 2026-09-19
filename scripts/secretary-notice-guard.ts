@@ -27,11 +27,14 @@ import {
   projectFactsFromItems,
   projectFactsFromStatus,
   publicSecretaryState,
+  taskCompletionKey,
+  unrecordedTaskCompletions,
   type IntakeRequest,
   type ProjectFact,
   type SecretaryItem,
   type SecretaryScope,
   type SecretaryState,
+  type SecretaryTaskCompletion,
 } from './secretary-state';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,6 +81,7 @@ interface RunSnapshot {
   processIdentity: string;
   error: string;
   updatedAt: string;
+  taskCompletions: SecretaryTaskCompletion[];
 }
 
 interface TriageResult {
@@ -125,6 +129,7 @@ async function loadState(): Promise<SecretaryState> {
       items: value.items.map((item) => ({
         ...item,
         processIdentity: item.processIdentity ?? '',
+        completedTasks: Array.isArray(item.completedTasks) ? item.completedTasks : [],
       })),
       status: 'running',
       pid: process.pid,
@@ -174,12 +179,29 @@ function validateConfig(value: unknown): SecretaryConfig {
   return value as unknown as SecretaryConfig;
 }
 
-async function emitNotice(kind: string, message: string, item?: SecretaryItem): Promise<void> {
+async function emitNotice(
+  kind: string,
+  message: string,
+  item?: SecretaryItem,
+  task?: SecretaryTaskCompletion,
+): Promise<void> {
   const event = {
     id: randomUUID(),
     kind,
     message,
     itemId: item?.id ?? '',
+    ...(task
+      ? {
+          taskKey: task.key,
+          taskId: task.taskId,
+          taskTitle: task.taskTitle,
+          parentScope: task.parentScope,
+          parentTitle: task.parentTitle,
+          versionTitle: task.versionTitle,
+          completedAt: task.completedAt,
+          runDirectory: task.runDirectory,
+        }
+      : {}),
     createdAt: new Date().toISOString(),
   };
   await appendFile(eventsFile, `${JSON.stringify(event)}\n`, 'utf8');
@@ -297,6 +319,73 @@ async function readJson(path: string): Promise<Record<string, unknown> | null> {
   }
 }
 
+function recordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+export function featureTaskCompletions(
+  directory: string,
+  parentTitle: string,
+  versionTitle: string,
+  recovery: Record<string, unknown> | null,
+  report: Record<string, unknown> | null,
+): SecretaryTaskCompletion[] {
+  const source = recordArray(recovery?.taskRuns).length
+    ? recordArray(recovery?.taskRuns)
+    : recordArray(report?.tasks);
+  const fallbackCompletedAt = String(report?.finishedAt ?? recovery?.updatedAt ?? '');
+  return source.flatMap((entry) => {
+    if (entry.result !== 'passed' || !isRecord(entry.task)) return [];
+    const taskId = String(entry.task.id ?? '');
+    const taskTitle = String(entry.task.title ?? taskId);
+    if (!taskId || !taskTitle) return [];
+    return [
+      {
+        key: taskCompletionKey(directory, taskId),
+        taskId,
+        taskTitle,
+        parentScope: 'feature' as const,
+        parentTitle,
+        versionTitle,
+        completedAt: String(entry.completedAt ?? fallbackCompletedAt),
+        runDirectory: directory,
+      },
+    ];
+  });
+}
+
+export async function versionTaskCompletions(
+  directory: string,
+  objective: string,
+  manifest: Record<string, unknown>,
+): Promise<SecretaryTaskCompletion[]> {
+  const completions: SecretaryTaskCompletion[] = [];
+  for (const feature of recordArray(manifest.features)) {
+    const featureId = String(feature.id ?? '');
+    const featureTitle = String(feature.direction ?? featureId);
+    const childDirectory = String(feature.runDirectory ?? '');
+    if (childDirectory) {
+      const recovery = await readJson(resolve(childDirectory, 'recovery.json'));
+      const report = await readJson(resolve(childDirectory, 'report.json'));
+      completions.push(
+        ...featureTaskCompletions(childDirectory, featureTitle, objective, recovery, report),
+      );
+    }
+    if (feature.status !== 'delivered' || !featureId || !featureTitle) continue;
+    completions.push({
+      key: taskCompletionKey(directory, `feature:${featureId}`),
+      taskId: featureId,
+      taskTitle: featureTitle,
+      parentScope: 'version',
+      parentTitle: objective,
+      versionTitle: objective,
+      completedAt: String(feature.completedAt ?? manifest.updatedAt ?? ''),
+      runDirectory: childDirectory || directory,
+    });
+  }
+  return completions;
+}
+
 async function scanRuns(): Promise<RunSnapshot[]> {
   const snapshots: RunSnapshot[] = [];
   if (existsSync(versionsRoot)) {
@@ -309,15 +398,17 @@ async function scanRuns(): Promise<RunSnapshot[]> {
         manifest.status === 'planned' && existsSync(resolve(directory, 'report.md'))
           ? 'preview'
           : manifest.status;
+      const objective = String(manifest.objective ?? entry.name);
       snapshots.push({
         scope: 'version',
         directory,
-        objective: String(manifest.objective ?? entry.name),
+        objective,
         status,
         processPid: Number.isInteger(manifest.processPid) ? Number(manifest.processPid) : 0,
         processIdentity: String(manifest.processIdentity ?? ''),
         error: String(manifest.error ?? ''),
         updatedAt: String(manifest.updatedAt ?? ''),
+        taskCompletions: await versionTaskCompletions(directory, objective, manifest),
       });
     }
   }
@@ -339,15 +430,18 @@ async function scanRuns(): Promise<RunSnapshot[]> {
             : reportStatus === '规划完成'
               ? 'preview'
               : 'failed';
+      const objective = String(plan?.summary ?? entry.name);
+      const parentTitle = String(plan?.title ?? objective);
       snapshots.push({
         scope: 'feature',
         directory,
-        objective: String(plan?.summary ?? entry.name),
+        objective,
         status,
         processPid: Number.isInteger(recovery?.processPid) ? Number(recovery?.processPid) : 0,
         processIdentity: String(recovery?.processIdentity ?? ''),
         error: String(recovery?.error ?? report?.extra ?? ''),
         updatedAt: String(recovery?.updatedAt ?? ''),
+        taskCompletions: featureTaskCompletions(directory, parentTitle, '', recovery, report),
       });
     }
   }
@@ -489,6 +583,7 @@ async function adoptExistingRun(): Promise<boolean> {
     createdAt: now,
     updatedAt: now,
     completedAt: '',
+    completedTasks: [],
   };
   state.items.unshift(item);
   state.activeItemId = item.id;
@@ -601,6 +696,20 @@ async function reconcileItem(
   }
   if (!run) return false;
   item.updatedAt = new Date().toISOString();
+  const completed = unrecordedTaskCompletions(item.completedTasks, run.taskCompletions);
+  if (completed.length > 0) {
+    item.completedTasks.push(...completed);
+    await saveState();
+    for (const task of completed) {
+      const parent = task.parentScope === 'version' ? '版本' : 'Feature';
+      await emitNotice(
+        'task-complete',
+        `任务完成：${task.taskTitle}（${parent}：${task.parentTitle}）。`,
+        item,
+        task,
+      );
+    }
+  }
   if (run.status === 'review-ready' || run.status === 'delivered') {
     const firstDelivery = item.status !== 'delivered';
     item.status = 'delivered';
@@ -768,25 +877,27 @@ function scheduleRetry(): void {
 }
 
 async function coordinateOnce(): Promise<void> {
-  if (stopping || activeChild) return;
-  if (state.reviewRequired) return;
-  if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
+  if (stopping) return;
   const active = state.items.find((item) => item.id === state.activeItemId);
   if (active) {
-    if (isOwnedProcessAlive(active.processPid, active.processIdentity)) {
-      attachProcessExitNotice(active);
+    if (!active.runDirectory && active.scope === 'version') await locateVersionRun(active);
+    const processEnded =
+      active.processPid > 0 &&
+      Boolean(active.processIdentity) &&
+      !isOwnedProcessAlive(active.processPid, active.processIdentity);
+    await reconcileItem(active, undefined, processEnded);
+    await saveState();
+    if (activeChild) {
       return;
     }
-    await reconcileItem(
-      active,
-      undefined,
-      active.processPid > 0 && Boolean(active.processIdentity),
-    );
     if (state.activeItemId) {
-      await saveState();
+      if (isOwnedProcessAlive(active.processPid, active.processIdentity)) {
+        attachProcessExitNotice(active);
+      }
       return;
     }
   }
+  if (state.reviewRequired || process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
   if (await adoptExistingRun()) return;
   const next = nextRunnableItem(state, new Date().toISOString());
   if (next) await launch(next);

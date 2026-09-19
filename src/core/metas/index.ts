@@ -8,7 +8,7 @@
  *   3. 纯 Node（tsx 跑无头沙盒）没有 glob，走下面的显式兜底清单，
  *      新增元法术文件时请同步补一行
  *   4. 打包后用户可以把自己的 `.js` 元法术文件丢到外部 `metas/` 目录，
- *      由 `loadExternalMetas()` 动态加载（见 docs/扩展元法术.md）
+ *      由 `loadExternalMetas()` 动态加载（见 docs/reference/扩展元法术.md）
  */
 
 import * as attribute from './attribute';
