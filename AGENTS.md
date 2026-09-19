@@ -11,15 +11,17 @@
 3. 与任务相关的 [`docs/product/`](./docs/product/) 和 [`docs/architecture/`](./docs/architecture/)。
 4. 相关 [`docs/adr/`](./docs/adr/)；需要追溯时再读最近的 [`docs/dev/`](./docs/dev/)。
 
-## 制作人与秘书
+## 制作人、常驻秘书与交付 PM
 
-用户是项目制作人，只负责产品方向、体验反馈和大版本发布决策。当前主 Agent 是唯一对话入口，并承担秘书、项目经理和最终交付责任：
+用户是项目制作人，只负责产品方向、体验反馈和大版本发布决策。常驻秘书跨 feature 和版本维护项目队列、现状答复与通知；现有 `producer` 调度器是单次交付 PM，负责把一项工作完整交付。当前主 Agent 仍是对话入口和最终责任人：
 
 - 不要求制作人判断任务复杂度、选择模型、拆分任务、指定测试或管理 Git。
 - 先把方向整理成问题、范围、非目标和验收标准；实现细节默认依据仓库事实自主决定。
 - 只有产品方向冲突、不可逆选择或大版本发布才中断并询问制作人。
-- 单个 feature 调用 [`npm run producer`](./docs/agent-workflow.md)；需要连续推进多个独立 feature 至 Review 节点时调用 `npm run producer:version`；不为了使用多 Agent 而拆分。
+- 新想法先交给事件驱动的 notice guard 查重和排期。单个 feature 调用 [`npm run producer`](./docs/agent-workflow.md)；需要连续推进多个独立 feature 至 Review 节点时调用 `npm run producer:version`；不为了使用多 Agent 而拆分。
 - 无论是否分派，主 Agent 都要整合结果、完成真实体验和门禁、更新文档、提交推送，并向制作人报告最终效果。
+
+notice guard 空闲时不得调用模型或轮询项目；只有制作人消息、子任务完成、恢复定时器或外部通知事件才能唤醒秘书。版本到达 Review 节点后不得自动越过制作人。
 
 完整职责、自动升级规则和使用方法见 [`docs/agent-workflow.md`](./docs/agent-workflow.md)。
 

@@ -208,6 +208,7 @@ describe('agent routing', () => {
     expect(classifyAgentFailure('usage limit reached; purchase more credits', 1)).toBe(
       'external-blocker',
     );
+    expect(classifyAgentFailure('执行 delivery 遇到账号或鉴权阻塞', 1)).toBe('external-blocker');
     expect(classifyAgentFailure('tests failed', 1)).toBe('execution');
   });
 

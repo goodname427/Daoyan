@@ -227,21 +227,31 @@ test.describe('blueprint editing tools', () => {
     await blueprint.getByRole('button', { name: '重做' }).click();
     await expect(repeat.getByLabel('重复次数')).toHaveValue('3');
 
+    // Search centres one node and can leave the next palette-created node against
+    // the pane edge. Fit both into the visible pane before deriving drag points.
+    await blueprint.getByRole('button', { name: 'Fit View' }).click();
     const conditionBox = await addedCondition.boundingBox();
     const repeatBox = await repeat.boundingBox();
+    const paneBox = await blueprint.locator('.react-flow__pane').boundingBox();
     expect(conditionBox).not.toBeNull();
     expect(repeatBox).not.toBeNull();
-    if (conditionBox && repeatBox) {
+    expect(paneBox).not.toBeNull();
+    if (conditionBox && repeatBox && paneBox) {
       // Bare drags begin selection only on the React Flow pane. Holding Shift
       // also covers a start point that React Flow resolves to another element
       // while the graph is being laid out.
       await page.keyboard.down('Shift');
-      const left = Math.min(conditionBox.x, repeatBox.x) - 12;
-      const top = Math.min(conditionBox.y, repeatBox.y) - 12;
-      const right =
-        Math.max(conditionBox.x + conditionBox.width, repeatBox.x + repeatBox.width) + 12;
-      const bottom =
-        Math.max(conditionBox.y + conditionBox.height, repeatBox.y + repeatBox.height) + 12;
+      const margin = 6;
+      const left = Math.max(paneBox.x + 1, Math.min(conditionBox.x, repeatBox.x) - margin);
+      const top = Math.max(paneBox.y + 1, Math.min(conditionBox.y, repeatBox.y) - margin);
+      const right = Math.min(
+        paneBox.x + paneBox.width - 1,
+        Math.max(conditionBox.x + conditionBox.width, repeatBox.x + repeatBox.width) + margin,
+      );
+      const bottom = Math.min(
+        paneBox.y + paneBox.height - 1,
+        Math.max(conditionBox.y + conditionBox.height, repeatBox.y + repeatBox.height) + margin,
+      );
       await page.mouse.move(left, top);
       await page.mouse.down();
       await page.mouse.move(right, bottom, { steps: 8 });

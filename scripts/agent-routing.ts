@@ -278,6 +278,9 @@ export function classifyAgentFailure(output: string, code: number): AgentFailure
       'unauthorized',
       'authentication failed',
       'invalid api key',
+      '账号或鉴权阻塞',
+      '额度已用尽',
+      '用量上限',
     ])
   ) {
     return 'external-blocker';
