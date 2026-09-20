@@ -22,6 +22,46 @@ let loadedDocument = '';
 let latestData = null;
 let dashboardRequest = 0;
 let documentRequest = 0;
+let snapshotBundle = null;
+let snapshotMode = false;
+const pendingMessageKey = 'daoyan-secretary-pending-messages-v1';
+
+function pendingMessages() {
+  try {
+    const value = JSON.parse(globalThis.localStorage.getItem(pendingMessageKey) ?? '[]');
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function setSnapshotMode(enabled, generatedAt = '') {
+  snapshotMode = enabled;
+  document.body.classList.toggle('snapshot-view', enabled);
+  $('.dashboard-shell').classList.toggle('snapshot-mode', enabled);
+  $('#site-mode-banner').hidden = !enabled;
+  if (enabled) {
+    text($('#snapshot-time'), `同步于 ${formatTime(generatedAt)}`);
+    $('#send-button').textContent = '保存留言';
+  } else {
+    $('#send-button').textContent = '发送';
+  }
+}
+
+async function snapshotDashboard(versionId) {
+  if (!snapshotBundle) {
+    const response = await fetch('./snapshot.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`快照接口 ${response.status}`);
+    snapshotBundle = await response.json();
+  }
+  const targetId = versionId || snapshotBundle.defaultVersionId;
+  const data =
+    snapshotBundle.dashboards?.[targetId] ??
+    snapshotBundle.dashboards?.[snapshotBundle.defaultVersionId];
+  if (!data) throw new Error('快照中没有可查看的正式版本');
+  setSnapshotMode(true, snapshotBundle.generatedAt);
+  return data;
+}
 
 function formatTime(value) {
   if (!value) return '尚未记录';
@@ -77,6 +117,14 @@ async function loadDocument(doc) {
   text($('#document-title'), doc.title);
   output.textContent = '正在读取文档…';
   try {
+    if (snapshotMode) {
+      const content = latestData?.artifacts?.[doc.path];
+      if (typeof content !== 'string') throw new Error('该文档未包含在本次快照中');
+      if (requestId !== documentRequest || versionId !== selectedVersionId) return;
+      output.textContent = content;
+      loadedDocument = doc.path;
+      return;
+    }
     const query = new globalThis.URLSearchParams({
       version: versionId,
       path: doc.path,
@@ -324,6 +372,10 @@ function renderAgents(agents) {
 }
 
 async function actOnTodo(todo, action, note, button) {
+  if (snapshotMode) {
+    text($('#send-state'), '云端预览暂不执行项目操作，请在本机实时中枢处理');
+    return;
+  }
   button.disabled = true;
   try {
     const response = await fetch('/api/todo-action', {
@@ -396,15 +448,21 @@ function renderConversation(secretary) {
   const root = $('#conversation');
   const atBottom = root.scrollHeight - root.scrollTop - root.clientHeight < 30;
   root.replaceChildren();
-  const messages = secretary?.recentMessages ?? [];
+  const messages = [
+    ...(secretary?.recentMessages ?? []),
+    ...(snapshotMode ? pendingMessages() : []),
+  ];
   if (!messages.length) root.append(empty());
   for (const message of messages) {
     const bubble = document.createElement('article');
     bubble.className = `message ${message.role}`;
+    if (message.pending) bubble.classList.add('pending');
     const content = document.createElement('div');
     content.textContent = message.content;
     const time = document.createElement('time');
-    time.textContent = `${message.role === 'producer' ? '制作人' : '秘书'} · ${formatTime(message.createdAt)}`;
+    time.textContent = `${message.role === 'producer' ? '制作人' : '秘书'} · ${formatTime(message.createdAt)}${
+      message.pending ? ' · 待同步' : ''
+    }`;
     bubble.append(content, time);
     root.append(bubble);
   }
@@ -416,9 +474,12 @@ function render(data) {
   renderVersionSelector(data);
   const version = data.version;
   const guard = $('#guard-state');
-  guard.classList.toggle('online', data.secretary?.status === 'running');
-  guard.lastChild.textContent =
-    data.secretary?.status === 'running' ? '秘书在线，空闲时休眠' : '秘书未运行';
+  guard.classList.toggle('online', !snapshotMode && data.secretary?.status === 'running');
+  guard.lastChild.textContent = snapshotMode
+    ? '云端快照'
+    : data.secretary?.status === 'running'
+      ? '秘书在线，空闲时休眠'
+      : '秘书未运行';
   $('#history-badge').hidden = data.isCurrentVersion;
   if (version) {
     text($('#version-title'), version.title);
@@ -460,9 +521,20 @@ async function refresh() {
   const versionId = selectedVersionId;
   try {
     const query = versionId ? `?${new globalThis.URLSearchParams({ version: versionId })}` : '';
-    const response = await fetch(`/api/dashboard${query}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`状态接口 ${response.status}`);
-    const data = await response.json();
+    let data;
+    try {
+      const response = await fetch(`/api/dashboard${query}`, { cache: 'no-store' });
+      if (
+        !response.ok ||
+        !(response.headers.get('content-type') ?? '').includes('application/json')
+      ) {
+        throw new Error(`状态接口 ${response.status}`);
+      }
+      data = await response.json();
+      setSnapshotMode(false);
+    } catch {
+      data = await snapshotDashboard(versionId);
+    }
     if (requestId !== dashboardRequest || versionId !== selectedVersionId) return;
     render(data);
   } catch (error) {
@@ -534,6 +606,20 @@ $('#message-form').addEventListener('submit', async (event) => {
   const state = $('#send-state');
   const idea = input.value.trim();
   if (!idea) return;
+  if (snapshotMode) {
+    const queued = pendingMessages();
+    queued.push({
+      role: 'producer',
+      content: idea,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    });
+    globalThis.localStorage.setItem(pendingMessageKey, JSON.stringify(queued.slice(-20)));
+    input.value = '';
+    text(state, '已保存在此设备，等待远程信箱接通');
+    renderConversation(latestData?.secretary);
+    return;
+  }
   button.disabled = true;
   text(state, '正在交给秘书');
   try {
@@ -556,4 +642,6 @@ $('#message-form').addEventListener('submit', async (event) => {
 });
 
 await refresh();
-setInterval(refresh, 3000);
+setInterval(() => {
+  if (!snapshotMode) void refresh();
+}, 3000);

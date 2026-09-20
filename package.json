@@ -37,6 +37,7 @@
     "secretary:open": "tsx scripts/project-secretary.ts open",
     "secretary:status": "tsx scripts/project-secretary.ts status",
     "secretary:stop": "tsx scripts/project-secretary.ts stop",
+    "secretary:site:build": "tsx scripts/build-secretary-site.ts",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm run docs:check && npm run test",
     "verify:full": "npm run verify && npm run coverage && npm run sandbox && npm run test:e2e && npm run build",
     "verify:ci": "npm run verify:full",

@@ -3,14 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d1117" />
     <title>道衍项目中枢</title>
-    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="icon" href="./app-icon.png" />
+    <link rel="apple-touch-icon" href="./app-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./dashboard.css" />
   </head>
   <body>
     <header class="topbar">
       <div class="brand-block">
-        <p class="eyebrow">DAOYAN PROJECT OFFICE</p>
-        <h1>道衍项目中枢</h1>
+        <img class="brand-icon" src="./app-icon.png" alt="" />
+        <div>
+          <p class="eyebrow">DAOYAN PROJECT OFFICE</p>
+          <h1>道衍项目中枢</h1>
+        </div>
       </div>
       <label class="version-picker" for="version-select">
         <span>查看版本</span>
@@ -20,6 +27,13 @@
     </header>
 
     <main class="dashboard-shell">
+      <aside id="site-mode-banner" class="site-mode-banner" hidden>
+        <div>
+          <strong>云端预览快照</strong>
+          <span id="snapshot-time">正在读取同步时间</span>
+        </div>
+        <span>电脑离线时仍可查看；留言暂存在本机，远程信箱将在下一阶段接通。</span>
+      </aside>
       <section class="version-strip" aria-labelledby="version-title">
         <div class="version-summary">
           <p class="section-label">当前视图</p>
@@ -163,6 +177,6 @@
     </dialog>
 
     <template id="empty-template"><p class="empty">暂无记录</p></template>
-    <script type="module" src="/dashboard.js"></script>
+    <script type="module" src="./dashboard.js"></script>
   </body>
 </html>

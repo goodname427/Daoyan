@@ -1,0 +1,17 @@
+{
+  "name": "道衍项目中枢",
+  "short_name": "道衍中枢",
+  "description": "查看道衍版本进度、Agent、待办和秘书消息。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a0d11",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "./app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

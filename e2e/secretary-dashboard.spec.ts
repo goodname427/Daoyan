@@ -155,6 +155,46 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     await expect
       .poll(() => page.locator('.workbench').evaluate((node) => node.scrollLeft))
       .toBeGreaterThan(0);
+
+    const staticDashboard = (await (
+      await fetch(`http://127.0.0.1:${port}/api/dashboard`)
+    ).json()) as {
+      version: { id: string; documents: Array<{ path: string }> };
+    };
+    const firstDocument = staticDashboard.version.documents[0];
+    await page.route('**/api/dashboard*', (route) =>
+      route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }),
+    );
+    await page.route('**/snapshot.json', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          generatedAt: '2026-09-20T02:00:00.000Z',
+          defaultVersionId: staticDashboard.version.id,
+          dashboards: {
+            [staticDashboard.version.id]: {
+              ...staticDashboard,
+              artifacts: firstDocument ? { [firstDocument.path]: '手机版快照文档内容' } : {},
+            },
+          },
+        }),
+      }),
+    );
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await expect(page.getByText('云端预览快照')).toBeVisible();
+    await expect(page.locator('#guard-state')).toContainText('云端快照');
+    await page.getByRole('button', { name: '控制台', exact: true }).click();
+    await page.getByLabel('发给秘书').fill('手机端留言测试');
+    await page.getByRole('button', { name: '保存留言' }).click();
+    await expect(page.locator('.message.pending')).toContainText('手机端留言测试');
+    await expect(page.locator('.message.pending')).toContainText('待同步');
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
     errors.assert();
   } finally {
     if (child.exitCode === null) child.kill('SIGTERM');
