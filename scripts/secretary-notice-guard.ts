@@ -143,14 +143,12 @@ interface DashboardAgent {
   elapsedSeconds: number;
   runDirectory: string;
   retryAt: string;
-  error: string;
-  context: {
-    direction: string;
-    acceptanceCriteria: string[];
-    nonGoals: string[];
-    tasks: Array<{ id: string; title: string; objective: string; status: string }>;
-  };
-  recentOutput: string[];
+  activity: Array<{
+    kind: 'stage' | 'action' | 'file' | 'test' | 'output' | 'error';
+    createdAt: string;
+    label: string;
+    detail: string;
+  }>;
 }
 
 let state = createSecretaryState(new Date().toISOString());
@@ -667,7 +665,11 @@ async function readLatestLogSummary(directory: string): Promise<string[]> {
       .filter(
         (line) =>
           line &&
-          (/^(?:\[[^\]]+\]|error:|fatal:|failed\b|failure\b|tokens used\b)/i.test(line) ||
+          // The log can contain model transport output. Only expose dispatcher-owned markers,
+          // test summaries and terse operational failures; never forward arbitrary log text.
+          (/^(?:\[(?:等待|执行|交付门禁|独立审查|审查接管|修复|恢复|超时)\]|(?:error|fatal|failed|failure):|(?:PASS|FAIL|Test Files:|Tests:|tokens used\b))/i.test(
+            line,
+          ) ||
             /(usage limit|try again at|账号.*阻塞|鉴权.*阻塞|额度.*(?:不足|用尽))/i.test(line)),
       );
     return lines.slice(-12);
@@ -678,6 +680,99 @@ async function readLatestLogSummary(directory: string): Promise<string[]> {
 
 function modelFromPhase(phase: string): string {
   return phase.match(/gpt-[a-z0-9.-]+/i)?.[0] ?? '';
+}
+
+function publicActivityText(value: unknown, limit = 240): string {
+  const source = String(value ?? '');
+  // Removing markers alone would leave the content of a private thought visible.
+  // The dashboard only accepts explicit public operational text.
+  if (
+    /(<think\b|<\/think>|\b(?:analysis|reasoning|private thought|chain of thought)\b|私有推理|思维链)/i.test(
+      source,
+    )
+  ) {
+    return '';
+  }
+  return source
+    .replace(/[A-Za-z]:[\\/][^\s，。；;]+/g, '[本机路径]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, limit);
+}
+
+function publicActivityForItem(
+  progress: Record<string, unknown> | null,
+  recovery: Record<string, unknown> | null,
+  taskRuns: Map<string, Record<string, unknown>>,
+  tasks: Array<{ id: string; title: string; objective: string; status: string }>,
+  recentOutput: string[],
+  publicPhase = '',
+): DashboardAgent['activity'] {
+  const updatedAt = String(progress?.updatedAt ?? recovery?.updatedAt ?? new Date().toISOString());
+  const activity: DashboardAgent['activity'] = [];
+  const visibleFiles = new Set<string>();
+  const visibleTests = new Set<string>();
+  const phase = publicActivityText(publicPhase || progress?.phase || recovery?.phase);
+  if (phase)
+    activity.push({ kind: 'stage', createdAt: updatedAt, label: '阶段说明', detail: phase });
+  for (const task of tasks) {
+    const run = taskRuns.get(task.id);
+    const taskTitle = publicActivityText(task.title, 160) || '未命名任务';
+    const taskUpdatedAt = String(run?.completedAt ?? updatedAt);
+    const detail = publicActivityText(task.objective || task.title);
+    activity.push({
+      kind: 'action',
+      createdAt: taskUpdatedAt,
+      label: `${task.status === 'pending' ? '待执行动作' : '执行动作'}：${taskTitle}`,
+      detail: detail || '正在处理该任务。',
+    });
+    for (const file of stringArray(run?.changedFiles ?? run?.files).slice(0, 8)) {
+      const path = publicActivityText(file, 160);
+      if (path && !visibleFiles.has(path)) {
+        visibleFiles.add(path);
+        activity.push({
+          kind: 'file',
+          createdAt: taskUpdatedAt,
+          label: '修改文件',
+          detail: path,
+        });
+      }
+    }
+    for (const check of stringArray(run?.tests ?? run?.verification).slice(0, 5)) {
+      const detail = publicActivityText(check);
+      if (detail && !visibleTests.has(detail)) {
+        visibleTests.add(detail);
+        activity.push({
+          kind: 'test',
+          createdAt: taskUpdatedAt,
+          label: '测试',
+          detail,
+        });
+      }
+    }
+  }
+  for (const line of recentOutput.slice(-8)) {
+    const detail = publicActivityText(line);
+    if (!detail) continue;
+    const kind: DashboardAgent['activity'][number]['kind'] =
+      /error|fatal|failed|failure|阻塞|额度|鉴权/i.test(detail)
+        ? 'error'
+        : /(?:npm|test|verify|vitest|playwright)/i.test(detail)
+          ? 'test'
+          : 'output';
+    activity.push({
+      kind,
+      createdAt: updatedAt,
+      label:
+        kind === 'test'
+          ? '测试输出（已截断）'
+          : kind === 'error'
+            ? '执行异常'
+            : '运行输出（已截断）',
+      detail,
+    });
+  }
+  return activity.slice(-24);
 }
 
 async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgent> {
@@ -692,7 +787,8 @@ async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgen
       (await readJson(resolve(item.runDirectory, 'plan.json'))))
     : null;
   const plan = isRecord(recovery?.plan) ? recovery.plan : diskPlan;
-  const phase = String(progress?.phase ?? recovery?.phase ?? item.summary ?? '等待调度');
+  const rawPhase = String(progress?.phase ?? recovery?.phase ?? item.summary ?? '等待调度');
+  const phase = publicActivityText(rawPhase) || '正在执行公开工作流';
   const alive = isOwnedProcessAlive(item.processPid, item.processIdentity);
   const status: DashboardAgent['status'] = alive
     ? 'running'
@@ -717,33 +813,30 @@ async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgen
     ),
   }));
   const recentOutput = [
-    progress ? `运行阶段：${String(progress.phase ?? '')} / ${String(progress.status ?? '')}` : '',
+    progress ? `运行阶段：${phase} / ${String(progress.status ?? '')}` : '',
     recovery?.error ? `阻塞：${String(recovery.error)}` : '',
     ...(await readLatestLogSummary(item.runDirectory)),
-  ].filter(Boolean);
+  ]
+    .map((entry) => publicActivityText(entry))
+    .filter(Boolean);
   return {
     id: item.id,
     role: item.scope === 'version' ? 'Version PM' : 'Feature PM',
     type: item.scope === 'version' ? '版本调度' : 'Feature 交付',
     status,
     running: alive,
-    model: modelFromPhase(phase) || '尚未分配',
+    model: modelFromPhase(rawPhase) || '尚未分配',
     phase,
-    objective: String(recovery?.resolvedDirection ?? recovery?.direction ?? item.idea),
+    objective:
+      publicActivityText(recovery?.resolvedDirection ?? recovery?.direction ?? item.idea) ||
+      '正在执行公开工作流',
     pid: alive ? item.processPid : 0,
     startedAt: String(progress?.startedAt ?? item.createdAt),
     updatedAt: String(progress?.updatedAt ?? recovery?.updatedAt ?? item.updatedAt),
     elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
     runDirectory: item.runDirectory,
     retryAt: item.retryAt,
-    error: String(recovery?.error ?? (item.status === 'waiting-producer' ? item.summary : '')),
-    context: {
-      direction: String(plan?.summary ?? item.idea),
-      acceptanceCriteria: stringArray(plan?.acceptanceCriteria),
-      nonGoals: stringArray(plan?.nonGoals),
-      tasks,
-    },
-    recentOutput,
+    activity: publicActivityForItem(progress, recovery, taskRuns, tasks, recentOutput, phase),
   };
 }
 
@@ -783,9 +876,14 @@ async function dashboardAgents(): Promise<DashboardAgent[]> {
       elapsedSeconds: 0,
       runDirectory: secretaryRoot,
       retryAt: '',
-      error: '',
-      context: { direction: '常驻项目协调', acceptanceCriteria: [], nonGoals: [], tasks: [] },
-      recentOutput: [],
+      activity: [
+        {
+          kind: 'stage',
+          createdAt: state.lastEventAt,
+          label: '阶段说明',
+          detail: guardBusy ? '正在处理项目事件。' : '事件休眠，等待消息或运行状态变化。',
+        },
+      ],
     },
   ];
   const visibleItems = state.items.filter((item) =>
@@ -813,7 +911,8 @@ async function dashboardAgents(): Promise<DashboardAgent[]> {
         running: true,
         model: activeModel,
         objective:
-          pm.context.tasks.find((task) => task.status === 'running')?.objective || pm.objective,
+          pm.activity.find((event) => event.kind === 'action' && event.label.startsWith('执行动作'))
+            ?.detail || pm.objective,
         pid: worker.pid,
       });
     } else {
@@ -2210,6 +2309,13 @@ async function enqueueIdea(idea: string, requestId: string = randomUUID()): Prom
   acceptedRequestIds.add(request.id);
   try {
     await writeJsonAtomic(resolve(inboxRoot, `${request.id}.json`), request);
+    // fs.watch is kept for inbox files written by other processes, but it is not
+    // a delivery guarantee for the HTTP/channel request that this guard just
+    // persisted. Wake the event loop directly so a successfully accepted local
+    // receipt cannot be stranded behind a missed Windows file-system event.
+    void processInbox().catch((error) =>
+      console.error(`[notice guard] 处理本机收件失败：${String(error)}`),
+    );
     return { id: request.id, accepted: true };
   } catch (error) {
     acceptedRequestIds.delete(request.id);

@@ -49,6 +49,7 @@ describe('mobile secretary site export', () => {
         phase: '快照时：执行 [本机路径]',
         runDirectory: '',
         recentOutput: [],
+        activity: [],
         error: '执行曾遇到错误，请回到实时中枢查看。',
         context: { direction: '实现手机版中枢' },
       }),

@@ -13,7 +13,7 @@
 ## 门禁
 
 - `npm run verify`：开发与提交前的快速门禁，包含类型、lint、格式、文档和单元测试。
-- `npm run verify:full`：推送、交付和 CI 门禁，在快速门禁基础上增加覆盖率、沙盒、E2E 和生产构建。
+- `npm run verify:full`：推送、交付和 CI 门禁，在快速门禁基础上增加覆盖率、沙盒、E2E 和生产构建。覆盖率命令为每次调用隔离临时报告目录，避免并发门禁互相删除 Vitest 的 worker 载荷。
 - `npm run verify:ci`：CI 对完整门禁的稳定别名，必须与 `verify:full` 等价。
 - `npm run test:e2e` 会在启动 Playwright 前移除外部 `NO_COLOR`：Playwright 对其 WebServer 与 worker 固定启用 `FORCE_COLOR`，两者同时存在会让 Node 为每个子进程输出无关警告。
 
@@ -23,6 +23,7 @@
 - 跨模块状态或战斗行为：集成测试。
 - 用户可见流程、浏览器 API、Canvas 或 React Flow：E2E。
 - 布局变化：至少检查目标桌面视口和一个窄屏断点；稳定页面再加入视觉快照。
+- 跨进程秘书：以 `/api/dashboard` 的成功 HTTP 响应作为 guard 就绪信号；启动观察器必须同时监听子进程退出并附带最近输出，不能用固定 sleep 或静默的 8 秒窗口掩盖启动失败。收件则等待每条请求落盘的 `responses/<request-id>.json`，再读取看板状态；HTTP `202` 只表示已入箱，不能证明事件已处理完成。
 
 ## 体验验收
 

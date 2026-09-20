@@ -7,6 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { waitForProcessIdentity } from '../scripts/process-identity';
+import { waitForSecretaryDashboard } from './helpers/secretary-guard';
 import {
   advanceVersion,
   createFormalVersion,
@@ -39,18 +40,27 @@ async function freePort(): Promise<number> {
   });
 }
 
-async function waitForDashboard(url: string): Promise<Record<string, unknown>> {
-  const deadline = Date.now() + 8_000;
+interface IntakeCompletion {
+  id: string;
+  status: string;
+  response: string;
+}
+
+async function waitForIntakeCompletion(
+  secretaryState: string,
+  requestId: string,
+): Promise<IntakeCompletion> {
+  const responsePath = resolve(secretaryState, 'responses', `${requestId}.json`);
+  const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${url}/api/dashboard`);
-      if (response.ok) return (await response.json()) as Record<string, unknown>;
+      return JSON.parse(await readFile(responsePath, 'utf8')) as IntakeCompletion;
     } catch {
-      // The detached guard needs a short startup window on Windows.
+      // The response file is atomically published only after the guard saves its state.
+      await new Promise((resolveWait) => setTimeout(resolveWait, 80));
     }
-    await new Promise((resolveWait) => setTimeout(resolveWait, 80));
   }
-  throw new Error('测试 notice guard 未按时启动');
+  throw new Error(`秘书未完成收件请求：${requestId}`);
 }
 
 afterEach(async () => {
@@ -126,7 +136,7 @@ describe('secretary dashboard server', () => {
         status: 'active',
         processPid: 2_147_000_000,
         processIdentity: 'dead-pm',
-        phase: '深度规划',
+        phase: '<think>private chain of thought</think>',
         direction: '实现看板交互',
         resolvedDirection: '实现看板交互',
         baseline: 'test',
@@ -135,9 +145,27 @@ describe('secretary dashboard server', () => {
           summary: '实现看板交互',
           acceptanceCriteria: ['项目中枢可以展示嵌套 Agent'],
           nonGoals: [],
-          tasks: [{ id: 'ui', title: '实现界面', objective: '完成项目中枢交互' }],
+          tasks: [
+            {
+              id: 'ui',
+              title: '实现界面',
+              objective: '<think>不要显示这段私有推理</think>完成项目中枢交互',
+            },
+            {
+              id: 'private-task',
+              title: '私有推理：不应出现在动作标题',
+              objective: '思维链：不应出现在动作详情',
+            },
+          ],
         },
-        taskRuns: [],
+        taskRuns: [
+          {
+            result: 'passed',
+            task: { id: 'ui', title: '实现界面' },
+            changedFiles: ['secretary-dashboard/dashboard.js'],
+            tests: ['npm test -- secretary-dashboard'],
+          },
+        ],
         review: null,
         plannerTokens: 0,
         reviewerTokens: null,
@@ -163,6 +191,7 @@ describe('secretary dashboard server', () => {
       }),
       'utf8',
     );
+    await writeFile(resolve(runningRun, 'ui.log'), `[等待] ${'公开进度'.repeat(100)}\n`, 'utf8');
     await writeFile(
       resolve(secretaryState, 'state.json'),
       JSON.stringify({
@@ -294,11 +323,11 @@ describe('secretary dashboard server', () => {
         DAOYAN_DINGTALK_CLIENT_ID: '',
         DAOYAN_DINGTALK_CLIENT_SECRET: '',
       },
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
 
-    let initial = await waitForDashboard(url);
+    let initial = await waitForSecretaryDashboard(child, url);
     const workerReconcileDeadline = Date.now() + 8_000;
     while (
       Date.now() < workerReconcileDeadline &&
@@ -340,6 +369,47 @@ describe('secretary dashboard server', () => {
         }),
       ]),
     );
+    expect(
+      (
+        initial.agents as Array<{ id: string; activity: Array<{ kind: string; label: string }> }>
+      ).find((agent) => agent.id === 'running-feature')?.activity,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'stage',
+          label: '阶段说明',
+          // progress.json is the current, public operational source and therefore
+          // takes precedence over a stale private phase in recovery.json.
+          detail: '深度规划',
+        }),
+        expect.objectContaining({ kind: 'action', label: expect.stringContaining('实现界面') }),
+        expect.objectContaining({ kind: 'output', label: '运行输出（已截断）' }),
+        expect.objectContaining({
+          kind: 'file',
+          label: '修改文件',
+          detail: 'secretary-dashboard/dashboard.js',
+        }),
+        expect.objectContaining({
+          kind: 'test',
+          label: '测试',
+          detail: 'npm test -- secretary-dashboard',
+        }),
+      ]),
+    );
+    expect(JSON.stringify(initial.agents)).not.toContain('不要显示这段私有推理');
+    expect(JSON.stringify(initial.agents)).not.toContain('private chain of thought');
+    expect(JSON.stringify(initial.agents)).not.toContain('不应出现在动作标题');
+    expect(JSON.stringify(initial.agents)).not.toContain('不应出现在动作详情');
+    expect(
+      (
+        initial.agents as Array<{
+          id: string;
+          activity: Array<{ detail: string }>;
+        }>
+      )
+        .find((agent) => agent.id === 'running-feature')
+        ?.activity.every((event) => event.detail.length <= 240),
+    ).toBe(true);
     expect(
       (
         initial.secretary as {
@@ -486,41 +556,25 @@ describe('secretary dashboard server', () => {
       body: JSON.stringify({ idea: '现在正式版本处于什么阶段？' }),
     });
     expect(intake.status).toBe(202);
+    const versionRequest = (await intake.json()) as { id: string };
+    const versionCompletion = await waitForIntakeCompletion(secretaryState, versionRequest.id);
+    expect(versionCompletion.response).toContain('开发执行');
 
-    const deadline = Date.now() + 10_000;
-    let messages: Array<{ role: string; content: string }> = [];
-    let versionAnswer = '';
-    while (Date.now() < deadline) {
-      const state = (await (await fetch(`${url}/api/dashboard`)).json()) as {
-        secretary: { recentMessages: typeof messages };
-      };
-      messages = state.secretary.recentMessages;
-      versionAnswer =
-        messages.find(
-          (message) => message.role === 'secretary' && message.content.includes('当前正式版本'),
-        )?.content ?? '';
-      if (versionAnswer) break;
-      await new Promise((resolveWait) => setTimeout(resolveWait, 80));
-    }
-    expect(versionAnswer).toContain('开发执行');
-
-    await fetch(`${url}/api/intake`, {
+    const backlogIntake = await fetch(`${url}/api/intake`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ idea: '新增宗门经营系统' }),
     });
-    let backlogStatus = '';
-    const backlogDeadline = Date.now() + 10_000;
-    while (Date.now() < backlogDeadline) {
-      const state = (await (await fetch(`${url}/api/dashboard`)).json()) as {
-        secretary: { items: Array<{ idea: string; status: string }> };
-      };
-      backlogStatus =
-        state.secretary.items.find((item) => item.idea.includes('宗门经营'))?.status ?? '';
-      if (backlogStatus) break;
-      await new Promise((resolveWait) => setTimeout(resolveWait, 80));
-    }
-    expect(backlogStatus).toBe('backlog');
+    expect(backlogIntake.status).toBe(202);
+    const backlogRequest = (await backlogIntake.json()) as { id: string };
+    const backlogCompletion = await waitForIntakeCompletion(secretaryState, backlogRequest.id);
+    expect(backlogCompletion.status).toBe('backlog');
+    const backlogState = (await (await fetch(`${url}/api/dashboard`)).json()) as {
+      secretary: { items: Array<{ idea: string; status: string }> };
+    };
+    expect(backlogState.secretary.items.find((item) => item.idea.includes('宗门经营'))).toEqual(
+      expect.objectContaining({ status: 'backlog' }),
+    );
 
     const acceptance = createFormalVersion({
       id: 'candidate-test',
@@ -530,12 +584,14 @@ describe('secretary dashboard server', () => {
       currentStage: 'producer-acceptance',
     });
     await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(acceptance), 'utf8');
-    await fetch(`${url}/api/intake`, {
+    const producerComment = await fetch(`${url}/api/intake`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ idea: '我再看看，晚点回复' }),
     });
-    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
+    expect(producerComment.status).toBe(202);
+    const producerCommentReceipt = (await producerComment.json()) as { id: string };
+    await waitForIntakeCompletion(secretaryState, producerCommentReceipt.id);
     let gateState = (await (await fetch(`${url}/api/dashboard`)).json()) as {
       version: {
         currentStage: string;
@@ -547,26 +603,24 @@ describe('secretary dashboard server', () => {
     expect(gateState.version.currentStage).toBe('producer-acceptance');
     expect(gateState.version.approvals).toHaveLength(0);
 
-    await fetch(`${url}/api/intake`, {
+    const deferredDirectionIntake = await fetch(`${url}/api/intake`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ idea: '另外新增炼丹系统，放到后续版本' }),
     });
-    const directionDeadline = Date.now() + 10_000;
-    let deferredDirection = '';
-    while (Date.now() < directionDeadline) {
-      const state = (await (await fetch(`${url}/api/dashboard`)).json()) as {
-        version: { currentStage: string };
-        secretary: { items: Array<{ idea: string; status: string }> };
-      };
-      deferredDirection =
-        state.secretary.items.find((item) => item.idea.includes('炼丹系统'))?.status ?? '';
-      gateState.version.currentStage = state.version.currentStage;
-      if (deferredDirection) break;
-      await new Promise((resolveWait) => setTimeout(resolveWait, 80));
-    }
-    expect(deferredDirection).toBe('backlog');
-    expect(gateState.version.currentStage).toBe('producer-acceptance');
+    expect(deferredDirectionIntake.status).toBe(202);
+    const deferredDirectionReceipt = (await deferredDirectionIntake.json()) as { id: string };
+    expect(
+      (await waitForIntakeCompletion(secretaryState, deferredDirectionReceipt.id)).status,
+    ).toBe('backlog');
+    const completedGateState = (await (await fetch(`${url}/api/dashboard`)).json()) as {
+      version: { currentStage: string };
+      secretary: { items: Array<{ idea: string; status: string }> };
+    };
+    expect(
+      completedGateState.secretary.items.find((item) => item.idea.includes('炼丹系统'))?.status,
+    ).toBe('backlog');
+    expect(completedGateState.version.currentStage).toBe('producer-acceptance');
 
     const candidateDashboard = (await (await fetch(`${url}/api/dashboard`)).json()) as {
       todos: Array<{ source: string; id: string; recommendedAction: string }>;
@@ -694,10 +748,10 @@ describe('secretary dashboard server', () => {
         DAOYAN_DINGTALK_CLIENT_ID: '',
         DAOYAN_DINGTALK_CLIENT_SECRET: '',
       },
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
-    await waitForDashboard(url);
+    await waitForSecretaryDashboard(child, url);
     const deadline = Date.now() + 8_000;
     while (Date.now() < deadline) {
       const responsesReady = await Promise.all(
@@ -764,10 +818,10 @@ describe('secretary dashboard server', () => {
         DAOYAN_DINGTALK_CLIENT_ID: '',
         DAOYAN_DINGTALK_CLIENT_SECRET: '',
       },
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
-    await waitForDashboard(url);
+    await waitForSecretaryDashboard(child, url);
     const intake = await fetch(`${url}/api/intake`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

@@ -19,10 +19,6 @@
           <h1>道衍项目中枢</h1>
         </div>
       </div>
-      <label class="version-picker" for="version-select">
-        <span>查看版本</span>
-        <select id="version-select" aria-label="选择正式版本"></select>
-      </label>
       <div class="guard-state" id="guard-state"><span></span>正在连接秘书</div>
     </header>
 
@@ -66,6 +62,9 @@
       </nav>
 
       <div class="workbench">
+        <button type="button" class="pane-restore" data-restore="left" hidden>恢复左侧</button>
+        <button type="button" class="pane-restore" data-restore="center" hidden>恢复中间</button>
+        <button type="button" class="pane-restore" data-restore="right" hidden>恢复右侧</button>
         <aside class="flow-pane pane" data-pane="flow" aria-labelledby="flow-title">
           <div class="pane-heading">
             <div>
@@ -73,10 +72,58 @@
               <h2 id="flow-title">版本流程</h2>
             </div>
             <span id="history-badge" class="quiet-badge" hidden>历史只读</span>
+            <button
+              type="button"
+              class="pane-toggle"
+              data-collapse="left"
+              aria-label="折叠左侧面板"
+            >
+              折叠
+            </button>
           </div>
+          <label class="sidebar-version-picker" for="sidebar-version-select">
+            <span>正式版本</span>
+            <select id="sidebar-version-select" aria-label="左侧选择正式版本"></select>
+          </label>
           <div id="stage-flow" class="stage-flow" role="list"></div>
+          <section class="agent-section" aria-labelledby="agent-title">
+            <div class="pane-heading compact">
+              <div>
+                <p class="section-label">RUNTIME</p>
+                <h2 id="agent-title">Agent</h2>
+              </div>
+              <span id="agent-summary" class="quiet-badge">读取中</span>
+            </div>
+            <div id="agent-list" class="agent-list"></div>
+          </section>
+          <section class="sidebar-section delivery-selector" aria-labelledby="work-title">
+            <div class="pane-heading compact">
+              <div>
+                <p class="section-label">DELIVERY</p>
+                <h2 id="work-title">开发任务</h2>
+              </div>
+            </div>
+            <div id="work-items" class="sidebar-list"></div>
+          </section>
+          <section class="sidebar-section delivery-selector" aria-labelledby="bug-title">
+            <div class="pane-heading compact">
+              <div>
+                <p class="section-label">QUALITY</p>
+                <h2 id="bug-title">版本缺陷</h2>
+              </div>
+            </div>
+            <div id="bugs" class="sidebar-list"></div>
+          </section>
         </aside>
 
+        <div
+          class="pane-resizer"
+          data-resize="left"
+          role="separator"
+          aria-label="调整左侧面板宽度"
+          aria-orientation="vertical"
+          tabindex="0"
+        ></div>
         <section class="focus-pane pane" data-pane="focus" aria-live="polite">
           <div class="node-heading">
             <div>
@@ -84,8 +131,16 @@
               <h2 id="detail-title">选择一个流程节点</h2>
             </div>
             <dl id="detail-meta"></dl>
+            <button
+              type="button"
+              class="pane-toggle"
+              data-collapse="center"
+              aria-label="折叠中间面板"
+            >
+              折叠
+            </button>
           </div>
-          <p id="detail-summary" class="detail-summary">这里会显示负责人、处理结果和对应证据。</p>
+          <p id="detail-summary" class="detail-summary">选择左侧任一条目，在这里阅读其内容。</p>
           <div class="document-workspace">
             <nav id="node-documents" class="document-list" aria-label="节点相关文档"></nav>
             <div class="document-reader">
@@ -96,34 +151,48 @@
               <pre id="artifact-content">选择左侧关联文档，或从右上角查看整个版本档案。</pre>
             </div>
           </div>
-          <div class="delivery-workspace">
-            <div class="segmented" role="tablist" aria-label="版本交付信息">
-              <button type="button" class="active" data-delivery-tab="work">开发任务</button>
-              <button type="button" data-delivery-tab="bugs">版本缺陷</button>
-            </div>
-            <div id="work-items" class="data-list"></div>
-            <div id="bugs" class="data-list" hidden></div>
-          </div>
-        </section>
-
-        <aside class="control-pane pane" data-pane="control">
-          <section class="agent-section" aria-labelledby="agent-title">
+          <section id="delivery-detail" class="item-detail" hidden aria-live="polite"></section>
+          <section
+            id="agent-workflow"
+            class="agent-workflow"
+            aria-labelledby="agent-workflow-title"
+            hidden
+          >
             <div class="pane-heading compact">
               <div>
-                <p class="section-label">RUNTIME</p>
-                <h2 id="agent-title">当前 Agent</h2>
+                <p class="section-label">PUBLIC ACTIVITY</p>
+                <h2 id="agent-workflow-title">选择 Agent 查看实时记录</h2>
               </div>
-              <span id="agent-summary" class="quiet-badge">读取中</span>
+              <span id="agent-workflow-state" class="quiet-badge">不会展示私有推理</span>
             </div>
-            <div id="agent-list" class="agent-list"></div>
+            <div id="agent-workflow-meta" class="agent-workflow-meta"></div>
+            <div id="agent-workflow-events" class="agent-workflow-events"></div>
           </section>
+        </section>
 
+        <div
+          class="pane-resizer"
+          data-resize="right"
+          role="separator"
+          aria-label="调整右侧面板宽度"
+          aria-orientation="vertical"
+          tabindex="0"
+        ></div>
+        <aside class="control-pane pane" data-pane="control">
           <section class="todo-section" aria-labelledby="todo-title">
             <div class="pane-heading compact">
               <div>
                 <p class="section-label">PRODUCER</p>
                 <h2 id="todo-title">制作人待办</h2>
               </div>
+              <button
+                type="button"
+                class="pane-toggle"
+                data-collapse="right"
+                aria-label="折叠右侧面板"
+              >
+                折叠
+              </button>
             </div>
             <div id="producer-todos" class="todo-list"></div>
           </section>
@@ -153,28 +222,6 @@
         </aside>
       </div>
     </main>
-
-    <dialog id="agent-dialog" class="agent-dialog">
-      <form method="dialog" class="dialog-heading">
-        <div>
-          <p class="section-label" id="agent-detail-type">AGENT</p>
-          <h2 id="agent-detail-title">Agent 详情</h2>
-        </div>
-        <button type="submit" aria-label="关闭 Agent 详情">关闭</button>
-      </form>
-      <div class="agent-detail-body">
-        <dl id="agent-detail-meta"></dl>
-        <section>
-          <h3>任务上下文</h3>
-          <p id="agent-detail-objective"></p>
-          <div id="agent-context"></div>
-        </section>
-        <section>
-          <h3>近期运行输出</h3>
-          <pre id="agent-output"></pre>
-        </section>
-      </div>
-    </dialog>
 
     <template id="empty-template"><p class="empty">暂无记录</p></template>
     <script type="module" src="./dashboard.js"></script>

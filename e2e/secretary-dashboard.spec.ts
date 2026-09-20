@@ -7,6 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFormalVersion, setNodeEvidence } from '../scripts/version-lifecycle';
 import { captureErrors } from './helpers';
+import { waitForSecretaryDashboard } from '../test/helpers/secretary-guard';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
@@ -48,6 +49,25 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     artifact: 'docs/versions/workflow-foundation-2026-09-20/charter.md',
     summary: '制作人已批准版本策划案。',
   });
+  version.workItems.push({
+    id: 'dashboard-work',
+    title: '整理项目中枢工作台',
+    owner: 'Feature PM',
+    status: 'active',
+    dependsOn: [],
+    summary: '将中间区域收束为单一阅读工作区。',
+    evidence: '',
+  });
+  version.bugs.push({
+    id: 'dashboard-bug',
+    title: '折叠后剩余区域未铺满',
+    severity: 'high',
+    status: 'fixing',
+    expected: '剩余面板填满工作台宽度。',
+    actual: '折叠后存在空白列。',
+    evidence: '',
+    linkedWorkItemId: 'dashboard-work',
+  });
   await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version), 'utf8');
   const previous = createFormalVersion({
     id: 'dashboard-e2e-previous',
@@ -74,21 +94,13 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
       DAOYAN_SECRETARY_LOCAL_ONLY: '1',
       DAOYAN_SECRETARY_NO_DISPATCH: '1',
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
 
   try {
     const errors = captureErrors(page);
-    await expect
-      .poll(async () => {
-        try {
-          return (await fetch(`http://127.0.0.1:${port}/api/dashboard`)).ok;
-        } catch {
-          return false;
-        }
-      })
-      .toBe(true);
+    await waitForSecretaryDashboard(child, `http://127.0.0.1:${port}`);
     await page.goto(`http://127.0.0.1:${port}`);
     await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
     await expect(page.locator('#current-stage')).toContainText('制作人体验');
@@ -96,6 +108,11 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
       () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
     );
     expect(hasPageScroll).toBe(false);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      ),
+    ).toBe(false);
 
     await page.locator('[data-stage="charter-review"]').click();
     await expect(page.locator('#detail-title')).toHaveText('立项评审');
@@ -103,9 +120,50 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     await expect(page.locator('#artifact-content')).toContainText('版本策划案');
 
     await page.locator('#agent-list button').filter({ hasText: '常驻秘书' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.locator('#agent-detail-meta')).toContainText('无模型常驻');
-    await page.getByRole('button', { name: '关闭 Agent 详情' }).click();
+    await expect(page.locator('#agent-workflow-title')).toContainText('维护项目总状态');
+    await expect(page.locator('#agent-workflow-meta')).toContainText('无模型常驻');
+    await expect(page.locator('#agent-workflow-events')).toContainText('阶段说明');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.getByRole('button', { name: '整理项目中枢工作台' }).click();
+    await expect(page.locator('#detail-kicker')).toHaveText('开发任务');
+    await expect(page.locator('#delivery-detail')).toContainText('单一阅读工作区');
+    await expect(page.locator('.document-workspace')).toBeHidden();
+    await expect(page.locator('#agent-workflow')).toBeHidden();
+    await page.getByRole('button', { name: '折叠后剩余区域未铺满' }).click();
+    await expect(page.locator('#detail-kicker')).toHaveText('版本缺陷');
+    await expect(page.locator('#delivery-detail')).toContainText('剩余面板填满工作台宽度');
+
+    const desktopWidth = await page.locator('.flow-pane').evaluate((node) => node.clientWidth);
+    await page.locator('[data-resize="left"]').dragTo(page.locator('.focus-pane'));
+    await expect
+      .poll(() => page.locator('.flow-pane').evaluate((node) => node.clientWidth))
+      .not.toBe(desktopWidth);
+    const rightWidth = await page.locator('.control-pane').evaluate((node) => node.clientWidth);
+    await page.locator('[data-resize="right"]').press('ArrowRight');
+    await expect
+      .poll(() => page.locator('.control-pane').evaluate((node) => node.clientWidth))
+      .toBeLessThan(rightWidth);
+    await page.getByRole('button', { name: '折叠左侧面板' }).click();
+    await expect(page.locator('.workbench')).toHaveClass(/collapsed-left/);
+    const collapsedLeftBounds = await page.locator('.workbench').evaluate((workbench) => {
+      const focus = workbench.querySelector('.focus-pane')?.getBoundingClientRect();
+      const control = workbench.querySelector('.control-pane')?.getBoundingClientRect();
+      const bounds = workbench.getBoundingClientRect();
+      return {
+        startsAtLeft: Math.abs((focus?.left ?? bounds.left) - bounds.left) < 1,
+        endsAtRight: Math.abs((control?.right ?? bounds.right) - bounds.right) < 1,
+      };
+    });
+    expect(collapsedLeftBounds).toEqual({ startsAtLeft: true, endsAtRight: true });
+    await page.getByRole('button', { name: '恢复左侧' }).click();
+    await expect(page.locator('.workbench')).not.toHaveClass(/collapsed-left/);
+    await page.getByRole('button', { name: '折叠中间面板' }).click();
+    await expect(page.locator('.workbench')).toHaveClass(/collapsed-center/);
+    await page.getByRole('button', { name: '恢复中间' }).click();
+    await page.getByRole('button', { name: '折叠右侧面板' }).click();
+    await expect(page.locator('.workbench')).toHaveClass(/collapsed-right/);
+    await page.getByRole('button', { name: '恢复右侧' }).click();
 
     await page.getByLabel('发给秘书').fill('现在正式版本处于什么阶段？');
     await page.getByRole('button', { name: '发送' }).click();
@@ -118,19 +176,19 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     await expect(page.locator('#progress-value')).toHaveText('100%');
     await expect(page.locator('#current-stage')).toContainText('版本归档');
 
-    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e-previous');
+    await page.getByLabel('左侧选择正式版本').selectOption('dashboard-e2e-previous');
     await expect(page.getByRole('heading', { name: '上一轮工作流版本' })).toBeVisible();
     await expect(page.locator('#history-badge')).toBeVisible();
     await expect(page.locator('#producer-todos')).toContainText('暂无记录');
-    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e');
+    await page.getByLabel('左侧选择正式版本').selectOption('dashboard-e2e');
     await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
 
     await page.route('**/api/dashboard?version=dashboard-e2e-previous', async (route) => {
       await new Promise((resolveWait) => setTimeout(resolveWait, 300));
       await route.continue();
     });
-    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e-previous');
-    await page.getByLabel('选择正式版本').selectOption('dashboard-e2e');
+    await page.getByLabel('左侧选择正式版本').selectOption('dashboard-e2e-previous');
+    await page.getByLabel('左侧选择正式版本').selectOption('dashboard-e2e');
     await page.waitForTimeout(450);
     await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
     await page.unroute('**/api/dashboard?version=dashboard-e2e-previous');
@@ -158,6 +216,13 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     await expect
       .poll(() => page.locator('.workbench').evaluate((node) => node.scrollLeft))
       .toBeGreaterThan(0);
+    await page.getByRole('button', { name: '流程', exact: true }).click();
+    await expect(page.locator('#sidebar-version-select')).toBeVisible();
+    await page.locator('#agent-list button').first().click();
+    await expect
+      .poll(() => page.locator('.workbench').evaluate((node) => node.scrollLeft))
+      .toBeGreaterThan(0);
+    await expect(page.locator('#agent-workflow-events')).toContainText('阶段说明');
 
     const staticDashboard = (await (
       await fetch(`http://127.0.0.1:${port}/api/dashboard`)

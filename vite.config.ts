@@ -21,6 +21,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
+      // The coverage provider clears its report directory before writing worker
+      // payloads. The wrapper gives each invocation an isolated directory so a
+      // concurrent local or CI gate cannot remove another run's `.tmp` folder.
+      reportsDirectory: process.env.DAOYAN_COVERAGE_REPORTS_DIRECTORY ?? 'coverage',
       include: ['src/core/**/*.ts'],
       thresholds: {
         statements: 70,

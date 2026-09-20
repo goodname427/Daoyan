@@ -150,12 +150,18 @@ export function validatePolicy(value: unknown): AgentPolicy {
   }
   assert(policy.limits && policy.limits.maxTasks > 0, 'maxTasks 必须大于 0');
   assert(policy.timeouts && policy.timeouts.heartbeatSeconds > 0, 'heartbeatSeconds 必须大于 0');
+  assert(Number.isInteger(policy.timeouts.heartbeatSeconds), 'heartbeatSeconds 必须是正整数');
   assert(policy.timeouts.plannerMinutes > 0, 'plannerMinutes 必须大于 0');
+  assert(Number.isInteger(policy.timeouts.plannerMinutes), 'plannerMinutes 必须是正整数');
   assert(policy.timeouts.verificationMinutes > 0, 'verificationMinutes 必须大于 0');
+  assert(Number.isInteger(policy.timeouts.verificationMinutes), 'verificationMinutes 必须是正整数');
   for (const tier of MODEL_TIERS) {
     assert(policy.timeouts.workers[tier] > 0, `缺少 ${tier} 执行超时`);
     assert(policy.timeouts.reviewers[tier] > 0, `缺少 ${tier} 审查超时`);
     assert(policy.timeouts.repairs[tier] > 0, `缺少 ${tier} 修复超时`);
+    assert(Number.isInteger(policy.timeouts.workers[tier]), `${tier} 执行超时必须是正整数`);
+    assert(Number.isInteger(policy.timeouts.reviewers[tier]), `${tier} 审查超时必须是正整数`);
+    assert(Number.isInteger(policy.timeouts.repairs[tier]), `${tier} 修复超时必须是正整数`);
   }
   assert(policy.verification && isStringArray(policy.verification.delivery), '缺少交付验证命令');
   assert(policy.git && typeof policy.git.remote === 'string', '缺少 Git 策略');

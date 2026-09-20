@@ -89,26 +89,26 @@
   },
   "timeouts": {
     "heartbeatSeconds": 20,
-    "plannerMinutes": 3,
+    "plannerMinutes": 8,
     "workers": {
-      "economy": 4,
-      "standard": 6,
-      "advanced": 12,
-      "critical": 18
+      "economy": 12,
+      "standard": 25,
+      "advanced": 40,
+      "critical": 60
     },
     "reviewers": {
-      "economy": 3,
-      "standard": 4,
-      "advanced": 8,
-      "critical": 12
+      "economy": 8,
+      "standard": 12,
+      "advanced": 20,
+      "critical": 30
     },
     "repairs": {
-      "economy": 4,
-      "standard": 6,
-      "advanced": 10,
-      "critical": 15
+      "economy": 12,
+      "standard": 25,
+      "advanced": 40,
+      "critical": 60
     },
-    "verificationMinutes": 10
+    "verificationMinutes": 20
   },
   "verification": {
     "delivery": ["npm", "run", "verify:full"]

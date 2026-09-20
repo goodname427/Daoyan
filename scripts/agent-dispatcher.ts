@@ -71,6 +71,8 @@ interface TaskRun {
   attempts: number;
   result: 'passed' | 'failed';
   outputFile: string;
+  changedFiles: string[];
+  tests: string[];
   tokensUsed: number | null;
   completedAt: string;
 }
@@ -358,6 +360,59 @@ async function git(args: string[], stream = false): Promise<ProcessResult> {
   return await runProcess('git', args, { stream });
 }
 
+async function workspaceFileSnapshot(): Promise<Map<string, string>> {
+  const [tracked, untracked] = await Promise.all([
+    git(['diff', '--name-only', '-z', 'HEAD', '--']),
+    git(['ls-files', '--others', '--exclude-standard', '-z']),
+  ]);
+  if (tracked.code !== 0 || untracked.code !== 0) return new Map();
+  const paths = new Set(
+    `${tracked.stdout}\0${untracked.stdout}`
+      .split('\0')
+      .map((path) => path.trim())
+      .filter(Boolean),
+  );
+  const snapshot = new Map<string, string>();
+  await Promise.all(
+    [...paths].map(async (path) => {
+      const fingerprint = await readFile(resolve(root, path))
+        .then((content) => createHash('sha256').update(content).digest('hex'))
+        .catch(() => '[deleted]');
+      snapshot.set(path.replace(/\\/g, '/'), fingerprint);
+    }),
+  );
+  return snapshot;
+}
+
+async function changedFilesSince(before: Map<string, string>): Promise<string[]> {
+  const after = await workspaceFileSnapshot();
+  return [...new Set([...before.keys(), ...after.keys()])]
+    .filter((path) => before.get(path) !== after.get(path))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+async function reportedTests(outputFile: string): Promise<string[]> {
+  const source = await readFile(outputFile, 'utf8').catch(() => '');
+  return [
+    ...new Set(
+      source
+        .split(/\r?\n/)
+        .map((line) =>
+          line
+            .replace(/^\s*(?:[-*]|\d+\.)\s*/, '')
+            .replaceAll('`', '')
+            .trim(),
+        )
+        .filter((line) =>
+          /\b(?:npm|pnpm|yarn|npx)\s+(?:run\s+)?(?:test|verify|lint|typecheck|build|coverage|sandbox)\b/i.test(
+            line,
+          ),
+        )
+        .map((line) => line.slice(0, 240)),
+    ),
+  ].slice(0, 8);
+}
+
 function parseJsonFile(source: string): unknown {
   const trimmed = source.trim();
   const withoutFence = trimmed
@@ -573,6 +628,7 @@ async function runTask(
   initialRoute: ModelRoute,
   runDirectory: string,
 ): Promise<TaskRun> {
+  const taskStartFiles = await workspaceFileSnapshot();
   let tier = task.tier;
   let route = initialRoute;
   let failureContext = '';
@@ -612,6 +668,8 @@ async function runTask(
           attempts: totalAttempts,
           result: 'passed',
           outputFile,
+          changedFiles: await changedFilesSince(taskStartFiles),
+          tests: await reportedTests(outputFile),
           tokensUsed,
           completedAt: new Date().toISOString(),
         };
@@ -641,6 +699,8 @@ async function runTask(
         attempts: totalAttempts,
         result: 'failed',
         outputFile: lastOutputFile,
+        changedFiles: await changedFilesSince(taskStartFiles),
+        tests: await reportedTests(lastOutputFile),
         tokensUsed,
         completedAt: new Date().toISOString(),
       };

@@ -33,6 +33,7 @@ export function sanitizeDashboardForSite(value: unknown): JsonRecord {
       status: wasRunning ? 'waiting' : agent.status,
       phase: wasRunning ? `快照时：${sanitizedText(agent.phase)}` : sanitizedText(agent.phase),
       recentOutput: [],
+      activity: [],
       error:
         typeof agent.error === 'string' && agent.error
           ? '执行曾遇到错误，请回到实时中枢查看。'

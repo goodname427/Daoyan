@@ -135,6 +135,37 @@ describe('agent routing', () => {
     expect(() => validatePlan(plan([task('a'), task('b')]), 1)).toThrow('超过上限');
   });
 
+  it('keeps the 20-second heartbeat while granting long-running delivery tiers enough time', () => {
+    const configured = validatePolicy(
+      JSON.parse(readFileSync(resolve('agents/policy.json'), 'utf8')),
+    );
+    expect(configured.timeouts.heartbeatSeconds).toBe(20);
+    expect(configured.timeouts.workers).toEqual({
+      economy: 12,
+      standard: 25,
+      advanced: 40,
+      critical: 60,
+    });
+    expect(configured.timeouts.repairs).toEqual(configured.timeouts.workers);
+    expect(configured.timeouts.plannerMinutes).toBe(8);
+    expect(configured.timeouts.reviewers).toEqual({
+      economy: 8,
+      standard: 12,
+      advanced: 20,
+      critical: 30,
+    });
+    expect(configured.timeouts.verificationMinutes).toBe(20);
+    expect(() =>
+      validatePolicy({
+        ...configured,
+        timeouts: {
+          ...configured.timeouts,
+          workers: { ...configured.timeouts.workers, standard: 0 },
+        },
+      }),
+    ).toThrow('standard 执行超时');
+  });
+
   it('keeps conventional commits and replaces invalid messages', () => {
     expect(conventionalCommitOrFallback('fix(core): 修复资源释放', '资源释放')).toBe(
       'fix(core): 修复资源释放',

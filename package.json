@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/run-playwright.mjs test",
-    "coverage": "vitest run --coverage",
+    "coverage": "node scripts/run-coverage.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",

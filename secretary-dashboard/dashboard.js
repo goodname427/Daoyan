@@ -18,6 +18,8 @@ const agentStatusLabels = {
 let selectedStage = '';
 let selectedVersionId = '';
 let selectedDocument = '';
+let selectedAgentId = '';
+let selectedItem = { type: 'stage', id: '' };
 let loadedDocument = '';
 let latestData = null;
 let dashboardRequest = 0;
@@ -91,21 +93,23 @@ function appendDefinition(root, key, value) {
 }
 
 function renderVersionSelector(data) {
-  const select = $('#version-select');
+  const selects = [$('#sidebar-version-select')];
   const versions = data.versions ?? [];
   const desired = selectedVersionId || data.version?.id || '';
-  select.replaceChildren();
-  for (const version of versions) {
-    const option = document.createElement('option');
-    option.value = version.id;
-    option.textContent = `${version.title} · ${version.isCurrent ? '当前' : '历史'}${
-      version.status === 'archived' ? ' · 已归档' : ''
-    }`;
-    option.selected = version.id === desired;
-    select.append(option);
+  for (const select of selects) {
+    select.replaceChildren();
+    for (const version of versions) {
+      const option = document.createElement('option');
+      option.value = version.id;
+      option.textContent = `${version.title} · ${version.isCurrent ? '当前' : '历史'}${
+        version.status === 'archived' ? ' · 已归档' : ''
+      }`;
+      option.selected = version.id === desired;
+      select.append(option);
+    }
+    select.disabled = versions.length < 2;
   }
-  selectedVersionId = select.value || desired;
-  select.disabled = versions.length < 2;
+  selectedVersionId = selects[0]?.value || desired;
 }
 
 async function loadDocument(doc) {
@@ -198,6 +202,7 @@ function renderDocumentList(node, version) {
 }
 
 function showNode(node, version) {
+  selectedItem = { type: 'stage', id: node.id };
   selectedStage = node.id;
   document.querySelectorAll('.stage-node').forEach((element) => {
     element.classList.toggle('selected', element.dataset.stage === node.id);
@@ -211,6 +216,9 @@ function showNode(node, version) {
   appendDefinition(meta, '开始', formatTime(node.startedAt));
   appendDefinition(meta, '完成', formatTime(node.completedAt));
   text($('#detail-summary'), node.summary || node.description);
+  $('.document-workspace').hidden = false;
+  $('#agent-workflow').hidden = true;
+  $('#delivery-detail').hidden = true;
   renderDocumentList(node, version);
 }
 
@@ -243,11 +251,65 @@ function renderStages(version) {
     button.addEventListener('click', () => showNode(node, version));
     root.append(button);
   });
-  const selection =
-    version.nodes.find((node) => node.id === selectedStage) ??
-    version.nodes.find((node) => node.id === version.currentStage) ??
-    version.nodes[0];
-  showNode(selection, version);
+  if (selectedItem.type === 'stage' || !selectedItem.id) {
+    const selection =
+      version.nodes.find((node) => node.id === selectedStage) ??
+      version.nodes.find((node) => node.id === version.currentStage) ??
+      version.nodes[0];
+    if (selection) showNode(selection, version);
+  }
+}
+
+function showDeliveryItem(item, kind) {
+  selectedItem = { type: kind, id: item.id ?? item.title };
+  document.querySelectorAll('.delivery-item').forEach((element) => {
+    element.classList.toggle('selected', element.dataset.deliveryId === selectedItem.id);
+  });
+  text($('#detail-kicker'), kind === 'bug' ? '版本缺陷' : '开发任务');
+  text($('#detail-title'), item.title || (kind === 'bug' ? '未命名缺陷' : '未命名任务'));
+  const meta = $('#detail-meta');
+  meta.replaceChildren();
+  const pairs =
+    kind === 'bug'
+      ? [
+          ['严重程度', item.severity || '未标记'],
+          ['状态', statusLabels[item.status] ?? item.status ?? '未标记'],
+        ]
+      : [
+          ['负责人', item.owner || '未分配'],
+          ['状态', statusLabels[item.status] ?? item.status ?? '未标记'],
+        ];
+  pairs.forEach(([key, value]) => appendDefinition(meta, key, value));
+  text(
+    $('#detail-summary'),
+    kind === 'bug'
+      ? item.actual || item.summary || '尚未记录实际现象。'
+      : item.summary || item.objective || '尚无任务摘要。',
+  );
+  $('.document-workspace').hidden = true;
+  $('#agent-workflow').hidden = true;
+  const detail = $('#delivery-detail');
+  detail.hidden = false;
+  detail.replaceChildren();
+  const entries =
+    kind === 'bug'
+      ? [
+          ['期望结果', item.expected || '待补充'],
+          ['实际现象', item.actual || '待补充'],
+        ]
+      : [
+          ['任务说明', item.summary || item.objective || '待补充'],
+          ['交付状态', statusLabels[item.status] ?? item.status ?? '待开始'],
+        ];
+  for (const [label, value] of entries) {
+    const block = document.createElement('div');
+    const heading = document.createElement('strong');
+    const content = document.createElement('p');
+    heading.textContent = label;
+    content.textContent = value;
+    block.append(heading, content);
+    detail.append(block);
+  }
 }
 
 function renderDataList(selector, items, kind) {
@@ -258,8 +320,10 @@ function renderDataList(selector, items, kind) {
     return;
   }
   for (const item of items) {
-    const row = document.createElement('article');
-    row.className = `data-row ${kind}`;
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = `delivery-item ${kind}`;
+    row.dataset.deliveryId = item.id ?? item.title;
     const title = document.createElement('strong');
     title.textContent = item.title;
     const summary = document.createElement('p');
@@ -279,62 +343,57 @@ function renderDataList(selector, items, kind) {
       meta.append(span);
     }
     row.append(title, summary, meta);
+    row.addEventListener('click', () => {
+      showDeliveryItem(item, kind);
+      if (globalThis.matchMedia('(max-width: 800px)').matches) activatePane('focus');
+    });
     root.append(row);
   }
 }
 
 function showAgent(agent) {
-  text($('#agent-detail-type'), `${agent.role} · ${agent.type}`);
-  text($('#agent-detail-title'), agent.objective || agent.role);
-  const meta = $('#agent-detail-meta');
+  selectedItem = { type: 'agent', id: agent.id };
+  selectedAgentId = agent.id;
+  text($('#agent-workflow-title'), agent.objective || agent.role);
+  text($('#agent-workflow-state'), `${agentStatusLabels[agent.status] ?? agent.status} · 公开记录`);
+  const meta = $('#agent-workflow-meta');
   meta.replaceChildren();
   for (const [key, value] of [
-    ['状态', agentStatusLabels[agent.status] ?? agent.status],
+    ['角色', agent.role],
     ['模型', agent.model],
-    ['当前阶段', agent.phase],
-    ['进程', agent.pid ? String(agent.pid) : '无执行进程'],
+    ['阶段', agent.phase],
     ['运行时长', formatDuration(agent.elapsedSeconds)],
-    ['最近更新', formatTime(agent.updatedAt)],
-    ['计划重试', formatTime(agent.retryAt)],
-    ['运行目录', agent.runDirectory || '无'],
+    ['更新', formatTime(agent.updatedAt)],
   ]) {
-    const dt = document.createElement('dt');
-    const dd = document.createElement('dd');
-    dt.textContent = key;
-    dd.textContent = value;
-    meta.append(dt, dd);
+    const item = document.createElement('span');
+    item.textContent = `${key}：${value}`;
+    meta.append(item);
   }
-  text($('#agent-detail-objective'), agent.context.direction || agent.objective);
-  const context = $('#agent-context');
-  context.replaceChildren();
-  const groups = [
-    ['验收标准', agent.context.acceptanceCriteria],
-    ['非目标', agent.context.nonGoals],
-    [
-      '任务清单',
-      agent.context.tasks.map(
-        (task) => `${task.title} · ${task.status}${task.objective ? ` · ${task.objective}` : ''}`,
-      ),
-    ],
-  ];
-  for (const [title, values] of groups) {
-    if (!values.length) continue;
-    const heading = document.createElement('h3');
-    heading.textContent = title;
-    const list = document.createElement('ul');
-    for (const value of values) {
-      const item = document.createElement('li');
-      item.textContent = value;
-      list.append(item);
-    }
-    context.append(heading, list);
+  const events = $('#agent-workflow-events');
+  const atBottom = events.scrollHeight - events.scrollTop - events.clientHeight < 30;
+  events.replaceChildren();
+  for (const event of agent.activity ?? []) {
+    const row = document.createElement('article');
+    row.className = `workflow-event ${event.kind}`;
+    const time = document.createElement('time');
+    time.textContent = formatTime(event.createdAt);
+    const content = document.createElement('div');
+    const label = document.createElement('strong');
+    label.textContent = event.label;
+    const detail = document.createElement('p');
+    detail.textContent = event.detail;
+    content.append(label, detail);
+    row.append(time, content);
+    events.append(row);
   }
-  text(
-    $('#agent-output'),
-    [agent.error ? `错误：${agent.error}` : '', ...agent.recentOutput].filter(Boolean).join('\n') ||
-      '当前没有运行输出。',
-  );
-  $('#agent-dialog').showModal();
+  if (!events.childElementCount) events.append(empty());
+  if (atBottom) events.scrollTop = events.scrollHeight;
+  $('.document-workspace').hidden = true;
+  $('#delivery-detail').hidden = true;
+  $('#agent-workflow').hidden = false;
+  document
+    .querySelectorAll('.agent-card')
+    .forEach((item) => item.classList.toggle('selected', item.dataset.agentId === agent.id));
 }
 
 function renderAgents(agents) {
@@ -352,6 +411,7 @@ function renderAgents(agents) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `agent-card ${agent.status}`;
+    button.dataset.agentId = agent.id;
     const dot = document.createElement('span');
     dot.className = 'status-dot';
     const main = document.createElement('span');
@@ -366,8 +426,18 @@ function renderAgents(agents) {
     state.textContent = agentStatusLabels[agent.status] ?? agent.status;
     button.append(dot, main, state);
     button.title = `${agent.role}：${detail.textContent}`;
-    button.addEventListener('click', () => showAgent(agent));
+    button.addEventListener('click', () => {
+      showAgent(agent);
+      if (globalThis.matchMedia('(max-width: 800px)').matches) activatePane('focus');
+    });
     root.append(button);
+  }
+  if (selectedItem.type === 'agent' || !selectedItem.id) {
+    const selected =
+      agents.find((agent) => agent.id === selectedAgentId) ??
+      agents.find((agent) => agent.running) ??
+      agents[0];
+    if (selected) showAgent(selected);
   }
 }
 
@@ -513,6 +583,11 @@ function render(data) {
   text($('#bug-count'), String(version?.openBugCount ?? 0));
   renderDataList('#work-items', work, 'work');
   renderDataList('#bugs', bugs, 'bug');
+  if (selectedItem.type === 'work' || selectedItem.type === 'bug') {
+    const items = selectedItem.type === 'work' ? work : bugs;
+    const selected = items.find((item) => (item.id ?? item.title) === selectedItem.id);
+    if (selected) showDeliveryItem(selected, selectedItem.type);
+  }
   renderConversation(data.secretary);
 }
 
@@ -545,16 +620,20 @@ async function refresh() {
   }
 }
 
-$('#version-select').addEventListener('change', (event) => {
+function changeVersion(event) {
   selectedVersionId = event.currentTarget.value;
   selectedStage = '';
+  selectedItem = { type: 'stage', id: '' };
   selectedDocument = '';
   loadedDocument = '';
   documentRequest += 1;
   void refresh();
-});
+}
+
+$('#sidebar-version-select').addEventListener('change', changeVersion);
 
 const workbench = $('.workbench');
+const paneMinimums = { left: 190, center: 360, right: 260 };
 const paneButtons = [...document.querySelectorAll('[data-pane-target]')];
 function setActivePane(id) {
   paneButtons.forEach((button) =>
@@ -562,24 +641,106 @@ function setActivePane(id) {
   );
 }
 
+function paneScrollLeft(pane) {
+  return (
+    pane.getBoundingClientRect().left -
+    workbench.getBoundingClientRect().left +
+    workbench.scrollLeft
+  );
+}
+
+function activatePane(id) {
+  const pane = document.querySelector(`[data-pane="${id}"]`);
+  if (!pane) return;
+  setActivePane(id);
+  workbench.scrollTo({ left: paneScrollLeft(pane), behavior: 'smooth' });
+}
+
 for (const button of paneButtons) {
-  button.addEventListener('click', () => {
-    const pane = document.querySelector(`[data-pane="${button.dataset.paneTarget}"]`);
-    if (!pane) return;
-    setActivePane(button.dataset.paneTarget);
-    workbench.scrollTo({ left: pane.offsetLeft - workbench.offsetLeft, behavior: 'smooth' });
-  });
+  button.addEventListener('click', () => activatePane(button.dataset.paneTarget));
 }
 
 workbench.addEventListener('scroll', () => {
   const panes = [...workbench.querySelectorAll('[data-pane]')];
   const nearest = panes.reduce((best, pane) =>
-    Math.abs(pane.offsetLeft - workbench.offsetLeft - workbench.scrollLeft) <
-    Math.abs(best.offsetLeft - workbench.offsetLeft - workbench.scrollLeft)
+    Math.abs(paneScrollLeft(pane) - workbench.scrollLeft) <
+    Math.abs(paneScrollLeft(best) - workbench.scrollLeft)
       ? pane
       : best,
   );
   if (nearest) setActivePane(nearest.dataset.pane);
+});
+
+function collapsePane(side) {
+  for (const candidate of ['left', 'center', 'right']) {
+    workbench.classList.toggle(`collapsed-${candidate}`, candidate === side);
+    document.querySelector(`[data-restore="${candidate}"]`).hidden = candidate !== side;
+  }
+}
+
+document.querySelectorAll('[data-collapse]').forEach((button) => {
+  button.addEventListener('click', () => collapsePane(button.dataset.collapse));
+});
+document.querySelectorAll('[data-restore]').forEach((button) => {
+  button.addEventListener('click', () => collapsePane(''));
+});
+
+function resizePane(
+  side,
+  delta,
+  baseLeft = $('.flow-pane').clientWidth,
+  baseRight = $('.control-pane').clientWidth,
+) {
+  const bounds = workbench.getBoundingClientRect();
+  if (bounds.width <= 0) return;
+  const leftWidth = baseLeft;
+  const rightWidth = baseRight;
+  const centerWidth = $('.focus-pane').clientWidth;
+  const fixedWidth = Math.max(0, bounds.width - leftWidth - centerWidth - rightWidth);
+  if (side === 'left') {
+    const max = Math.max(
+      paneMinimums.left,
+      bounds.width - fixedWidth - paneMinimums.center - rightWidth,
+    );
+    workbench.style.setProperty(
+      '--left-pane',
+      `${Math.min(Math.max(leftWidth + delta, paneMinimums.left), max)}px`,
+    );
+  } else {
+    const max = Math.max(
+      paneMinimums.right,
+      bounds.width - fixedWidth - paneMinimums.center - leftWidth,
+    );
+    workbench.style.setProperty(
+      '--right-pane',
+      `${Math.min(Math.max(rightWidth - delta, paneMinimums.right), max)}px`,
+    );
+  }
+}
+
+document.querySelectorAll('[data-resize]').forEach((divider) => {
+  divider.addEventListener('pointerdown', (event) => {
+    if (globalThis.matchMedia('(max-width: 800px)').matches) return;
+    divider.setPointerCapture(event.pointerId);
+    const side = divider.dataset.resize;
+    const origin = event.clientX;
+    const leftWidth = $('.flow-pane').clientWidth;
+    const rightWidth = $('.control-pane').clientWidth;
+    const move = (moveEvent) => resizePane(side, moveEvent.clientX - origin, leftWidth, rightWidth);
+    const stop = () => {
+      divider.removeEventListener('pointermove', move);
+      divider.removeEventListener('pointerup', stop);
+      divider.removeEventListener('pointercancel', stop);
+    };
+    divider.addEventListener('pointermove', move);
+    divider.addEventListener('pointerup', stop, { once: true });
+    divider.addEventListener('pointercancel', stop, { once: true });
+  });
+  divider.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    resizePane(divider.dataset.resize, event.key === 'ArrowLeft' ? -24 : 24);
+  });
 });
 
 $('#all-documents').addEventListener('change', (event) => {
@@ -587,16 +748,6 @@ $('#all-documents').addEventListener('change', (event) => {
     (doc) => doc.path === event.currentTarget.value,
   );
   if (target) void loadDocument(target);
-});
-
-document.querySelectorAll('[data-delivery-tab]').forEach((button) => {
-  button.addEventListener('click', () => {
-    document
-      .querySelectorAll('[data-delivery-tab]')
-      .forEach((candidate) => candidate.classList.toggle('active', candidate === button));
-    $('#work-items').hidden = button.dataset.deliveryTab !== 'work';
-    $('#bugs').hidden = button.dataset.deliveryTab !== 'bugs';
-  });
 });
 
 $('#message-form').addEventListener('submit', async (event) => {
