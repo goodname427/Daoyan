@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   canRebaseEmptyRecovery,
@@ -29,6 +29,7 @@ import {
 } from './agent-routing';
 import { endChildInput } from './child-process-input';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
+import { appendPublicWorkEvent } from './public-work-log';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const policyPath = resolve(root, 'agents/policy.json');
@@ -719,13 +720,30 @@ async function runDeliveryVerification(
 ): Promise<ProcessResult> {
   const [command, ...args] = policy.verification.delivery;
   console.log(`\n[交付门禁] ${policy.verification.delivery.join(' ')}`);
-  return await runProcess(command, args, {
+  const startedAt = Date.now();
+  const result = await runProcess(command, args, {
     logFile: resolve(runDirectory, `verify-${round}.log`),
     stream: true,
     heartbeatLabel: `交付门禁 / 第 ${round} 轮`,
     progressFile: resolve(runDirectory, 'progress.json'),
     timeoutMs: minutes(policy.timeouts.verificationMinutes),
   });
+  await appendPublicWorkEvent(resolve(runDirectory, 'public-events.jsonl'), {
+    eventId: `delivery-verification-${round}`,
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    kind: 'test',
+    payload: {
+      command: policy.verification.delivery.join(' '),
+      scope: 'delivery-gate',
+      exitCode: result.code,
+      status: result.code === 0 ? 'passed' : 'failed',
+      errorSummary: result.code === 0 ? '' : (result.stderr || result.stdout).slice(-2_000),
+    },
+    durationMs: Date.now() - startedAt,
+  });
+  return result;
 }
 
 async function writeReviewInput(
@@ -1013,6 +1031,100 @@ async function writeReport(
     `# ${plan.title}\n\n- 状态：${status}\n- 摘要：${plan.summary}\n- 任务：${taskRuns.length}/${plan.tasks.length}\n- 审查：${review?.verdict ?? '未执行'}\n- 已知模型 tokens：${report.tokenUsage.knownTotal ?? '不可用'}\n\n${extra}\n`,
     'utf8',
   );
+  const publicLog = resolve(runDirectory, 'public-events.jsonl');
+  await appendPublicWorkEvent(publicLog, {
+    eventId: 'input',
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    kind: 'input',
+    payload: { summary: plan.summary, source: 'approved-task-contract' },
+    createdAt: report.finishedAt,
+  });
+  await appendPublicWorkEvent(publicLog, {
+    eventId: 'plan',
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    kind: 'plan',
+    payload: { stage: 'feature-delivery', summary: plan.title, status: 'established' },
+    createdAt: report.finishedAt,
+  });
+  const reportEventKey =
+    status.replace(/[^a-z0-9_-]/gi, '-') ||
+    createHash('sha256').update(status).digest('hex').slice(0, 12);
+  await appendPublicWorkEvent(publicLog, {
+    eventId: `progress-${reportEventKey}`,
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    kind: 'progress',
+    payload: {
+      stage: status,
+      summary: extra || plan.summary,
+      completed: taskRuns.filter((run) => run.result === 'passed').length,
+      total: plan.tasks.length,
+    },
+    createdAt: report.finishedAt,
+  });
+  for (const taskRun of taskRuns) {
+    await appendPublicWorkEvent(publicLog, {
+      eventId: `task-${taskRun.task.id}`,
+      sequence: 0,
+      runId: basename(runDirectory),
+      agentId: taskRun.route.model,
+      kind: 'action',
+      payload: {
+        action: taskRun.task.title,
+        summary: taskRun.task.objective,
+        status: taskRun.result,
+      },
+      createdAt: taskRun.completedAt,
+    });
+    for (const [index, path] of taskRun.changedFiles.entries()) {
+      await appendPublicWorkEvent(publicLog, {
+        eventId: `task-${taskRun.task.id}-file-${index}`,
+        sequence: 0,
+        runId: basename(runDirectory),
+        agentId: taskRun.route.model,
+        kind: 'file',
+        payload: { path, action: 'changed' },
+        createdAt: taskRun.completedAt,
+      });
+    }
+    for (const [index, command] of taskRun.tests.entries()) {
+      await appendPublicWorkEvent(publicLog, {
+        eventId: `task-${taskRun.task.id}-test-${index}`,
+        sequence: 0,
+        runId: basename(runDirectory),
+        agentId: taskRun.route.model,
+        kind: 'test',
+        payload: { command, scope: taskRun.task.id, status: 'reported', exitCode: null },
+        createdAt: taskRun.completedAt,
+      });
+    }
+  }
+  if (extra && status !== '已交付') {
+    await appendPublicWorkEvent(publicLog, {
+      eventId: `error-${reportEventKey}`,
+      sequence: 0,
+      runId: basename(runDirectory),
+      agentId: 'feature-pm',
+      kind: 'error',
+      payload: { summary: extra, code: status, recoverable: status !== '失败' },
+      createdAt: report.finishedAt,
+    });
+  }
+  await appendPublicWorkEvent(publicLog, {
+    eventId: `usage-${reportEventKey}-${report.tokenUsage.knownTotal ?? 'unavailable'}`,
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    kind: 'usage',
+    payload: { source: 'dispatcher-report' },
+    tokenUsage: { total: report.tokenUsage.knownTotal, source: 'dispatcher-report' },
+    createdAt: report.finishedAt,
+  });
 }
 
 async function latestAbandonedRun(): Promise<string | null> {

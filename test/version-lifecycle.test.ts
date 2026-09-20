@@ -1,23 +1,96 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   addVersionTodo,
+  addDecisionGate,
   advanceVersion,
+  applyVersionTodoDecision,
   completeVersionTodo,
   createFormalVersion,
+  decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
+  recordFeatureVerification,
+  recordQaRun,
+  recordRiskAssessment,
+  recordScopeRevision,
+  recordStagePolicy,
   readFormalVersion,
   readFormalVersionById,
   recordApproval,
+  resolveDecisionGate,
+  transitionVersionBug,
   versionHealth,
   versionProgress,
   writeFormalVersion,
 } from '../scripts/version-lifecycle';
 
 describe('formal version lifecycle', () => {
+  it('advances every canonical stage through approval and QA gates to complete archival', () => {
+    const stages = [
+      'direction',
+      'charter-draft',
+      'charter-review',
+      'module-design',
+      'design-review',
+      'task-breakdown',
+      'version-planning',
+      'development',
+      'qa',
+      'bugfix',
+      'candidate',
+      'producer-acceptance',
+      'archived',
+    ] as const;
+    const version = createFormalVersion({
+      id: 'complete-lifecycle',
+      title: '完整阶段回归',
+      direction: '验证阶段与节点一致且门禁不可绕过',
+      documentRoot: 'docs/versions/complete-lifecycle',
+    });
+    expect(version.nodes.map((node) => node.id)).toEqual(stages);
+    expect(version.orchestration?.stagePolicies.map((policy) => policy.stage)).toEqual(stages);
+    for (const target of stages.slice(1)) {
+      const stage = version.currentStage;
+      if (
+        stage === 'charter-review' ||
+        stage === 'design-review' ||
+        stage === 'producer-acceptance'
+      ) {
+        const before = structuredClone(version);
+        expect(() => advanceVersion(version, target)).toThrow('尚未取得有效批准');
+        expect(version).toEqual(before);
+        recordApproval(version, {
+          stage,
+          reviewer: stage === 'design-review' ? 'lead-designer' : 'producer',
+          decision: 'approved',
+          documentRevision: version.charterRevision,
+          comment: '当前修订通过',
+        });
+      }
+      if (stage === 'qa') {
+        expect(() => advanceVersion(version, target)).toThrow('独立验收');
+        recordQaRun(version, {
+          agentId: 'independent-qa',
+          independent: true,
+          codeRevision: 'lifecycle-fixture',
+          suites: ['acceptance', 'integration', 'regression'],
+          status: 'passed',
+          commands: [{ command: 'fixture verification', exitCode: 0 }],
+          evidence: ['fixture-report.json'],
+        });
+      }
+      advanceVersion(version, target);
+      expect(version.nodes.find((node) => node.id === stage)?.status).toBe('completed');
+      expect(version.currentStage).toBe(target);
+    }
+    expect(version.nodes.every((node) => node.status === 'completed')).toBe(true);
+    expect(version.status).toBe('archived');
+    expect(versionProgress(version)).toBe(100);
+  });
+
   it('moves through adjacent stages and freezes scope after planning', () => {
     const version = createFormalVersion({
       id: 'v-next',
@@ -443,5 +516,666 @@ describe('formal version lifecycle', () => {
     } finally {
       await rm(temporary, { recursive: true, force: true });
     }
+  });
+
+  it('preserves every file when a pending transaction has an unsupported extension', async () => {
+    const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-version-invalid-transaction-'));
+    try {
+      const version = createFormalVersion({
+        id: 'invalid-transaction',
+        title: '无效事务',
+        direction: '拒绝未来扩展',
+        documentRoot: 'docs/versions/invalid-transaction',
+      });
+      await writeFormalVersion(temporary, version);
+      const stateRoot = resolve(temporary, '.daoyan-agent', 'releases');
+      const currentPath = resolve(stateRoot, 'current.json');
+      const historyPath = resolve(stateRoot, 'versions', `${version.id}.json`);
+      const transactionPath = resolve(stateRoot, '.write-transaction.json');
+      const beforeCurrent = await readFile(currentPath, 'utf8');
+      const beforeHistory = await readFile(historyPath, 'utf8');
+      const snapshot = structuredClone(version);
+      if (!snapshot.orchestration) throw new Error('测试版本缺少编排扩展');
+      (snapshot.orchestration as { schemaVersion: number }).schemaVersion = 2;
+      const transaction = `${JSON.stringify({ version: snapshot }, null, 2)}\n`;
+      await writeFile(transactionPath, transaction, 'utf8');
+
+      await expect(readFormalVersion(temporary)).rejects.toThrow('停止自动写入和派发');
+      expect(await readFile(currentPath, 'utf8')).toBe(beforeCurrent);
+      expect(await readFile(historyPath, 'utf8')).toBe(beforeHistory);
+      expect(await readFile(transactionPath, 'utf8')).toBe(transaction);
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it('persists risk, scope and stage strategy while refusing to skip fixed gates', () => {
+    const version = createFormalVersion({
+      id: 'adaptive-policy',
+      title: '自适应策略',
+      direction: '建立编排内核',
+      documentRoot: 'docs/versions/adaptive-policy',
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const scope = recordScopeRevision(version, {
+      direction: '补齐兼容迁移',
+      sourceRequestId: 'request-2',
+      disposition: 'merged',
+      reason: '属于已批准方向',
+      now: '2026-09-21T00:01:00.000Z',
+    });
+    recordRiskAssessment(version, {
+      level: 'critical',
+      impact: ['persistent-state'],
+      stateTransitions: true,
+      crossProcessConcurrency: true,
+      externalDependencies: [],
+      rollback: '停写后恢复备份',
+      evaluatedBy: 'version-pm',
+      basis: '涉及迁移和恢复',
+      now: '2026-09-21T00:02:00.000Z',
+    });
+    recordStagePolicy(version, {
+      stage: 'module-design',
+      mode: 'reduced',
+      reason: '复用已确认规格',
+      evidence: ['docs/spec.md'],
+      decidedBy: 'version-pm',
+      scopeRevision: scope.revision,
+      now: '2026-09-21T00:03:00.000Z',
+    });
+
+    expect(version.orchestration?.riskAssessments.at(-1)?.level).toBe('critical');
+    expect(version.orchestration?.stagePolicies.at(-1)).toEqual(
+      expect.objectContaining({ mode: 'reduced', scopeRevision: 2 }),
+    );
+    expect(() =>
+      recordStagePolicy(version, {
+        stage: 'producer-acceptance',
+        mode: 'skip',
+        reason: '错误地尝试跳过',
+        evidence: [],
+        decidedBy: 'pm',
+        scopeRevision: scope.revision,
+      }),
+    ).toThrow('固定门禁');
+  });
+
+  it.each(['irreversible-decision', 'producer-escalated-design'] as const)(
+    'blocks rejected %s until explicit approval',
+    (kind) => {
+      const version = createFormalVersion({
+        id: 'decision-gate',
+        title: '决策门禁',
+        direction: '验证门禁',
+        documentRoot: 'docs/versions/decision-gate',
+      });
+      const gate = addDecisionGate(version, {
+        kind,
+        stage: 'direction',
+        summary: '确认不可逆语义',
+        sourceRequestId: 'decision-1',
+      });
+      expect(() => advanceVersion(version, 'charter-draft')).toThrow('制作人决策门禁');
+      resolveDecisionGate(version, gate.id, 'rejected');
+      expect(version.status).toBe('paused');
+      const rejected = structuredClone(version);
+      normalizeFormalVersion(rejected);
+      expect(() => advanceVersion(rejected, 'charter-draft')).toThrow('制作人决策门禁');
+      expect(() => advanceVersion(version, 'charter-draft')).toThrow('制作人决策门禁');
+      expect(version).toEqual(rejected);
+      const unrelated = addDecisionGate(version, {
+        kind: 'scope-change',
+        stage: 'direction',
+        summary: '其他范围决定',
+        sourceRequestId: 'other',
+      });
+      resolveDecisionGate(version, unrelated.id, 'approved');
+      expect(version.status).toBe('paused');
+      expect(() => advanceVersion(version, 'charter-draft')).toThrow('制作人决策门禁');
+      const reapproval = version.todos.find(
+        (todo) => todo.decisionGateId === gate.id && todo.status === 'open',
+      );
+      expect(reapproval?.title).toContain('重新');
+      applyVersionTodoDecision(version, reapproval!.id, 'approve');
+      expect(() => advanceVersion(version, 'charter-draft')).not.toThrow();
+    },
+  );
+
+  it('persists producer decision request ids and replays them idempotently', () => {
+    const version = createFormalVersion({
+      id: 'decision-replay',
+      title: '决策回复重放',
+      direction: '验证决策回复幂等',
+      documentRoot: 'docs/versions/decision-replay',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'irreversible-decision',
+      stage: 'direction',
+      summary: '确认状态迁移',
+      sourceRequestId: 'direction-request',
+    });
+    resolveDecisionGate(version, gate.id, 'rejected', '2026-09-21T01:00:00.000Z', 'producer-reply');
+    const snapshot = structuredClone(version);
+    resolveDecisionGate(version, gate.id, 'rejected', '2026-09-21T01:00:00.000Z', 'producer-reply');
+    expect(version).toEqual(snapshot);
+    expect(decisionResolutionForRequest(version, 'producer-reply')).toEqual(
+      expect.objectContaining({
+        gate: expect.objectContaining({ id: gate.id }),
+        decision: 'rejected',
+      }),
+    );
+    expect(() =>
+      resolveDecisionGate(version, gate.id, 'approved', undefined, 'producer-reply'),
+    ).toThrow('不能改写');
+  });
+
+  it('keeps Feature checks separate from independent QA and defect reverification', () => {
+    const version = createFormalVersion({
+      id: 'qa-loop',
+      title: '测试闭环',
+      direction: '验证独立测试',
+      documentRoot: 'docs/versions/qa-loop',
+      currentStage: 'qa',
+    });
+    version.workItems.push({
+      id: 'kernel',
+      title: '编排内核',
+      owner: 'feature-agent',
+      status: 'completed',
+      dependsOn: [],
+      summary: '实现完成',
+      evidence: 'feature-report.json',
+    });
+    recordFeatureVerification(version, {
+      workItemId: 'kernel',
+      agentId: 'feature-agent',
+      codeRevision: 'abc123',
+      typecheck: 'passed',
+      targetedTests: 'passed',
+      evidence: ['targeted.log'],
+    });
+    expect(() => advanceVersion(version, 'bugfix')).toThrow('独立验收');
+    expect(() =>
+      recordQaRun(version, {
+        agentId: 'feature-agent',
+        independent: false,
+        codeRevision: 'abc123',
+        suites: ['acceptance', 'integration', 'regression'],
+        status: 'passed',
+        commands: [],
+        evidence: [],
+      }),
+    ).toThrow('独立测试 Agent');
+    expect(() =>
+      recordQaRun(version, {
+        agentId: 'feature-agent',
+        independent: true,
+        codeRevision: 'def456',
+        suites: ['acceptance', 'integration', 'regression'],
+        status: 'passed',
+        commands: [{ command: 'npm run verify', exitCode: 0 }],
+        evidence: ['qa-report.json'],
+      }),
+    ).toThrow('身份必须独立');
+    expect(() =>
+      recordQaRun(version, {
+        agentId: 'qa-agent',
+        independent: true,
+        codeRevision: 'abc123',
+        suites: ['acceptance', 'integration', 'regression'],
+        status: 'passed',
+        commands: [{ command: 'npm run verify', exitCode: 1 }],
+        evidence: ['qa-report.json'],
+      }),
+    ).toThrow('退出码为 0');
+    recordQaRun(version, {
+      agentId: 'qa-agent',
+      independent: true,
+      codeRevision: 'abc123',
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'passed',
+      commands: [{ command: 'npm run verify', exitCode: 0 }],
+      evidence: ['qa-report.json'],
+    });
+    advanceVersion(version, 'bugfix');
+    version.bugs.push({
+      id: 'bug-1',
+      title: '恢复重复派发',
+      severity: 'high',
+      status: 'verify',
+      expected: '只派发一次',
+      actual: '重复派发',
+      evidence: 'bug.log',
+      linkedWorkItemId: 'kernel',
+    });
+    expect(() => advanceVersion(version, 'candidate')).toThrow('尚未通过复验');
+    transitionVersionBug(version, 'bug-1', 'fixing');
+    transitionVersionBug(version, 'bug-1', 'verify', '', 'def456');
+    const verification = recordQaRun(version, {
+      agentId: 'qa-agent',
+      independent: true,
+      codeRevision: 'def456',
+      suites: ['defect-reverification', 'regression'],
+      status: 'passed',
+      commands: [{ command: 'npm test -- recovery', exitCode: 0 }],
+      evidence: ['reverify.json'],
+      bugFixes: [{ bugId: 'bug-1', fixAttemptId: version.bugs[0].fixAttemptId! }],
+    });
+    transitionVersionBug(version, 'bug-1', 'closed', verification.id);
+    expect(() => advanceVersion(version, 'candidate')).not.toThrow();
+  });
+
+  it.each(['execute', 'reduced', 'skip'] as const)(
+    'blocks failed regression before candidate even with %s bugfix policy and no open bugs',
+    (mode) => {
+      const version = createFormalVersion({
+        id: 'candidate-qa',
+        title: '候选回归门禁',
+        direction: '修复后必须重新核对独立 QA',
+        documentRoot: 'docs/versions/candidate-qa',
+        currentStage: 'qa',
+      });
+      const initialQa = recordQaRun(version, {
+        agentId: 'qa-agent',
+        independent: true,
+        codeRevision: 'before-fix',
+        suites: ['acceptance', 'integration', 'regression'],
+        status: 'passed',
+        commands: [{ command: 'npm run verify', exitCode: 0 }],
+        evidence: ['initial-qa.json'],
+      });
+      advanceVersion(version, 'bugfix');
+      recordStagePolicy(version, {
+        stage: 'bugfix',
+        mode,
+        scopeRevision: 1,
+        reason: '按风险执行修复',
+        decidedBy: 'version-pm',
+        evidence: [],
+      });
+      const failed = recordQaRun(version, {
+        agentId: 'qa-agent',
+        independent: true,
+        codeRevision: 'after-fix',
+        suites: ['regression'],
+        status: 'failed',
+        commands: [{ command: 'npm test', exitCode: 1 }],
+        evidence: ['failed-regression.json'],
+      });
+      expect(version.bugs).toEqual([]);
+      expect(initialQa.status).toBe('passed');
+      const before = structuredClone(version);
+      expect(() => advanceVersion(version, 'candidate')).toThrow('有效独立 QA');
+      expect(version).toEqual(before);
+      recordQaRun(version, {
+        agentId: 'qa-agent',
+        independent: true,
+        codeRevision: failed.codeRevision,
+        suites: ['regression'],
+        status: 'passed',
+        commands: [{ command: 'npm test', exitCode: 0 }],
+        evidence: ['passed-regression.json'],
+      });
+      expect(() => advanceVersion(version, 'candidate')).not.toThrow();
+    },
+  );
+
+  it('keeps legacy QA records readable but does not trust incomplete pass evidence', () => {
+    const version = createFormalVersion({
+      id: 'legacy-qa-evidence',
+      title: '旧 QA 证据',
+      direction: '兼容旧测试记录',
+      documentRoot: 'docs/versions/legacy-qa-evidence',
+      currentStage: 'qa',
+    });
+    const qa = recordQaRun(version, {
+      agentId: 'qa-agent',
+      independent: true,
+      codeRevision: 'abc123',
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'passed',
+      commands: [{ command: 'npm run verify', exitCode: 0 }],
+      evidence: ['qa-report.json'],
+    });
+    qa.commands = [];
+    qa.evidence = [];
+
+    expect(() => normalizeFormalVersion(version)).not.toThrow();
+    expect(() => advanceVersion(version, 'bugfix')).toThrow('独立验收');
+  });
+
+  it('does not leave development with unfinished or unverified Feature work', () => {
+    const version = createFormalVersion({
+      id: 'feature-gate',
+      title: 'Feature 自测门禁',
+      direction: '验证开发证据',
+      documentRoot: 'docs/versions/feature-gate',
+      currentStage: 'development',
+    });
+    version.workItems.push({
+      id: 'kernel',
+      title: '编排内核',
+      owner: 'feature-agent',
+      status: 'active',
+      dependsOn: [],
+      summary: '',
+      evidence: '',
+    });
+
+    expect(() => advanceVersion(version, 'qa')).toThrow('Feature 尚未完成');
+    version.workItems[0].status = 'completed';
+    expect(() => advanceVersion(version, 'qa')).toThrow('类型检查与定向测试');
+    expect(() =>
+      recordFeatureVerification(version, {
+        workItemId: 'kernel',
+        agentId: 'feature-agent',
+        codeRevision: '',
+        typecheck: 'passed',
+        targetedTests: 'passed',
+        evidence: [],
+      }),
+    ).toThrow('代码修订和公开证据');
+    version.orchestration?.featureVerifications.push({
+      id: 'legacy-feature-check',
+      workItemId: 'kernel',
+      agentId: '',
+      codeRevision: '',
+      scopeRevision: 1,
+      typecheck: 'passed',
+      targetedTests: 'passed',
+      evidence: [],
+      createdAt: '2026-09-21T00:00:00.000Z',
+    });
+    expect(() => normalizeFormalVersion(version)).not.toThrow();
+    expect(() => advanceVersion(version, 'qa')).toThrow('类型检查与定向测试');
+    recordFeatureVerification(version, {
+      workItemId: 'kernel',
+      agentId: 'feature-agent',
+      codeRevision: 'abc123',
+      typecheck: 'passed',
+      targetedTests: 'passed',
+      evidence: ['feature-checks.json'],
+    });
+    recordFeatureVerification(version, {
+      workItemId: 'kernel',
+      agentId: 'feature-agent',
+      codeRevision: 'def456',
+      typecheck: 'failed',
+      targetedTests: 'passed',
+      evidence: ['failed-feature-checks.json'],
+    });
+    expect(() => advanceVersion(version, 'qa')).toThrow('类型检查与定向测试');
+    recordFeatureVerification(version, {
+      workItemId: 'kernel',
+      agentId: 'feature-agent',
+      codeRevision: 'def456',
+      typecheck: 'passed',
+      targetedTests: 'passed',
+      evidence: ['feature-checks-after-fix.json'],
+    });
+    expect(() => advanceVersion(version, 'qa')).not.toThrow();
+  });
+
+  it('does not close a defect with QA evidence from an obsolete scope revision', () => {
+    const version = createFormalVersion({
+      id: 'stale-defect-verification',
+      title: '失效复验',
+      direction: '验证范围修订隔离',
+      documentRoot: 'docs/versions/stale-defect-verification',
+      currentStage: 'bugfix',
+    });
+    version.bugs.push({
+      id: 'bug-1',
+      title: '重复派发',
+      severity: 'high',
+      status: 'verify',
+      expected: '单次派发',
+      actual: '重复派发',
+      evidence: 'bug.json',
+      linkedWorkItemId: 'kernel',
+    });
+    transitionVersionBug(version, 'bug-1', 'fixing');
+    transitionVersionBug(version, 'bug-1', 'verify', '', 'abc123');
+    const stale = recordQaRun(version, {
+      agentId: 'qa-agent',
+      independent: true,
+      codeRevision: 'abc123',
+      suites: ['defect-reverification', 'regression'],
+      status: 'passed',
+      commands: [{ command: 'npm test -- recovery', exitCode: 0 }],
+      evidence: ['reverify.json'],
+      bugFixes: [{ bugId: 'bug-1', fixAttemptId: version.bugs[0].fixAttemptId! }],
+    });
+    recordScopeRevision(version, {
+      direction: '补充迁移边界',
+      sourceRequestId: 'scope-2',
+      disposition: 'merged',
+      reason: '范围变化使旧测试结论失效',
+    });
+
+    expect(() => transitionVersionBug(version, 'bug-1', 'closed', stale.id)).toThrow('成功复验');
+  });
+
+  it('binds defect evidence to the current fix attempt and code revision across reopen and reload', () => {
+    const version = createFormalVersion({
+      id: 'reopened-bug',
+      title: '重新打开的缺陷',
+      direction: '验证修复轮次',
+      documentRoot: 'docs/versions/reopened-bug',
+      currentStage: 'bugfix',
+    });
+    version.bugs.push({
+      id: 'bug',
+      title: '缺陷',
+      severity: 'high',
+      status: 'open',
+      expected: '',
+      actual: '',
+      evidence: '',
+      linkedWorkItemId: 'feature',
+    });
+    const bug = version.bugs[0];
+    const qaInput = {
+      agentId: 'qa',
+      independent: true,
+      codeRevision: 'fix-a',
+      suites: ['defect-reverification'] as const,
+      status: 'passed' as const,
+      commands: [{ command: 'npm test -- defect', exitCode: 0 }],
+      evidence: ['defect-report.json'],
+    };
+    transitionVersionBug(version, bug.id, 'fixing');
+    expect(() => transitionVersionBug(version, bug.id, 'verify')).toThrow('代码修订');
+    transitionVersionBug(version, bug.id, 'verify', '', 'fix-a');
+    const firstAttempt = bug.fixAttemptId!;
+    const first = recordQaRun(version, {
+      ...qaInput,
+      suites: [...qaInput.suites],
+      bugFixes: [{ bugId: bug.id, fixAttemptId: firstAttempt }],
+    });
+    transitionVersionBug(version, bug.id, 'closed', first.id);
+    transitionVersionBug(version, bug.id, 'open');
+    transitionVersionBug(version, bug.id, 'fixing');
+    transitionVersionBug(version, bug.id, 'verify', '', 'fix-a');
+    expect(bug.fixAttemptId).not.toBe(firstAttempt);
+    const reloaded = JSON.parse(JSON.stringify(version));
+    normalizeFormalVersion(reloaded);
+    expect(() => transitionVersionBug(reloaded, bug.id, 'closed', first.id)).toThrow('成功复验');
+    expect(reloaded.bugs[0].status).toBe('verify');
+    expect(() =>
+      recordQaRun(version, {
+        ...qaInput,
+        suites: [...qaInput.suites],
+        bugFixes: first.bugFixes,
+      }),
+    ).toThrow('当前修复轮次');
+    transitionVersionBug(version, bug.id, 'fixing');
+    transitionVersionBug(version, bug.id, 'verify', '', 'fix-b');
+    expect(() =>
+      recordQaRun(version, {
+        ...qaInput,
+        suites: [...qaInput.suites],
+        bugFixes: [{ bugId: bug.id, fixAttemptId: bug.fixAttemptId! }],
+      }),
+    ).toThrow('代码修订');
+    const unbound = recordQaRun(version, {
+      ...qaInput,
+      codeRevision: 'fix-b',
+      suites: [...qaInput.suites],
+    });
+    expect(() => transitionVersionBug(version, bug.id, 'closed', unbound.id)).toThrow('成功复验');
+    const current = recordQaRun(version, {
+      ...qaInput,
+      codeRevision: 'fix-b',
+      suites: [...qaInput.suites],
+      bugFixes: [{ bugId: bug.id, fixAttemptId: bug.fixAttemptId! }],
+    });
+    // A persisted report for an old code snapshot cannot close even with the current attempt ID.
+    current.codeRevision = 'fix-a';
+    expect(() => transitionVersionBug(version, bug.id, 'closed', current.id)).toThrow('成功复验');
+    current.codeRevision = 'fix-b';
+    transitionVersionBug(version, bug.id, 'closed', current.id);
+    expect(bug.verificationRunId).toBe(current.id);
+  });
+
+  it('migrates decision todo links idempotently without consuming stage review todos', () => {
+    const version = createFormalVersion({
+      id: 'legacy-decision-todo',
+      title: '待办迁移',
+      direction: '关联门禁',
+      documentRoot: 'docs/versions/legacy-decision-todo',
+      currentStage: 'charter-review',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'irreversible-decision',
+      stage: 'charter-review',
+      summary: '架构选择',
+      sourceRequestId: 'gate',
+    });
+    const todo = version.todos.find((entry) => entry.decisionGateId === gate.id)!;
+    delete todo.decisionGateId;
+    expect(normalizeFormalVersion(version)).toBe(true);
+    expect(todo.decisionGateId).toBe(gate.id);
+    expect(normalizeFormalVersion(version)).toBe(false);
+    resolveDecisionGate(version, gate.id, 'approved');
+    expect(todo.status).toBe('done');
+    expect(version.todos[0].status).toBe('open');
+    expect(version.status).toBe('waiting-producer');
+    expect(version.approvals).toHaveLength(0);
+    expect(() => advanceVersion(version, 'module-design')).toThrow('有效批准');
+  });
+
+  it.each(['module-design', 'charter-review'] as const)(
+    'handles dashboard decision actions separately at %s',
+    (stage) => {
+      for (const action of ['approve', 'request-changes']) {
+        for (const kind of ['scope-change', 'irreversible-decision'] as const) {
+          const version = createFormalVersion({
+            id: 'dashboard-action',
+            title: '看板操作',
+            direction: '门禁隔离',
+            documentRoot: 'docs/versions/dashboard-action',
+            currentStage: stage,
+          });
+          const gate = addDecisionGate(version, {
+            kind,
+            stage,
+            summary: '待决事项',
+            sourceRequestId: 'gate',
+          });
+          const todo = version.todos.find((entry) => entry.decisionGateId === gate.id)!;
+          if (action === 'request-changes') delete todo.decisionGateId;
+          expect(applyVersionTodoDecision(version, todo.id, action).message).toContain(
+            action === 'approve' ? '已批准' : '已退回',
+          );
+          expect(gate.status).toBe(action === 'approve' ? 'approved' : 'rejected');
+          expect(todo.status).toBe('done');
+          expect(version.approvals).toHaveLength(0);
+          expect(version.currentStage).toBe(stage);
+          const stageReviewTodos = stage === 'charter-review' ? 1 : 0;
+          const reapprovalTodos =
+            action === 'request-changes' && kind === 'irreversible-decision' ? 1 : 0;
+          expect(version.todos.filter((entry) => entry.status === 'open')).toHaveLength(
+            stageReviewTodos + reapprovalTodos,
+          );
+          expect(version.status).toBe(
+            action === 'request-changes' && kind === 'irreversible-decision'
+              ? 'paused'
+              : stage === 'charter-review'
+                ? 'waiting-producer'
+                : 'running',
+          );
+          const saved = structuredClone(version);
+          expect(() => applyVersionTodoDecision(version, todo.id, action)).toThrow('已经处理');
+          expect(version).toEqual(saved);
+        }
+      }
+    },
+  );
+
+  it('keeps decision todos open when a stage approval is recorded first', () => {
+    const version = createFormalVersion({
+      id: 'stage-first',
+      title: '独立评审',
+      direction: '门禁隔离',
+      documentRoot: 'docs/versions/stage-first',
+      currentStage: 'charter-review',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'scope-change',
+      stage: 'charter-review',
+      summary: '新增范围',
+      sourceRequestId: 'scope',
+    });
+    recordApproval(version, {
+      stage: 'charter-review',
+      reviewer: 'producer',
+      decision: 'approved',
+      documentRevision: version.charterRevision,
+      comment: '原立项通过',
+    });
+    expect(version.todos.find((todo) => todo.decisionGateId === gate.id)?.status).toBe('open');
+    expect(() => advanceVersion(version, 'module-design')).toThrow('制作人决策门禁');
+    resolveDecisionGate(version, gate.id, 'rejected');
+    expect(() => advanceVersion(version, 'module-design')).not.toThrow();
+  });
+
+  it('migrates legacy formal versions conservatively and rejects future extensions', () => {
+    const version = createFormalVersion({
+      id: 'legacy-extension',
+      title: '旧状态',
+      direction: '兼容迁移',
+      documentRoot: 'docs/versions/legacy-extension',
+    });
+    Reflect.deleteProperty(version, 'orchestration');
+    expect(normalizeFormalVersion(version)).toBe(true);
+    expect(version.orchestration?.migratedFrom).toBe('formal-version-v1');
+    expect(version.orchestration?.stagePolicies).toHaveLength(13);
+    expect(version.orchestration?.stagePolicies.map((policy) => policy.stage)).toEqual(
+      version.nodes.map((node) => node.id),
+    );
+    expect(version.orchestration?.stagePolicies.every((policy) => policy.mode === 'execute')).toBe(
+      true,
+    );
+    if (!version.orchestration) throw new Error('迁移未生成编排扩展');
+    const migrated = structuredClone(version);
+    expect(normalizeFormalVersion(version)).toBe(false);
+    expect(version).toEqual(migrated);
+    (version.orchestration as { schemaVersion: number }).schemaVersion = 2;
+    expect(() => normalizeFormalVersion(version)).toThrow('停止自动写入和派发');
+  });
+
+  it('rejects malformed nested orchestration records before they can be persisted', () => {
+    const version = createFormalVersion({
+      id: 'invalid-nested-extension',
+      title: '损坏扩展',
+      direction: '拒绝损坏嵌套记录',
+      documentRoot: 'docs/versions/invalid-nested-extension',
+    });
+    if (!version.orchestration) throw new Error('测试版本缺少编排扩展');
+    (version.orchestration.riskAssessments[0] as { level: string }).level = 'unknown';
+
+    expect(() => normalizeFormalVersion(version)).toThrow('嵌套记录损坏');
   });
 });

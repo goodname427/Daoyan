@@ -26,6 +26,11 @@ import {
 } from './secretary-channel';
 import { secretaryChannelHubFromEnvironment } from './secretary-channels';
 import {
+  appendPublicWorkEvent,
+  readPublicWorkEvents,
+  type PublicWorkEvent,
+} from './public-work-log';
+import {
   getProcessIdentity,
   isOwnedProcessAlive,
   waitForProcessIdentity,
@@ -34,16 +39,22 @@ import {
   applyContinueToSchedule,
   applyWaitingReply,
   createSecretaryState,
+  directionDestination,
   inferMessageIntent,
+  messageIsNewDirection,
   isRunEligibleForAdoption,
   itemFromIntake,
   nextRunnableItem,
+  normalizeSecretaryState,
   projectFactsFromItems,
   projectFactsFromStatus,
   publicSecretaryState,
   taskCompletionKey,
   unrecordedTaskCompletions,
+  reconciliationTargets,
+  type DirectionDestination,
   type IntakeRequest,
+  type IntakeDisposition,
   type ProjectFact,
   type SecretaryItem,
   type SecretaryMessageIntent,
@@ -53,12 +64,18 @@ import {
 } from './secretary-state';
 import {
   advanceVersion,
+  applyVersionTodoDecision,
+  addDecisionGate,
+  createFormalVersion,
+  decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
   publicVersionState,
   readFormalVersion,
   readFormalVersionById,
   recordApproval,
+  recordScopeRevision,
+  resolveDecisionGate,
   writeFormalVersion,
   type FormalVersion,
   type VersionTodo,
@@ -78,6 +95,7 @@ const stateFile = resolve(secretaryRoot, 'state.json');
 const channelsFile = resolve(secretaryRoot, 'channels.json');
 const lockFile = resolve(secretaryRoot, 'notice-guard.lock');
 const eventsFile = resolve(secretaryRoot, 'events.jsonl');
+const publicEventsFile = resolve(secretaryRoot, 'public-events.jsonl');
 const versionsRoot = resolve(agentRoot, 'versions');
 const runsRoot = resolve(agentRoot, 'runs');
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
@@ -111,6 +129,8 @@ interface RunSnapshot {
   error: string;
   updatedAt: string;
   taskCompletions: SecretaryTaskCompletion[];
+  runId: string;
+  attempt: number;
 }
 
 interface TriageResult {
@@ -158,7 +178,7 @@ let inboxWatcher: FSWatcher | null = null;
 let runWatcher: FSWatcher | null = null;
 let retryTimer: NodeJS.Timeout | null = null;
 let noticeRetryTimer: NodeJS.Timeout | null = null;
-let orphanTimer: NodeJS.Timeout | null = null;
+const orphanTimers = new Map<string, NodeJS.Timeout>();
 let httpServer: Server | null = null;
 let processingInbox = false;
 let inboxPending = false;
@@ -200,7 +220,7 @@ async function loadState(): Promise<SecretaryState> {
     if (value.version !== 1 || !Array.isArray(value.items)) throw new Error('invalid state');
     const current = { ...value } as Partial<SecretaryState> & { reviewRequired?: boolean };
     delete current.reviewRequired;
-    return {
+    const loaded = {
       ...createSecretaryState(new Date().toISOString()),
       ...current,
       processIdentity: getProcessIdentity(process.pid),
@@ -210,10 +230,14 @@ async function loadState(): Promise<SecretaryState> {
         completedTasks: Array.isArray(item.completedTasks) ? item.completedTasks : [],
       })),
       messages: Array.isArray(value.messages) ? value.messages : [],
+      orchestration: value.orchestration,
       status: 'running',
       pid: process.pid,
     } as SecretaryState;
-  } catch {
+    normalizeSecretaryState(loaded);
+    return loaded;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     return {
       ...createSecretaryState(new Date().toISOString()),
       pid: process.pid,
@@ -775,6 +799,44 @@ function publicActivityForItem(
   return activity.slice(-24);
 }
 
+function dashboardActivityFromPublicEvents(events: PublicWorkEvent[]): DashboardAgent['activity'] {
+  return events.slice(-24).map((event) => {
+    const detail = Object.values(event.payload)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .filter((value) => value !== null && value !== '')
+      .join(' · ');
+    const kind: DashboardAgent['activity'][number]['kind'] =
+      event.kind === 'file'
+        ? 'file'
+        : event.kind === 'test'
+          ? 'test'
+          : event.kind === 'error' || event.kind === 'blocker'
+            ? 'error'
+            : event.kind === 'plan' || event.kind === 'progress'
+              ? 'stage'
+              : 'action';
+    return {
+      kind,
+      createdAt: event.createdAt,
+      label: event.kind,
+      detail: publicActivityText(detail || '公开事件'),
+    };
+  });
+}
+
+function mergeDashboardActivity(
+  recorded: DashboardAgent['activity'],
+  live: DashboardAgent['activity'],
+): DashboardAgent['activity'] {
+  const unique = new Map<string, DashboardAgent['activity'][number]>();
+  for (const entry of [...recorded.slice(-16), ...live.slice(-16)]) {
+    unique.set(`${entry.kind}\u0000${entry.label}\u0000${entry.detail}`, entry);
+  }
+  return [...unique.values()]
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    .slice(-24);
+}
+
 async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgent> {
   const recovery = item.runDirectory
     ? await readJson(resolve(item.runDirectory, 'recovery.json'))
@@ -819,6 +881,17 @@ async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgen
   ]
     .map((entry) => publicActivityText(entry))
     .filter(Boolean);
+  const publicEvents = item.runDirectory
+    ? await readPublicWorkEvents(resolve(item.runDirectory, 'public-events.jsonl'))
+    : [];
+  const liveActivity = publicActivityForItem(
+    progress,
+    recovery,
+    taskRuns,
+    tasks,
+    recentOutput,
+    phase,
+  );
   return {
     id: item.id,
     role: item.scope === 'version' ? 'Version PM' : 'Feature PM',
@@ -836,7 +909,10 @@ async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgen
     elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
     runDirectory: item.runDirectory,
     retryAt: item.retryAt,
-    activity: publicActivityForItem(progress, recovery, taskRuns, tasks, recentOutput, phase),
+    activity:
+      publicEvents.length > 0
+        ? mergeDashboardActivity(dashboardActivityFromPublicEvents(publicEvents), liveActivity)
+        : liveActivity,
   };
 }
 
@@ -951,7 +1027,7 @@ function dashboardTodos(version: FormalVersion | null, isCurrent: boolean): obje
           recommendedAction: 'approve',
           recommendedLabel: '按建议通过',
           solutions: [
-            { id: 'approve', label: '通过并继续' },
+            { id: 'approve', label: todo.decisionGateId ? '批准此决策' : '通过并继续' },
             { id: 'request-changes', label: '退回修正' },
           ],
         }))
@@ -1050,8 +1126,7 @@ async function applySecretaryTodoAction(
   recordDashboardDecision(`处理待办：${item.idea}`, item.summary);
   await saveState();
   await emitNotice('todo-resolved', item.summary, item);
-  scheduleRetry();
-  if (action === 'retry-now') void coordinate();
+  await coordinate();
   return { message: item.summary };
 }
 
@@ -1060,39 +1135,11 @@ async function applyVersionTodoAction(
   action: string,
   note: string,
 ): Promise<{ message: string }> {
-  if (!['approve', 'request-changes'].includes(action)) throw new Error('不支持的版本待办方案');
   const version = await readFormalVersion(root);
   if (!version) throw new Error('当前没有正式版本');
-  const todo = version.todos.find(
-    (candidate) =>
-      candidate.id === itemId && candidate.assignee === 'producer' && candidate.status === 'open',
-  );
-  if (!todo || todo.stage !== version.currentStage) throw new Error('版本待办已经处理或不存在');
-  const decision = action === 'request-changes' ? 'changes-requested' : 'approved';
-  recordApproval(version, {
-    stage: version.currentStage,
-    reviewer: 'producer',
-    decision,
-    documentRevision: version.charterRevision,
-    comment: note || (decision === 'approved' ? '通过看板推荐方案。' : '请按制作人反馈修正。'),
-  });
-  if (decision === 'approved') {
-    const currentIndex = version.nodes.findIndex((node) => node.id === version.currentStage);
-    const next = version.nodes[currentIndex + 1];
-    if (next) advanceVersion(version, next.id);
-    if (version.currentStage === 'archived') {
-      const archived = version.nodes.find((node) => node.id === 'archived');
-      if (archived) archived.summary = '版本档案已保存，正式版本流程完成。';
-    }
-  }
+  const { title, message } = applyVersionTodoDecision(version, itemId, action, note);
   await writeFormalVersion(root, version);
-  const message =
-    version.status === 'archived'
-      ? `版本“${version.title}”已完成归档。`
-      : decision === 'approved'
-        ? `已通过，版本进入“${version.nodes.find((node) => node.id === version.currentStage)?.title}”。`
-        : `已退回“${version.nodes.find((node) => node.id === version.currentStage)?.title}”修正。`;
-  recordDashboardDecision(`处理版本待办：${todo.title}`, message);
+  recordDashboardDecision(`处理版本待办：${title}`, note ? `${message} ${note}` : message);
   await saveState();
   await emitNotice('version-todo-resolved', message);
   return { message };
@@ -1199,6 +1246,8 @@ async function scanRuns(): Promise<RunSnapshot[]> {
         error: String(manifest.error ?? ''),
         updatedAt: String(manifest.updatedAt ?? ''),
         taskCompletions: await versionTaskCompletions(directory, objective, manifest),
+        runId: String(manifest.runId ?? entry.name),
+        attempt: Number(manifest.attempt ?? 0),
       });
     }
   }
@@ -1232,6 +1281,8 @@ async function scanRuns(): Promise<RunSnapshot[]> {
         error: String(recovery?.error ?? report?.extra ?? ''),
         updatedAt: String(recovery?.updatedAt ?? ''),
         taskCompletions: featureTaskCompletions(directory, parentTitle, '', recovery, report),
+        runId: String(recovery?.runId ?? entry.name),
+        attempt: Number(recovery?.attempt ?? recovery?.recoveryAttempts ?? 0),
       });
     }
   }
@@ -1254,6 +1305,10 @@ async function snapshotForItem(item: SecretaryItem): Promise<RunSnapshot | null>
       error: String(manifest.error ?? ''),
       updatedAt: String(manifest.updatedAt ?? ''),
       taskCompletions: await versionTaskCompletions(item.runDirectory, objective, manifest),
+      runId: String(manifest.runId ?? basename(item.runDirectory)),
+      attempt: Number(
+        manifest.attempt ?? item.orchestration?.attempt ?? item.recoveryAttempts ?? 0,
+      ),
     };
   }
   const recovery = await readJson(resolve(item.runDirectory, 'recovery.json'));
@@ -1286,6 +1341,14 @@ async function snapshotForItem(item: SecretaryItem): Promise<RunSnapshot | null>
       '',
       recovery,
       report,
+    ),
+    runId: String(recovery?.runId ?? basename(item.runDirectory)),
+    attempt: Number(
+      recovery?.attempt ??
+        recovery?.recoveryAttempts ??
+        item.orchestration?.attempt ??
+        item.recoveryAttempts ??
+        0,
     ),
   };
 }
@@ -1371,6 +1434,7 @@ async function writeInboxResponse(
   intent: SecretaryMessageIntent,
   plannedTasks: string[] = [],
 ): Promise<void> {
+  normalizeSecretaryState(state);
   if (!state.messages.some((message) => message.id === request.id)) {
     state.messages.push({
       id: request.id,
@@ -1390,7 +1454,42 @@ async function writeInboxResponse(
     });
   }
   if (state.messages.length > 200) state.messages.splice(0, state.messages.length - 200);
+  if (!state.orchestration!.intakes.some((intake) => intake.requestId === request.id)) {
+    state.orchestration!.intakes.push({
+      requestId: request.id,
+      intent,
+      disposition: intent === 'continue' ? 'resumed' : 'answered',
+      status: 'completed',
+      targetVersionId: '',
+      scopeRevision: null,
+      reason: response,
+      createdAt: request.createdAt,
+      completedAt: new Date().toISOString(),
+    });
+  }
   await saveState();
+  await appendPublicWorkEvent(publicEventsFile, {
+    eventId: `input-${request.id}`,
+    sequence: 0,
+    requestId: request.id,
+    itemId: request.id,
+    agentId: 'secretary',
+    kind: 'input',
+    payload: { summary: request.idea, source: 'producer-message' },
+    createdAt: request.createdAt,
+  });
+  await appendPublicWorkEvent(publicEventsFile, {
+    eventId: `response-${request.id}`,
+    sequence: 0,
+    requestId: request.id,
+    itemId: request.id,
+    agentId: 'secretary',
+    kind: intent === 'reply' ? 'decision' : 'action',
+    payload:
+      intent === 'reply'
+        ? { summary: response, basis: 'linked-producer-message', status }
+        : { action: intent, summary: response, status },
+  });
   await writeJsonAtomic(resolve(responseRoot, `${request.id}.json`), {
     id: request.id,
     response,
@@ -1473,6 +1572,7 @@ async function continueScheduledWork(request: IntakeRequest): Promise<void> {
 }
 
 export function versionProducerDecision(message: string): 'approved' | 'changes-requested' | null {
+  if (versionMessageIsNewDirection(message)) return null;
   const normalized = message.replace(/\s/g, '');
   if (/(不通过|不能通过|先别|不要继续|需要修改|需要调整|有问题|不行)/.test(normalized)) {
     return 'changes-requested';
@@ -1484,10 +1584,211 @@ export function versionProducerDecision(message: string): 'approved' | 'changes-
 }
 
 export function versionMessageIsNewDirection(message: string): boolean {
-  const normalized = message.replace(/\s/g, '');
-  return /(新方向|新需求|新增.{0,12}(系统|功能|玩法|模块)|(?:另外|后续|以后).{0,12}(系统|功能|玩法|方向)|我希望.{0,12}(新增|增加|加入|开发|实现))/.test(
-    normalized,
+  return messageIsNewDirection(message);
+}
+
+function draftVersionId(request: IntakeRequest): string {
+  const date = request.createdAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const requestKey = request.id.replace(/[^a-z0-9_-]/gi, '-').slice(0, 24) || 'direction';
+  return `draft-${date}-${requestKey}`.toLowerCase();
+}
+
+async function routeNewDirection(request: IntakeRequest, item: SecretaryItem): Promise<string> {
+  normalizeSecretaryState(state);
+  const orchestration = state.orchestration!;
+  let intake = orchestration.intakes.find((candidate) => candidate.requestId === request.id);
+  if (intake?.status === 'completed') {
+    item.status = intake.disposition === 'next-version-candidate' ? 'backlog' : 'answered';
+    item.completedAt = item.status === 'answered' ? intake.completedAt : '';
+    item.summary = intake.reason;
+    return intake.reason;
+  }
+  let current = await readFormalVersion(root);
+  let active = current && current.status !== 'archived' ? current : null;
+  if (!intake || (intake.status === 'pending' && !intake.targetVersionId)) {
+    const destination = directionDestination(request.idea, current);
+    const disposition: IntakeDisposition =
+      destination === 'draft-version'
+        ? 'draft-created'
+        : destination === 'current-version'
+          ? 'merged-current'
+          : destination === 'next-version-candidate'
+            ? 'next-version-candidate'
+            : 'scope-review';
+    const targetVersionId =
+      destination === 'draft-version' ? draftVersionId(request) : (active?.id ?? '');
+    const pending = {
+      requestId: request.id,
+      intent: 'direction' as const,
+      disposition,
+      status: 'pending' as const,
+      targetVersionId,
+      scopeRevision: null,
+      reason: '正在确定新方向的正式版本去向。',
+      createdAt: request.createdAt,
+      completedAt: '',
+    };
+    if (intake) Object.assign(intake, pending);
+    else {
+      intake = pending;
+      orchestration.intakes.push(intake);
+    }
+    await saveState();
+  }
+  if (!intake) {
+    // The branch above always creates an intake; keep this guard so a future
+    // schema change cannot continue without a durable transaction intent.
+    throw new Error('新方向缺少持久收件事务，已停止自动立项');
+  }
+
+  const destination: DirectionDestination =
+    intake.disposition === 'draft-created'
+      ? 'draft-version'
+      : intake.disposition === 'merged-current'
+        ? 'current-version'
+        : intake.disposition === 'next-version-candidate'
+          ? 'next-version-candidate'
+          : 'scope-review';
+  const target = intake.targetVersionId
+    ? await readFormalVersionById(root, intake.targetVersionId)
+    : null;
+  const existingRevision = target?.orchestration?.scopeRevisions.find(
+    (revision) => revision.sourceRequestId === request.id,
   );
+  if (target && existingRevision) {
+    intake.disposition =
+      existingRevision.disposition === 'initial'
+        ? 'draft-created'
+        : existingRevision.disposition === 'merged'
+          ? 'merged-current'
+          : 'scope-review';
+    intake.targetVersionId = target.id;
+    intake.scopeRevision = existingRevision.revision;
+    intake.reason =
+      existingRevision.disposition === 'initial'
+        ? `已为新方向建立正式版本草案“${target.title}”；草案不等于开发批准，完成策划后仍须经过制作人立项评审。`
+        : existingRevision.disposition === 'merged'
+          ? `该方向已并入未冻结的正式版本“${target.title}”范围修订 ${existingRevision.revision}。`
+          : `该方向可能改变正式版本“${target.title}”的已批准承诺，已进入范围修订评审；确认前不会执行。`;
+    intake.status = 'completed';
+    intake.completedAt = new Date().toISOString();
+    item.status = 'answered';
+    item.completedAt = intake.completedAt;
+    item.summary = intake.reason;
+    await saveState();
+    return intake.reason;
+  }
+  if (target && destination === 'draft-version') {
+    intake.status = 'blocked';
+    intake.reason = `目标草案 ID ${target.id} 已存在，但没有当前请求的来源修订；为避免覆盖或冒认历史版本，已停止自动立项。`;
+    item.status = 'waiting-producer';
+    item.summary = intake.reason;
+    await saveState();
+    return intake.reason;
+  }
+
+  current = await readFormalVersion(root);
+  active = current && current.status !== 'archived' ? current : null;
+  if (destination !== 'draft-version' && (!active || active.id !== intake.targetVersionId)) {
+    intake.status = 'blocked';
+    intake.reason = `收件事务原定关联正式版本 ${intake.targetVersionId || '未知'}，但当前版本已变化；为避免重复立项或误并范围，已停止自动处理。`;
+    item.status = 'waiting-producer';
+    item.summary = intake.reason;
+    await saveState();
+    return intake.reason;
+  }
+  if (destination === 'draft-version' && active && active.id !== intake.targetVersionId) {
+    intake.status = 'blocked';
+    intake.reason = `收件事务原定创建草案 ${intake.targetVersionId}，但当前已有活动版本 ${active.id}；为避免覆盖新状态，已停止自动立项。`;
+    item.status = 'waiting-producer';
+    item.summary = intake.reason;
+    await saveState();
+    return intake.reason;
+  }
+
+  if (destination === 'draft-version') {
+    const id = intake.targetVersionId;
+    if (!id) throw new Error('草案收件事务缺少目标版本 ID');
+    const existing = await readFormalVersionById(root, id);
+    const version =
+      existing ??
+      createFormalVersion({
+        id,
+        title: request.idea.slice(0, 36),
+        direction: request.idea,
+        documentRoot: `docs/versions/${id}`,
+        currentStage: 'charter-draft',
+        sourceRequestId: request.id,
+        now: request.createdAt,
+      });
+    if (!existing) await writeFormalVersion(root, version, { allowVersionSwitch: true });
+    intake.disposition = 'draft-created';
+    intake.targetVersionId = version.id;
+    intake.scopeRevision = 1;
+    intake.reason = `已为新方向建立正式版本草案“${version.title}”；草案不等于开发批准，完成策划后仍须经过制作人立项评审。`;
+    item.status = 'answered';
+    item.completedAt = new Date().toISOString();
+  } else if (destination === 'next-version-candidate' && active) {
+    const candidateId = `candidate-${request.id}`;
+    if (!orchestration.nextVersionCandidates.some((candidate) => candidate.id === candidateId)) {
+      orchestration.nextVersionCandidates.push({
+        id: candidateId,
+        requestId: request.id,
+        direction: request.idea,
+        reason: `当前版本 ${active.id} 已冻结范围。`,
+        sourceVersionId: active.id,
+        createdAt: request.createdAt,
+      });
+    }
+    intake.disposition = 'next-version-candidate';
+    intake.targetVersionId = active.id;
+    intake.reason = `当前正式版本“${active.title}”已冻结范围；该方向已进入下一版本候选，不会自动立项或启动开发。`;
+    item.status = 'backlog';
+  } else if (destination === 'current-version' && active) {
+    const revision = recordScopeRevision(active, {
+      direction: request.idea,
+      sourceRequestId: request.id,
+      disposition: 'merged',
+      reason: '方向与当前未冻结版本目标一致，合并为新的范围修订。',
+      now: request.createdAt,
+    });
+    await writeFormalVersion(root, active);
+    intake.disposition = 'merged-current';
+    intake.targetVersionId = active.id;
+    intake.scopeRevision = revision.revision;
+    intake.reason = `该方向已并入未冻结的正式版本“${active.title}”范围修订 ${revision.revision}。`;
+    item.status = 'answered';
+    item.completedAt = new Date().toISOString();
+  } else if (active) {
+    const revision = recordScopeRevision(active, {
+      direction: request.idea,
+      sourceRequestId: request.id,
+      disposition: 'scope-review',
+      reason: '该方向可能改变已批准承诺，需要制作人确认范围修订。',
+      now: request.createdAt,
+    });
+    addDecisionGate(active, {
+      kind: 'scope-change',
+      stage: active.currentStage,
+      summary: `确认是否将“${request.idea}”纳入当前版本`,
+      sourceRequestId: request.id,
+      now: request.createdAt,
+    });
+    await writeFormalVersion(root, active);
+    intake.disposition = 'scope-review';
+    intake.targetVersionId = active.id;
+    intake.scopeRevision = revision.revision;
+    intake.reason = `该方向可能改变正式版本“${active.title}”的已批准承诺，已进入范围修订评审；确认前不会执行。`;
+    item.status = 'answered';
+    item.completedAt = new Date().toISOString();
+  } else {
+    throw new Error('正式版本去向与当前状态不一致，已停止自动立项');
+  }
+  intake.status = 'completed';
+  intake.completedAt = new Date().toISOString();
+  item.summary = intake.reason;
+  await saveState();
+  return intake.reason;
 }
 
 async function currentProducerGate(): Promise<{
@@ -1510,10 +1811,40 @@ async function handleVersionProducerReply(
   intent: SecretaryMessageIntent,
 ): Promise<boolean> {
   if (intent === 'question') return false;
+  if (versionMessageIsNewDirection(request.idea)) return false;
+  const current = await readFormalVersion(root);
+  const decision = versionProducerDecision(request.idea);
+  const decisionGate =
+    current?.orchestration?.decisionGates.find((candidate) => candidate.status === 'open') ??
+    (decision === 'approved'
+      ? current?.orchestration?.decisionGates.find(
+          (candidate) => candidate.status === 'rejected' && candidate.kind !== 'scope-change',
+        )
+      : undefined);
+  if (current && decisionGate) {
+    if (!decision) {
+      const response = '已记录补充；当前范围或架构决策门禁仍在等待明确批准或退回。';
+      await writeInboxResponse(request, response, 'answered', 'reply');
+      return true;
+    }
+    resolveDecisionGate(
+      current,
+      decisionGate.id,
+      decision === 'approved' ? 'approved' : 'rejected',
+      request.createdAt,
+      request.id,
+    );
+    await writeFormalVersion(root, current);
+    const response =
+      decision === 'approved'
+        ? `已批准“${decisionGate.summary}”，内部流程可按新的范围修订继续。`
+        : `已退回“${decisionGate.summary}”，当前版本保持原承诺并暂停相关动作。`;
+    await writeInboxResponse(request, response, 'answered', 'reply');
+    await emitNotice('version-decision-recorded', response, undefined, undefined, request.id);
+    return true;
+  }
   const gate = await currentProducerGate();
   if (!gate) return false;
-  const decision = versionProducerDecision(request.idea);
-  if (!decision && versionMessageIsNewDirection(request.idea)) return false;
   if (!decision) {
     const response =
       '已记录你的补充，当前评审保持等待。明确回复“通过”，或指出需要修改的内容后，秘书再推进版本。';
@@ -1573,7 +1904,8 @@ async function recoverProcessedRequest(
   );
   const version = await readFormalVersion(root);
   const approval = version?.approvals.find((candidate) => candidate.sourceRequestId === request.id);
-  if (!producerMessage && !replyMessage && !item && !approval) return false;
+  const gateResolution = version ? decisionResolutionForRequest(version, request.id) : null;
+  if (!producerMessage && !replyMessage && !item && !approval && !gateResolution) return false;
 
   const stageTitle = version?.nodes.find((node) => node.id === version.currentStage)?.title;
   const approvalResponse = approval
@@ -1583,7 +1915,13 @@ async function recoverProcessedRequest(
         ? `已记录版本评审通过，当前进入“${stageTitle ?? version?.currentStage}”。`
         : `已记录你的反馈，版本已退回“${stageTitle ?? version?.currentStage}”调整。`
     : '';
-  const response = replyMessage?.content || item?.summary || approvalResponse || '已处理。';
+  const decisionResponse = gateResolution
+    ? gateResolution.decision === 'approved'
+      ? `已批准“${gateResolution.gate.summary}”，内部流程可继续。`
+      : `已退回“${gateResolution.gate.summary}”，当前版本保持暂停等待重新审批。`
+    : '';
+  const response =
+    replyMessage?.content || item?.summary || approvalResponse || decisionResponse || '已处理。';
   const intent = replyMessage?.intent ?? producerMessage?.intent ?? 'reply';
   await writeInboxResponse(
     request,
@@ -1646,7 +1984,8 @@ async function processInbox(): Promise<void> {
           await rm(path, { force: true });
           continue;
         }
-        const needsSemanticTriage = !local.item.matchedFact || Boolean(waiting);
+        const needsSemanticTriage =
+          Boolean(waiting) || (fallbackIntent !== 'reply' && !local.item.matchedFact);
         let model: TriageResult | null = null;
         if (needsSemanticTriage) {
           try {
@@ -1675,11 +2014,21 @@ async function processInbox(): Promise<void> {
           if (!local.item.matchedFact) response = localQuestionResponse(request.idea, known.facts);
           local.item.summary = response;
         }
+        if (!model && intent === 'reply') {
+          local.item.status = 'answered';
+          local.item.plannedTasks = [];
+          local.item.completedAt = request.createdAt;
+          response = '当前没有可关联的待办或评审；已保留这条回复，但不会据此建立版本或启动任务。';
+          local.item.summary = response;
+        }
         if (local.item.matchedFact?.reference.startsWith('secretary:')) {
           local.item.status = 'answered';
           local.item.completedAt = request.createdAt;
           response = `该方向已经在秘书队列中，不会重复派发：${local.item.idea}`;
           local.item.summary = response;
+        }
+        if (intent === 'direction' && local.item.status === 'queued' && !local.item.matchedFact) {
+          response = await routeNewDirection(request, local.item);
         }
         if (local.item.status === 'queued') {
           local.item.status = 'backlog';
@@ -1850,28 +2199,40 @@ function isCleanWorktree(): boolean {
 }
 
 function scheduleOrphanRecovery(item: SecretaryItem): void {
-  if (orphanTimer) return;
-  orphanTimer = setTimeout(() => {
-    orphanTimer = null;
-    if (item.status !== 'tracking' || state.activeItemId !== item.id) return;
-    const canProveExited =
-      item.processPid > 0 &&
-      Boolean(item.processIdentity) &&
-      !isOwnedProcessAlive(item.processPid, item.processIdentity);
-    item.status = canProveExited ? 'retry-wait' : 'waiting-producer';
-    item.retryAt = canProveExited ? new Date().toISOString() : '';
-    item.summary = canProveExited
-      ? '原 PM 已退出，notice guard 将从持久恢复点接管。'
-      : '这是旧格式的外部 PM 运行，恢复点没有进程标识；为避免并发编辑，秘书不会自动抢占，需要确认原进程已停止后再接管。';
-    item.processPid = 0;
-    item.processIdentity = '';
-    state.activeItemId = canProveExited ? '' : item.id;
-    void saveState()
-      .then(() =>
-        canProveExited ? coordinate() : emitNotice('producer-decision', item.summary, item),
-      )
-      .catch((error) => console.error(`[notice guard] 孤儿运行处理失败：${String(error)}`));
-  }, config.guard.orphanRecoveryMinutes * 60_000);
+  if (orphanTimers.has(item.id)) return;
+  orphanTimers.set(
+    item.id,
+    setTimeout(() => {
+      orphanTimers.delete(item.id);
+      if (item.status !== 'tracking') return;
+      const canProveExited =
+        item.processPid > 0 &&
+        Boolean(item.processIdentity) &&
+        !isOwnedProcessAlive(item.processPid, item.processIdentity);
+      item.status = canProveExited ? 'retry-wait' : 'waiting-producer';
+      item.retryAt = canProveExited ? new Date().toISOString() : '';
+      item.summary = canProveExited
+        ? '原 PM 已退出，notice guard 将从持久恢复点接管。'
+        : '这是旧格式的外部 PM 运行，恢复点没有进程标识；为避免并发编辑，秘书不会自动抢占，需要确认原进程已停止后再接管。';
+      item.processPid = 0;
+      item.processIdentity = '';
+      if (item.orchestration) item.orchestration.processOccupied = false;
+      if (canProveExited) {
+        if (state.activeItemId === item.id) state.activeItemId = '';
+      } else state.activeItemId = item.id;
+      void saveState()
+        .then(() =>
+          canProveExited ? coordinate() : emitNotice('producer-decision', item.summary, item),
+        )
+        .catch((error) => console.error(`[notice guard] 孤儿运行处理失败：${String(error)}`));
+    }, config.guard.orphanRecoveryMinutes * 60_000),
+  );
+}
+
+function clearOrphanRecovery(itemId: string): void {
+  const timer = orphanTimers.get(itemId);
+  if (timer) clearTimeout(timer);
+  orphanTimers.delete(itemId);
 }
 
 async function markMissingSnapshot(item: SecretaryItem, exitCode: number): Promise<void> {
@@ -1882,8 +2243,7 @@ async function markMissingSnapshot(item: SecretaryItem, exitCode: number): Promi
     item.summary = `PM 以代码 ${exitCode} 退出且未留下恢复点，将作为新运行重试。`;
     item.retryAt = new Date(Date.now() + config.guard.executionRetryMinutes * 60_000).toISOString();
     item.runDirectory = '';
-    state.activeItemId = '';
-    scheduleRetry();
+    if (state.activeItemId === item.id) state.activeItemId = '';
     return;
   }
   item.status = 'waiting-producer';
@@ -1900,11 +2260,46 @@ async function reconcileItem(
   let run = supplied;
   if (!run && item.runDirectory) {
     run =
-      (await scanRuns()).find((candidate) => candidate.directory === item.runDirectory) ??
       (await snapshotForItem(item)) ??
+      (await scanRuns()).find((candidate) => candidate.directory === item.runDirectory) ??
       undefined;
   }
   if (!run) return false;
+  normalizeSecretaryState(state);
+  const itemOrchestration = item.orchestration!;
+  itemOrchestration.runId = run.runId;
+  itemOrchestration.attempt = run.attempt;
+  const recordReconciliation = (
+    outcome: NonNullable<SecretaryItem['orchestration']>['reconciliationOutcome'],
+    reason: string,
+    evidence: string[] = [],
+  ): void => {
+    if (!outcome) return;
+    itemOrchestration.reconciliationOutcome = outcome;
+    const records = state.orchestration!.reconciliations;
+    if (
+      records.some(
+        (record) =>
+          record.itemId === item.id &&
+          record.runId === run.runId &&
+          record.attempt === run.attempt &&
+          record.snapshotStatus === run.status &&
+          record.outcome === outcome,
+      )
+    ) {
+      return;
+    }
+    records.push({
+      itemId: item.id,
+      runId: run.runId,
+      attempt: run.attempt,
+      snapshotStatus: run.status,
+      outcome,
+      reason,
+      evidence,
+      reconciledAt: new Date().toISOString(),
+    });
+  };
   const launchStartedAt = activeLaunchStartedAt.get(item.id);
   if (
     item.status === 'active' &&
@@ -1914,6 +2309,13 @@ async function reconcileItem(
   ) {
     return false;
   }
+  // A tracked child outlives its PM, so the item may already have cleared the
+  // PM reference. Keep using the owned snapshot to recognize that PM's exit.
+  processEnded ||= Boolean(
+    run.processPid > 0 &&
+    run.processIdentity &&
+    !isOwnedProcessAlive(run.processPid, run.processIdentity),
+  );
   item.updatedAt = new Date().toISOString();
   const completed = unrecordedTaskCompletions(item.completedTasks, run.taskCompletions);
   if (completed.length > 0) {
@@ -1930,46 +2332,88 @@ async function reconcileItem(
     }
   }
   if (run.status === 'review-ready' || run.status === 'delivered') {
-    const firstDelivery = item.status !== 'delivered';
-    item.status = 'delivered';
-    item.completedAt = item.updatedAt;
-    item.processPid = 0;
-    item.processIdentity = '';
-    state.activeItemId = '';
+    const awaitingReview = run.status === 'review-ready';
+    const firstDelivery = !state.orchestration!.reconciliations.some(
+      (record) =>
+        record.itemId === item.id &&
+        record.runId === run.runId &&
+        record.attempt === run.attempt &&
+        record.snapshotStatus === run.status &&
+        record.outcome === (awaitingReview ? 'awaiting-review' : 'delivered'),
+    );
+    const worker = await activeWorkerProcess(item, true);
+    const pmOccupied = isOwnedProcessAlive(run.processPid, run.processIdentity, 0);
+    const processOccupied = pmOccupied || Boolean(worker);
+    item.status = processOccupied ? 'tracking' : 'delivered';
+    if (!item.completedAt) item.completedAt = item.updatedAt;
+    item.retryAt = '';
+    item.recoveryAttempts = 0;
+    itemOrchestration.awaitingReview = awaitingReview;
+    itemOrchestration.processOccupied = processOccupied;
+    item.processPid = pmOccupied ? run.processPid : (worker?.pid ?? 0);
+    item.processIdentity = pmOccupied ? run.processIdentity : (worker?.identity ?? '');
+    if (state.activeItemId === item.id && !processOccupied) state.activeItemId = '';
+    if (processOccupied) state.activeItemId = item.id;
+    recordReconciliation(
+      awaitingReview ? 'awaiting-review' : 'delivered',
+      processOccupied
+        ? '终态快照已停止重试，但所属写进程仍占用工作区。'
+        : awaitingReview
+          ? '待审快照已停止开发派发，正式版本审批状态保持不变。'
+          : '本轮交付已完成并清理陈旧恢复状态。',
+      [run.directory],
+    );
     const queued = state.items.some((candidate) => candidate.status === 'queued');
-    if (orphanTimer) clearTimeout(orphanTimer);
-    orphanTimer = null;
+    clearOrphanRecovery(item.id);
     if (firstDelivery)
       await emitNotice(
         'delivery-complete',
-        `${item.scope === 'version' ? '版本' : 'Feature'} 已完成，可以 Review：${item.idea}。${queued ? '队列中的下一项将自动开始。' : '秘书会从项目状态承接下一项；没有待办时进入休眠。'}`,
+        `${item.scope === 'version' ? '版本' : 'Feature'} ${awaitingReview ? '已进入待审' : '已完成交付'}：${item.idea}。${processOccupied ? '仍等待所属写进程退出，不会启动第二个写进程。' : queued ? '队列中的下一项将自动开始。' : '没有已批准待办时进入休眠。'}`,
         item,
       );
     return true;
   }
   if (run.status === 'waiting-producer') {
-    if (orphanTimer) clearTimeout(orphanTimer);
-    orphanTimer = null;
+    clearOrphanRecovery(item.id);
     const firstRequest = item.status !== 'waiting-producer';
     item.status = 'waiting-producer';
     item.summary = run.error || '当前任务需要制作人决定产品方向。';
     item.processPid = 0;
     item.processIdentity = '';
+    item.retryAt = '';
+    item.recoveryAttempts = 0;
+    itemOrchestration.awaitingReview = false;
+    itemOrchestration.processOccupied = false;
     state.activeItemId = item.id;
+    recordReconciliation('waiting-producer', item.summary, [run.directory]);
     if (firstRequest) await emitNotice('producer-decision', item.summary, item);
     return true;
   }
   if (run.status === 'recoverable') {
-    if (orphanTimer) clearTimeout(orphanTimer);
-    orphanTimer = null;
+    clearOrphanRecovery(item.id);
     item.processPid = 0;
     item.processIdentity = '';
+    const alreadyWaitingForSnapshot =
+      item.status === 'retry-wait' &&
+      Boolean(item.retryAt) &&
+      state.orchestration!.reconciliations.some(
+        (record) =>
+          record.itemId === item.id &&
+          record.runId === run.runId &&
+          record.attempt === run.attempt &&
+          record.snapshotStatus === run.status &&
+          record.outcome === 'retry-wait',
+      );
+    if (alreadyWaitingForSnapshot) {
+      return true;
+    }
     if (externalBlocker(run.error)) {
       const firstBlock = item.status !== 'waiting-producer';
       item.status = 'waiting-producer';
       item.retryAt = '';
       item.summary = `${run.error || '账号、鉴权或额度暂不可用'}。秘书已暂停当前工作；条件恢复后直接回复秘书即可继续。`;
       state.activeItemId = item.id;
+      recordReconciliation('waiting-producer', item.summary, [run.directory]);
       if (firstBlock) await emitNotice('external-blocker', item.summary, item);
       return true;
     }
@@ -1983,8 +2427,8 @@ async function reconcileItem(
     item.status = 'retry-wait';
     item.summary = run.error || '调度运行可恢复，等待下一次自动接管。';
     item.retryAt = new Date(Date.now() + minutes * 60_000).toISOString();
-    state.activeItemId = '';
-    scheduleRetry();
+    if (state.activeItemId === item.id) state.activeItemId = '';
+    recordReconciliation('retry-wait', item.summary, [run.directory]);
     return true;
   }
   if (run.status === 'failed') {
@@ -1994,8 +2438,7 @@ async function reconcileItem(
   if (processEnded) {
     const worker = await activeWorkerProcess(item, true);
     if (worker) {
-      if (orphanTimer) clearTimeout(orphanTimer);
-      orphanTimer = null;
+      clearOrphanRecovery(item.id);
       item.status = 'tracking';
       item.summary =
         'PM 已退出，但其子 Agent 仍在运行；秘书会等待该进程结束后再恢复，避免重复编辑。';
@@ -2003,6 +2446,8 @@ async function reconcileItem(
       item.processPid = 0;
       item.processIdentity = '';
       state.activeItemId = item.id;
+      itemOrchestration.processOccupied = true;
+      recordReconciliation('running', item.summary, [run.directory]);
       attachWorkerExitNotice(item, worker);
       return true;
     }
@@ -2011,15 +2456,18 @@ async function reconcileItem(
     item.retryAt = new Date().toISOString();
     item.processPid = 0;
     item.processIdentity = '';
-    state.activeItemId = '';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+    itemOrchestration.processOccupied = false;
+    recordReconciliation('retry-wait', item.summary, [run.directory]);
     return true;
   }
   item.status = 'tracking';
   state.activeItemId = item.id;
+  itemOrchestration.processOccupied = true;
+  recordReconciliation('running', '已核实本轮运行仍在执行或等待所属进程退出。', [run.directory]);
   const worker = await activeWorkerProcess(item);
   if (worker) {
-    if (orphanTimer) clearTimeout(orphanTimer);
-    orphanTimer = null;
+    clearOrphanRecovery(item.id);
     attachWorkerExitNotice(item, worker);
   } else if (!isOwnedProcessAlive(item.processPid, item.processIdentity)) {
     scheduleOrphanRecovery(item);
@@ -2084,16 +2532,19 @@ async function locateVersionRun(item: SecretaryItem): Promise<void> {
 }
 
 async function launch(item: SecretaryItem): Promise<void> {
-  if (orphanTimer) clearTimeout(orphanTimer);
-  orphanTimer = null;
+  clearOrphanRecovery(item.id);
   item.status = 'active';
   item.retryAt = '';
   item.updatedAt = new Date().toISOString();
   activeLaunchStartedAt.set(item.id, item.updatedAt);
   if (item.runDirectory) item.recoveryAttempts += 1;
+  normalizeSecretaryState(state);
+  item.orchestration!.attempt += 1;
   state.activeItemId = item.id;
+  const args = runArgs(item);
+  item.orchestration!.runId = item.runDirectory ? basename(item.runDirectory) : item.id;
   const log = openSync(resolve(secretaryRoot, `${item.id}.log`), 'a');
-  const child = spawn(process.execPath, runArgs(item), {
+  const child = spawn(process.execPath, args, {
     cwd: root,
     env: workerEnvironment(),
     stdio: ['ignore', log, log],
@@ -2133,38 +2584,75 @@ export function snapshotPredatesLaunch(
 
 function scheduleRetry(): void {
   if (retryTimer) clearTimeout(retryTimer);
-  const candidates = state.items
-    .filter((item) => item.status === 'retry-wait' && item.retryAt)
-    .map((item) => Date.parse(item.retryAt))
-    .filter((value) => Number.isFinite(value));
-  if (candidates.length === 0) return;
-  const delay = Math.max(0, Math.min(...candidates) - Date.now());
-  retryTimer = setTimeout(() => void coordinate(), delay);
+  retryTimer = null;
+  const firstPending = state.items.find((item) =>
+    ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),
+  );
+  if (firstPending?.status !== 'retry-wait') return;
+  const retryAt = Date.parse(firstPending.retryAt);
+  if (!Number.isFinite(retryAt)) return;
+  const delay = Math.max(0, retryAt - Date.now());
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    void coordinate();
+  }, delay);
 }
 
 async function coordinateOnce(): Promise<void> {
   if (stopping) return;
-  const active = state.items.find((item) => item.id === state.activeItemId);
-  if (active) {
-    if (!active.runDirectory && active.scope === 'version') await locateVersionRun(active);
+  // Re-arm only after the entire queue is reconciled and dispatch is unblocked.
+  // Due retries blocked by a decision or writer wait for that owner's next event.
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  normalizeSecretaryState(state);
+  const targets = reconciliationTargets(state);
+  for (const item of targets) {
+    if (!item.runDirectory && item.scope === 'version') await locateVersionRun(item);
     const processEnded =
-      active.processPid > 0 &&
-      Boolean(active.processIdentity) &&
-      !isOwnedProcessAlive(active.processPid, active.processIdentity);
-    await reconcileItem(active, undefined, processEnded);
-    await saveState();
-    if (activeChild) {
-      return;
-    }
-    if (state.activeItemId) {
-      if (isOwnedProcessAlive(active.processPid, active.processIdentity)) {
-        attachProcessExitNotice(active);
-      }
-      return;
+      item.processPid > 0 &&
+      Boolean(item.processIdentity) &&
+      !isOwnedProcessAlive(item.processPid, item.processIdentity);
+    await reconcileItem(item, undefined, processEnded);
+    if (isOwnedProcessAlive(item.processPid, item.processIdentity)) {
+      attachProcessExitNotice(item);
     }
   }
+  const waiting = state.items.find((item) => item.status === 'waiting-producer');
+  const occupiedItems = state.items.filter(
+    (item) =>
+      ['active', 'tracking'].includes(item.status) &&
+      (isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+        item.orchestration?.processOccupied),
+  );
+  const occupied = occupiedItems[0];
+  // Preserve the current decision context, but never promote an unrelated
+  // historical todo over a live writer or into a just-released active slot.
+  const activeWaiting = state.items.find(
+    (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
+  );
+  state.activeItemId = occupied?.id ?? activeWaiting?.id ?? '';
+  await saveState();
+  if (occupiedItems.length > 1) {
+    const ids = occupiedItems.map((item) => item.id).sort();
+    await appendPublicWorkEvent(publicEventsFile, {
+      eventId: `multiple-writers-${ids.join('-')}`,
+      sequence: 0,
+      agentId: 'secretary',
+      kind: 'blocker',
+      payload: {
+        summary: `检测到多个仍占用工作区的运行：${ids.join('、')}`,
+        category: 'multiple-writers',
+        recoveryCondition: '核实每个 PM 或子 Agent 的进程归属并等待其退出。',
+      },
+    });
+    return;
+  }
+  if (activeChild || waiting || occupied) return;
   if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
-  if (await adoptExistingRun()) return;
+  if (await adoptExistingRun()) {
+    coordinatePending = true;
+    return;
+  }
   const next = nextRunnableItem(state, new Date().toISOString());
   if (next) await launch(next);
   else scheduleRetry();
@@ -2299,7 +2787,8 @@ function requestAlreadyKnown(id: string): boolean {
     existsSync(resolve(inboxRoot, `${id}.json`)) ||
     existsSync(resolve(responseRoot, `${id}.json`)) ||
     state.items.some((item) => item.id === id) ||
-    state.messages.some((message) => message.id === id)
+    state.messages.some((message) => message.id === id) ||
+    state.orchestration?.intakes.some((intake) => intake.requestId === id) === true
   );
 }
 
@@ -2415,7 +2904,8 @@ async function shutdown(): Promise<void> {
   stopping = true;
   if (retryTimer) clearTimeout(retryTimer);
   if (noticeRetryTimer) clearTimeout(noticeRetryTimer);
-  if (orphanTimer) clearTimeout(orphanTimer);
+  for (const timer of orphanTimers.values()) clearTimeout(timer);
+  orphanTimers.clear();
   inboxWatcher?.close();
   runWatcher?.close();
   httpServer?.close();

@@ -126,7 +126,9 @@ describe('formal version producer decisions', () => {
     expect(versionProducerDecision('这里有问题，需要调整范围')).toBe('changes-requested');
     expect(versionProducerDecision('我再看看，晚点回复')).toBeNull();
     expect(versionProducerDecision('另外我有一个新方向')).toBeNull();
+    expect(versionProducerDecision('新增审批确认功能')).toBeNull();
     expect(versionMessageIsNewDirection('另外我有一个新方向')).toBe(true);
+    expect(versionMessageIsNewDirection('新增审批确认功能')).toBe(true);
     expect(versionMessageIsNewDirection('我再看看，晚点回复')).toBe(false);
   });
 

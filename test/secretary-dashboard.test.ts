@@ -8,11 +8,15 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { waitForProcessIdentity } from '../scripts/process-identity';
 import { waitForSecretaryDashboard } from './helpers/secretary-guard';
+import { createSecretaryState, itemFromIntake } from '../scripts/secretary-state';
 import {
+  addDecisionGate,
   advanceVersion,
   createFormalVersion,
   recordApproval,
+  resolveDecisionGate,
   setNodeEvidence,
+  type FormalVersion,
 } from '../scripts/version-lifecycle';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -79,6 +83,360 @@ afterEach(async () => {
 });
 
 describe('secretary dashboard server', () => {
+  it.each(['waiting-producer', 'tracking'] as const)(
+    'keeps overdue retries asleep behind %s until an external event',
+    async (blockerStatus) => {
+      temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-blocked-retry-'));
+      const secretaryState = resolve(temporary, 'secretary');
+      const releaseState = resolve(temporary, 'releases');
+      const runDirectory = resolve(temporary, 'retry-run');
+      await mkdir(secretaryState, { recursive: true });
+      await mkdir(releaseState, { recursive: true });
+      await mkdir(runDirectory, { recursive: true });
+      const now = new Date().toISOString();
+      const seed = createSecretaryState(now);
+      const retry = itemFromIntake({ id: 'retry', idea: '完成已有修复', createdAt: now }, []).item;
+      retry.status = 'retry-wait';
+      retry.runDirectory = runDirectory;
+      retry.retryAt = '2026-01-01T00:00:00.000Z';
+      const blocker = itemFromIntake(
+        { id: 'blocker', idea: '决定存档兼容方案', createdAt: now },
+        [],
+      ).item;
+      blocker.status = blockerStatus;
+      if (blockerStatus === 'tracking') {
+        nestedWorker = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+          stdio: 'ignore',
+          windowsHide: true,
+        });
+        blocker.processPid = nestedWorker.pid!;
+        blocker.processIdentity = await waitForProcessIdentity(blocker.processPid);
+        expect(blocker.processIdentity).not.toBe('');
+      }
+      seed.items.push(blocker, retry);
+      seed.activeItemId = blocker.id;
+      seed.orchestration!.reconciliations.push({
+        itemId: retry.id,
+        runId: 'retry-run',
+        attempt: 0,
+        snapshotStatus: 'recoverable',
+        outcome: 'retry-wait',
+        reason: '等待重试',
+        evidence: [],
+        reconciledAt: now,
+      });
+      await writeFile(
+        resolve(runDirectory, 'recovery.json'),
+        JSON.stringify({
+          status: 'recoverable',
+          runId: 'retry-run',
+          attempt: 0,
+          processPid: 0,
+          processIdentity: '',
+          error: '临时网络中断',
+          updatedAt: now,
+        }),
+      );
+      const statePath = resolve(secretaryState, 'state.json');
+      await writeFile(statePath, JSON.stringify(seed));
+      await writeFile(
+        resolve(releaseState, 'current.json'),
+        JSON.stringify(
+          createFormalVersion({
+            id: 'blocked-retry-version',
+            title: '已冻结版本',
+            direction: '验证秘书恢复',
+            documentRoot: 'docs/versions/blocked-retry-version',
+            currentStage: 'development',
+          }),
+        ),
+      );
+      const port = await freePort();
+      const url = `http://127.0.0.1:${port}`;
+      child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+        cwd: root,
+        env: {
+          ...process.env,
+          DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+          DAOYAN_RELEASE_STATE_DIR: releaseState,
+          DAOYAN_SECRETARY_HTTP_PORT: String(port),
+          DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+          DAOYAN_SECRETARY_NO_DISPATCH: '1',
+          DAOYAN_SECRETARY_WEBHOOK_URL: '',
+          DAOYAN_DINGTALK_CLIENT_ID: '',
+          DAOYAN_DINGTALK_CLIENT_SECRET: '',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+      await waitForSecretaryDashboard(child, url);
+      // Let startup events settle, then prove the overdue snapshot does not write-loop.
+      await new Promise((done) => setTimeout(done, 300));
+      const idleState = await readFile(statePath, 'utf8');
+      await new Promise((done) => setTimeout(done, 300));
+      expect(await readFile(statePath, 'utf8')).toBe(idleState);
+
+      if (blockerStatus === 'waiting-producer') {
+        const intake = await fetch(`${url}/api/intake`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ idea: '新增宗门系统' }),
+        });
+        const request = (await intake.json()) as { id: string };
+        expect((await waitForIntakeCompletion(secretaryState, request.id)).status).toBe('backlog');
+        const saved = JSON.parse(await readFile(statePath, 'utf8')) as typeof seed;
+        expect(saved.items.find((item) => item.id === blocker.id)).toEqual(
+          expect.objectContaining({
+            status: 'waiting-producer',
+            producerGuidance: '',
+            retryAt: '',
+          }),
+        );
+        expect(saved.orchestration?.nextVersionCandidates).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ requestId: request.id, direction: '新增宗门系统' }),
+          ]),
+        );
+        const resolved = await fetch(`${url}/api/todo-action`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ source: 'secretary', id: blocker.id, action: 'defer' }),
+        });
+        expect(resolved.status).toBe(200);
+        const afterEvent = JSON.parse(await readFile(statePath, 'utf8')) as typeof seed;
+        expect(afterEvent.items.find((item) => item.id === retry.id)).toEqual(
+          expect.objectContaining({
+            status: 'retry-wait',
+            retryAt: retry.retryAt,
+            recoveryAttempts: 0,
+          }),
+        );
+        expect(afterEvent.activeItemId).toBe('');
+      }
+    },
+    20_000,
+  );
+
+  it('keeps a terminal run occupied while its child Agent is still alive', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-terminal-worker-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const releaseState = resolve(temporary, 'releases');
+    const runDirectory = resolve(temporary, 'runs', 'terminal-run');
+    await mkdir(secretaryState, { recursive: true });
+    await mkdir(releaseState, { recursive: true });
+    await mkdir(runDirectory, { recursive: true });
+    nestedWorker = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    const identity = await waitForProcessIdentity(nestedWorker.pid ?? 0);
+    if (!identity) throw new Error('无法创建测试子 Agent 进程');
+    await writeFile(
+      resolve(runDirectory, 'recovery.json'),
+      JSON.stringify({
+        version: 1,
+        status: 'delivered',
+        processPid: 2_147_000_000,
+        processIdentity: 'dead-pm',
+        phase: '交付完成',
+        direction: '验证终态占用',
+        resolvedDirection: '验证终态占用',
+        baseline: 'test',
+        workspaceFingerprint: 'test',
+        plan: { summary: '终态占用', acceptanceCriteria: [], nonGoals: [], tasks: [] },
+        taskRuns: [],
+        review: null,
+        plannerTokens: null,
+        reviewerTokens: null,
+        repairerTokens: null,
+        noPush: false,
+        error: '',
+        updatedAt: '2026-09-21T02:00:00.000Z',
+      }),
+      'utf8',
+    );
+    await writeFile(
+      resolve(runDirectory, 'progress.json'),
+      JSON.stringify({
+        phase: '收束输出',
+        status: 'running',
+        updatedAt: '2026-09-21T02:00:00.000Z',
+        workerPid: nestedWorker.pid,
+        workerProcessIdentity: identity,
+        workerModel: 'gpt-5.6-sol',
+        workerRole: '执行 Agent',
+      }),
+      'utf8',
+    );
+    await writeFile(
+      resolve(secretaryState, 'state.json'),
+      JSON.stringify({
+        version: 1,
+        initializedAt: '2026-09-21T01:59:00.000Z',
+        status: 'stopped',
+        pid: 0,
+        processIdentity: '',
+        lastEventAt: '2026-09-21T02:00:00.000Z',
+        activeItemId: 'terminal-item',
+        items: [
+          {
+            id: 'terminal-item',
+            idea: '验证终态子进程',
+            scope: 'feature',
+            status: 'tracking',
+            summary: '交付完成',
+            plannedTasks: [],
+            matchedFact: null,
+            runDirectory,
+            processPid: 2_147_000_000,
+            processIdentity: 'dead-pm',
+            recoveryAttempts: 0,
+            retryAt: '',
+            producerGuidance: '',
+            createdAt: '2026-09-21T01:59:00.000Z',
+            updatedAt: '2026-09-21T02:00:00.000Z',
+            completedAt: '',
+          },
+        ],
+        messages: [],
+        updatedAt: '2026-09-21T02:00:00.000Z',
+      }),
+      'utf8',
+    );
+    await writeFile(
+      resolve(releaseState, 'current.json'),
+      JSON.stringify(
+        createFormalVersion({
+          id: 'terminal-version',
+          title: '终态占用测试',
+          direction: '验证子 Agent 占用',
+          documentRoot: 'docs/versions/terminal-version',
+        }),
+      ),
+      'utf8',
+    );
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}`;
+    child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+      cwd: root,
+      env: {
+        ...process.env,
+        DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+        DAOYAN_RELEASE_STATE_DIR: releaseState,
+        DAOYAN_SECRETARY_HTTP_PORT: String(port),
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_NO_DISPATCH: '1',
+        DAOYAN_SECRETARY_WEBHOOK_URL: '',
+        DAOYAN_DINGTALK_CLIENT_ID: '',
+        DAOYAN_DINGTALK_CLIENT_SECRET: '',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    await waitForSecretaryDashboard(child, url);
+    const dashboard = (await (await fetch(`${url}/api/dashboard`)).json()) as {
+      secretary: { activeItemId: string; items: Array<{ id: string; status: string }> };
+      agents: Array<{ id: string; running: boolean }>;
+    };
+    expect(dashboard.secretary.activeItemId).toBe('terminal-item');
+    expect(dashboard.secretary.items.find((item) => item.id === 'terminal-item')?.status).toBe(
+      'tracking',
+    );
+    expect(dashboard.agents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'terminal-item:worker', running: true }),
+      ]),
+    );
+  }, 20_000);
+
+  it('resolves linked decision todos through HTTP without recording stage approvals', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-dashboard-decisions-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const releaseState = resolve(temporary, 'releases');
+    await mkdir(releaseState, { recursive: true });
+    const versionPath = resolve(releaseState, 'current.json');
+    const seed = createFormalVersion({
+      id: 'decision-seed',
+      title: '决策看板',
+      direction: '验证决策待办',
+      documentRoot: 'docs/versions/decision-seed',
+    });
+    await writeFile(versionPath, JSON.stringify(seed));
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}`;
+    child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+      cwd: root,
+      env: {
+        ...process.env,
+        DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+        DAOYAN_RELEASE_STATE_DIR: releaseState,
+        DAOYAN_SECRETARY_HTTP_PORT: String(port),
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_NO_DISPATCH: '1',
+        DAOYAN_SECRETARY_WEBHOOK_URL: '',
+        DAOYAN_DINGTALK_CLIENT_ID: '',
+        DAOYAN_DINGTALK_CLIENT_SECRET: '',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    await waitForSecretaryDashboard(child, url);
+    for (const stage of ['module-design', 'charter-review'] as const) {
+      for (const action of ['approve', 'request-changes']) {
+        const version = createFormalVersion({
+          id: `decision-${stage}-${action}`,
+          title: '决策待办',
+          direction: '决策不得替代阶段评审',
+          documentRoot: 'docs/versions/decision-todo',
+          currentStage: stage,
+        });
+        const gate = addDecisionGate(version, {
+          kind: 'scope-change',
+          stage,
+          summary: '范围修订',
+          sourceRequestId: 'scope',
+        });
+        const other = addDecisionGate(version, {
+          kind: 'irreversible-decision',
+          stage,
+          summary: '另一个决策',
+          sourceRequestId: 'architecture',
+        });
+        const todo = version.todos.find((entry) => entry.decisionGateId === gate.id)!;
+        // Exercise read-time compatibility for old todo snapshots as well.
+        if (action === 'request-changes') delete todo.decisionGateId;
+        await writeFile(versionPath, JSON.stringify(version));
+        const dashboard = (await (await fetch(`${url}/api/dashboard`)).json()) as {
+          todos: Array<{ id: string }>;
+        };
+        expect(dashboard.todos.some((entry) => entry.id === todo.id)).toBe(true);
+        const response = await fetch(`${url}/api/todo-action`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ source: 'version', id: todo.id, action, note: '制作人决定' }),
+        });
+        expect(await response.json()).toEqual(
+          expect.objectContaining({ message: expect.any(String) }),
+        );
+        expect(response.status).toBe(200);
+        const saved = JSON.parse(await readFile(versionPath, 'utf8')) as FormalVersion;
+        expect(saved.currentStage).toBe(stage);
+        expect(saved.approvals).toHaveLength(0);
+        expect(saved.todos.find((entry) => entry.id === todo.id)?.status).toBe('done');
+        expect(
+          saved.orchestration?.decisionGates.find((entry) => entry.id === gate.id)?.status,
+        ).toBe(action === 'approve' ? 'approved' : 'rejected');
+        expect(
+          saved.orchestration?.decisionGates.find((entry) => entry.id === other.id)?.status,
+        ).toBe('open');
+        expect(saved.status).toBe('waiting-producer');
+        expect(
+          saved.todos.filter((entry) => !entry.decisionGateId && entry.status === 'open'),
+        ).toHaveLength(stage === 'charter-review' ? 1 : 0);
+      }
+    }
+  }, 30_000);
+
   it('serves version state, protects artifacts and handles local conversation', async () => {
     temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-dashboard-'));
     const secretaryState = resolve(temporary, 'secretary');
@@ -189,6 +547,25 @@ describe('secretary dashboard server', () => {
         workerModel: 'gpt-5.6-terra',
         workerRole: '规划 Agent',
       }),
+      'utf8',
+    );
+    await writeFile(
+      resolve(runningRun, 'public-events.jsonl'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        eventId: 'delivery-check',
+        sequence: 1,
+        requestId: '',
+        versionId: '',
+        itemId: 'running-feature',
+        runId: 'running-feature',
+        agentId: 'feature-pm',
+        kind: 'progress',
+        payload: { stage: 'verification', summary: '首轮交付检查完成', completed: 1, total: 2 },
+        createdAt: '2026-09-20T01:00:30.000Z',
+        durationMs: null,
+        tokenUsage: { input: null, output: null, total: null, source: 'unavailable' },
+      })}\n`,
       'utf8',
     );
     await writeFile(resolve(runningRun, 'ui.log'), `[等待] ${'公开进度'.repeat(100)}\n`, 'utf8');
@@ -339,6 +716,7 @@ describe('secretary dashboard server', () => {
       initial = (await (await fetch(`${url}/api/dashboard`)).json()) as Record<string, unknown>;
     }
     expect((initial.version as { title: string }).title).toBe('看板测试版本');
+    expect((initial.secretary as { activeItemId: string }).activeItemId).toBe('running-feature');
     expect(initial.versions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'dashboard-test', isCurrent: true }),
@@ -382,6 +760,7 @@ describe('secretary dashboard server', () => {
           // takes precedence over a stale private phase in recovery.json.
           detail: '深度规划',
         }),
+        expect.objectContaining({ kind: 'stage', label: 'progress' }),
         expect.objectContaining({ kind: 'action', label: expect.stringContaining('实现界面') }),
         expect.objectContaining({ kind: 'output', label: '运行输出（已截断）' }),
         expect.objectContaining({
@@ -455,6 +834,30 @@ describe('secretary dashboard server', () => {
       await new Promise((resolveWait) => setTimeout(resolveWait, 80));
     }
     expect(activeAfterWorkerExit).toBe('');
+    const reconciled = (await (await fetch(`${url}/api/dashboard`)).json()) as {
+      secretary: {
+        activeItemId: string;
+        items: Array<{
+          id: string;
+          status: string;
+          orchestration: { processOccupied: boolean };
+        }>;
+      };
+      todos: Array<{ id: string }>;
+    };
+    expect(reconciled.secretary.activeItemId).toBe('');
+    expect(reconciled.secretary.items.find((item) => item.id === 'running-feature')).toEqual(
+      expect.objectContaining({
+        status: 'retry-wait',
+        orchestration: expect.objectContaining({ processOccupied: false }),
+      }),
+    );
+    expect(reconciled.todos).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'blocked-feature' }),
+        expect.objectContaining({ id: 'decision-item' }),
+      ]),
+    );
     expect(await (await fetch(url)).text()).toContain('道衍项目中枢');
 
     const versionDocument = await fetch(
@@ -583,7 +986,47 @@ describe('secretary dashboard server', () => {
       documentRoot: 'docs/versions/candidate-test',
       currentStage: 'producer-acceptance',
     });
+    const wordingGate = addDecisionGate(acceptance, {
+      kind: 'scope-change',
+      stage: 'producer-acceptance',
+      summary: '确认当前候选范围',
+      sourceRequestId: 'wording-gate',
+    });
     await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(acceptance), 'utf8');
+    const directionWithApprovalWord = await fetch(`${url}/api/intake`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idea: '新增审批确认功能' }),
+    });
+    expect(directionWithApprovalWord.status).toBe(202);
+    const directionWithApprovalWordReceipt = (await directionWithApprovalWord.json()) as {
+      id: string;
+    };
+    await waitForIntakeCompletion(secretaryState, directionWithApprovalWordReceipt.id);
+    let persistedAcceptance = JSON.parse(
+      await readFile(resolve(releaseState, 'current.json'), 'utf8'),
+    ) as FormalVersion;
+    expect(
+      persistedAcceptance.orchestration?.decisionGates.find((gate) => gate.id === wordingGate.id)
+        ?.status,
+    ).toBe('open');
+
+    const explicitChangeRequest = await fetch(`${url}/api/intake`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idea: '这里有问题，需要调整范围' }),
+    });
+    expect(explicitChangeRequest.status).toBe(202);
+    const explicitChangeRequestReceipt = (await explicitChangeRequest.json()) as { id: string };
+    await waitForIntakeCompletion(secretaryState, explicitChangeRequestReceipt.id);
+    persistedAcceptance = JSON.parse(
+      await readFile(resolve(releaseState, 'current.json'), 'utf8'),
+    ) as FormalVersion;
+    expect(
+      persistedAcceptance.orchestration?.decisionGates.find((gate) => gate.id === wordingGate.id)
+        ?.status,
+    ).toBe('rejected');
+
     const producerComment = await fetch(`${url}/api/intake`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -786,6 +1229,90 @@ describe('secretary dashboard server', () => {
       recoveredVersion.approvals.filter(
         (approval) => approval.sourceRequestId === approvalRequestId,
       ),
+    ).toHaveLength(1);
+  }, 20_000);
+
+  it('replays a persisted decision reply without approving the next gate', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-secretary-decision-replay-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const releaseState = resolve(temporary, 'releases');
+    const inbox = resolve(secretaryState, 'inbox');
+    await mkdir(inbox, { recursive: true });
+    await mkdir(releaseState, { recursive: true });
+    const requestId = 'dingtalk-decision-replay';
+    await writeFile(
+      resolve(inbox, `${requestId}.json`),
+      JSON.stringify({
+        id: requestId,
+        idea: '通过',
+        createdAt: '2026-09-21T01:00:00.000Z',
+      }),
+      'utf8',
+    );
+    const version = createFormalVersion({
+      id: 'decision-replay-version',
+      title: '决策重放版本',
+      direction: '验证决策回复中断恢复',
+      documentRoot: 'docs/versions/decision-replay-version',
+    });
+    const resolved = addDecisionGate(version, {
+      kind: 'irreversible-decision',
+      stage: 'direction',
+      summary: '第一个决策',
+      sourceRequestId: 'first-direction',
+    });
+    resolveDecisionGate(version, resolved.id, 'approved', '2026-09-21T01:00:00.000Z', requestId);
+    const pending = addDecisionGate(version, {
+      kind: 'irreversible-decision',
+      stage: 'direction',
+      summary: '第二个决策',
+      sourceRequestId: 'second-direction',
+    });
+    await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version), 'utf8');
+
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}`;
+    child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+      cwd: root,
+      env: {
+        ...process.env,
+        DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+        DAOYAN_RELEASE_STATE_DIR: releaseState,
+        DAOYAN_SECRETARY_HTTP_PORT: String(port),
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_NO_DISPATCH: '1',
+        DAOYAN_SECRETARY_WEBHOOK_URL: '',
+        DAOYAN_DINGTALK_CLIENT_ID: '',
+        DAOYAN_DINGTALK_CLIENT_SECRET: '',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    await waitForSecretaryDashboard(child, url);
+    const responsePath = resolve(secretaryState, 'responses', `${requestId}.json`);
+    const deadline = Date.now() + 8_000;
+    while (Date.now() < deadline) {
+      if (
+        await readFile(responsePath, 'utf8')
+          .then(() => true)
+          .catch(() => false)
+      )
+        break;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 80));
+    }
+    const saved = JSON.parse(
+      await readFile(resolve(releaseState, 'current.json'), 'utf8'),
+    ) as FormalVersion;
+    expect(saved.orchestration?.decisionGates.find((gate) => gate.id === resolved.id)?.status).toBe(
+      'approved',
+    );
+    expect(saved.orchestration?.decisionGates.find((gate) => gate.id === pending.id)?.status).toBe(
+      'open',
+    );
+    expect(
+      saved.orchestration?.decisionGates
+        .find((gate) => gate.id === resolved.id)
+        ?.resolutionHistory?.filter((entry) => entry.requestId === requestId),
     ).toHaveLength(1);
   }, 20_000);
 

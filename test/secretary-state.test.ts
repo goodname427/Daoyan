@@ -4,16 +4,19 @@ import {
   applyWaitingReply,
   createSecretaryState,
   decideIntake,
+  directionDestination,
   firstUntrackedScheduledFact,
   inferMessageIntent,
   intentSimilarity,
   isRunEligibleForAdoption,
   itemFromIntake,
   nextRunnableItem,
+  normalizeSecretaryState,
   projectFactsFromItems,
   projectFactsFromStatus,
   taskCompletionKey,
   unrecordedTaskCompletions,
+  reconciliationTargets,
   type IntakeRequest,
   type SecretaryTaskCompletion,
 } from '../scripts/secretary-state';
@@ -53,6 +56,34 @@ describe('persistent secretary state', () => {
     expect(decideIntake('把旧元法术迁移到统一实体能力', facts).action).toBe('queue-scheduled');
     expect(decideIntake('新增宗门经营系统', facts).action).toBe('queue-new');
     expect(intentSimilarity('法术书导入导出', '法术书持久化和导入导出')).toBeGreaterThan(0.7);
+  });
+
+  it('routes only real directions by active version and scope-freeze state', () => {
+    expect(directionDestination('新增宗门系统', null)).toBe('draft-version');
+    expect(
+      directionDestination('补齐秘书恢复对账', {
+        status: 'running',
+        currentStage: 'charter-draft',
+        scopeFrozen: false,
+        direction: '常驻秘书自适应编排',
+      }),
+    ).toBe('current-version');
+    expect(
+      directionDestination('补齐秘书恢复对账', {
+        status: 'running',
+        currentStage: 'development',
+        scopeFrozen: true,
+        direction: '常驻秘书自适应编排',
+      }),
+    ).toBe('next-version-candidate');
+    expect(
+      directionDestination('新增宗门经营玩法', {
+        status: 'running',
+        currentStage: 'module-design',
+        scopeFrozen: false,
+        direction: '常驻秘书自适应编排',
+      }),
+    ).toBe('scope-review');
   });
 
   it('answers known work and turns new ideas into PM task contracts', () => {
@@ -101,6 +132,13 @@ describe('persistent secretary state', () => {
     expect(inferMessageIntent('现在项目进度怎么样？', true)).toBe('question');
     expect(inferMessageIntent('当前进度如何，可以继续推进吗？', true)).toBe('question');
     expect(inferMessageIntent('增加法术对比视图', false)).toBe('direction');
+    expect(inferMessageIntent('采用兼容方案', false)).toBe('reply');
+    expect(inferMessageIntent('好的', false)).toBe('reply');
+    expect(inferMessageIntent('收到', false)).toBe('reply');
+    expect(inferMessageIntent('ok', false)).toBe('reply');
+    expect(inferMessageIntent('新增宗门系统', true)).toBe('direction');
+    expect(inferMessageIntent('增加法术对比视图', true)).toBe('direction');
+    expect(inferMessageIntent('另外我有一个新方向', true)).toBe('direction');
   });
 
   it('resumes the waiting task from an untyped natural-language reply', () => {
@@ -116,6 +154,16 @@ describe('persistent secretary state', () => {
     waiting.status = 'waiting-producer';
     state.items.push(waiting);
     state.activeItemId = waiting.id;
+    const direction = {
+      id: 'new-direction',
+      idea: '新增宗门系统',
+      createdAt: '2026-09-14T00:30:00.000Z',
+    };
+    const beforeDirection = structuredClone(state);
+    expect(
+      applyWaitingReply(state, direction, inferMessageIntent(direction.idea, true)),
+    ).toBeNull();
+    expect(state).toEqual(beforeDirection);
     const request: IntakeRequest = {
       id: 'reply',
       idea: '现在可以继续了',
@@ -206,5 +254,71 @@ describe('persistent secretary state', () => {
 
     expect(unrecordedTaskCompletions([first], [duplicateFromRestart, next])).toEqual([next]);
     expect(first.key).toBe('E:/repo/.daoyan-agent/runs/one#core');
+  });
+
+  it('migrates legacy v1 state conservatively and rejects future orchestration', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      {
+        id: 'legacy',
+        idea: '旧任务',
+        createdAt: '2026-09-21T00:00:00.000Z',
+      },
+      [],
+    ).item;
+    Reflect.deleteProperty(state, 'orchestration');
+    Reflect.deleteProperty(item, 'orchestration');
+    state.items.push(item);
+
+    expect(normalizeSecretaryState(state)).toBe(true);
+    expect(state.orchestration?.migratedFrom).toBe('secretary-v1');
+    expect(item.orchestration).toEqual(
+      expect.objectContaining({ schemaVersion: 1, awaitingReview: false }),
+    );
+    if (!state.orchestration) throw new Error('迁移未生成编排扩展');
+    (state.orchestration as { schemaVersion: number }).schemaVersion = 2;
+    expect(() => normalizeSecretaryState(state)).toThrow('停止自动写入和派发');
+  });
+
+  it('rejects malformed nested secretary orchestration records', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    if (!state.orchestration) throw new Error('测试状态缺少编排扩展');
+    state.orchestration.intakes.push({
+      requestId: 'request-1',
+      intent: 'direction',
+      disposition: 'draft-created',
+      status: 'completed',
+      targetVersionId: 'draft-1',
+      scopeRevision: 1,
+      reason: '已建立草案',
+      createdAt: '2026-09-21T00:00:00.000Z',
+      completedAt: '2026-09-21T00:01:00.000Z',
+    });
+    (state.orchestration.intakes[0] as { disposition: string }).disposition = 'invalid';
+
+    expect(() => normalizeSecretaryState(state)).toThrow('嵌套记录损坏');
+  });
+
+  it('reconciles every active, tracking and retry item plus the active pointer', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const make = (id: string, status: 'active' | 'tracking' | 'retry-wait' | 'queued') => ({
+      ...itemFromIntake({ id, idea: id, createdAt: '2026-09-21T00:00:00.000Z' }, []).item,
+      status,
+    });
+    state.items.push(
+      make('active', 'active'),
+      make('tracking', 'tracking'),
+      make('retry', 'retry-wait'),
+      make('pointer', 'queued'),
+      make('ignored', 'queued'),
+    );
+    state.activeItemId = 'pointer';
+
+    expect(reconciliationTargets(state).map((item) => item.id)).toEqual([
+      'active',
+      'tracking',
+      'retry',
+      'pointer',
+    ]);
   });
 });
