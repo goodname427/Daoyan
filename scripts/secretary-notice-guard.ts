@@ -14,7 +14,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildLocalPlan, classifyAgentFailure, preferredWindowsExecutable } from './agent-routing';
 import {
@@ -419,11 +419,42 @@ async function loadRecordedCorrelations(): Promise<void> {
   }
 }
 
-function codexExecutable(): string | null {
-  if (process.platform !== 'win32') return 'codex';
+interface ProcessInvocation {
+  command: string;
+  args: string[];
+}
+
+export function windowsCodexInvocation(
+  candidates: string[],
+  args: string[],
+  nodeExecutable = process.execPath,
+  pathExists: (path: string) => boolean = existsSync,
+): ProcessInvocation | null {
+  const selected = preferredWindowsExecutable(candidates);
+  if (!selected) return null;
+  if (selected.toLowerCase().endsWith('.exe')) return { command: selected, args };
+  const entry = win32.resolve(
+    win32.dirname(selected),
+    'node_modules',
+    '@openai',
+    'codex',
+    'bin',
+    'codex.js',
+  );
+  if (pathExists(entry)) return { command: nodeExecutable, args: [entry, ...args] };
+  return { command: selected, args };
+}
+
+function codexInvocation(args: string[]): ProcessInvocation | null {
+  const configured = process.env.CODEX_BIN?.trim();
+  if (process.platform !== 'win32') return { command: configured || 'codex', args };
   const found = spawnSync('where.exe', ['codex'], { encoding: 'utf8' });
-  if (found.status !== 0) return null;
-  return preferredWindowsExecutable(found.stdout.split(/\r?\n/).filter(Boolean));
+  const candidates = configured
+    ? [configured]
+    : found.status === 0
+      ? found.stdout.split(/\r?\n/).filter(Boolean)
+      : [];
+  return windowsCodexInvocation(candidates, args);
 }
 
 function validateTriage(value: unknown): TriageResult | null {
@@ -450,8 +481,6 @@ async function modelTriage(
   waiting: SecretaryItem | null,
 ): Promise<TriageResult | null> {
   if (!config.triage.enabled || process.env.DAOYAN_SECRETARY_LOCAL_ONLY === '1') return null;
-  const executable = codexExecutable();
-  if (!executable) return null;
   const outputFile = resolve(secretaryRoot, `triage-${request.id}.json`);
   const factText = facts
     .map((fact) => `- [${fact.kind}] ${fact.text} (${fact.reference})`)
@@ -481,21 +510,37 @@ async function modelTriage(
     outputFile,
     '-',
   ];
+  const invocation = codexInvocation(args);
+  if (!invocation) return null;
   const code = await new Promise<number>((resolveCode) => {
-    const child = spawn(executable, args, {
-      cwd: root,
-      env: workerEnvironment(),
-      stdio: ['pipe', 'ignore', 'ignore'],
-      windowsHide: true,
-    });
-    const timeout = setTimeout(() => child.kill(), config.triage.timeoutSeconds * 1000);
-    timeout.unref();
-    child.stdin.end(prompt);
-    child.on('error', () => resolveCode(1));
-    child.on('close', (result) => {
+    let child: ChildProcess;
+    try {
+      child = spawn(invocation.command, invocation.args, {
+        cwd: root,
+        env: workerEnvironment(),
+        stdio: ['pipe', 'ignore', 'ignore'],
+        windowsHide: true,
+      });
+    } catch {
+      resolveCode(1);
+      return;
+    }
+    let settled = false;
+    const timeout = setTimeout(() => {
+      child.kill();
+      finish(1);
+    }, config.triage.timeoutSeconds * 1000);
+    const finish = (result: number): void => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
-      resolveCode(result ?? 1);
-    });
+      resolveCode(result);
+    };
+    timeout.unref();
+    child.on('error', () => finish(1));
+    child.on('close', (result) => finish(result ?? 1));
+    child.stdin?.on('error', () => finish(1));
+    child.stdin?.end(prompt);
   });
   if (code !== 0) return null;
   try {
@@ -1432,7 +1477,14 @@ async function processInbox(): Promise<void> {
           continue;
         }
         const needsSemanticTriage = !local.item.matchedFact || Boolean(waiting);
-        const model = needsSemanticTriage ? await modelTriage(request, known.facts, waiting) : null;
+        let model: TriageResult | null = null;
+        if (needsSemanticTriage) {
+          try {
+            model = await modelTriage(request, known.facts, waiting);
+          } catch (error) {
+            console.error(`[notice guard] 语义判断失败，使用本地规则：${String(error)}`);
+          }
+        }
         const intent = model?.intent ?? fallbackIntent;
         if (waiting && (intent === 'reply' || intent === 'continue')) {
           await resumeWaitingItem(request, intent);

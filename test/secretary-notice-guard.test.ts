@@ -4,7 +4,27 @@ import {
   runArgs,
   versionMessageIsNewDirection,
   versionProducerDecision,
+  windowsCodexInvocation,
 } from '../scripts/secretary-notice-guard';
+
+describe('secretary worker process launch', () => {
+  it('runs a Windows codex cmd shim through its Node entrypoint', () => {
+    const shim = 'C:\\Users\\dev\\npm\\codex.cmd';
+    const expectedEntry = 'C:\\Users\\dev\\npm\\node_modules\\@openai\\codex\\bin\\codex.js';
+
+    expect(
+      windowsCodexInvocation(
+        [shim],
+        ['exec', '-'],
+        'C:\\node.exe',
+        (path) => path === expectedEntry,
+      ),
+    ).toEqual({
+      command: 'C:\\node.exe',
+      args: [expectedEntry, 'exec', '-'],
+    });
+  });
+});
 
 describe('secretary task milestone extraction', () => {
   it('turns passed Feature PM task runs into visualization-ready milestones', () => {
