@@ -85,34 +85,126 @@
             <span>正式版本</span>
             <select id="sidebar-version-select" aria-label="左侧选择正式版本"></select>
           </label>
-          <div id="stage-flow" class="stage-flow" role="list"></div>
-          <section class="agent-section" aria-labelledby="agent-title">
+          <section
+            class="workspace-section"
+            data-workspace-section="stages"
+            aria-labelledby="stage-title"
+          >
+            <div class="pane-heading compact section-heading" draggable="true">
+              <div>
+                <p class="section-label">FLOW</p>
+                <h2 id="stage-title">流程节点</h2>
+              </div>
+              <button
+                type="button"
+                class="section-toggle"
+                data-section-toggle="stages"
+                data-section-label="流程节点"
+                aria-label="折叠流程节点"
+              >
+                收起
+              </button>
+            </div>
+            <div id="stage-flow" class="stage-flow" role="list"></div>
+            <div
+              class="section-resizer"
+              data-section-resize="stages"
+              role="separator"
+              aria-label="调整流程节点高度"
+              aria-orientation="horizontal"
+              tabindex="0"
+            ></div>
+          </section>
+          <section
+            class="agent-section workspace-section"
+            data-workspace-section="agents"
+            aria-labelledby="agent-title"
+          >
             <div class="pane-heading compact">
               <div>
                 <p class="section-label">RUNTIME</p>
                 <h2 id="agent-title">Agent</h2>
               </div>
               <span id="agent-summary" class="quiet-badge">读取中</span>
+              <button
+                type="button"
+                class="section-toggle"
+                data-section-toggle="agents"
+                data-section-label="Agent"
+                aria-label="折叠 Agent"
+              >
+                收起
+              </button>
             </div>
             <div id="agent-list" class="agent-list"></div>
+            <div
+              class="section-resizer"
+              data-section-resize="agents"
+              role="separator"
+              aria-label="调整 Agent 高度"
+              aria-orientation="horizontal"
+              tabindex="0"
+            ></div>
           </section>
-          <section class="sidebar-section delivery-selector" aria-labelledby="work-title">
+          <section
+            class="sidebar-section delivery-selector workspace-section"
+            data-workspace-section="work"
+            aria-labelledby="work-title"
+          >
             <div class="pane-heading compact">
               <div>
                 <p class="section-label">DELIVERY</p>
                 <h2 id="work-title">开发任务</h2>
               </div>
+              <button
+                type="button"
+                class="section-toggle"
+                data-section-toggle="work"
+                data-section-label="开发任务"
+                aria-label="折叠开发任务"
+              >
+                收起
+              </button>
             </div>
             <div id="work-items" class="sidebar-list"></div>
+            <div
+              class="section-resizer"
+              data-section-resize="work"
+              role="separator"
+              aria-label="调整开发任务高度"
+              aria-orientation="horizontal"
+              tabindex="0"
+            ></div>
           </section>
-          <section class="sidebar-section delivery-selector" aria-labelledby="bug-title">
+          <section
+            class="sidebar-section delivery-selector workspace-section"
+            data-workspace-section="bugs"
+            aria-labelledby="bug-title"
+          >
             <div class="pane-heading compact">
               <div>
                 <p class="section-label">QUALITY</p>
                 <h2 id="bug-title">版本缺陷</h2>
               </div>
+              <button
+                type="button"
+                class="section-toggle"
+                data-section-toggle="bugs"
+                data-section-label="版本缺陷"
+                aria-label="折叠版本缺陷"
+              >
+                收起
+              </button>
             </div>
             <div id="bugs" class="sidebar-list"></div>
+            <div
+              class="section-resizer"
+              data-section-resize="bugs"
+              role="separator"
+              aria-label="调整版本缺陷高度"
+              aria-orientation="horizontal"
+              tabindex="0"
+            ></div>
           </section>
         </aside>
 
@@ -179,7 +271,11 @@
           tabindex="0"
         ></div>
         <aside class="control-pane pane" data-pane="control">
-          <section class="todo-section" aria-labelledby="todo-title">
+          <section
+            class="todo-section workspace-section"
+            data-workspace-section="todos"
+            aria-labelledby="todo-title"
+          >
             <div class="pane-heading compact">
               <div>
                 <p class="section-label">PRODUCER</p>
@@ -193,16 +289,46 @@
               >
                 折叠
               </button>
+              <button
+                type="button"
+                class="section-toggle"
+                data-section-toggle="todos"
+                data-section-label="制作人待办"
+                aria-label="折叠制作人待办"
+              >
+                收起
+              </button>
             </div>
             <div id="producer-todos" class="todo-list"></div>
+            <div
+              class="section-resizer"
+              data-section-resize="todos"
+              role="separator"
+              aria-label="调整制作人待办高度"
+              aria-orientation="horizontal"
+              tabindex="0"
+            ></div>
           </section>
 
-          <section class="secretary-section" aria-labelledby="conversation-title">
+          <section
+            class="secretary-section workspace-section"
+            data-workspace-section="conversation"
+            aria-labelledby="conversation-title"
+          >
             <div class="pane-heading compact">
               <div>
                 <p class="section-label">SECRETARY</p>
                 <h2 id="conversation-title">与秘书交流</h2>
               </div>
+              <button
+                type="button"
+                class="section-toggle"
+                data-section-toggle="conversation"
+                data-section-label="与秘书交流"
+                aria-label="折叠与秘书交流"
+              >
+                收起
+              </button>
             </div>
             <div id="conversation" class="conversation" aria-live="polite"></div>
             <form id="message-form" class="message-form">

@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFormalVersion, setNodeEvidence } from '../scripts/version-lifecycle';
 import { captureErrors } from './helpers';
-import { waitForSecretaryDashboard } from '../test/helpers/secretary-guard';
+import { stopSecretaryDashboard, waitForSecretaryDashboard } from '../test/helpers/secretary-guard';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
@@ -100,9 +100,40 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
 
   try {
     const errors = captureErrors(page);
+    await page.addInitScript(() => {
+      const layoutKey = 'daoyan-secretary-workspace-layout-v1';
+      const initializedKey = 'daoyan-secretary-dashboard-e2e-layout-initialized';
+      if (sessionStorage.getItem(initializedKey)) return;
+      localStorage.removeItem(layoutKey);
+      sessionStorage.setItem(initializedKey, '1');
+    });
     await waitForSecretaryDashboard(child, `http://127.0.0.1:${port}`);
     await page.goto(`http://127.0.0.1:${port}`);
     await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
+    const runningAgentStartedAt = new Date(Date.now() - 12_000).toISOString();
+    let dashboardRefreshes = 0;
+    await page.route('**/api/dashboard*', async (route) => {
+      const response = await route.fetch();
+      const dashboard = (await response.json()) as {
+        agents?: Array<{
+          id: string;
+          running: boolean;
+          startedAt: string;
+          elapsedSeconds: number;
+          updatedAt: string;
+        }>;
+      };
+      const secretary = dashboard.agents?.find((agent) => agent.id === 'notice-guard');
+      if (secretary) {
+        dashboardRefreshes += 1;
+        secretary.running = true;
+        secretary.startedAt = runningAgentStartedAt;
+        secretary.elapsedSeconds = 10;
+        secretary.updatedAt = new Date().toISOString();
+      }
+      await route.fulfill({ response, json: dashboard });
+    });
+    await page.reload();
     await expect(page.locator('#current-stage')).toContainText('制作人体验');
     const hasPageScroll = await page.evaluate(
       () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
@@ -123,6 +154,14 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     await expect(page.locator('#agent-workflow-title')).toContainText('维护项目总状态');
     await expect(page.locator('#agent-workflow-meta')).toContainText('无模型常驻');
     await expect(page.locator('#agent-workflow-events')).toContainText('阶段说明');
+    const elapsed = page.locator('[data-agent-elapsed="notice-guard"]');
+    const initialElapsed = await elapsed.textContent();
+    await expect.poll(() => elapsed.textContent()).not.toBe(initialElapsed);
+    const elapsedBeforeRefresh = await elapsed.textContent();
+    await expect.poll(() => dashboardRefreshes).toBeGreaterThanOrEqual(2);
+    await expect
+      .poll(async () => Number((await elapsed.textContent())?.match(/\d+/)?.[0] ?? 0))
+      .toBeGreaterThanOrEqual(Number(elapsedBeforeRefresh?.match(/\d+/)?.[0] ?? 0));
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     await page.getByRole('button', { name: '整理项目中枢工作台' }).click();
@@ -164,6 +203,70 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     await page.getByRole('button', { name: '折叠右侧面板' }).click();
     await expect(page.locator('.workbench')).toHaveClass(/collapsed-right/);
     await page.getByRole('button', { name: '恢复右侧' }).click();
+
+    await page.getByRole('button', { name: '折叠 Agent' }).click();
+    await expect(page.locator('[data-workspace-section="agents"]')).toHaveClass(/is-collapsed/);
+    await page.reload();
+    await expect(page.locator('[data-workspace-section="agents"]')).toHaveClass(/is-collapsed/);
+    await page.getByRole('button', { name: '展开 Agent' }).click();
+    await expect(page.getByRole('button', { name: '折叠 Agent' })).toBeVisible();
+    const agentHeight = await page
+      .locator('[data-workspace-section="agents"]')
+      .evaluate((node) => node.clientHeight);
+    await page.locator('[data-section-resize="agents"]').press('ArrowDown');
+    await expect
+      .poll(() =>
+        page.locator('[data-workspace-section="agents"]').evaluate((node) => node.clientHeight),
+      )
+      .toBeGreaterThan(agentHeight);
+    await page
+      .locator('[data-workspace-section="agents"] .pane-heading')
+      .dragTo(page.locator('[data-workspace-section="work"] .pane-heading'));
+    await expect
+      .poll(() =>
+        page
+          .locator('.flow-pane')
+          .evaluate((pane) =>
+            [...pane.querySelectorAll(':scope > [data-workspace-section]')].map(
+              (section) => section.dataset.workspaceSection,
+            ),
+          ),
+      )
+      .toEqual(['stages', 'work', 'agents', 'bugs']);
+    await page.reload();
+    await expect
+      .poll(() =>
+        page
+          .locator('.flow-pane')
+          .evaluate((pane) =>
+            [...pane.querySelectorAll(':scope > [data-workspace-section]')].map(
+              (section) => section.dataset.workspaceSection,
+            ),
+          ),
+      )
+      .toEqual(['stages', 'work', 'agents', 'bugs']);
+
+    const workResizer = page.locator('[data-section-resize="work"]');
+    for (let index = 0; index < 10; index += 1) {
+      await workResizer.press('ArrowDown');
+    }
+    for (let index = 0; index < 10; index += 1) {
+      await page.locator('[data-section-resize="agents"]').press('ArrowDown');
+    }
+    const overflowedFlow = await page.locator('.flow-pane').evaluate((pane) => ({
+      clientHeight: pane.clientHeight,
+      scrollHeight: pane.scrollHeight,
+    }));
+    expect(overflowedFlow.scrollHeight).toBeGreaterThan(overflowedFlow.clientHeight);
+    const bottomBugReachable = await page.locator('.flow-pane').evaluate((pane) => {
+      pane.scrollTop = pane.scrollHeight;
+      const bug = pane.querySelector('[data-workspace-section="bugs"]');
+      if (!bug) return false;
+      const paneBounds = pane.getBoundingClientRect();
+      const bugBounds = bug.getBoundingClientRect();
+      return bugBounds.bottom <= paneBounds.bottom && bugBounds.top >= paneBounds.top;
+    });
+    expect(bottomBugReachable).toBe(true);
 
     await page.getByLabel('发给秘书').fill('现在正式版本处于什么阶段？');
     await page.getByRole('button', { name: '发送' }).click();
@@ -284,7 +387,7 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
     }
     errors.assert();
   } finally {
-    if (child.exitCode === null) child.kill('SIGTERM');
+    await stopSecretaryDashboard(child);
     await rm(temporary, { recursive: true, force: true });
   }
 });

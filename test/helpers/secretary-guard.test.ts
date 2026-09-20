@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
-import { waitForSecretaryDashboard } from './secretary-guard';
+import { stopSecretaryDashboard, waitForSecretaryDashboard } from './secretary-guard';
 
 let server = createServer();
 
@@ -12,6 +12,7 @@ interface ChildProcessDouble extends EventEmitter {
   signalCode: NodeJS.Signals | null;
   stderr: PassThrough;
   stdout: PassThrough;
+  kill(signal?: NodeJS.Signals): boolean;
 }
 
 function childProcessDouble(): ChildProcessDouble {
@@ -20,6 +21,7 @@ function childProcessDouble(): ChildProcessDouble {
     signalCode: null,
     stderr: new PassThrough(),
     stdout: new PassThrough(),
+    kill: () => true,
   }) as ChildProcessDouble;
 }
 
@@ -85,5 +87,14 @@ describe('waitForSecretaryDashboard', () => {
     child.emit('exit', 17, null);
 
     await expect(waiting).rejects.toThrow(/退出码 17[\s\S]*配置无效/);
+  });
+
+  it('waits for the child exit after requesting a graceful shutdown', async () => {
+    const child = childProcessDouble();
+    const stopping = stopSecretaryDashboard(child as unknown as ChildProcess);
+    expect(child.listenerCount('exit')).toBe(1);
+    child.exitCode = 0;
+    child.emit('exit', 0, null);
+    await expect(stopping).resolves.toBeUndefined();
   });
 });

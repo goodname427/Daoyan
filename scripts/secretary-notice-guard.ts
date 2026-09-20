@@ -860,6 +860,8 @@ async function activeWorkerProcess(
 
 async function dashboardAgents(): Promise<DashboardAgent[]> {
   const guardBusy = processingInbox || coordinating;
+  const snapshotAt = new Date().toISOString();
+  const initializedAt = Date.parse(state.initializedAt);
   const agents: DashboardAgent[] = [
     {
       id: 'notice-guard',
@@ -872,8 +874,10 @@ async function dashboardAgents(): Promise<DashboardAgent[]> {
       objective: '维护项目总状态、对话、通知和调度。',
       pid: state.pid,
       startedAt: state.initializedAt,
-      updatedAt: state.lastEventAt,
-      elapsedSeconds: 0,
+      updatedAt: snapshotAt,
+      elapsedSeconds: Number.isFinite(initializedAt)
+        ? Math.max(0, Math.floor((Date.now() - initializedAt) / 1000))
+        : 0,
       runDirectory: secretaryRoot,
       retryAt: '',
       activity: [

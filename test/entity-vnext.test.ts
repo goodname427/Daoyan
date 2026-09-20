@@ -296,9 +296,12 @@ describe('配置期弹道的战斗生命周期', () => {
     for (let i = 0; i < 16; i++) expect(spawn()).not.toBeNull();
     expect(spawn()).toBeNull();
     const projectile = battle.world.projectiles[0];
+    const initialX = projectile.x;
+    const initialY = projectile.y;
     const hp = foe.hp;
     battle.update(0.05);
-    expect(projectile.x).toBe(foe.x);
+    expect(projectile.x).toBe(initialX);
+    expect(projectile.y).toBe(initialY);
     expect(foe.hp).toBe(hp);
     expect(projectile.life).toBeCloseTo(0.05);
     battle.update(0.06);

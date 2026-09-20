@@ -27,6 +27,20 @@ let documentRequest = 0;
 let snapshotBundle = null;
 let snapshotMode = false;
 const pendingMessageKey = 'daoyan-secretary-pending-messages-v1';
+const workspaceLayoutKey = 'daoyan-secretary-workspace-layout-v1';
+
+function workspaceLayout() {
+  try {
+    const value = JSON.parse(globalThis.localStorage.getItem(workspaceLayoutKey) ?? '{}');
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWorkspaceLayout(layout) {
+  globalThis.localStorage.setItem(workspaceLayoutKey, JSON.stringify(layout));
+}
 
 function pendingMessages() {
   try {
@@ -367,6 +381,7 @@ function showAgent(agent) {
   ]) {
     const item = document.createElement('span');
     item.textContent = `${key}：${value}`;
+    if (key === '运行时长') item.dataset.agentElapsed = agent.id;
     meta.append(item);
   }
   const events = $('#agent-workflow-events');
@@ -591,6 +606,31 @@ function render(data) {
   renderConversation(data.secretary);
 }
 
+function refreshAgentElapsed() {
+  if (!latestData?.agents) return;
+  for (const element of document.querySelectorAll('[data-agent-elapsed]')) {
+    const agent = latestData.agents.find(
+      (candidate) => candidate.id === element.dataset.agentElapsed,
+    );
+    if (!agent) continue;
+    const startedAt = Date.parse(agent.startedAt);
+    const synchronizedAt = Date.parse(agent.updatedAt);
+    const synchronizedElapsed = Number(agent.elapsedSeconds ?? 0);
+    const elapsedFromStart =
+      agent.running && Number.isFinite(startedAt)
+        ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+        : 0;
+    const elapsedFromSynchronization =
+      agent.running && Number.isFinite(synchronizedAt)
+        ? Math.max(0, Math.floor((Date.now() - synchronizedAt) / 1000))
+        : 0;
+    const elapsedSeconds = agent.running
+      ? Math.max(synchronizedElapsed + elapsedFromSynchronization, elapsedFromStart)
+      : synchronizedElapsed;
+    element.textContent = `运行时长：${formatDuration(elapsedSeconds)}`;
+  }
+}
+
 async function refresh() {
   const requestId = ++dashboardRequest;
   const versionId = selectedVersionId;
@@ -743,6 +783,160 @@ document.querySelectorAll('[data-resize]').forEach((divider) => {
   });
 });
 
+function sectionId(section) {
+  return section.dataset.workspaceSection;
+}
+
+function applyWorkspaceLayout() {
+  const layout = workspaceLayout();
+  for (const pane of document.querySelectorAll('.flow-pane, .control-pane')) {
+    const sections = [...pane.querySelectorAll(':scope > [data-workspace-section]')];
+    const order = layout[pane.dataset.pane]?.order ?? [];
+    const ranked = [...sections].sort((left, right) => {
+      const leftRank = order.indexOf(sectionId(left));
+      const rightRank = order.indexOf(sectionId(right));
+      return (
+        (leftRank < 0 ? Number.MAX_SAFE_INTEGER : leftRank) -
+        (rightRank < 0 ? Number.MAX_SAFE_INTEGER : rightRank)
+      );
+    });
+    for (const section of ranked) pane.append(section);
+    for (const section of ranked) {
+      const preferences = layout[sectionId(section)] ?? {};
+      section.classList.toggle('is-collapsed', Boolean(preferences.collapsed));
+      if (preferences.height) section.dataset.resized = 'true';
+      else section.removeAttribute('data-resized');
+      if (preferences.height) {
+        section.style.setProperty('--section-height', `${preferences.height}px`);
+      } else {
+        section.style.removeProperty('--section-height');
+      }
+      const toggle = section.querySelector('[data-section-toggle]');
+      if (toggle) {
+        const collapsed = section.classList.contains('is-collapsed');
+        toggle.textContent = collapsed ? '展开' : '收起';
+        toggle.setAttribute(
+          'aria-label',
+          `${collapsed ? '展开' : '折叠'} ${toggle.dataset.sectionLabel ?? section.querySelector('h2')?.textContent ?? '区域'}`,
+        );
+      }
+    }
+  }
+}
+
+function persistSectionLayout(
+  section,
+  { captureHeight = !section.classList.contains('is-collapsed') } = {},
+) {
+  const layout = workspaceLayout();
+  const pane = section.closest('[data-pane]');
+  const id = sectionId(section);
+  const collapsed = section.classList.contains('is-collapsed');
+  layout[id] = {
+    ...(layout[id] ?? {}),
+    collapsed,
+    ...(!collapsed &&
+      captureHeight && { height: Math.round(section.getBoundingClientRect().height) }),
+  };
+  if (pane) {
+    layout[pane.dataset.pane] = {
+      order: [...pane.querySelectorAll(':scope > [data-workspace-section]')].map(sectionId),
+    };
+  }
+  saveWorkspaceLayout(layout);
+}
+
+document.querySelectorAll('[data-section-toggle]').forEach((toggle) => {
+  toggle.addEventListener('click', () => {
+    const section = toggle.closest('[data-workspace-section]');
+    if (!section) return;
+    const wasCollapsed = section.classList.contains('is-collapsed');
+    if (!wasCollapsed) persistSectionLayout(section);
+    section.classList.toggle('is-collapsed');
+    // Do not turn the compact heading height into an expanded preference.
+    persistSectionLayout(section, { captureHeight: false });
+    applyWorkspaceLayout();
+  });
+});
+
+let draggedSection = null;
+document.querySelectorAll('[data-workspace-section]').forEach((section) => {
+  const heading = section.querySelector('.pane-heading');
+  if (!heading) return;
+  heading.draggable = true;
+  heading.addEventListener('dragstart', (event) => {
+    draggedSection = section;
+    event.dataTransfer.effectAllowed = 'move';
+    section.classList.add('dragging');
+  });
+  heading.addEventListener('dragend', () => {
+    section.classList.remove('dragging');
+    if (draggedSection) persistSectionLayout(draggedSection);
+    draggedSection = null;
+  });
+  section.addEventListener('dragover', (event) => {
+    if (
+      !draggedSection ||
+      draggedSection === section ||
+      draggedSection.parentElement !== section.parentElement
+    )
+      return;
+    event.preventDefault();
+  });
+  section.addEventListener('drop', (event) => {
+    if (
+      !draggedSection ||
+      draggedSection === section ||
+      draggedSection.parentElement !== section.parentElement
+    )
+      return;
+    event.preventDefault();
+    const siblings = [...section.parentElement.children];
+    const movingDown = siblings.indexOf(draggedSection) < siblings.indexOf(section);
+    section.parentElement.insertBefore(draggedSection, movingDown ? section.nextSibling : section);
+    persistSectionLayout(draggedSection);
+  });
+});
+
+document.querySelectorAll('[data-section-resize]').forEach((resizer) => {
+  resizer.addEventListener('pointerdown', (event) => {
+    if (globalThis.matchMedia('(max-width: 800px)').matches) return;
+    const section = resizer.closest('[data-workspace-section]');
+    if (!section || section.classList.contains('is-collapsed')) return;
+    resizer.setPointerCapture(event.pointerId);
+    const origin = event.clientY;
+    const height = section.getBoundingClientRect().height;
+    const move = (moveEvent) => {
+      section.dataset.resized = 'true';
+      section.style.setProperty(
+        '--section-height',
+        `${Math.max(80, height + moveEvent.clientY - origin)}px`,
+      );
+    };
+    const stop = () => {
+      resizer.removeEventListener('pointermove', move);
+      persistSectionLayout(section);
+    };
+    resizer.addEventListener('pointermove', move);
+    resizer.addEventListener('pointerup', stop, { once: true });
+    resizer.addEventListener('pointercancel', stop, { once: true });
+  });
+  resizer.addEventListener('keydown', (event) => {
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const section = resizer.closest('[data-workspace-section]');
+    if (!section) return;
+    section.dataset.resized = 'true';
+    section.style.setProperty(
+      '--section-height',
+      `${Math.max(80, section.getBoundingClientRect().height + (event.key === 'ArrowUp' ? -24 : 24))}px`,
+    );
+    persistSectionLayout(section);
+  });
+});
+
+applyWorkspaceLayout();
+
 $('#all-documents').addEventListener('change', (event) => {
   const target = latestData?.version?.documents?.find(
     (doc) => doc.path === event.currentTarget.value,
@@ -793,6 +987,9 @@ $('#message-form').addEventListener('submit', async (event) => {
 });
 
 await refresh();
+setInterval(() => {
+  refreshAgentElapsed();
+}, 1000);
 setInterval(() => {
   if (!snapshotMode) void refresh();
 }, 3000);

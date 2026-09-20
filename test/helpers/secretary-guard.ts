@@ -1,6 +1,7 @@
 import type { ChildProcess } from 'node:child_process';
 
 const STARTUP_TIMEOUT_MS = 20_000;
+const SHUTDOWN_TIMEOUT_MS = 5_000;
 const RETRY_INTERVAL_MS = 100;
 const MAX_CAPTURED_OUTPUT = 8_000;
 
@@ -71,4 +72,38 @@ export async function waitForSecretaryDashboard(
     () => capturedOutput,
     `测试 notice guard 未在 ${timeoutMs}ms 内通过 HTTP 就绪`,
   );
+}
+
+/**
+ * Stop the isolated guard and wait for its actual exit before its temporary
+ * state directory is removed.  In particular, do not let a Windows child keep
+ * handles alive while the next Playwright test starts using the shared Vite
+ * server.
+ */
+export async function stopSecretaryDashboard(
+  child: ChildProcess,
+  timeoutMs = SHUTDOWN_TIMEOUT_MS,
+): Promise<void> {
+  if (child.exitCode !== null) return;
+
+  await new Promise<void>((resolveExit, rejectExit) => {
+    const timeout = setTimeout(
+      () => rejectExit(new Error(`notice guard 未在 ${timeoutMs}ms 内停止`)),
+      timeoutMs,
+    );
+    const finish = () => {
+      clearTimeout(timeout);
+      resolveExit();
+    };
+    child.once('exit', finish);
+    child.once('error', (error) => {
+      clearTimeout(timeout);
+      rejectExit(error);
+    });
+    if (child.exitCode !== null) finish();
+    else if (!child.kill('SIGTERM')) {
+      clearTimeout(timeout);
+      rejectExit(new Error('无法向 notice guard 发送停止信号'));
+    }
+  });
 }

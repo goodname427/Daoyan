@@ -433,8 +433,89 @@ button:disabled {
 }
 
 .flow-pane {
+  display: flex;
+  flex-direction: column;
+  /* Resized sections deliberately keep their requested height.  When several
+   * requests no longer fit, scroll the pane instead of clipping its later
+   * workflow sections out of reach. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.control-pane {
+  display: flex;
+  flex-direction: column;
+  /* Keep the composer reachable after multiple sections have been enlarged. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.workspace-section {
+  position: relative;
+  display: flex;
+  flex: 1 1 var(--section-height, 180px);
+  flex-direction: column;
+  min-height: 58px;
+  overflow: hidden;
+}
+
+/* A user-resized section owns its requested slice.  Letting that section
+ * participate in flex shrinking made a keyboard increase appear as a decrease
+ * whenever the other sections had already consumed their minimum heights. */
+.workspace-section[data-resized='true'] {
+  flex: 0 0 var(--section-height);
+}
+
+.workspace-section.is-collapsed {
+  flex: 0 0 auto;
+  min-height: 40px;
+}
+
+.workspace-section.is-collapsed > :not(.pane-heading) {
+  display: none;
+}
+
+.workspace-section .pane-heading {
+  flex: 0 0 auto;
+  cursor: grab;
+}
+
+.workspace-section .pane-heading:active {
+  cursor: grabbing;
+}
+
+.workspace-section.dragging {
+  opacity: 0.45;
+}
+
+.section-toggle {
+  min-height: 25px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.section-resizer {
+  z-index: 2;
+  flex: 0 0 9px;
+  min-height: 9px;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.section-resizer::after {
   display: block;
-  overflow: auto;
+  width: 32%;
+  height: 2px;
+  margin: 4px auto 0;
+  content: '';
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+
+.section-resizer:hover::after,
+.section-resizer:focus-visible::after {
+  background: var(--gold);
 }
 
 .sidebar-version-picker {
@@ -481,8 +562,8 @@ button:disabled {
   align-content: start;
   gap: 5px;
   min-height: 0;
+  flex: 1 1 auto;
   overflow: auto;
-  max-height: 310px;
   padding: 0 8px 10px;
 }
 
@@ -687,7 +768,8 @@ button:disabled {
   display: grid;
   align-content: start;
   gap: 5px;
-  max-height: 180px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 0 10px 10px;
 }
@@ -833,13 +915,13 @@ button:disabled {
 }
 
 .control-pane {
-  display: grid;
-  grid-template-rows: minmax(145px, 0.75fr) minmax(260px, 1.25fr);
+  display: flex;
+  flex-direction: column;
 }
 
 .control-pane > section {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
   border-bottom: 1px solid var(--line);
@@ -851,6 +933,9 @@ button:disabled {
 
 .agent-list,
 .todo-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   padding: 0 10px 10px;
 }
 
@@ -978,7 +1063,15 @@ button:disabled {
 }
 
 .secretary-section {
-  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  min-height: 112px;
+}
+
+.secretary-section .conversation {
+  flex: 1 1 auto;
+}
+
+.secretary-section .message-form {
+  flex: 0 0 auto;
 }
 
 .agent-workflow {
@@ -1325,17 +1418,22 @@ button:disabled {
     grid-template-columns: repeat(3, 100%);
   }
   .workbench.collapsed-left .flow-pane {
-    display: block;
+    display: flex;
+    flex-direction: column;
     visibility: visible;
   }
   .workbench.collapsed-center .focus-pane,
   .workbench.collapsed-right .control-pane {
-    display: grid;
     visibility: visible;
   }
 
   .control-pane {
-    grid-template-rows: minmax(110px, 0.7fr) minmax(170px, 1fr);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .section-resizer {
+    display: none;
   }
 
   .focus-pane {
