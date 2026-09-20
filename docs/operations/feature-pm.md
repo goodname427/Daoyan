@@ -124,7 +124,15 @@ npm run secretary:start
 
 ### 钉钉 Stream 秘书
 
-钉钉是现有秘书内核的通讯通道，不维护第二份任务、版本或对话状态。使用企业内部应用的机器人并启用 Stream 模式后，在启动 notice guard 的同一用户环境中配置：
+钉钉是现有秘书内核的通讯通道，不维护第二份任务、版本或对话状态。使用企业内部应用的机器人并启用 Stream 模式后，在部署电脑运行一次本地配置向导：
+
+```powershell
+npm run secretary:dingtalk:setup
+```
+
+向导会依次询问应用 Client ID、应用 Client Secret、制作人 `staffId/userId` 和异步通知用户。Secret 使用隐藏输入，不进入聊天、终端命令历史或项目文件；向导保存当前 Windows 用户环境后自动重启 notice guard 并显示通道状态。
+
+若需要无交互部署，才直接在启动 notice guard 的同一用户环境中配置：
 
 ```powershell
 $env:DAOYAN_DINGTALK_CLIENT_ID = "<应用 Client ID>"
@@ -136,6 +144,8 @@ npm run secretary:start
 ```
 
 `DAOYAN_DINGTALK_ALLOWED_SENDER_IDS` 可用英文逗号配置多个授权人；未配置白名单时通道拒绝启动。`DAOYAN_DINGTALK_NOTIFY_USER_ID` 默认使用白名单第一人，`DAOYAN_DINGTALK_ROBOT_CODE` 默认使用 Client ID。不要把 Client Secret 写入仓库、日志或聊天消息；SDK 调试输出被固定关闭，因为其原始调试信息可能包含连接配置。
+
+用户环境变量避免了聊天记录、代码仓库和命令历史泄露，但不是硬件密钥库：当前 Windows 用户及其运行的进程仍可读取。这个内部应用即使没有资金资产，Secret 仍代表应用身份；泄露者可以在已授权范围内冒充机器人，未来新增权限时旧泄露也会扩大影响。怀疑泄露时在钉钉后台轮换 Secret，再重新运行向导即可。
 
 机器人收到文本后使用平台消息 ID 生成稳定收件 ID，平台重投与守卫重启不会重复排期。即时答复优先回到原会话，任务完成、待办和阻塞等异步事件通过机器人单聊接口发送。Stream 长连接只负责事件唤醒，空闲时不调用模型，也不要求本机暴露公网端口。
 

@@ -111,6 +111,8 @@ npm run secretary -- "继续按当前排期推进"
 
 本机 notice guard、持久队列、任务节点事件、HTTP 收件口、通用 webhook 与钉钉 Stream 通道已经属于仓库能力。钉钉绑定需要在部署机器提供企业内部应用凭据与制作人白名单，凭据不进入仓库。
 
+钉钉首次绑定使用 `npm run secretary:dingtalk:setup` 在本机隐藏输入凭据；制作人无需把 Secret 发给 Codex 或秘书。向导完成后会自动重启守卫并显示连接状态。
+
 原手机版 Sites 仅保留为可恢复的只读快照实验，当前暂停投入和发布维护；它不是秘书入口，也不是项目状态真相。独立移动看板可在通讯闭环稳定后，继续复用现有 HTTP 状态接口建设，不需要改动秘书内核。
 
 事件驱动边界见 [ADR-0012](./adr/0012-事件驱动常驻秘书与交付PM分层.md)，正式版本定义见 [ADR-0013](./adr/0013-正式版本生命周期与可视化秘书.md)，故障恢复和低频命令见 [`operations/feature-pm.md`](./operations/feature-pm.md)。
