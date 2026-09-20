@@ -28,7 +28,10 @@ async function freePort(): Promise<number> {
   });
 }
 
-test('shows the version flow, opens evidence and talks to the secretary', async ({ page }) => {
+test('shows the version flow, opens evidence and talks to the secretary', async ({
+  browser,
+  page,
+}) => {
   const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-dashboard-e2e-'));
   const releaseState = resolve(temporary, 'releases');
   const secretaryState = resolve(temporary, 'secretary');
@@ -195,6 +198,25 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
       ),
     ).toBe(false);
+
+    const embeddedMobileContext = await browser.newContext({
+      viewport: { width: 980, height: 844 },
+      screen: { width: 390, height: 844 },
+      hasTouch: true,
+    });
+    try {
+      const embeddedMobilePage = await embeddedMobileContext.newPage();
+      await embeddedMobilePage.goto(`http://127.0.0.1:${port}`);
+      expect(await embeddedMobilePage.evaluate(() => window.innerWidth)).toBe(980);
+      expect(await embeddedMobilePage.evaluate(() => window.screen.width)).toBe(390);
+      await expect(embeddedMobilePage.locator('.mobile-pane-nav')).toBeVisible();
+      await embeddedMobilePage.getByRole('button', { name: '详情', exact: true }).click();
+      await expect
+        .poll(() => embeddedMobilePage.locator('.workbench').evaluate((node) => node.scrollLeft))
+        .toBeGreaterThan(0);
+    } finally {
+      await embeddedMobileContext.close();
+    }
     errors.assert();
   } finally {
     if (child.exitCode === null) child.kill('SIGTERM');
