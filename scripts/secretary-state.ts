@@ -39,6 +39,7 @@ export interface SecretaryItem {
   recoveryAttempts: number;
   retryAt: string;
   producerGuidance: string;
+  lastProducerRequestId?: string;
   createdAt: string;
   updatedAt: string;
   completedAt: string;
@@ -186,6 +187,7 @@ export function applyWaitingReply(
   );
   if (!waiting) return null;
   waiting.producerGuidance = request.idea;
+  waiting.lastProducerRequestId = request.id;
   waiting.status = 'retry-wait';
   waiting.retryAt = request.createdAt;
   waiting.summary =

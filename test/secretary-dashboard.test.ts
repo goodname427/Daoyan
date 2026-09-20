@@ -1,12 +1,18 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { createServer } from 'node:net';
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { waitForProcessIdentity } from '../scripts/process-identity';
-import { createFormalVersion, setNodeEvidence } from '../scripts/version-lifecycle';
+import {
+  advanceVersion,
+  createFormalVersion,
+  recordApproval,
+  setNodeEvidence,
+} from '../scripts/version-lifecycle';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
@@ -15,6 +21,7 @@ let child: ChildProcess | null = null;
 let nestedWorker: ChildProcess | null = null;
 let temporary = '';
 let artifactLink = '';
+let webhookServer: HttpServer | null = null;
 
 async function freePort(): Promise<number> {
   return await new Promise((resolvePort, rejectPort) => {
@@ -53,6 +60,10 @@ afterEach(async () => {
   nestedWorker = null;
   if (artifactLink) await rm(artifactLink, { recursive: true, force: true });
   artifactLink = '';
+  if (webhookServer) {
+    await new Promise<void>((resolveClose) => webhookServer?.close(() => resolveClose()));
+    webhookServer = null;
+  }
   if (temporary) await rm(temporary, { recursive: true, force: true });
   temporary = '';
 });
@@ -590,4 +601,187 @@ describe('secretary dashboard server', () => {
       }),
     ).toEqual(expect.objectContaining({ status: 400 }));
   }, 30_000);
+
+  it('recovers inbox requests whose state changes were committed before a crash', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-secretary-replay-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const releaseState = resolve(temporary, 'releases');
+    await mkdir(resolve(secretaryState, 'inbox'), { recursive: true });
+    await mkdir(releaseState, { recursive: true });
+    const itemRequestId = 'dingtalk-item-replay';
+    const approvalRequestId = 'dingtalk-approval-replay';
+    await writeFile(
+      resolve(secretaryState, 'state.json'),
+      JSON.stringify({
+        version: 1,
+        initializedAt: '2026-09-20T00:00:00.000Z',
+        status: 'stopped',
+        pid: 0,
+        processIdentity: '',
+        lastEventAt: '2026-09-20T00:00:00.000Z',
+        activeItemId: '',
+        items: [
+          {
+            id: itemRequestId,
+            idea: '新增宗门经营系统',
+            scope: 'feature',
+            status: 'backlog',
+            summary: '已加入后续版本候选池。',
+            plannedTasks: ['梳理宗门经营范围'],
+            matchedFact: null,
+            runDirectory: '',
+            processPid: 0,
+            processIdentity: '',
+            recoveryAttempts: 0,
+            retryAt: '',
+            producerGuidance: '',
+            createdAt: '2026-09-20T00:01:00.000Z',
+            updatedAt: '2026-09-20T00:01:00.000Z',
+            completedAt: '',
+            completedTasks: [],
+          },
+        ],
+        messages: [],
+        updatedAt: '2026-09-20T00:01:00.000Z',
+      }),
+      'utf8',
+    );
+    for (const [id, idea] of [
+      [itemRequestId, '新增宗门经营系统'],
+      [approvalRequestId, '通过，可以归档'],
+    ]) {
+      await writeFile(
+        resolve(secretaryState, 'inbox', `${id}.json`),
+        JSON.stringify({ id, idea, createdAt: '2026-09-20T00:02:00.000Z' }),
+        'utf8',
+      );
+    }
+    const version = createFormalVersion({
+      id: 'replay-version',
+      title: '崩溃恢复版本',
+      direction: '验证消息幂等',
+      documentRoot: 'docs/versions/replay-version',
+      currentStage: 'producer-acceptance',
+      now: '2026-09-20T00:00:00.000Z',
+    });
+    recordApproval(version, {
+      stage: 'producer-acceptance',
+      reviewer: 'producer',
+      decision: 'approved',
+      documentRevision: '1',
+      comment: '通过，可以归档',
+      sourceRequestId: approvalRequestId,
+      now: '2026-09-20T00:02:00.000Z',
+    });
+    advanceVersion(version, 'archived', '2026-09-20T00:03:00.000Z');
+    await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version), 'utf8');
+
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}`;
+    child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+      cwd: root,
+      env: {
+        ...process.env,
+        DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+        DAOYAN_RELEASE_STATE_DIR: releaseState,
+        DAOYAN_SECRETARY_HTTP_PORT: String(port),
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_NO_DISPATCH: '1',
+      },
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    await waitForDashboard(url);
+    const deadline = Date.now() + 8_000;
+    while (Date.now() < deadline) {
+      const responsesReady = await Promise.all(
+        [itemRequestId, approvalRequestId].map((id) =>
+          readFile(resolve(secretaryState, 'responses', `${id}.json`), 'utf8')
+            .then(() => true)
+            .catch(() => false),
+        ),
+      );
+      if (responsesReady.every(Boolean)) break;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 80));
+    }
+
+    const recoveredState = JSON.parse(
+      await readFile(resolve(secretaryState, 'state.json'), 'utf8'),
+    ) as {
+      items: Array<{ id: string }>;
+      messages: Array<{ id: string }>;
+    };
+    const recoveredVersion = JSON.parse(
+      await readFile(resolve(releaseState, 'current.json'), 'utf8'),
+    ) as { currentStage: string; approvals: Array<{ sourceRequestId?: string }> };
+    expect(recoveredState.items.filter((item) => item.id === itemRequestId)).toHaveLength(1);
+    expect(recoveredState.messages.filter((message) => message.id === itemRequestId)).toHaveLength(
+      1,
+    );
+    expect(
+      recoveredState.messages.filter((message) => message.id === `${approvalRequestId}-response`),
+    ).toHaveLength(1);
+    expect(recoveredVersion.currentStage).toBe('archived');
+    expect(
+      recoveredVersion.approvals.filter(
+        (approval) => approval.sourceRequestId === approvalRequestId,
+      ),
+    ).toHaveLength(1);
+  }, 20_000);
+
+  it('keeps failed channel notifications in a durable outbox and retries them', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-secretary-outbox-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const port = await freePort();
+    const webhookPort = await freePort();
+    let webhookHealthy = false;
+    let webhookCalls = 0;
+    webhookServer = createHttpServer((_request, response) => {
+      webhookCalls += 1;
+      response.writeHead(webhookHealthy ? 204 : 500).end();
+    });
+    await new Promise<void>((resolveListen) =>
+      webhookServer?.listen(webhookPort, '127.0.0.1', () => resolveListen()),
+    );
+    const url = `http://127.0.0.1:${port}`;
+    child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+      cwd: root,
+      env: {
+        ...process.env,
+        DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+        DAOYAN_SECRETARY_HTTP_PORT: String(port),
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_NO_DISPATCH: '1',
+        DAOYAN_SECRETARY_WEBHOOK_URL: `http://127.0.0.1:${webhookPort}`,
+        DAOYAN_SECRETARY_WEBHOOK_KIND: 'generic',
+        DAOYAN_SECRETARY_NOTICE_RETRY_MS: '50',
+      },
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    await waitForDashboard(url);
+    const intake = await fetch(`${url}/api/intake`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idea: '现在正式版本处于什么阶段？' }),
+    });
+    expect(intake.status).toBe(202);
+    const outbox = resolve(secretaryState, 'notice-outbox');
+    const failureDeadline = Date.now() + 8_000;
+    while (Date.now() < failureDeadline) {
+      if (webhookCalls > 0 && (await readdir(outbox)).some((name) => name.endsWith('.json'))) break;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 40));
+    }
+    expect(webhookCalls).toBeGreaterThan(0);
+    expect((await readdir(outbox)).some((name) => name.endsWith('.json'))).toBe(true);
+
+    webhookHealthy = true;
+    const successDeadline = Date.now() + 8_000;
+    while (Date.now() < successDeadline) {
+      if (!(await readdir(outbox)).some((name) => name.endsWith('.json'))) break;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 40));
+    }
+    expect(webhookCalls).toBeGreaterThanOrEqual(2);
+    expect((await readdir(outbox)).filter((name) => name.endsWith('.json'))).toEqual([]);
+  }, 20_000);
 });

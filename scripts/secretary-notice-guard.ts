@@ -18,6 +18,14 @@ import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from '
 import { fileURLToPath } from 'node:url';
 import { buildLocalPlan, classifyAgentFailure, preferredWindowsExecutable } from './agent-routing';
 import {
+  externalRequestId,
+  type SecretaryChannelHub,
+  type SecretaryInboundMessage,
+  type SecretaryInboundReceipt,
+  type SecretaryNotice,
+} from './secretary-channel';
+import { secretaryChannelHubFromEnvironment } from './secretary-channels';
+import {
   getProcessIdentity,
   isOwnedProcessAlive,
   waitForProcessIdentity,
@@ -64,7 +72,9 @@ const secretaryRoot = resolve(
 const secretaryRelativePrefix = relative(agentRoot, secretaryRoot).replace(/\\/g, '/');
 const inboxRoot = resolve(secretaryRoot, 'inbox');
 const responseRoot = resolve(secretaryRoot, 'responses');
+const noticeOutboxRoot = resolve(secretaryRoot, 'notice-outbox');
 const stateFile = resolve(secretaryRoot, 'state.json');
+const channelsFile = resolve(secretaryRoot, 'channels.json');
 const lockFile = resolve(secretaryRoot, 'notice-guard.lock');
 const eventsFile = resolve(secretaryRoot, 'events.jsonl');
 const versionsRoot = resolve(agentRoot, 'versions');
@@ -148,6 +158,7 @@ let activeChild: ChildProcess | null = null;
 let inboxWatcher: FSWatcher | null = null;
 let runWatcher: FSWatcher | null = null;
 let retryTimer: NodeJS.Timeout | null = null;
+let noticeRetryTimer: NodeJS.Timeout | null = null;
 let orphanTimer: NodeJS.Timeout | null = null;
 let httpServer: Server | null = null;
 let processingInbox = false;
@@ -156,8 +167,22 @@ let coordinating = false;
 let coordinatePending = false;
 let stopping = false;
 let stateWrites = Promise.resolve();
+let noticeDeliveries = Promise.resolve();
+let channelHub: SecretaryChannelHub | null = null;
+const acceptedRequestIds = new Set<string>();
+const recordedCorrelationIds = new Set<string>();
 const processExitNotices = new Map<number, ChildProcess>();
 const workerExitTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+function workerEnvironment(): NodeJS.ProcessEnv {
+  const environment = { ...process.env };
+  for (const key of Object.keys(environment)) {
+    if (key.startsWith('DAOYAN_DINGTALK_')) delete environment[key];
+  }
+  delete environment.DAOYAN_SECRETARY_TOKEN;
+  delete environment.DAOYAN_SECRETARY_WEBHOOK_URL;
+  return environment;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -237,12 +262,15 @@ async function emitNotice(
   message: string,
   item?: SecretaryItem,
   task?: SecretaryTaskCompletion,
+  correlationId = '',
 ): Promise<void> {
+  if (correlationId && recordedCorrelationIds.has(correlationId)) return;
   const event = {
     id: randomUUID(),
     kind,
     message,
     itemId: item?.id ?? '',
+    correlationId,
     ...(task
       ? {
           taskKey: task.key,
@@ -257,29 +285,137 @@ async function emitNotice(
       : {}),
     createdAt: new Date().toISOString(),
   };
+  const notice: SecretaryNotice = {
+    id: event.id,
+    kind,
+    message,
+    correlationId,
+    itemId: item?.id ?? '',
+    createdAt: event.createdAt,
+    ...(task
+      ? {
+          taskId: task.taskId,
+          taskTitle: task.taskTitle,
+          parentScope: task.parentScope,
+          parentTitle: task.parentTitle,
+          versionTitle: task.versionTitle,
+          completedAt: task.completedAt,
+        }
+      : {}),
+  };
+  const pendingChannelIds = channelHub?.configuredChannelIds() ?? [];
+  const outboxPath = resolve(noticeOutboxRoot, `${notice.id}.json`);
+  if (pendingChannelIds.length > 0) {
+    await writeJsonAtomic(outboxPath, {
+      notice,
+      pendingChannelIds,
+      attempts: 0,
+      updatedAt: notice.createdAt,
+    } satisfies NoticeOutboxEntry);
+  }
   await appendFile(eventsFile, `${JSON.stringify(event)}\n`, 'utf8');
+  if (correlationId) recordedCorrelationIds.add(correlationId);
   console.log(`[常驻秘书] ${message}`);
-  const url = process.env.DAOYAN_SECRETARY_WEBHOOK_URL;
-  if (!url) return;
-  const provider = (process.env.DAOYAN_SECRETARY_WEBHOOK_KIND ?? 'generic').toLowerCase();
-  const body =
-    provider === 'feishu'
-      ? { msg_type: 'text', content: { text: message } }
-      : provider === 'wecom'
-        ? { msgtype: 'text', text: { content: message } }
-        : provider === 'discord'
-          ? { content: message }
-          : event;
+  if (pendingChannelIds.length > 0) {
+    void queueNoticeDelivery(() => deliverNotice(outboxPath)).catch((error) =>
+      console.error(`[notice guard] 通知投递失败：${String(error)}`),
+    );
+  }
+}
+
+interface NoticeOutboxEntry {
+  notice: SecretaryNotice;
+  pendingChannelIds: string[];
+  attempts: number;
+  updatedAt: string;
+}
+
+function queueNoticeDelivery(action: () => Promise<void>): Promise<void> {
+  noticeDeliveries = noticeDeliveries.catch(() => undefined).then(action);
+  return noticeDeliveries;
+}
+
+function scheduleNoticeRetry(): void {
+  if (noticeRetryTimer || stopping) return;
+  const configuredDelay = Number(process.env.DAOYAN_SECRETARY_NOTICE_RETRY_MS ?? 60_000);
+  const delay = Number.isFinite(configuredDelay) && configuredDelay > 0 ? configuredDelay : 60_000;
+  noticeRetryTimer = setTimeout(() => {
+    noticeRetryTimer = null;
+    void processNoticeOutbox().catch((error) =>
+      console.error(`[notice guard] 待发通知重试失败：${String(error)}`),
+    );
+  }, delay);
+}
+
+function validNoticeOutboxEntry(value: unknown): value is NoticeOutboxEntry {
+  return (
+    isRecord(value) &&
+    isRecord(value.notice) &&
+    typeof value.notice.id === 'string' &&
+    typeof value.notice.message === 'string' &&
+    Array.isArray(value.pendingChannelIds) &&
+    value.pendingChannelIds.every((item) => typeof item === 'string') &&
+    typeof value.attempts === 'number'
+  );
+}
+
+async function deliverNotice(path: string): Promise<void> {
+  const raw = await readJson(path);
+  if (!validNoticeOutboxEntry(raw)) {
+    await rm(path, { force: true });
+    return;
+  }
+  if (!channelHub) return;
+  const result = await channelHub.publish(raw.notice as SecretaryNotice, raw.pendingChannelIds);
+  const attempted = new Set(result.attemptedChannelIds);
+  const failed = new Set(result.failedChannelIds);
+  const remaining = raw.pendingChannelIds.filter(
+    (channelId) => !attempted.has(channelId) || failed.has(channelId),
+  );
+  if (remaining.length === 0) {
+    await rm(path, { force: true });
+    return;
+  }
+  await writeJsonAtomic(path, {
+    ...raw,
+    pendingChannelIds: remaining,
+    attempts: raw.attempts + 1,
+    updatedAt: new Date().toISOString(),
+  } satisfies NoticeOutboxEntry);
+  scheduleNoticeRetry();
+}
+
+async function processNoticeOutbox(): Promise<void> {
+  await channelHub?.retryInactive();
+  await writeChannelStatus();
+  await queueNoticeDelivery(async () => {
+    const names = (await readdir(noticeOutboxRoot)).filter((name) => name.endsWith('.json')).sort();
+    for (const name of names) await deliverNotice(resolve(noticeOutboxRoot, name));
+  });
+}
+
+async function writeChannelStatus(): Promise<void> {
+  await writeJsonAtomic(channelsFile, {
+    status: stopping ? 'stopped' : 'running',
+    activeChannelIds: channelHub?.activeChannelIds() ?? [],
+    configuredChannelIds: channelHub?.configuredChannelIds() ?? [],
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+async function loadRecordedCorrelations(): Promise<void> {
+  recordedCorrelationIds.clear();
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!response.ok) console.error(`[notice guard] webhook 返回 ${response.status}`);
-  } catch (error) {
-    console.error(`[notice guard] webhook 发送失败：${String(error)}`);
+    const content = await readFile(eventsFile, 'utf8');
+    for (const line of content.split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line) as { correlationId?: unknown };
+      if (typeof event.correlationId === 'string' && event.correlationId) {
+        recordedCorrelationIds.add(event.correlationId);
+      }
+    }
+  } catch {
+    // A fresh secretary has no event history yet.
   }
 }
 
@@ -348,7 +484,7 @@ async function modelTriage(
   const code = await new Promise<number>((resolveCode) => {
     const child = spawn(executable, args, {
       cwd: root,
-      env: process.env,
+      env: workerEnvironment(),
       stdio: ['pipe', 'ignore', 'ignore'],
       windowsHide: true,
     });
@@ -1082,22 +1218,24 @@ async function writeInboxResponse(
   intent: SecretaryMessageIntent,
   plannedTasks: string[] = [],
 ): Promise<void> {
-  state.messages.push(
-    {
+  if (!state.messages.some((message) => message.id === request.id)) {
+    state.messages.push({
       id: request.id,
       role: 'producer',
       content: request.idea,
       intent,
       createdAt: request.createdAt,
-    },
-    {
+    });
+  }
+  if (!state.messages.some((message) => message.id === `${request.id}-response`)) {
+    state.messages.push({
       id: `${request.id}-response`,
       role: 'secretary',
       content: response,
       intent,
       createdAt: new Date().toISOString(),
-    },
-  );
+    });
+  }
   if (state.messages.length > 200) state.messages.splice(0, state.messages.length - 200);
   await saveState();
   await writeJsonAtomic(resolve(responseRoot, `${request.id}.json`), {
@@ -1116,7 +1254,7 @@ async function resumeWaitingItem(
   if (!waiting) throw new Error('等待事项已变化，无法应用当前回复');
   await saveState();
   await writeInboxResponse(request, waiting.summary, waiting.status, intent, waiting.plannedTasks);
-  await emitNotice('reply-accepted', waiting.summary, waiting);
+  await emitNotice('reply-accepted', waiting.summary, waiting, undefined, request.id);
 }
 
 export function versionProducerDecision(message: string): 'approved' | 'changes-requested' | null {
@@ -1165,7 +1303,7 @@ async function handleVersionProducerReply(
     const response =
       '已记录你的补充，当前评审保持等待。明确回复“通过”，或指出需要修改的内容后，秘书再推进版本。';
     await writeInboxResponse(request, response, 'answered', 'reply');
-    await emitNotice('version-comment-recorded', response);
+    await emitNotice('version-comment-recorded', response, undefined, undefined, request.id);
     return true;
   }
   const approved = decision === 'approved';
@@ -1175,6 +1313,7 @@ async function handleVersionProducerReply(
     decision,
     documentRevision: gate.version.charterRevision,
     comment: request.idea,
+    sourceRequestId: request.id,
   });
   if (approved) {
     const currentIndex = gate.version.nodes.findIndex(
@@ -1198,7 +1337,48 @@ async function handleVersionProducerReply(
         ? `已记录版本评审通过，当前进入“${stageTitle}”。`
         : `已记录你的反馈，版本已退回“${stageTitle}”调整。`;
   await writeInboxResponse(request, response, 'answered', 'reply');
-  await emitNotice(approved ? 'version-approved' : 'version-changes-requested', response);
+  await emitNotice(
+    approved ? 'version-approved' : 'version-changes-requested',
+    response,
+    undefined,
+    undefined,
+    request.id,
+  );
+  return true;
+}
+
+async function recoverProcessedRequest(
+  request: IntakeRequest,
+  inboxPath: string,
+): Promise<boolean> {
+  const producerMessage = state.messages.find((message) => message.id === request.id);
+  const replyMessage = state.messages.find((message) => message.id === `${request.id}-response`);
+  const item = state.items.find(
+    (candidate) => candidate.id === request.id || candidate.lastProducerRequestId === request.id,
+  );
+  const version = await readFormalVersion(root);
+  const approval = version?.approvals.find((candidate) => candidate.sourceRequestId === request.id);
+  if (!producerMessage && !replyMessage && !item && !approval) return false;
+
+  const stageTitle = version?.nodes.find((node) => node.id === version.currentStage)?.title;
+  const approvalResponse = approval
+    ? version?.status === 'archived'
+      ? `版本“${version.title}”已完成归档。`
+      : approval.decision === 'approved'
+        ? `已记录版本评审通过，当前进入“${stageTitle ?? version?.currentStage}”。`
+        : `已记录你的反馈，版本已退回“${stageTitle ?? version?.currentStage}”调整。`
+    : '';
+  const response = replyMessage?.content || item?.summary || approvalResponse || '已处理。';
+  const intent = replyMessage?.intent ?? producerMessage?.intent ?? 'reply';
+  await writeInboxResponse(
+    request,
+    response,
+    item?.status ?? 'answered',
+    intent,
+    item?.plannedTasks ?? [],
+  );
+  await emitNotice('recovered-response', response, item, undefined, request.id);
+  await rm(inboxPath, { force: true });
   return true;
 }
 
@@ -1226,6 +1406,7 @@ async function processInbox(): Promise<void> {
           continue;
         }
         const request = raw as unknown as IntakeRequest;
+        if (await recoverProcessedRequest(request, path)) continue;
         const waiting =
           state.items.find(
             (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
@@ -1242,8 +1423,8 @@ async function processInbox(): Promise<void> {
           local.item.summary = versionAnswer;
           state.items.push(local.item);
           await writeInboxResponse(request, versionAnswer, local.item.status, fallbackIntent);
+          await emitNotice('question-answered', versionAnswer, local.item, undefined, request.id);
           await rm(path, { force: true });
-          await emitNotice('question-answered', versionAnswer, local.item);
           continue;
         }
         if (await handleVersionProducerReply(request, fallbackIntent)) {
@@ -1262,8 +1443,8 @@ async function processInbox(): Promise<void> {
           const response = '收到，我会继续推进当前正式版本已经批准的排期。';
           await saveState();
           await writeInboxResponse(request, response, 'answered', intent);
+          await emitNotice('continue-accepted', response, undefined, undefined, request.id);
           await rm(path, { force: true });
-          await emitNotice('continue-accepted', response);
           continue;
         }
         if (model) local.item.scope = model.scope;
@@ -1298,8 +1479,8 @@ async function processInbox(): Promise<void> {
             ? local.item.plannedTasks
             : [],
         );
+        await emitNotice('intake', response, local.item, undefined, request.id);
         await rm(path, { force: true });
-        await emitNotice('intake', response, local.item);
       }
     } while (inboxPending || (await readdir(inboxRoot)).some((name) => name.endsWith('.json')));
   } finally {
@@ -1388,7 +1569,7 @@ function attachProcessExitNotice(item: SecretaryItem): void {
       '-Command',
       `Wait-Process -Id ${pid} -ErrorAction SilentlyContinue`,
     ],
-    { stdio: 'ignore', windowsHide: true },
+    { env: workerEnvironment(), stdio: 'ignore', windowsHide: true },
   );
   processExitNotices.set(pid, waiter);
   waiter.on('close', () => {
@@ -1424,7 +1605,7 @@ function attachWorkerExitNotice(
         '-Command',
         `Wait-Process -Id ${worker.pid} -ErrorAction SilentlyContinue`,
       ],
-      { stdio: 'ignore', windowsHide: true },
+      { env: workerEnvironment(), stdio: 'ignore', windowsHide: true },
     );
     processExitNotices.set(worker.pid, waiter);
     waiter.on('close', () => {
@@ -1685,7 +1866,7 @@ async function launch(item: SecretaryItem): Promise<void> {
   const log = openSync(resolve(secretaryRoot, `${item.id}.log`), 'a');
   const child = spawn(process.execPath, runArgs(item), {
     cwd: root,
-    env: process.env,
+    env: workerEnvironment(),
     stdio: ['ignore', log, log],
     windowsHide: true,
   });
@@ -1868,14 +2049,46 @@ async function serveArtifact(
   }
 }
 
-async function enqueueIdea(idea: string): Promise<string> {
+interface EnqueueResult {
+  id: string;
+  accepted: boolean;
+}
+
+function requestAlreadyKnown(id: string): boolean {
+  return (
+    acceptedRequestIds.has(id) ||
+    existsSync(resolve(inboxRoot, `${id}.json`)) ||
+    existsSync(resolve(responseRoot, `${id}.json`)) ||
+    state.items.some((item) => item.id === id) ||
+    state.messages.some((message) => message.id === id)
+  );
+}
+
+async function enqueueIdea(idea: string, requestId: string = randomUUID()): Promise<EnqueueResult> {
+  if (requestAlreadyKnown(requestId)) return { id: requestId, accepted: false };
   const request: IntakeRequest = {
-    id: randomUUID(),
+    id: requestId,
     idea,
     createdAt: new Date().toISOString(),
   };
-  await writeJsonAtomic(resolve(inboxRoot, `${request.id}.json`), request);
-  return request.id;
+  acceptedRequestIds.add(request.id);
+  try {
+    await writeJsonAtomic(resolve(inboxRoot, `${request.id}.json`), request);
+    return { id: request.id, accepted: true };
+  } catch (error) {
+    acceptedRequestIds.delete(request.id);
+    throw error;
+  }
+}
+
+async function acceptChannelMessage(
+  message: SecretaryInboundMessage,
+): Promise<SecretaryInboundReceipt> {
+  const result = await enqueueIdea(
+    message.text,
+    externalRequestId(message.source, message.messageId),
+  );
+  return { requestId: result.id, accepted: result.accepted };
 }
 
 function startHttpServer(): void {
@@ -1932,8 +2145,11 @@ function startHttpServer(): void {
           if (!isRecord(value) || typeof value.idea !== 'string' || !value.idea.trim()) {
             throw new Error('idea is required');
           }
-          const id = await enqueueIdea(value.idea.trim());
-          sendJson(response, 202, { id, status: 'accepted' });
+          const result = await enqueueIdea(value.idea.trim());
+          sendJson(response, result.accepted ? 202 : 200, {
+            id: result.id,
+            status: result.accepted ? 'accepted' : 'duplicate',
+          });
         } catch (error) {
           sendJson(response, 400, { error: String(error) });
         }
@@ -1952,10 +2168,14 @@ async function shutdown(): Promise<void> {
   if (stopping) return;
   stopping = true;
   if (retryTimer) clearTimeout(retryTimer);
+  if (noticeRetryTimer) clearTimeout(noticeRetryTimer);
   if (orphanTimer) clearTimeout(orphanTimer);
   inboxWatcher?.close();
   runWatcher?.close();
   httpServer?.close();
+  await channelHub?.stop();
+  await writeChannelStatus();
+  channelHub = null;
   for (const waiter of processExitNotices.values()) waiter.kill();
   processExitNotices.clear();
   for (const timer of workerExitTimers.values()) clearTimeout(timer);
@@ -2003,6 +2223,7 @@ async function synchronizeArchivedVersion(): Promise<void> {
 export async function runNoticeGuard(): Promise<void> {
   await mkdir(inboxRoot, { recursive: true });
   await mkdir(responseRoot, { recursive: true });
+  await mkdir(noticeOutboxRoot, { recursive: true });
   const lock = await open(lockFile, 'wx').catch(() => null);
   if (!lock) throw new Error('notice guard 已经在运行，或存在未清理的锁文件');
   const guardProcessIdentity = getProcessIdentity(process.pid);
@@ -2022,8 +2243,19 @@ export async function runNoticeGuard(): Promise<void> {
   state.processIdentity = guardProcessIdentity;
   await synchronizeArchivedVersion();
   await saveState();
+  await loadRecordedCorrelations();
   process.once('SIGINT', () => void shutdown().then(() => process.exit(0)));
   process.once('SIGTERM', () => void shutdown().then(() => process.exit(0)));
+  channelHub = await secretaryChannelHubFromEnvironment(process.env, {
+    info: (message) => console.log(message),
+    error: (message) => console.error(message),
+  });
+  await writeChannelStatus();
+  void channelHub
+    .start(acceptChannelMessage)
+    .then(() => writeChannelStatus())
+    .then(() => processNoticeOutbox())
+    .catch((error) => console.error(`[notice guard] 通讯通道后台启动失败：${String(error)}`));
   inboxWatcher = watch(inboxRoot, () => void processInbox());
   runWatcher = watch(agentRoot, { recursive: true }, (_event, filename) => {
     if (!filename) return;

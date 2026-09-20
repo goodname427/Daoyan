@@ -16,6 +16,7 @@ const secretaryRoot = resolve(
 const inboxRoot = resolve(secretaryRoot, 'inbox');
 const responseRoot = resolve(secretaryRoot, 'responses');
 const stateFile = resolve(secretaryRoot, 'state.json');
+const channelsFile = resolve(secretaryRoot, 'channels.json');
 const lockFile = resolve(secretaryRoot, 'notice-guard.lock');
 const logFile = resolve(secretaryRoot, 'notice-guard.log');
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
@@ -32,6 +33,16 @@ function printHelp(): void {
   npm run secretary:stop
 
 秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
+}
+
+function desktopEnvironment(): NodeJS.ProcessEnv {
+  const environment = { ...process.env };
+  for (const key of Object.keys(environment)) {
+    if (key.startsWith('DAOYAN_DINGTALK_')) delete environment[key];
+  }
+  delete environment.DAOYAN_SECRETARY_TOKEN;
+  delete environment.DAOYAN_SECRETARY_WEBHOOK_URL;
+  return environment;
 }
 
 async function dashboardReachable(port: number): Promise<boolean> {
@@ -63,6 +74,7 @@ async function openDashboard(): Promise<void> {
   const child = spawn(command.file, command.args, {
     cwd: root,
     detached: true,
+    env: desktopEnvironment(),
     stdio: 'ignore',
     windowsHide: true,
   });
@@ -237,6 +249,23 @@ async function printStatus(): Promise<void> {
   );
   console.log(`最近事件：${publicState.lastEventAt}`);
   console.log(`当前任务：${publicState.activeItemId || '无'}`);
+  const channelStatus = await readFile(channelsFile, 'utf8')
+    .then(
+      (value) =>
+        JSON.parse(value) as {
+          status?: string;
+          activeChannelIds?: string[];
+          configuredChannelIds?: string[];
+        },
+    )
+    .catch(() => null);
+  const dingtalkActive =
+    running && (channelStatus?.activeChannelIds?.includes('dingtalk:stream') ?? false);
+  const dingtalkConfigured =
+    running && (channelStatus?.configuredChannelIds?.includes('dingtalk:stream') ?? false);
+  console.log(
+    `钉钉通道：${dingtalkActive ? '已由当前守卫加载' : dingtalkConfigured ? '已配置，等待连接恢复' : '当前守卫未配置'}`,
+  );
   for (const item of publicState.items.slice(-12)) {
     console.log(
       `- [${item.status}] ${item.idea}${item.retryAt ? `（${item.retryAt} 后恢复）` : ''}`,

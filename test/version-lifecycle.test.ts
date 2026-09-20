@@ -179,6 +179,32 @@ describe('formal version lifecycle', () => {
     expect(version.nodes.find((node) => node.id === 'charter-draft')?.status).toBe('active');
   });
 
+  it('treats a replayed producer request as the same approval', () => {
+    const version = createFormalVersion({
+      id: 'idempotent-review',
+      title: '幂等评审版本',
+      direction: '验证消息重投',
+      documentRoot: 'docs/versions/idempotent-review',
+      currentStage: 'producer-acceptance',
+      now: '2026-09-20T00:00:00.000Z',
+    });
+    const input = {
+      stage: 'producer-acceptance' as const,
+      reviewer: 'producer' as const,
+      decision: 'approved' as const,
+      documentRevision: '1',
+      comment: '通过',
+      sourceRequestId: 'dingtalk-request-1',
+      now: '2026-09-20T00:05:00.000Z',
+    };
+
+    const first = recordApproval(version, input);
+    const replay = recordApproval(version, input);
+
+    expect(replay.id).toBe(first.id);
+    expect(version.approvals).toHaveLength(1);
+  });
+
   it('tracks producer work and release health without hiding blocking bugs', () => {
     const version = createFormalVersion({
       id: 'quality',

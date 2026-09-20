@@ -146,6 +146,7 @@ export interface VersionApproval {
   decision: 'approved' | 'changes-requested';
   documentRevision: string;
   comment: string;
+  sourceRequestId?: string;
   createdAt: string;
 }
 
@@ -395,6 +396,12 @@ export function recordApproval(
   version: FormalVersion,
   input: Omit<VersionApproval, 'id' | 'createdAt'> & { now?: string },
 ): VersionApproval {
+  if (input.sourceRequestId) {
+    const existing = version.approvals.find(
+      (approval) => approval.sourceRequestId === input.sourceRequestId,
+    );
+    if (existing) return existing;
+  }
   if (
     input.stage !== 'charter-review' &&
     input.stage !== 'design-review' &&
@@ -422,6 +429,7 @@ export function recordApproval(
     decision: input.decision,
     documentRevision: input.documentRevision,
     comment: input.comment,
+    ...(input.sourceRequestId ? { sourceRequestId: input.sourceRequestId } : {}),
     createdAt,
   };
   version.approvals.push(approval);

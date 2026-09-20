@@ -96,6 +96,8 @@ npm run producer:doctor
 - `state.json`：队列、当前工作和已汇报任务节点；
 - `events.jsonl`：结构化通知历史；
 - `inbox/`、`responses/`：可靠收件协议；
+- `notice-outbox/`：尚未被全部目标通道确认的持久通知，发送失败后由恢复定时器重试；
+- `channels.json`：当前 notice guard 实际加载的通道，不包含凭据；
 - `notice-guard.log` 和各项任务日志：诊断信息。
 
 ## 通讯接入
@@ -118,7 +120,28 @@ npm run secretary:start
 
 使用 `Authorization: Bearer <local-secret>`。`GET /status` 返回脱敏状态。服务默认绑定 `127.0.0.1`；非本机地址强制要求 token，公网认证和 TLS 由外部网关负责。
 
-出站通知通过 `DAOYAN_SECRETARY_WEBHOOK_URL` 配置，`DAOYAN_SECRETARY_WEBHOOK_KIND` 支持 `generic`、`feishu`、`wecom`、`discord`。凭据只放环境变量。
+出站通知通过 `DAOYAN_SECRETARY_WEBHOOK_URL` 配置，`DAOYAN_SECRETARY_WEBHOOK_KIND` 支持 `generic`、`feishu`、`wecom`、`discord`、`dingtalk`。凭据只放环境变量。
+
+### 钉钉 Stream 秘书
+
+钉钉是现有秘书内核的通讯通道，不维护第二份任务、版本或对话状态。使用企业内部应用的机器人并启用 Stream 模式后，在启动 notice guard 的同一用户环境中配置：
+
+```powershell
+$env:DAOYAN_DINGTALK_CLIENT_ID = "<应用 Client ID>"
+$env:DAOYAN_DINGTALK_CLIENT_SECRET = "<应用 Client Secret>"
+$env:DAOYAN_DINGTALK_ALLOWED_SENDER_IDS = "<制作人 staffId>"
+$env:DAOYAN_DINGTALK_NOTIFY_USER_ID = "<接收异步通知的 staffId>"
+npm run secretary:stop
+npm run secretary:start
+```
+
+`DAOYAN_DINGTALK_ALLOWED_SENDER_IDS` 可用英文逗号配置多个授权人；未配置白名单时通道拒绝启动。`DAOYAN_DINGTALK_NOTIFY_USER_ID` 默认使用白名单第一人，`DAOYAN_DINGTALK_ROBOT_CODE` 默认使用 Client ID。不要把 Client Secret 写入仓库、日志或聊天消息；SDK 调试输出被固定关闭，因为其原始调试信息可能包含连接配置。
+
+机器人收到文本后使用平台消息 ID 生成稳定收件 ID，平台重投与守卫重启不会重复排期。即时答复优先回到原会话，任务完成、待办和阻塞等异步事件通过机器人单聊接口发送。Stream 长连接只负责事件唤醒，空闲时不调用模型，也不要求本机暴露公网端口。
+
+所有外部通知先写入 `notice-outbox/`；某个通道失败时只重试该通道，已经成功的通道不会重复发送。原会话回调失效或返回错误时会降级到主动单聊。通知是至少一次交付，进程在平台已接收但本机尚未来得及确认时崩溃，恢复后可能重复一条简报，但不会静默丢失。
+
+若钉钉配置缺失、连接失败或发送失败，notice guard 会记录错误并继续运行本机秘书、HTTP 与其他通道。使用 `npm run secretary:status` 检查当前终端是否具备完整配置，使用 `.daoyan-agent/secretary/notice-guard.log` 查看连接诊断。
 
 `DAOYAN_SECRETARY_LOCAL_ONLY=1` 会禁用新消息的语义查重，仅使用本地保守规则；空闲模式无论如何都不会调用模型。
 
@@ -127,4 +150,4 @@ npm run secretary:start
 - PM 仍按依赖顺序编辑同一工作区，暂不并行写入。
 - CLI 没有单次调用硬 token 上限，当前依靠聚焦输入、模型分层、超时和事后记录控制成本。
 - notice guard 是本机进程，系统重启后需要登录启动项、进程管理器或 `npm run secretary:start` 拉起。
-- 仓库只提供平台无关的 HTTP/webhook 边界，不保存聊天平台凭据。
+- 仓库提供平台无关的通道边界与钉钉 Stream 适配，但不保存聊天平台凭据。
