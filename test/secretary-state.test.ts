@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyContinueToSchedule,
   applyWaitingReply,
   createSecretaryState,
   decideIntake,
@@ -126,6 +127,34 @@ describe('persistent secretary state', () => {
     expect(waiting.status).toBe('retry-wait');
     expect(waiting.producerGuidance).toBe(request.idea);
     expect(state.activeItemId).toBe('');
+  });
+
+  it('turns a natural-language continue request into an immediate durable retry', () => {
+    const state = createSecretaryState('2026-09-14T00:00:00.000Z');
+    const retry = itemFromIntake(
+      {
+        id: 'retry',
+        idea: '迁移旧元法术',
+        createdAt: '2026-09-14T00:00:00.000Z',
+      },
+      [],
+    ).item;
+    retry.status = 'retry-wait';
+    retry.retryAt = '2026-09-15T04:31:00.000Z';
+    state.items.push(retry);
+    const request: IntakeRequest = {
+      id: 'continue-now',
+      idea: '继续推进任务',
+      createdAt: '2026-09-14T01:00:00.000Z',
+    };
+
+    expect(applyContinueToSchedule(state, request)).toEqual({
+      action: 'resumed',
+      item: retry,
+    });
+    expect(retry.retryAt).toBe(request.createdAt);
+    expect(retry.lastProducerRequestId).toBe(request.id);
+    expect(nextRunnableItem(state, request.createdAt)).toBe(retry);
   });
 
   it('selects the next status backlog item only once', () => {

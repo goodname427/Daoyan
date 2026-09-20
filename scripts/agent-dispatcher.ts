@@ -5,6 +5,7 @@ import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/pro
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  canRebaseEmptyRecovery,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   buildLocalPlan,
@@ -1179,12 +1180,14 @@ try {
     const checkpoint = await readCheckpoint(runDirectory);
     if (checkpoint.status === 'delivered') throw new Error('该运行已经交付，无需恢复');
     const currentFingerprint = await workspaceFingerprint();
-    const [currentHead, currentStatus, currentParent, currentMessage] = await Promise.all([
-      git(['rev-parse', 'HEAD']),
-      git(['status', '--porcelain']),
-      git(['rev-parse', 'HEAD^']),
-      git(['log', '-1', '--pretty=%s']),
-    ]);
+    const [currentHead, currentStatus, currentParent, currentMessage, baselineAncestor] =
+      await Promise.all([
+        git(['rev-parse', 'HEAD']),
+        git(['status', '--porcelain']),
+        git(['rev-parse', 'HEAD^']),
+        git(['log', '-1', '--pretty=%s']),
+        git(['merge-base', '--is-ancestor', checkpoint.baseline, 'HEAD']),
+      ]);
     const expectedCommitMessage = conventionalCommitOrFallback(
       checkpoint.plan.commitMessage,
       checkpoint.plan.title,
@@ -1203,6 +1206,14 @@ try {
         expectedMessage: expectedCommitMessage,
         worktreeClean: currentStatus.stdout.trim().length === 0,
       });
+    const emptyRecoveryCanRebase = canRebaseEmptyRecovery({
+      status: checkpoint.status,
+      taskRunCount: checkpoint.taskRuns.length,
+      baseline: checkpoint.baseline,
+      currentHead: currentHead.stdout.trim(),
+      worktreeClean: currentStatus.code === 0 && currentStatus.stdout.trim().length === 0,
+      baselineIsAncestor: baselineAncestor.code === 0,
+    });
     const canAdoptAbandonedChanges =
       checkpoint.status === 'active' && checkpoint.taskRuns.length === 0;
     const fingerprintMismatch = currentFingerprint !== checkpoint.workspaceFingerprint;
@@ -1210,6 +1221,7 @@ try {
       fingerprintMismatch &&
       !options.takeover &&
       !canAdoptAbandonedChanges &&
+      !emptyRecoveryCanRebase &&
       !completedCommitCanResume
     ) {
       throw new Error(
@@ -1225,17 +1237,20 @@ try {
       console.log(`[秘书强制接管] 已记录当前工作区现场：${resolve(runDirectory, 'takeover.json')}`);
     } else if (completedCommitCanResume) {
       console.log('[秘书接管] 检测到 Git 提交已完成，将续传并重新验证。');
+    } else if (emptyRecoveryCanRebase) {
+      console.log('[秘书接管] 任务尚未开始且仓库仅向前演进，已将空恢复点更新到当前基线。');
     } else if (fingerprintMismatch) {
       console.log(
         '[秘书接管] 上一执行 Agent 在首个任务中异常退出，放弃旧跳过记录并审查当前遗留改动。',
       );
     }
     activePlan = checkpoint.plan;
-    activeBaseline = checkpoint.baseline;
+    activeBaseline = emptyRecoveryCanRebase ? currentHead.stdout.trim() : checkpoint.baseline;
     activeDirection = checkpoint.direction;
     activeResolvedDirection = applyProducerGuidance(checkpoint.resolvedDirection);
     const resetCompletedWork =
-      (fingerprintMismatch && !completedCommitCanResume) || options.takeover;
+      (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
+      options.takeover;
     activeTaskRuns = resetCompletedWork ? [] : checkpoint.taskRuns;
     activeReview = resetCompletedWork ? null : checkpoint.review;
     activePlannerTokens = checkpoint.plannerTokens;
@@ -1244,7 +1259,7 @@ try {
     activeNoPush = options.noPush || checkpoint.noPush;
     activeTakeover =
       options.takeover ||
-      (fingerprintMismatch && !completedCommitCanResume) ||
+      (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
       checkpoint.takeover === true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {

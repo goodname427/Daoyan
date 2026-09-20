@@ -95,6 +95,15 @@ export interface CompletedCommitRecoveryInput {
   worktreeClean: boolean;
 }
 
+export interface EmptyRecoveryRebaseInput {
+  status: string;
+  taskRunCount: number;
+  baseline: string;
+  currentHead: string;
+  worktreeClean: boolean;
+  baselineIsAncestor: boolean;
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -324,6 +333,16 @@ export function canResumeCompletedCommit(input: CompletedCommitRecoveryInput): b
     input.currentHead !== input.baseline &&
     input.currentParent === input.baseline &&
     input.currentMessage === input.expectedMessage
+  );
+}
+
+export function canRebaseEmptyRecovery(input: EmptyRecoveryRebaseInput): boolean {
+  return (
+    input.status === 'recoverable' &&
+    input.taskRunCount === 0 &&
+    input.worktreeClean &&
+    input.currentHead !== input.baseline &&
+    input.baselineIsAncestor
   );
 }
 

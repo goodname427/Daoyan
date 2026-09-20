@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  canRebaseEmptyRecovery,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   canRefreshVersionRecoveryFingerprint,
@@ -155,6 +156,21 @@ describe('agent routing', () => {
     expect(canResumeCompletedCommit({ ...input, currentParent: 'other' })).toBe(false);
     expect(canResumeCompletedCommit({ ...input, currentMessage: 'feat: 外部提交' })).toBe(false);
     expect(canResumeCompletedCommit({ ...input, worktreeClean: false })).toBe(false);
+  });
+
+  it('rebases an empty recoverable run when the clean repository only moved forward', () => {
+    const input = {
+      status: 'recoverable',
+      taskRunCount: 0,
+      baseline: 'old',
+      currentHead: 'new',
+      worktreeClean: true,
+      baselineIsAncestor: true,
+    };
+    expect(canRebaseEmptyRecovery(input)).toBe(true);
+    expect(canRebaseEmptyRecovery({ ...input, taskRunCount: 1 })).toBe(false);
+    expect(canRebaseEmptyRecovery({ ...input, worktreeClean: false })).toBe(false);
+    expect(canRebaseEmptyRecovery({ ...input, baselineIsAncestor: false })).toBe(false);
   });
 
   it('coalesces same-tier work to avoid repeated context reads', () => {

@@ -31,6 +31,7 @@ import {
   waitForProcessIdentity,
 } from './process-identity';
 import {
+  applyContinueToSchedule,
   applyWaitingReply,
   createSecretaryState,
   inferMessageIntent,
@@ -880,15 +881,18 @@ function dashboardTodos(version: FormalVersion | null, isCurrent: boolean): obje
   return [...versionTodos, ...secretaryTodos];
 }
 
-function retryTimeFromOutput(lines: string[]): string {
+export function retryTimeFromOutput(
+  lines: string[],
+  now = Date.now(),
+  fallbackMinutes = config.guard.executionRetryMinutes,
+): string {
   const hint = lines.join('\n').match(/try again at\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!hint)
-    return new Date(Date.now() + config.guard.executionRetryMinutes * 60_000).toISOString();
+  if (!hint) return new Date(now + fallbackMinutes * 60_000).toISOString();
   let hour = Number(hint[1]) % 12;
   if (hint[3].toUpperCase() === 'PM') hour += 12;
-  const candidate = new Date();
+  const candidate = new Date(now);
   candidate.setHours(hour, Number(hint[2]) + 5, 0, 0);
-  if (candidate.getTime() <= Date.now()) candidate.setDate(candidate.getDate() + 1);
+  if (candidate.getTime() <= now) return new Date(now + fallbackMinutes * 60_000).toISOString();
   return candidate.toISOString();
 }
 
@@ -1302,6 +1306,32 @@ async function resumeWaitingItem(
   await emitNotice('reply-accepted', waiting.summary, waiting, undefined, request.id);
 }
 
+async function continueScheduledWork(request: IntakeRequest): Promise<void> {
+  const result = applyContinueToSchedule(state, request);
+  await saveState();
+  if (result.action === 'resumed' || result.action === 'ready') await coordinate();
+
+  const item = result.item;
+  const response =
+    result.action === 'running'
+      ? `“${item?.idea ?? '当前任务'}”已经在执行，秘书会在任务节点完成或需要你介入时通知。`
+      : result.action === 'resumed' || result.action === 'ready'
+        ? item && (item.status === 'active' || item.status === 'tracking')
+          ? `已立即恢复“${item.idea}”，Feature PM 已启动。`
+          : `已唤醒“${item?.idea ?? '当前任务'}”的调度，正在从恢复点接管。`
+        : result.action === 'waiting'
+          ? `“${item?.idea ?? '当前任务'}”仍在等待具体产品决定，不能用笼统的“继续”跳过该门禁。`
+          : '当前没有已批准且可执行的任务；秘书会保持休眠，等待新的版本方向。';
+  await writeInboxResponse(
+    request,
+    response,
+    item?.status ?? 'answered',
+    'continue',
+    item?.plannedTasks ?? [],
+  );
+  await emitNotice('continue-accepted', response, item ?? undefined, undefined, request.id);
+}
+
 export function versionProducerDecision(message: string): 'approved' | 'changes-requested' | null {
   const normalized = message.replace(/\s/g, '');
   if (/(不通过|不能通过|先别|不要继续|需要修改|需要调整|有问题|不行)/.test(normalized)) {
@@ -1492,10 +1522,7 @@ async function processInbox(): Promise<void> {
           continue;
         }
         if (intent === 'continue') {
-          const response = '收到，我会继续推进当前正式版本已经批准的排期。';
-          await saveState();
-          await writeInboxResponse(request, response, 'answered', intent);
-          await emitNotice('continue-accepted', response, undefined, undefined, request.id);
+          await continueScheduledWork(request);
           await rm(path, { force: true });
           continue;
         }

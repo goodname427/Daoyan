@@ -83,6 +83,13 @@ export interface IntakeDecision {
   fact: ProjectFact | null;
 }
 
+export type ContinueScheduleAction = 'running' | 'resumed' | 'ready' | 'waiting' | 'idle';
+
+export interface ContinueScheduleResult {
+  action: ContinueScheduleAction;
+  item: SecretaryItem | null;
+}
+
 export function taskCompletionKey(runDirectory: string, taskId: string): string {
   const normalizedDirectory = runDirectory.replace(/\\/g, '/').replace(/\/+$/, '');
   return `${normalizedDirectory}#${taskId}`;
@@ -196,6 +203,35 @@ export function applyWaitingReply(
       : '已理解你的回复，将从原恢复点继续。';
   state.activeItemId = '';
   return waiting;
+}
+
+export function applyContinueToSchedule(
+  state: SecretaryState,
+  request: IntakeRequest,
+): ContinueScheduleResult {
+  const active = state.activeItemId
+    ? state.items.find((item) => item.id === state.activeItemId)
+    : state.items.find((item) => item.status === 'active' || item.status === 'tracking');
+  if (active && (active.status === 'active' || active.status === 'tracking')) {
+    active.lastProducerRequestId = request.id;
+    active.updatedAt = request.createdAt;
+    return { action: 'running', item: active };
+  }
+
+  const pending = state.items.find((item) =>
+    ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),
+  );
+  if (!pending) return { action: 'idle', item: null };
+  pending.lastProducerRequestId = request.id;
+  pending.updatedAt = request.createdAt;
+  if (pending.status === 'retry-wait') {
+    pending.retryAt = request.createdAt;
+    pending.summary = '制作人要求立即继续，正在从原恢复点重新启动。';
+    return { action: 'resumed', item: pending };
+  }
+  if (pending.status === 'queued') return { action: 'ready', item: pending };
+  if (pending.status === 'waiting-producer') return { action: 'waiting', item: pending };
+  return { action: 'running', item: pending };
 }
 
 function bestMatchingFact(idea: string, facts: ProjectFact[]): ProjectFact | null {
