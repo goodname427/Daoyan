@@ -31,7 +31,7 @@ npm run secretary:open
 npm run secretary:site:build
 ```
 
-私有 Sites 预览展示快照同步时间，并移除 Agent PID、绝对运行目录和原始运行输出。它当前用于离开电脑时查看状态和体验移动界面；在远程信箱接通前，手机留言只保存在当前设备并显示“待同步”，不会伪装成秘书已经收到。Sites 源项目绑定记录在 `.openai/hosting.json`，`site-dist/` 是可重新生成的发布产物，不进入 Git。
+私有 Sites 预览地址为 <https://daoyan-project-hub.goodname427.chatgpt.site>。它展示快照同步时间，并移除 Agent PID、绝对运行目录和原始运行输出；在远程信箱接通前，手机留言只保存在当前设备并显示“待同步”，不会伪装成秘书已经收到。Sites 源项目绑定记录在 `.openai/hosting.json`，`.output/public/` 是可重新生成的发布产物，不进入 Git。
 
 查看当前正在做什么、排期和最近完成节点：
 

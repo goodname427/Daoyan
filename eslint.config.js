@@ -6,6 +6,7 @@ export default tseslint.config(
     ignores: [
       'dist/**',
       'site-dist/**',
+      '.output/**',
       '.daoyan-agent/**',
       'release/**',
       'coverage/**',

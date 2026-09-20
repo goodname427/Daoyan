@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dashboardRoot = resolve(root, 'secretary-dashboard');
-const outputRoot = resolve(root, 'site-dist');
+const outputRoot = resolve(root, '.output/public');
 
 type JsonRecord = Record<string, unknown>;
 

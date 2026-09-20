@@ -1,6 +1,7 @@
 node_modules/
 dist/
 site-dist/
+.output/
 dist-electron/
 release/
 coverage/
