@@ -20,4 +20,5 @@
 
 - PowerShell 脚本可通过语法解析，Secret 输入不回显。
 - 向导不会输出 Secret，并能在配置后停止、启动和检查常驻秘书。
-- PowerShell 语法解析通过；`npm run verify:full` 通过，包含 124 项 Vitest、覆盖率、资源沙盒、19 项 Playwright E2E 和生产构建。
+- PowerShell 语法解析通过；首次交互启动发现 Windows PowerShell 5 会把无 BOM 的 UTF-8 中文脚本按本地编码读取，已将向导固定为带 BOM 的 UTF-8，并使用 `powershell.exe` 复验。
+- `npm run verify:full` 通过，包含 124 项 Vitest、覆盖率、资源沙盒、19 项 Playwright E2E 和生产构建。
