@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  continueDispatchResponse,
   featureTaskCompletions,
   retryTimeFromOutput,
   runArgs,
@@ -7,6 +8,7 @@ import {
   versionProducerDecision,
   windowsCodexInvocation,
 } from '../scripts/secretary-notice-guard';
+import { itemFromIntake } from '../scripts/secretary-state';
 
 describe('secretary worker process launch', () => {
   it('runs a Windows codex cmd shim through its Node entrypoint', () => {
@@ -33,6 +35,23 @@ describe('secretary retry scheduling', () => {
     expect(retryTimeFromOutput(['try again at 4:31 AM'], now, 5)).toBe(
       new Date(now + 5 * 60_000).toISOString(),
     );
+  });
+});
+
+describe('secretary dispatch feedback', () => {
+  const item = itemFromIntake(
+    { id: 'feature', idea: '继续迁移旧元法术', createdAt: '2026-09-20T00:00:00.000Z' },
+    [],
+  ).item;
+
+  it('only claims an Agent is running when worker evidence exists', () => {
+    expect(continueDispatchResponse(item, 'worker-running')).toContain('执行 Agent 已确认运行');
+    expect(continueDispatchResponse(item, 'pm-running')).toContain('Feature PM 已确认运行');
+  });
+
+  it('reports a failed launch as recovery instead of a successful start', () => {
+    expect(continueDispatchResponse(item, 'recovering')).toContain('未稳定启动');
+    expect(continueDispatchResponse(item, 'recovering')).not.toContain('已确认运行');
   });
 });
 

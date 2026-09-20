@@ -27,6 +27,7 @@ import {
   type ReviewResult,
   type TaskPlan,
 } from './agent-routing';
+import { endChildInput } from './child-process-input';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -342,7 +343,10 @@ async function runProcess(
         reject(error);
       }
     });
-    child.stdin.end(options.input ?? '');
+    endChildInput(child.stdin, options.input ?? '', (error) => {
+      stderr += `\n[dispatcher] 无法向子进程写入输入：${error.message}\n`;
+      if (!workerFinished) child.kill('SIGTERM');
+    });
   });
 }
 

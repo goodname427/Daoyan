@@ -1302,26 +1302,62 @@ async function resumeWaitingItem(
   const waiting = applyWaitingReply(state, request, intent);
   if (!waiting) throw new Error('等待事项已变化，无法应用当前回复');
   await saveState();
-  await writeInboxResponse(request, waiting.summary, waiting.status, intent, waiting.plannedTasks);
-  await emitNotice('reply-accepted', waiting.summary, waiting, undefined, request.id);
+  await coordinate();
+  const response = continueDispatchResponse(waiting, await confirmDispatchEvidence(waiting));
+  await writeInboxResponse(request, response, waiting.status, intent, waiting.plannedTasks);
+  await emitNotice('reply-accepted', response, waiting, undefined, request.id);
+}
+
+type DispatchEvidence = 'worker-running' | 'pm-running' | 'blocked' | 'recovering' | 'stopped';
+
+async function confirmDispatchEvidence(
+  item: SecretaryItem,
+  settleMs = 1_200,
+): Promise<DispatchEvidence> {
+  const deadline = Date.now() + settleMs;
+  do {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 150));
+    if (item.status === 'waiting-producer') return 'blocked';
+    if (item.status === 'retry-wait') return 'recovering';
+  } while (Date.now() < deadline);
+
+  await coordinate();
+  if (await activeWorkerProcess(item, true)) return 'worker-running';
+  if (isOwnedProcessAlive(item.processPid, item.processIdentity, 0)) return 'pm-running';
+  const reconciledStatus: string = item.status;
+  if (reconciledStatus === 'waiting-producer') return 'blocked';
+  if (reconciledStatus === 'retry-wait') return 'recovering';
+  return 'stopped';
+}
+
+export function continueDispatchResponse(item: SecretaryItem, evidence: DispatchEvidence): string {
+  if (evidence === 'worker-running') {
+    return `已恢复“${item.idea}”，执行 Agent 已确认运行。`;
+  }
+  if (evidence === 'pm-running') {
+    return `已恢复“${item.idea}”，Feature PM 已确认运行，正在准备或调度执行 Agent。`;
+  }
+  if (evidence === 'blocked') {
+    return `尝试恢复“${item.idea}”后确认仍被阻塞：${item.summary}`;
+  }
+  if (evidence === 'recovering') {
+    return `“${item.idea}”的进程未稳定启动，秘书已进入自动恢复，而不是把它误报为运行中。`;
+  }
+  return `“${item.idea}”尚未检测到真实 PM 或 Agent 进程，秘书已保留现场并继续诊断。`;
 }
 
 async function continueScheduledWork(request: IntakeRequest): Promise<void> {
   const result = applyContinueToSchedule(state, request);
   await saveState();
-  if (result.action === 'resumed' || result.action === 'ready') await coordinate();
+  if (!['waiting', 'idle'].includes(result.action)) await coordinate();
 
   const item = result.item;
   const response =
-    result.action === 'running'
-      ? `“${item?.idea ?? '当前任务'}”已经在执行，秘书会在任务节点完成或需要你介入时通知。`
-      : result.action === 'resumed' || result.action === 'ready'
-        ? item && (item.status === 'active' || item.status === 'tracking')
-          ? `已立即恢复“${item.idea}”，Feature PM 已启动。`
-          : `已唤醒“${item?.idea ?? '当前任务'}”的调度，正在从恢复点接管。`
-        : result.action === 'waiting'
-          ? `“${item?.idea ?? '当前任务'}”仍在等待具体产品决定，不能用笼统的“继续”跳过该门禁。`
-          : '当前没有已批准且可执行的任务；秘书会保持休眠，等待新的版本方向。';
+    item && !['waiting', 'idle'].includes(result.action)
+      ? continueDispatchResponse(item, await confirmDispatchEvidence(item))
+      : result.action === 'waiting'
+        ? `“${item?.idea ?? '当前任务'}”仍在等待具体产品决定，不能用笼统的“继续”跳过该门禁。`
+        : '当前没有已批准且可执行的任务；秘书会保持休眠，等待新的版本方向。';
   await writeInboxResponse(
     request,
     response,
