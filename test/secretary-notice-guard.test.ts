@@ -57,6 +57,13 @@ describe('secretary dispatch feedback', () => {
 });
 
 describe('secretary launch snapshot ordering', () => {
+  it('refuses to restart an existing Feature without its recovery file', () => {
+    const item = itemFromIntake({ id: 'old', idea: '新增功能', createdAt: '' }, []).item;
+    item.runDirectory = 'old-run';
+    expect(() => runArgs(item, false)).toThrow('禁止作为新运行启动');
+    expect(item.runDirectory).toBe('old-run');
+  });
+
   it('ignores a persisted failure from before the current PM launch', () => {
     expect(snapshotPredatesLaunch('2026-09-20T14:11:21.000Z', '2026-09-20T14:23:52.000Z')).toBe(
       true,

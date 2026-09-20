@@ -347,7 +347,7 @@ export function canResumeCompletedCommit(input: CompletedCommitRecoveryInput): b
 
 export function canRebaseEmptyRecovery(input: EmptyRecoveryRebaseInput): boolean {
   return (
-    input.status === 'recoverable' &&
+    ['recoverable', 'waiting-producer'].includes(input.status) &&
     input.taskRunCount === 0 &&
     input.worktreeClean &&
     input.currentHead !== input.baseline &&

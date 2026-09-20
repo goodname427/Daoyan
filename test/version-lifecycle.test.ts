@@ -25,6 +25,7 @@ import {
   versionHealth,
   versionProgress,
   writeFormalVersion,
+  type FormalVersion,
 } from '../scripts/version-lifecycle';
 
 describe('formal version lifecycle', () => {
@@ -518,36 +519,43 @@ describe('formal version lifecycle', () => {
     }
   });
 
-  it('preserves every file when a pending transaction has an unsupported extension', async () => {
-    const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-version-invalid-transaction-'));
-    try {
-      const version = createFormalVersion({
-        id: 'invalid-transaction',
-        title: '无效事务',
-        direction: '拒绝未来扩展',
-        documentRoot: 'docs/versions/invalid-transaction',
-      });
-      await writeFormalVersion(temporary, version);
-      const stateRoot = resolve(temporary, '.daoyan-agent', 'releases');
-      const currentPath = resolve(stateRoot, 'current.json');
-      const historyPath = resolve(stateRoot, 'versions', `${version.id}.json`);
-      const transactionPath = resolve(stateRoot, '.write-transaction.json');
-      const beforeCurrent = await readFile(currentPath, 'utf8');
-      const beforeHistory = await readFile(historyPath, 'utf8');
-      const snapshot = structuredClone(version);
-      if (!snapshot.orchestration) throw new Error('测试版本缺少编排扩展');
-      (snapshot.orchestration as { schemaVersion: number }).schemaVersion = 2;
-      const transaction = `${JSON.stringify({ version: snapshot }, null, 2)}\n`;
-      await writeFile(transactionPath, transaction, 'utf8');
+  it.each(['future', 'null'] as const)(
+    'preserves every file when a pending transaction has a %s orchestration extension',
+    async (mode) => {
+      const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-version-invalid-transaction-'));
+      try {
+        const version = createFormalVersion({
+          id: 'invalid-transaction',
+          title: '无效事务',
+          direction: '拒绝未来扩展',
+          documentRoot: 'docs/versions/invalid-transaction',
+        });
+        await writeFormalVersion(temporary, version);
+        const stateRoot = resolve(temporary, '.daoyan-agent', 'releases');
+        const currentPath = resolve(stateRoot, 'current.json');
+        const historyPath = resolve(stateRoot, 'versions', `${version.id}.json`);
+        const transactionPath = resolve(stateRoot, '.write-transaction.json');
+        const beforeCurrent = await readFile(currentPath, 'utf8');
+        const beforeHistory = await readFile(historyPath, 'utf8');
+        const snapshot = structuredClone(version);
+        if (!snapshot.orchestration) throw new Error('测试版本缺少编排扩展');
+        if (mode === 'future') {
+          (snapshot.orchestration as { schemaVersion: number }).schemaVersion = 2;
+        } else {
+          (snapshot as unknown as { orchestration: unknown }).orchestration = null;
+        }
+        const transaction = `${JSON.stringify({ version: snapshot }, null, 2)}\n`;
+        await writeFile(transactionPath, transaction, 'utf8');
 
-      await expect(readFormalVersion(temporary)).rejects.toThrow('停止自动写入和派发');
-      expect(await readFile(currentPath, 'utf8')).toBe(beforeCurrent);
-      expect(await readFile(historyPath, 'utf8')).toBe(beforeHistory);
-      expect(await readFile(transactionPath, 'utf8')).toBe(transaction);
-    } finally {
-      await rm(temporary, { recursive: true, force: true });
-    }
-  });
+        await expect(readFormalVersion(temporary)).rejects.toThrow('停止自动写入和派发');
+        expect(await readFile(currentPath, 'utf8')).toBe(beforeCurrent);
+        expect(await readFile(historyPath, 'utf8')).toBe(beforeHistory);
+        expect(await readFile(transactionPath, 'utf8')).toBe(transaction);
+      } finally {
+        await rm(temporary, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('persists risk, scope and stage strategy while refusing to skip fixed gates', () => {
     const version = createFormalVersion({
@@ -818,6 +826,182 @@ describe('formal version lifecycle', () => {
         evidence: ['passed-regression.json'],
       });
       expect(() => advanceVersion(version, 'candidate')).not.toThrow();
+    },
+  );
+
+  it.each(['execute', 'reduced', 'skip'] as const)(
+    'requires fresh regression for the repaired code with %s policy',
+    (mode) => {
+      let version = createFormalVersion({
+        id: 'changed-code',
+        title: '代码修订门禁',
+        direction: '修复后回归',
+        documentRoot: 'docs/versions/changed-code',
+        currentStage: 'qa',
+      });
+      const qa = {
+        agentId: 'tester',
+        independent: true,
+        codeRevision: 'A',
+        suites: ['acceptance', 'integration', 'regression'] as const,
+        status: 'passed' as const,
+        commands: [{ command: 'npm test', exitCode: 0 }],
+        evidence: ['qa.json'],
+      };
+      recordQaRun(version, { ...qa, suites: [...qa.suites] });
+      advanceVersion(version, 'bugfix');
+      recordStagePolicy(version, {
+        stage: 'bugfix',
+        mode,
+        scopeRevision: 1,
+        reason: '风险策略',
+        decidedBy: 'pm',
+        evidence: [],
+      });
+      version.bugs.push({
+        id: 'medium',
+        title: '一般缺陷',
+        severity: 'medium',
+        status: 'open',
+        expected: '正常',
+        actual: '错误',
+        evidence: 'bug.json',
+        linkedWorkItemId: '',
+      });
+      transitionVersionBug(version, 'medium', 'fixing');
+      transitionVersionBug(version, 'medium', 'verify', '', 'B');
+      // The invalidation boundary survives persistence and old QA stays readable.
+      version = JSON.parse(JSON.stringify(version)) as FormalVersion;
+      normalizeFormalVersion(version);
+      expect(version.orchestration!.qaRuns[0].status).toBe('passed');
+      expect(() => advanceVersion(version, 'candidate')).toThrow('有效独立 QA');
+      recordQaRun(version, { ...qa, suites: [...qa.suites] });
+      expect(() => advanceVersion(version, 'candidate')).toThrow('有效独立 QA');
+      const fresh = recordQaRun(version, {
+        ...qa,
+        codeRevision: 'B',
+        suites: ['regression', 'defect-reverification'],
+        bugFixes: [{ bugId: 'medium', fixAttemptId: version.bugs[0].fixAttemptId! }],
+      });
+      transitionVersionBug(version, 'medium', 'closed', fresh.id);
+      expect(() => advanceVersion(version, 'candidate')).not.toThrow();
+    },
+  );
+
+  it('invalidates old regression even when a repair reuses its code revision label', () => {
+    const version = createFormalVersion({
+      id: 'same-code',
+      title: '同修订修复',
+      direction: '重新验证',
+      documentRoot: 'docs/versions/same-code',
+      currentStage: 'bugfix',
+    });
+    recordQaRun(version, {
+      agentId: 'tester',
+      independent: true,
+      codeRevision: 'A',
+      suites: ['regression'],
+      status: 'passed',
+      commands: [{ command: 'npm test', exitCode: 0 }],
+      evidence: ['qa.json'],
+    });
+    version.bugs.push({
+      id: 'medium',
+      title: '缺陷',
+      severity: 'medium',
+      status: 'fixing',
+      expected: '',
+      actual: '',
+      evidence: '',
+      linkedWorkItemId: '',
+    });
+    transitionVersionBug(version, 'medium', 'verify', '', 'A');
+    expect(() => advanceVersion(version, 'candidate')).toThrow('有效独立 QA');
+  });
+
+  it('keeps legacy fixes readable without trusting a different QA revision', () => {
+    const version = createFormalVersion({
+      id: 'legacy-fix',
+      title: '旧修复证据',
+      direction: '保守迁移',
+      documentRoot: 'docs/versions/legacy-fix',
+      currentStage: 'bugfix',
+    });
+    recordQaRun(version, {
+      agentId: 'tester',
+      independent: true,
+      codeRevision: 'A',
+      suites: ['regression'],
+      status: 'passed',
+      commands: [{ command: 'npm test', exitCode: 0 }],
+      evidence: ['qa.json'],
+    });
+    version.bugs.push({
+      id: 'medium',
+      title: '旧修复',
+      severity: 'medium',
+      status: 'verify',
+      expected: '',
+      actual: '',
+      evidence: '',
+      linkedWorkItemId: '',
+      fixAttemptId: 'old-fix',
+      fixCodeRevision: 'B',
+    });
+    normalizeFormalVersion(version);
+    expect(version.orchestration!.codeRevision).toBeUndefined();
+    expect(() => advanceVersion(version, 'candidate')).toThrow('有效独立 QA');
+  });
+
+  it('does not trust newer legacy QA evidence for a different feature revision', () => {
+    const version = createFormalVersion({
+      id: 'legacy-feature-revision',
+      title: '旧 Feature 修订证据',
+      direction: '保守迁移',
+      documentRoot: 'docs/versions/legacy-feature-revision',
+      currentStage: 'qa',
+    });
+    version.workItems.push({
+      id: 'legacy-feature',
+      title: '旧 Feature',
+      owner: 'feature-agent',
+      status: 'completed',
+      dependsOn: [],
+      summary: '完成修订 B',
+      evidence: 'feature.json',
+    });
+    recordFeatureVerification(version, {
+      workItemId: 'legacy-feature',
+      agentId: 'feature-agent',
+      codeRevision: 'B',
+      typecheck: 'passed',
+      targetedTests: 'passed',
+      evidence: ['feature-verification.json'],
+    });
+    recordQaRun(version, {
+      agentId: 'tester',
+      independent: true,
+      codeRevision: 'A',
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'passed',
+      commands: [{ command: 'npm test', exitCode: 0 }],
+      evidence: ['qa.json'],
+    });
+    delete version.orchestration!.codeRevision;
+    expect(() => advanceVersion(version, 'bugfix')).toThrow('独立验收');
+  });
+
+  it.each([{ codeRevision: null }, { qaInvalidatedThrough: -1 }, { qaInvalidatedThrough: 1 }])(
+    'rejects a corrupt candidate code baseline %j',
+    (fields) => {
+      const version = createFormalVersion({
+        id: 'invalid-baseline',
+        title: '校验',
+        direction: '校验',
+        documentRoot: 'docs/versions/invalid-baseline',
+      });
+      Object.assign(version.orchestration!, fields);
+      expect(() => normalizeFormalVersion(version)).toThrow('代码修订或 QA 失效边界损坏');
     },
   );
 
@@ -1178,4 +1362,20 @@ describe('formal version lifecycle', () => {
 
     expect(() => normalizeFormalVersion(version)).toThrow('嵌套记录损坏');
   });
+
+  it.each([null, false, 0])(
+    'rejects an explicitly present malformed orchestration value %s instead of migrating it',
+    (orchestration) => {
+      const version = createFormalVersion({
+        id: 'invalid-present-extension',
+        title: '损坏扩展',
+        direction: '区分缺失和损坏字段',
+        documentRoot: 'docs/versions/invalid-present-extension',
+      });
+      (version as unknown as { orchestration: unknown }).orchestration = orchestration;
+
+      expect(() => normalizeFormalVersion(version)).toThrow('停止自动写入和派发');
+      expect((version as unknown as { orchestration: unknown }).orchestration).toBe(orchestration);
+    },
+  );
 });

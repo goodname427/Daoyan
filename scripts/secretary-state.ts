@@ -76,6 +76,8 @@ export interface SecretaryItemOrchestration {
   reconciliationOutcome: SecretaryReconciliation['outcome'] | '';
   awaitingReview: boolean;
   processOccupied: boolean;
+  waitingSnapshot?: string;
+  acknowledgedWaitingSnapshot?: string;
 }
 
 export interface ProjectFact {
@@ -228,8 +230,8 @@ function validateSecretaryOrchestration(value: unknown): asserts value is Secret
 
 function validateItemOrchestration(item: SecretaryItem): void {
   const value = item.orchestration;
-  if (!value) return;
   if (
+    !isRecord(value) ||
     value.schemaVersion !== 1 ||
     typeof value.runId !== 'string' ||
     !Number.isSafeInteger(value.attempt) ||
@@ -245,7 +247,10 @@ function validateItemOrchestration(item: SecretaryItem): void {
       'missing',
     ].includes(value.reconciliationOutcome) ||
     typeof value.awaitingReview !== 'boolean' ||
-    typeof value.processOccupied !== 'boolean'
+    typeof value.processOccupied !== 'boolean' ||
+    ['waitingSnapshot', 'acknowledgedWaitingSnapshot'].some(
+      (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
+    )
   ) {
     throw new Error(`秘书事项 ${item.id} 的编排扩展损坏；已停止自动写入和派发`);
   }
@@ -277,9 +282,11 @@ export function directionDestination(
 ): DirectionDestination {
   if (!current || current.status === 'archived') return 'draft-version';
   if (current.scopeFrozen) return 'next-version-candidate';
+  // Before charter review the draft can absorb direction changes. Afterwards,
+  // shared vocabulary proves topic association only, never unchanged promises.
   if (
     ['direction', 'charter-draft'].includes(current.currentStage) ||
-    intentSimilarity(idea, current.direction) >= 0.34
+    idea.trim() === current.direction.trim()
   ) {
     return 'current-version';
   }
@@ -358,7 +365,7 @@ export function intentSimilarity(left: string, right: string): number {
 
 export function messageIsNewDirection(message: string): boolean {
   const normalized = message.replace(/\s/g, '');
-  return /(新方向|新需求|(?:新增|增加|加入|开发|实现).{0,12}(系统|功能|玩法|模块|视图)|(?:另外|后续|以后).{0,12}(系统|功能|玩法|方向)|我希望.{0,12}(新增|增加|加入|开发|实现))/.test(
+  return /(?:新方向|新需求|(?:新增|增加|加入|开发|实现|取消|删除|移除|禁止|替换|改为|调整).{0,12}(?:系统|功能|玩法|模块|视图|目标)|(?:另外|后续|以后).{0,12}(?:系统|功能|玩法|方向)|我希望.{0,12}(?:新增|增加|加入|开发|实现)|不希望|不要|不再|不能|去掉|停止|改成|换成|替换为|调整为|扩展|缩减|限制|允许|不兼容)/.test(
     normalized,
   );
 }
@@ -380,11 +387,17 @@ export function inferMessageIntent(
   }
   if (
     /[?？]$/.test(normalized) ||
-    /^(现在|目前|为什么|为何|怎么|如何|是否|有没有|进度|状态|哪些)/.test(normalized)
+    /^(为什么|为何|怎么|如何|是否|有没有|进度|状态|哪些)/.test(normalized) ||
+    /^(?:现在|目前).{0,16}(?:进度|状态|做到|情况)/.test(normalized)
   )
     return 'question';
+  if (messageIsNewDirection(normalized)) return 'direction';
   if (/(继续|接着|恢复|往下|按计划|照常|可以推进|可以开始)/.test(normalized)) return 'continue';
-  if (/^(?:好(?:的|吧)?|收到|知道了|明白了|了解|行|可以|ok|okay|嗯+|对)$/.test(normalized)) {
+  if (
+    /^(?:好(?:的|吧)?|收到|知道了|明白了|了解|行|可以|ok|okay|嗯+|对|谢谢(?:你|您)?)(?:[\s，。！？,.!;；]|$)/.test(
+      normalized,
+    )
+  ) {
     return 'reply';
   }
   if (/^(采用|选择|按).{0,24}(方案|做法)|^(通过|批准|确认|同意|退回|不通过)/.test(normalized)) {
@@ -403,6 +416,7 @@ export function applyWaitingReply(
     (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
   );
   if (!waiting) return null;
+  acknowledgeWaitingSnapshot(waiting);
   waiting.producerGuidance = request.idea;
   waiting.lastProducerRequestId = request.id;
   waiting.status = 'retry-wait';
@@ -413,6 +427,12 @@ export function applyWaitingReply(
       : '已理解你的回复，将从原恢复点继续。';
   state.activeItemId = '';
   return waiting;
+}
+
+export function acknowledgeWaitingSnapshot(item: SecretaryItem): void {
+  if (item.orchestration?.waitingSnapshot) {
+    item.orchestration.acknowledgedWaitingSnapshot = item.orchestration.waitingSnapshot;
+  }
 }
 
 export function applyContinueToSchedule(
@@ -538,13 +558,9 @@ export function createSecretaryState(now: string): SecretaryState {
 
 export function normalizeSecretaryState(state: SecretaryState): boolean {
   let changed = false;
-  if (state.orchestration && state.orchestration.schemaVersion !== 1) {
-    throw new Error(
-      `不支持秘书编排扩展版本 ${String(state.orchestration.schemaVersion)}；已停止自动写入和派发`,
-    );
-  }
-  if (state.orchestration) validateSecretaryOrchestration(state.orchestration);
-  if (!state.orchestration) {
+  const hasOrchestration = Object.prototype.hasOwnProperty.call(state, 'orchestration');
+  if (hasOrchestration) validateSecretaryOrchestration(state.orchestration);
+  if (!hasOrchestration) {
     state.orchestration = {
       schemaVersion: 1,
       intakes: [],
@@ -555,12 +571,9 @@ export function normalizeSecretaryState(state: SecretaryState): boolean {
     changed = true;
   }
   for (const item of state.items) {
-    if (item.orchestration && item.orchestration.schemaVersion !== 1) {
-      throw new Error(
-        `不支持秘书事项 ${item.id} 的编排扩展版本 ${String(item.orchestration.schemaVersion)}`,
-      );
-    }
-    if (!item.orchestration) {
+    const hasItemOrchestration = Object.prototype.hasOwnProperty.call(item, 'orchestration');
+    if (hasItemOrchestration) validateItemOrchestration(item);
+    if (!hasItemOrchestration) {
       item.orchestration = {
         schemaVersion: 1,
         runId: '',
@@ -570,7 +583,7 @@ export function normalizeSecretaryState(state: SecretaryState): boolean {
         processOccupied: false,
       };
       changed = true;
-    } else validateItemOrchestration(item);
+    }
   }
   return changed;
 }
@@ -613,7 +626,12 @@ export function itemFromIntake(
   facts: ProjectFact[],
   scope: SecretaryScope = 'feature',
 ): { item: SecretaryItem; response: string } {
-  const decision = decideIntake(request.idea, facts);
+  // Similarity locates a topic; only the same direction can reuse its commitment.
+  const matchingFacts =
+    inferMessageIntent(request.idea, false) === 'direction'
+      ? facts.filter((fact) => fact.text.trim() === request.idea.trim())
+      : facts;
+  const decision = decideIntake(request.idea, matchingFacts);
   const plan = buildLocalPlan(decision.fact?.text ?? request.idea);
   const base = {
     id: request.id,
@@ -682,6 +700,8 @@ export function firstUntrackedScheduledFact(
 
 export function nextRunnableItem(state: SecretaryState, now: string): SecretaryItem | null {
   if (state.activeItemId) return null;
+  if (state.items.some((item) => item.orchestration?.reconciliationOutcome === 'missing'))
+    return null;
   const timestamp = Date.parse(now);
   const firstPending = state.items.find((item) =>
     ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),

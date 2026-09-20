@@ -1,14 +1,19 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { createServer } from 'node:net';
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { waitForProcessIdentity } from '../scripts/process-identity';
-import { waitForSecretaryDashboard } from './helpers/secretary-guard';
-import { createSecretaryState, itemFromIntake } from '../scripts/secretary-state';
+import { stopSecretaryDashboard, waitForSecretaryDashboard } from './helpers/secretary-guard';
+import {
+  createSecretaryState,
+  itemFromIntake,
+  nextRunnableItem,
+  type SecretaryState,
+} from '../scripts/secretary-state';
 import {
   addDecisionGate,
   advanceVersion,
@@ -67,6 +72,52 @@ async function waitForIntakeCompletion(
   throw new Error(`秘书未完成收件请求：${requestId}`);
 }
 
+async function startReviewGuard(
+  secretaryState: string,
+  releaseState: string,
+  fixtureRoot = root,
+  dispatch = false,
+): Promise<string> {
+  const port = await freePort();
+  const url = `http://127.0.0.1:${port}`;
+  child = spawn(
+    process.execPath,
+    [tsxCliPath, resolve(fixtureRoot, 'scripts/project-secretary.ts'), 'run'],
+    {
+      cwd: fixtureRoot,
+      env: {
+        ...process.env,
+        DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+        DAOYAN_RELEASE_STATE_DIR: releaseState,
+        DAOYAN_SECRETARY_HTTP_PORT: String(port),
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_NO_DISPATCH: dispatch ? '0' : '1',
+        DAOYAN_SECRETARY_WEBHOOK_URL: '',
+        DAOYAN_DINGTALK_CLIENT_ID: '',
+        DAOYAN_DINGTALK_CLIENT_SECRET: '',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    },
+  );
+  await waitForSecretaryDashboard(child, url);
+  return url;
+}
+
+async function reviewIntake(
+  url: string,
+  secretaryState: string,
+  idea: string,
+): Promise<IntakeCompletion> {
+  const response = await fetch(`${url}/api/intake`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ idea }),
+  });
+  const receipt = (await response.json()) as { id: string };
+  return waitForIntakeCompletion(secretaryState, receipt.id);
+}
+
 afterEach(async () => {
   if (child && child.exitCode === null) child.kill('SIGTERM');
   child = null;
@@ -83,6 +134,319 @@ afterEach(async () => {
 });
 
 describe('secretary dashboard server', () => {
+  it('retains ambiguous local input and punctuated replies without creating a version', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-intake-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const releaseState = resolve(temporary, 'releases');
+    await mkdir(releaseState, { recursive: true });
+    const version = createFormalVersion({
+      id: 'past',
+      title: '旧版本',
+      direction: '历史目标',
+      documentRoot: 'docs/versions/past',
+      currentStage: 'archived',
+    });
+    const versionPath = resolve(releaseState, 'current.json');
+    await writeFile(versionPath, JSON.stringify(version));
+    const url = await startReviewGuard(secretaryState, releaseState);
+    const original = await readFile(versionPath, 'utf8');
+    for (const idea of ['好的。', '收到，谢谢', '明白了！辛苦']) {
+      const response = await reviewIntake(url, secretaryState, idea);
+      expect(response.status).toBe('answered');
+      expect(response.response).toContain('保留这条回复');
+    }
+    const ambiguous = await reviewIntake(url, secretaryState, '那件事情再考虑一下');
+    expect(ambiguous.response).toContain('待确认');
+    expect(await readFile(versionPath, 'utf8')).toBe(original);
+    const state = JSON.parse(
+      await readFile(resolve(secretaryState, 'state.json'), 'utf8'),
+    ) as SecretaryState;
+    expect(
+      state.orchestration!.intakes.find((entry) => entry.requestId === ambiguous.id),
+    ).toMatchObject({ disposition: 'needs-confirmation', targetVersionId: '' });
+    expect(state.items.every((item) => item.status === 'answered')).toBe(true);
+    const direction = await reviewIntake(
+      url,
+      secretaryState,
+      '新增装备交易系统，允许玩家相互交易装备',
+    );
+    expect(direction.response).toContain('建立正式版本草案');
+  }, 20_000);
+
+  it.each(['active', 'backlog'] as const)(
+    'requires a scope gate despite an opposite %s fact',
+    async (status) => {
+      temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-scope-'));
+      const secretaryState = resolve(temporary, 'secretary');
+      const releaseState = resolve(temporary, 'releases');
+      await mkdir(releaseState, { recursive: true });
+      const version = createFormalVersion({
+        id: 'trade',
+        title: '装备交易',
+        direction: '新增装备交易系统，允许玩家相互交易装备',
+        documentRoot: 'docs/versions/trade',
+        currentStage: 'charter-review',
+      });
+      recordApproval(version, {
+        stage: 'charter-review',
+        reviewer: 'producer',
+        decision: 'approved',
+        documentRevision: '1',
+        comment: '批准方向',
+      });
+      advanceVersion(version, 'module-design');
+      const versionPath = resolve(releaseState, 'current.json');
+      await writeFile(versionPath, JSON.stringify(version));
+      await mkdir(secretaryState, { recursive: true });
+      const seed = createSecretaryState('2026-09-21T00:00:00.000Z');
+      const existing = itemFromIntake(
+        { id: 'existing', idea: version.direction, createdAt: seed.initializedAt },
+        [],
+      ).item;
+      existing.status = status;
+      seed.items.push(existing);
+      await writeFile(resolve(secretaryState, 'state.json'), JSON.stringify(seed));
+      const url = await startReviewGuard(secretaryState, releaseState);
+      const response = await reviewIntake(
+        url,
+        secretaryState,
+        '取消装备交易系统，禁止玩家相互交易装备',
+      );
+      expect(response.response).toContain('范围修订评审');
+      const updated = JSON.parse(await readFile(versionPath, 'utf8')) as FormalVersion;
+      expect(updated.orchestration!.scopeRevisions.at(-1)).toMatchObject({
+        disposition: 'scope-review',
+        status: 'pending',
+      });
+      expect(updated.orchestration!.decisionGates.at(-1)).toMatchObject({
+        kind: 'scope-change',
+        status: 'open',
+      });
+      expect(updated.approvals).toEqual(version.approvals);
+      expect(updated.direction).toBe(version.direction);
+      // Once frozen, another commitment change must reach the next-version pool.
+      updated.scopeFrozen = true;
+      await writeFile(versionPath, JSON.stringify(updated));
+      const frozen = await reviewIntake(url, secretaryState, '将装备交易系统替换为装备赠送系统');
+      const saved = JSON.parse(
+        await readFile(resolve(secretaryState, 'state.json'), 'utf8'),
+      ) as SecretaryState;
+      expect(
+        saved.orchestration!.nextVersionCandidates.some((entry) => entry.requestId === frozen.id),
+      ).toBe(true);
+    },
+    20_000,
+  );
+
+  it.each([
+    ['waiting-producer', 'reply'],
+    ['waiting-producer', 'continue-with-guidance'],
+    ['recoverable', 'reply'],
+    ['recoverable', 'retry-now'],
+    ['recoverable', 'auto-retry'],
+  ] as const)(
+    'resumes the acknowledged %s snapshot via %s after restart',
+    async (snapshotStatus, action) => {
+      temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-acknowledged-wait-'));
+      const fixture = resolve(temporary, 'fixture');
+      const secretaryState = resolve(fixture, '.daoyan-agent/secretary');
+      const releaseState = resolve(fixture, '.daoyan-agent/releases');
+      const runDirectory = resolve(fixture, '.daoyan-agent/runs/recovery');
+      await mkdir(runDirectory, { recursive: true });
+      await mkdir(secretaryState, { recursive: true });
+      await mkdir(releaseState, { recursive: true });
+      await cp(resolve(root, 'scripts'), resolve(fixture, 'scripts'), { recursive: true });
+      await cp(resolve(root, 'agents'), resolve(fixture, 'agents'), { recursive: true });
+      await cp(resolve(root, 'docs'), resolve(fixture, 'docs'), { recursive: true });
+      await symlink(resolve(root, 'node_modules'), resolve(fixture, 'node_modules'), 'junction');
+      await writeFile(resolve(fixture, 'package.json'), JSON.stringify({ type: 'module' }));
+      // Exercise the real coordinator and spawn boundary without launching a model
+      // or allowing the fixture Feature PM to edit the user's workspace.
+      await writeFile(
+        resolve(fixture, 'scripts/agent-dispatcher.ts'),
+        `
+      import { readFile, writeFile } from 'node:fs/promises';
+      import { resolve } from 'node:path';
+      const args = process.argv.slice(2);
+      const path = resolve(process.cwd(), args.at(-1), 'recovery.json');
+      const snapshot = JSON.parse(await readFile(path, 'utf8'));
+      await writeFile(resolve(process.cwd(), 'launched.json'), JSON.stringify(args));
+      await writeFile(path, JSON.stringify({ ...snapshot, attempt: 2,
+        status: 'waiting-producer', error: '新的产品取舍，需要再次决定',
+        updatedAt: new Date().toISOString() }));
+    `,
+      );
+      const version = createFormalVersion({
+        id: 'resume-fixture',
+        title: '恢复测试',
+        direction: '测试恢复',
+        documentRoot: 'docs/versions/resume-fixture',
+        currentStage: 'development',
+      });
+      await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version));
+      const seed = createSecretaryState(new Date().toISOString());
+      const item = itemFromIntake(
+        { id: 'resume', idea: '恢复既有任务', createdAt: seed.initializedAt },
+        [],
+      ).item;
+      item.status = 'tracking';
+      item.runDirectory = runDirectory;
+      seed.items.push(item);
+      seed.activeItemId = item.id;
+      await writeFile(resolve(secretaryState, 'state.json'), JSON.stringify(seed));
+      await writeFile(
+        resolve(runDirectory, 'recovery.json'),
+        JSON.stringify({
+          status: snapshotStatus,
+          runId: 'recovery',
+          attempt: 1,
+          error: snapshotStatus === 'recoverable' ? 'usage limit reached' : '请选择兼容方案',
+          updatedAt: seed.initializedAt,
+        }),
+      );
+      let url = await startReviewGuard(secretaryState, releaseState, fixture);
+      const statePath = resolve(secretaryState, 'state.json');
+      const readState = async () => JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
+      expect((await readState()).items[0].status).toBe('waiting-producer');
+      if (action === 'reply') {
+        await reviewIntake(url, secretaryState, '采用方案 A，兼容已有存档');
+      } else {
+        const result = await fetch(`${url}/api/todo-action`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ source: 'secretary', id: item.id, action, note: '兼容已有存档' }),
+        });
+        expect(result.status).toBe(200);
+      }
+      const acknowledged = (await readState()).items[0];
+      expect(acknowledged.status).toBe('retry-wait');
+      expect(acknowledged.orchestration!.acknowledgedWaitingSnapshot).toBe(
+        acknowledged.orchestration!.waitingSnapshot,
+      );
+      expect(acknowledged.retryAt).not.toBe('');
+      await stopSecretaryDashboard(child!);
+      child = null;
+      // Windows terminates the test child without running its signal handler;
+      // mirror project-secretary stop, which removes the lock after exit.
+      await rm(resolve(secretaryState, 'notice-guard.lock'), { force: true });
+      if (action === 'auto-retry') {
+        const saved = await readState();
+        saved.items[0].retryAt = '2026-01-01T00:00:00.000Z';
+        await writeFile(statePath, JSON.stringify(saved));
+      }
+      url = await startReviewGuard(secretaryState, releaseState, fixture, true);
+      let args: string[] = [];
+      await expect
+        .poll(
+          async () => {
+            try {
+              args = JSON.parse(
+                await readFile(resolve(fixture, 'launched.json'), 'utf8'),
+              ) as string[];
+              return args.length;
+            } catch {
+              return 0;
+            }
+          },
+          { timeout: 10_000 },
+        )
+        .toBeGreaterThan(0);
+      expect(args).toContain('--resume');
+      if (action === 'reply' || action === 'continue-with-guidance') {
+        expect(args).toContain('--decision-confirmed');
+        expect(args[args.indexOf('--producer-guidance') + 1]).toContain('兼容已有存档');
+      }
+      // A new snapshot must block again; approval of attempt 1 is not reusable.
+      await reviewIntake(url, secretaryState, '现在进度如何？');
+      await expect
+        .poll(async () => (await readState()).items[0].summary, { timeout: 10_000 })
+        .toContain('新的产品取舍');
+      expect((await readState()).items[0].status).toBe('waiting-producer');
+      await stopSecretaryDashboard(child!);
+      child = null;
+    },
+    40_000,
+  );
+
+  it.each(['missing', 'corrupt', 'live-worker'] as const)(
+    'blocks an overdue existing run with %s recovery evidence until a terminal snapshot is restored',
+    async (mode) => {
+      temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-recovery-'));
+      const secretaryState = resolve(temporary, 'secretary');
+      const releaseState = resolve(temporary, 'releases');
+      const runDirectory = resolve(temporary, 'old-run');
+      await mkdir(secretaryState, { recursive: true });
+      await mkdir(runDirectory, { recursive: true });
+      const now = new Date().toISOString();
+      const state = createSecretaryState(now);
+      const item = itemFromIntake({ id: 'old', idea: '已有独立工作', createdAt: now }, []).item;
+      item.status = 'retry-wait';
+      item.runDirectory = runDirectory;
+      item.retryAt = '2026-01-01T00:00:00.000Z';
+      item.recoveryAttempts = 2;
+      state.items.push(item);
+      if (mode === 'corrupt') {
+        await writeFile(resolve(runDirectory, 'recovery.json'), '{broken');
+        await writeFile(resolve(runDirectory, 'report.json'), '{broken');
+      }
+      if (mode === 'live-worker') {
+        nestedWorker = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+          stdio: 'ignore',
+          windowsHide: true,
+        });
+        const identity = await waitForProcessIdentity(nestedWorker.pid!);
+        expect(identity).not.toBe('');
+        await writeFile(
+          resolve(runDirectory, 'progress.json'),
+          JSON.stringify({ workerPid: nestedWorker.pid, workerProcessIdentity: identity }),
+        );
+      }
+      const statePath = resolve(secretaryState, 'state.json');
+      await writeFile(statePath, JSON.stringify(state));
+      const url = await startReviewGuard(secretaryState, releaseState);
+      const blocked = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
+      expect(blocked.items[0]).toMatchObject({
+        status: 'tracking',
+        runDirectory,
+        recoveryAttempts: 2,
+        retryAt: '',
+        orchestration: {
+          reconciliationOutcome: 'missing',
+          processOccupied: mode === 'live-worker',
+        },
+      });
+      expect(nextRunnableItem(blocked, now)).toBeNull();
+      expect(
+        blocked.orchestration!.reconciliations.filter((entry) => entry.outcome === 'missing'),
+      ).toHaveLength(1);
+      await reviewIntake(url, secretaryState, '好的。');
+      await writeFile(
+        resolve(runDirectory, 'recovery.json'),
+        JSON.stringify({
+          status: 'delivered',
+          runId: 'old-run',
+          attempt: 0,
+          processPid: 0,
+          processIdentity: '',
+          updatedAt: now,
+        }),
+      );
+      await reviewIntake(url, secretaryState, '现在正式版本处于什么阶段？');
+      await new Promise((done) => setTimeout(done, 300));
+      const reconciled = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
+      expect(reconciled.items[0]).toMatchObject({
+        status: mode === 'live-worker' ? 'tracking' : 'delivered',
+        runDirectory,
+        retryAt: '',
+        orchestration: {
+          reconciliationOutcome: 'delivered',
+          processOccupied: mode === 'live-worker',
+        },
+      });
+    },
+    20_000,
+  );
+
   it.each(['waiting-producer', 'tracking'] as const)(
     'keeps overdue retries asleep behind %s until an external event',
     async (blockerStatus) => {
@@ -468,7 +832,7 @@ describe('secretary dashboard server', () => {
     );
     await writeFile(
       resolve(blockedRun, 'delivery.log'),
-      'ERROR usage limit reached; try again at 4:31 AM\n',
+      '<think>private preface</think>\nprivate-log-sentinel usage limit reached\n',
       'utf8',
     );
     nestedWorker = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
@@ -779,6 +1143,8 @@ describe('secretary dashboard server', () => {
     expect(JSON.stringify(initial.agents)).not.toContain('private chain of thought');
     expect(JSON.stringify(initial.agents)).not.toContain('不应出现在动作标题');
     expect(JSON.stringify(initial.agents)).not.toContain('不应出现在动作详情');
+    expect(JSON.stringify(initial.agents)).not.toContain('private preface');
+    expect(JSON.stringify(initial.agents)).not.toContain('private-log-sentinel');
     expect(
       (
         initial.agents as Array<{

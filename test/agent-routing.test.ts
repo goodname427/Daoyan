@@ -350,4 +350,17 @@ describe('agent routing', () => {
       canRefreshVersionRecoveryFingerprint({ ...safeRecovery, baselineIsAncestor: false }),
     ).toBe(false);
   });
+
+  it('rebases an untouched producer-decision checkpoint only when the workspace stayed clean', () => {
+    expect(
+      canRebaseEmptyRecovery({
+        status: 'waiting-producer',
+        taskRunCount: 0,
+        baseline: 'old',
+        currentHead: 'new',
+        worktreeClean: true,
+        baselineIsAncestor: true,
+      }),
+    ).toBe(true);
+  });
 });

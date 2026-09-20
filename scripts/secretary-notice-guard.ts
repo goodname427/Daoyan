@@ -38,6 +38,7 @@ import {
 import {
   applyContinueToSchedule,
   applyWaitingReply,
+  acknowledgeWaitingSnapshot,
   createSecretaryState,
   directionDestination,
   inferMessageIntent,
@@ -230,7 +231,9 @@ async function loadState(): Promise<SecretaryState> {
         completedTasks: Array.isArray(item.completedTasks) ? item.completedTasks : [],
       })),
       messages: Array.isArray(value.messages) ? value.messages : [],
-      orchestration: value.orchestration,
+      ...(Object.prototype.hasOwnProperty.call(value, 'orchestration')
+        ? { orchestration: value.orchestration }
+        : {}),
       status: 'running',
       pid: process.pid,
     } as SecretaryState;
@@ -668,7 +671,7 @@ async function dashboardVersion(version: FormalVersion): Promise<object> {
   };
 }
 
-async function readLatestLogSummary(directory: string): Promise<string[]> {
+async function readRetryLogHints(directory: string): Promise<string[]> {
   if (!directory || !existsSync(directory)) return [];
   try {
     const logs = await Promise.all(
@@ -689,12 +692,7 @@ async function readLatestLogSummary(directory: string): Promise<string[]> {
       .filter(
         (line) =>
           line &&
-          // The log can contain model transport output. Only expose dispatcher-owned markers,
-          // test summaries and terse operational failures; never forward arbitrary log text.
-          (/^(?:\[(?:等待|执行|交付门禁|独立审查|审查接管|修复|恢复|超时)\]|(?:error|fatal|failed|failure):|(?:PASS|FAIL|Test Files:|Tests:|tokens used\b))/i.test(
-            line,
-          ) ||
-            /(usage limit|try again at|账号.*阻塞|鉴权.*阻塞|额度.*(?:不足|用尽))/i.test(line)),
+          /(usage limit|try again at|账号.*阻塞|鉴权.*阻塞|额度.*(?:不足|用尽))/i.test(line),
       );
     return lines.slice(-12);
   } catch {
@@ -877,7 +875,6 @@ async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgen
   const recentOutput = [
     progress ? `运行阶段：${phase} / ${String(progress.status ?? '')}` : '',
     recovery?.error ? `阻塞：${String(recovery.error)}` : '',
-    ...(await readLatestLogSummary(item.runDirectory)),
   ]
     .map((entry) => publicActivityText(entry))
     .filter(Boolean);
@@ -1099,6 +1096,10 @@ async function applySecretaryTodoAction(
 ): Promise<{ message: string }> {
   const item = state.items.find((candidate) => candidate.id === itemId);
   if (!item || item.status !== 'waiting-producer') throw new Error('待办已经处理或不存在');
+  if (action !== 'defer' && item.runDirectory && !item.orchestration?.waitingSnapshot) {
+    await reconcileItem(item);
+    if (item.status !== 'waiting-producer') throw new Error('待办运行状态已变化，请刷新后处理');
+  }
   const recoverable = externalBlocker(item.summary);
   if (action === 'defer') {
     item.status = 'backlog';
@@ -1118,9 +1119,10 @@ async function applySecretaryTodoAction(
   } else if (action === 'auto-retry' || action === 'default') {
     if (!recoverable) throw new Error('产品决策待办不能自动重试');
     item.status = 'retry-wait';
-    item.retryAt = retryTimeFromOutput(await readLatestLogSummary(item.runDirectory));
+    item.retryAt = retryTimeFromOutput(await readRetryLogHints(item.runDirectory));
     item.summary = `已采用默认方案，将在 ${new Date(item.retryAt).toLocaleString('zh-CN', { hour12: false })} 自动重试。`;
   } else throw new Error('不支持的秘书待办方案');
+  if (item.status === 'retry-wait') acknowledgeWaitingSnapshot(item);
   item.updatedAt = new Date().toISOString();
   state.activeItemId = '';
   recordDashboardDecision(`处理待办：${item.idea}`, item.summary);
@@ -1502,6 +1504,10 @@ async function resumeWaitingItem(
   request: IntakeRequest,
   intent: 'reply' | 'continue',
 ): Promise<void> {
+  const pending = state.items.find((item) => item.id === state.activeItemId);
+  if (pending?.runDirectory && !pending.orchestration?.waitingSnapshot) {
+    await reconcileItem(pending);
+  }
   const waiting = applyWaitingReply(state, request, intent);
   if (!waiting) throw new Error('等待事项已变化，无法应用当前回复');
   await saveState();
@@ -2007,6 +2013,13 @@ async function processInbox(): Promise<void> {
         }
         if (model) local.item.scope = model.scope;
         let response = model ? applyModelTriage(local.item, model) : local.response;
+        if (intent === 'direction' && !local.item.matchedFact && model) {
+          // A semantic topic match is not proof that the producer repeated the
+          // same commitment. The version scope gate owns non-identical requests.
+          local.item.idea = request.idea;
+          local.item.status = 'queued';
+          local.item.completedAt = '';
+        }
         if (!model && intent === 'question') {
           local.item.status = 'answered';
           local.item.plannedTasks = [];
@@ -2020,6 +2033,31 @@ async function processInbox(): Promise<void> {
           local.item.completedAt = request.createdAt;
           response = '当前没有可关联的待办或评审；已保留这条回复，但不会据此建立版本或启动任务。';
           local.item.summary = response;
+        }
+        if (
+          !model &&
+          intent === 'direction' &&
+          !messageIsNewDirection(request.idea) &&
+          !local.item.matchedFact
+        ) {
+          local.item.status = 'answered';
+          local.item.plannedTasks = [];
+          local.item.completedAt = request.createdAt;
+          response =
+            '尚无法确认这条消息是否是新方向，已保留待确认；请补充希望新增或调整的目标，不会据此建立版本或启动任务。';
+          local.item.summary = response;
+          normalizeSecretaryState(state);
+          state.orchestration!.intakes.push({
+            requestId: request.id,
+            intent,
+            disposition: 'needs-confirmation',
+            status: 'completed',
+            targetVersionId: '',
+            scopeRevision: null,
+            reason: response,
+            createdAt: request.createdAt,
+            completedAt: new Date().toISOString(),
+          });
         }
         if (local.item.matchedFact?.reference.startsWith('secretary:')) {
           local.item.status = 'answered';
@@ -2193,11 +2231,6 @@ function attachWorkerExitNotice(
   workerExitTimers.set(worker.pid, setTimeout(poll, 1_000));
 }
 
-function isCleanWorktree(): boolean {
-  const result = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
-  return result.status === 0 && !result.stdout.trim();
-}
-
 function scheduleOrphanRecovery(item: SecretaryItem): void {
   if (orphanTimers.has(item.id)) return;
   orphanTimers.set(
@@ -2236,20 +2269,30 @@ function clearOrphanRecovery(itemId: string): void {
 }
 
 async function markMissingSnapshot(item: SecretaryItem, exitCode: number): Promise<void> {
-  item.processPid = 0;
-  item.processIdentity = '';
-  if (isCleanWorktree()) {
-    item.status = 'retry-wait';
-    item.summary = `PM 以代码 ${exitCode} 退出且未留下恢复点，将作为新运行重试。`;
-    item.retryAt = new Date(Date.now() + config.guard.executionRetryMinutes * 60_000).toISOString();
-    item.runDirectory = '';
-    if (state.activeItemId === item.id) state.activeItemId = '';
-    return;
+  normalizeSecretaryState(state);
+  const firstBlock = item.orchestration!.reconciliationOutcome !== 'missing';
+  clearOrphanRecovery(item.id);
+  item.status = 'tracking';
+  item.retryAt = '';
+  item.summary = `运行快照缺失、损坏或不可恢复（退出码 ${exitCode}）；已阻止派发，须恢复运行证据并核实 PM/子 Agent 归属和终态后重新对账。`;
+  item.orchestration!.reconciliationOutcome = 'missing';
+  const worker = await activeWorkerProcess(item, true);
+  item.orchestration!.processOccupied =
+    isOwnedProcessAlive(item.processPid, item.processIdentity, 0) || Boolean(worker);
+  if (worker) attachWorkerExitNotice(item, worker);
+  if (firstBlock) {
+    state.orchestration!.reconciliations.push({
+      itemId: item.id,
+      runId: item.orchestration!.runId,
+      attempt: item.orchestration!.attempt,
+      snapshotStatus: 'missing',
+      outcome: 'missing',
+      reason: item.summary,
+      evidence: item.runDirectory ? [item.runDirectory] : [],
+      reconciledAt: new Date().toISOString(),
+    });
+    await emitNotice('unsafe-recovery', item.summary, item);
   }
-  item.status = 'waiting-producer';
-  item.summary = 'PM 未留下恢复点但工作区已经变化，秘书无法安全判断改动归属，需要制作人确认接管。';
-  state.activeItemId = item.id;
-  await emitNotice('unsafe-recovery', item.summary, item);
 }
 
 async function reconcileItem(
@@ -2264,7 +2307,23 @@ async function reconcileItem(
       (await scanRuns()).find((candidate) => candidate.directory === item.runDirectory) ??
       undefined;
   }
-  if (!run) return false;
+  if (
+    !run ||
+    ![
+      'planned',
+      'running',
+      'active',
+      'recoverable',
+      'waiting-producer',
+      'review-ready',
+      'delivered',
+      'failed',
+      'preview',
+    ].includes(run.status)
+  ) {
+    await markMissingSnapshot(item, 1);
+    return false;
+  }
   normalizeSecretaryState(state);
   const itemOrchestration = item.orchestration!;
   itemOrchestration.runId = run.runId;
@@ -2373,7 +2432,37 @@ async function reconcileItem(
       );
     return true;
   }
+  const waitingSnapshot = JSON.stringify([
+    run.directory,
+    run.runId,
+    run.attempt,
+    run.status,
+    run.updatedAt,
+    run.error,
+  ]);
+  const acknowledgedWaiting =
+    ['retry-wait', 'tracking'].includes(item.status) &&
+    Boolean(item.retryAt) &&
+    itemOrchestration.acknowledgedWaitingSnapshot === waitingSnapshot;
   if (run.status === 'waiting-producer') {
+    const worker = await activeWorkerProcess(item, true);
+    if (worker || isOwnedProcessAlive(run.processPid, run.processIdentity, 0)) {
+      item.status = 'tracking';
+      itemOrchestration.processOccupied = true;
+      item.processPid = worker?.pid ?? run.processPid;
+      item.processIdentity = worker?.identity ?? run.processIdentity;
+      if (worker) attachWorkerExitNotice(item, worker);
+      recordReconciliation('running', '等待快照仍有写进程，等待退出后处理恢复。', [run.directory]);
+      return true;
+    }
+    if (acknowledgedWaiting) {
+      item.status = 'retry-wait';
+      itemOrchestration.processOccupied = false;
+      recordReconciliation('retry-wait', '该等待快照已由制作人处理，保留恢复派发。', [
+        run.directory,
+      ]);
+      return true;
+    }
     clearOrphanRecovery(item.id);
     const firstRequest = item.status !== 'waiting-producer';
     item.status = 'waiting-producer';
@@ -2384,16 +2473,45 @@ async function reconcileItem(
     item.recoveryAttempts = 0;
     itemOrchestration.awaitingReview = false;
     itemOrchestration.processOccupied = false;
+    itemOrchestration.waitingSnapshot = waitingSnapshot;
     state.activeItemId = item.id;
     recordReconciliation('waiting-producer', item.summary, [run.directory]);
     if (firstRequest) await emitNotice('producer-decision', item.summary, item);
     return true;
   }
   if (run.status === 'recoverable') {
+    const worker = await activeWorkerProcess(item, true);
+    if (worker || isOwnedProcessAlive(run.processPid, run.processIdentity, 0)) {
+      item.status = 'tracking';
+      itemOrchestration.processOccupied = true;
+      item.processPid = run.processPid;
+      item.processIdentity = run.processIdentity;
+      recordReconciliation('running', '恢复快照仍有关联写进程，等待退出后重新对账。', [
+        run.directory,
+      ]);
+      if (worker) attachWorkerExitNotice(item, worker);
+      return true;
+    }
+    if (
+      item.scope === 'feature' &&
+      !(await readJson(resolve(item.runDirectory, 'recovery.json')))
+    ) {
+      await markMissingSnapshot(item, 1);
+      return false;
+    }
+    itemOrchestration.processOccupied = false;
     clearOrphanRecovery(item.id);
     item.processPid = 0;
     item.processIdentity = '';
+    if (acknowledgedWaiting) {
+      item.status = 'retry-wait';
+      recordReconciliation('retry-wait', '该阻塞快照已由制作人处理，保留恢复派发。', [
+        run.directory,
+      ]);
+      return true;
+    }
     const alreadyWaitingForSnapshot =
+      !externalBlocker(run.error) &&
       item.status === 'retry-wait' &&
       Boolean(item.retryAt) &&
       state.orchestration!.reconciliations.some(
@@ -2410,6 +2528,7 @@ async function reconcileItem(
     if (externalBlocker(run.error)) {
       const firstBlock = item.status !== 'waiting-producer';
       item.status = 'waiting-producer';
+      itemOrchestration.waitingSnapshot = waitingSnapshot;
       item.retryAt = '';
       item.summary = `${run.error || '账号、鉴权或额度暂不可用'}。秘书已暂停当前工作；条件恢复后直接回复秘书即可继续。`;
       state.activeItemId = item.id;
@@ -2419,6 +2538,7 @@ async function reconcileItem(
     }
     if (item.recoveryAttempts >= config.guard.maxRecoveryAttempts) {
       item.status = 'waiting-producer';
+      itemOrchestration.waitingSnapshot = waitingSnapshot;
       item.summary = `自动恢复已达到 ${config.guard.maxRecoveryAttempts} 次：${run.error}`;
       await emitNotice('recovery-exhausted', item.summary, item);
       return true;
@@ -2483,15 +2603,7 @@ export function runArgs(
 ): string[] {
   if (item.runDirectory) {
     if (item.scope === 'feature' && !hasRecovery) {
-      return [
-        tsxCliPath,
-        agentDispatcherPath,
-        '--run-id',
-        basename(item.runDirectory),
-        ...(item.producerGuidance ? ['--decision-confirmed'] : []),
-        ...(item.producerGuidance ? ['--producer-guidance', item.producerGuidance] : []),
-        item.idea,
-      ];
+      throw new Error('既有 Feature 运行缺少 recovery.json，禁止作为新运行启动');
     }
     return item.scope === 'version'
       ? [
@@ -2532,6 +2644,15 @@ async function locateVersionRun(item: SecretaryItem): Promise<void> {
 }
 
 async function launch(item: SecretaryItem): Promise<void> {
+  if (
+    item.runDirectory &&
+    item.scope === 'feature' &&
+    !(await readJson(resolve(item.runDirectory, 'recovery.json')))
+  ) {
+    await markMissingSnapshot(item, 1);
+    await saveState();
+    return;
+  }
   clearOrphanRecovery(item.id);
   item.status = 'active';
   item.retryAt = '';
@@ -2606,13 +2727,15 @@ async function coordinateOnce(): Promise<void> {
   retryTimer = null;
   normalizeSecretaryState(state);
   const targets = reconciliationTargets(state);
+  let reconciliationFailed = false;
   for (const item of targets) {
     if (!item.runDirectory && item.scope === 'version') await locateVersionRun(item);
+    if (!item.runDirectory) continue;
     const processEnded =
       item.processPid > 0 &&
       Boolean(item.processIdentity) &&
       !isOwnedProcessAlive(item.processPid, item.processIdentity);
-    await reconcileItem(item, undefined, processEnded);
+    if (!(await reconcileItem(item, undefined, processEnded))) reconciliationFailed = true;
     if (isOwnedProcessAlive(item.processPid, item.processIdentity)) {
       attachProcessExitNotice(item);
     }
@@ -2647,7 +2770,7 @@ async function coordinateOnce(): Promise<void> {
     });
     return;
   }
-  if (activeChild || waiting || occupied) return;
+  if (reconciliationFailed || activeChild || waiting || occupied) return;
   if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
   if (await adoptExistingRun()) {
     coordinatePending = true;
@@ -3003,8 +3126,8 @@ export async function runNoticeGuard(): Promise<void> {
       return;
     void coordinate();
   });
-  startHttpServer();
   await processInbox();
   await coordinate();
+  startHttpServer();
   console.log('[notice guard] 已进入事件休眠；空闲时不调用模型、不轮询项目。');
 }

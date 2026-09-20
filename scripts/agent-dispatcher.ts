@@ -92,7 +92,7 @@ interface ReviewRun {
 
 interface RecoveryCheckpoint {
   version: 1;
-  status: 'active' | 'recoverable' | 'delivered';
+  status: 'active' | 'recoverable' | 'waiting-producer' | 'delivered';
   processPid: number;
   processIdentity: string;
   phase: string;
@@ -501,7 +501,9 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
         ? 'delivered'
         : value.status === 'active'
           ? 'active'
-          : 'recoverable',
+          : value.status === 'waiting-producer'
+            ? 'waiting-producer'
+            : 'recoverable',
     processPid: Number.isInteger(value.processPid) ? value.processPid! : 0,
     processIdentity: value.processIdentity ?? '',
     phase: value.phase ?? '未知阶段',
@@ -1498,6 +1500,9 @@ try {
   }
 
   if (plan.producerDecisionRequired && !options.decisionConfirmed) {
+    if (!activeBaseline) activeBaseline = (await git(['rev-parse', 'HEAD'])).stdout.trim();
+    currentPhase = '等待制作人决策';
+    await persistCheckpoint('waiting-producer', plan.producerQuestion);
     await writeReport(
       runDirectory,
       '等待制作人决策',

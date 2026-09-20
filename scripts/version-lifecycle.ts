@@ -284,6 +284,8 @@ export interface FormalVersionOrchestration {
   decisionGates: VersionDecisionGate[];
   featureVerifications: FeatureVerification[];
   qaRuns: VersionQaRun[];
+  codeRevision?: string;
+  qaInvalidatedThrough?: number;
 }
 
 export interface FormalVersion {
@@ -338,6 +340,15 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
   if (arrays.some((field) => !Array.isArray(value[field]))) {
     throw new Error('正式版本编排扩展损坏；已停止自动写入和派发');
   }
+  if (
+    (Object.hasOwn(value, 'codeRevision') &&
+      (typeof value.codeRevision !== 'string' || !value.codeRevision.trim())) ||
+    (Object.hasOwn(value, 'qaInvalidatedThrough') &&
+      (!Number.isSafeInteger(value.qaInvalidatedThrough) ||
+        Number(value.qaInvalidatedThrough) < 0 ||
+        Number(value.qaInvalidatedThrough) > (value.qaRuns as unknown[]).length))
+  )
+    throw new Error('正式版本代码修订或 QA 失效边界损坏；已停止自动写入和派发');
   const riskAssessments = value.riskAssessments as unknown[];
   const stagePolicies = value.stagePolicies as unknown[];
   const scopeRevisionRecords = value.scopeRevisions as unknown[];
@@ -970,7 +981,10 @@ export function recordFeatureVerification(
     evidence: [...input.evidence],
     createdAt: nowIso(input.now),
   };
-  requireOrchestration(version).featureVerifications.push(result);
+  const orchestration = requireOrchestration(version);
+  orchestration.featureVerifications.push(result);
+  orchestration.codeRevision = result.codeRevision;
+  orchestration.qaInvalidatedThrough = orchestration.qaRuns.length;
   version.updatedAt = result.createdAt;
   return result;
 }
@@ -1071,14 +1085,32 @@ export function transitionVersionBug(
     bug.verificationRunId = '';
     bug.fixAttemptId = target === 'fixing' ? randomUUID() : '';
     bug.fixCodeRevision = '';
+    const orchestration = requireOrchestration(version);
+    orchestration.qaInvalidatedThrough = orchestration.qaRuns.length;
   }
   if (target === 'verify') {
     // Legacy fixing records have no attempt identity; never infer one from old QA.
     bug.fixAttemptId ||= randomUUID();
     bug.fixCodeRevision = codeRevision;
+    const orchestration = requireOrchestration(version);
+    orchestration.codeRevision = codeRevision;
+    orchestration.qaInvalidatedThrough = orchestration.qaRuns.length;
   }
   bug.status = target;
   version.updatedAt = new Date().toISOString();
+}
+
+function qaMatchesCurrentCode(version: FormalVersion, qa: VersionQaRun): boolean {
+  const orchestration = requireOrchestration(version);
+  if (orchestration.qaRuns.indexOf(qa) < (orchestration.qaInvalidatedThrough ?? 0)) return false;
+  if (orchestration.codeRevision) return qa.codeRevision === orchestration.codeRevision;
+  // Legacy records have no explicit candidate baseline. Any recorded revision
+  // conflict is enough to retain the evidence for review without trusting it.
+  const feature = orchestration.featureVerifications.at(-1);
+  if (feature && feature.codeRevision !== qa.codeRevision) return false;
+  return !version.bugs.some(
+    (bug) => bug.fixCodeRevision && bug.fixCodeRevision !== qa.codeRevision,
+  );
 }
 
 export function advanceVersion(version: FormalVersion, target: VersionStage, now?: string): void {
@@ -1130,6 +1162,7 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
       !qa ||
       !qaRunHasTrustedPass(orchestration, qa) ||
       qa.scopeRevision !== scopeRevision ||
+      !qaMatchesCurrentCode(version, qa) ||
       required.some((suite) => !qa.suites.includes(suite))
     ) {
       throw new Error('版本测试尚未形成独立验收、集成与回归通过结论');
@@ -1145,9 +1178,10 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
       !qa ||
       !qaRunHasTrustedPass(orchestration, qa) ||
       qa.scopeRevision !== scopeRevision ||
+      !qaMatchesCurrentCode(version, qa) ||
       !qa.suites.includes('regression')
     ) {
-      throw new Error('候选版本尚无当前范围的有效独立 QA 回归通过结论');
+      throw new Error('候选版本尚无当前范围与代码修订的有效独立 QA 回归通过结论');
     }
     if (policy.mode === 'skip') {
       const unresolved = version.bugs.some((bug) => !['closed', 'deferred'].includes(bug.status));
@@ -1381,12 +1415,8 @@ export function publicVersionState(version: FormalVersion): object {
 }
 
 export function normalizeFormalVersion(version: FormalVersion): boolean {
-  if (version.orchestration && version.orchestration.schemaVersion !== 1) {
-    throw new Error(
-      `不支持正式版本编排扩展版本 ${String(version.orchestration.schemaVersion)}；已停止自动写入和派发`,
-    );
-  }
-  if (version.orchestration) validateOrchestrationRecords(version.orchestration);
+  const hasOrchestration = Object.prototype.hasOwnProperty.call(version, 'orchestration');
+  if (hasOrchestration) validateOrchestrationRecords(version.orchestration);
   if (
     version.bugs.some((bug) =>
       [bug.fixAttemptId, bug.fixCodeRevision].some(
@@ -1396,7 +1426,7 @@ export function normalizeFormalVersion(version: FormalVersion): boolean {
   )
     throw new Error('缺陷修复绑定损坏；已停止自动写入和派发');
   let orchestrationChanged = false;
-  if (!version.orchestration) {
+  if (!hasOrchestration) {
     version.orchestration = createOrchestration(
       version.direction,
       version.createdAt || version.updatedAt || new Date().toISOString(),
@@ -1405,20 +1435,22 @@ export function normalizeFormalVersion(version: FormalVersion): boolean {
     );
     orchestrationChanged = true;
   }
+  const orchestration = version.orchestration;
+  if (!orchestration) throw new Error('正式版本编排扩展损坏；已停止自动写入和派发');
   // Old decision todos used summary/stage instead of an explicit foreign key.
   // Link only unambiguous matches; never turn an ambiguous decision into a stage approval.
   for (const todo of version.todos) {
     if (todo.decisionGateId !== undefined) {
       if (
         typeof todo.decisionGateId !== 'string' ||
-        !version.orchestration.decisionGates.some(
+        !orchestration.decisionGates.some(
           (gate) => gate.id === todo.decisionGateId && gate.stage === todo.stage,
         )
       )
         throw new Error('决策待办关联损坏；已停止自动写入和派发');
       continue;
     }
-    const matches = version.orchestration.decisionGates.filter(
+    const matches = orchestration.decisionGates.filter(
       (gate) =>
         todo.assignee === 'producer' &&
         gate.stage === todo.stage &&

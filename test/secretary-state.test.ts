@@ -100,6 +100,70 @@ describe('persistent secretary state', () => {
     );
   });
 
+  it('never treats lexical similarity as approval of changed commitments', () => {
+    const direction = '新增装备交易系统，允许玩家相互交易装备';
+    const version = {
+      status: 'running' as const,
+      currentStage: 'module-design',
+      scopeFrozen: false,
+      direction,
+    };
+    for (const idea of [
+      '取消装备交易系统，禁止玩家相互交易装备',
+      '删除装备交易系统',
+      '将装备交易系统替换为装备赠送系统',
+      '新增装备交易系统，允许玩家相互交易装备和金币',
+    ]) {
+      expect(intentSimilarity(idea, direction)).toBeGreaterThan(0.34);
+      expect(directionDestination(idea, version)).toBe('scope-review');
+      for (const kind of ['active', 'scheduled', 'completed'] as const) {
+        const intake = itemFromIntake(
+          { id: 'change', idea, createdAt: '2026-09-21T00:00:00.000Z' },
+          [{ kind, text: direction, reference: 'secretary:trade' }],
+        );
+        expect(intake.item).toMatchObject({ idea, status: 'queued', matchedFact: null });
+        const duplicate = itemFromIntake(
+          { id: 'same', idea: direction, createdAt: '2026-09-21T00:00:00.000Z' },
+          [{ kind, text: direction, reference: 'secretary:trade' }],
+        );
+        expect(duplicate.item.matchedFact?.text).toBe(direction);
+      }
+    }
+    expect(directionDestination(direction, version)).toBe('current-version');
+  });
+
+  it.each(['好的。', '收到，谢谢', '明白了！辛苦', 'OK, thanks', '谢谢你，辛苦了'])(
+    'keeps ordinary reply %s out of direction routing',
+    (message) => {
+      expect(inferMessageIntent(message, false)).toBe('reply');
+    },
+  );
+
+  it('preserves explicit directions following an acknowledgement', () => {
+    expect(inferMessageIntent('好的，新增装备交易系统', false)).toBe('direction');
+    expect(inferMessageIntent('取消装备交易系统，禁止玩家相互交易装备', true)).toBe('direction');
+    expect(inferMessageIntent('继续调整装备交易系统，禁止玩家相互交易装备', false)).toBe(
+      'direction',
+    );
+    expect(inferMessageIntent('继续现有交易工作，但不要支持金币交易', false)).toBe('direction');
+    expect(inferMessageIntent('恢复当前方案，但改成不兼容旧存档', true)).toBe('direction');
+    expect(inferMessageIntent('现在不要支持金币交易', false)).toBe('direction');
+  });
+
+  it('blocks the whole queue while an existing run lacks reconciliation evidence', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const queued = itemFromIntake(
+      { id: 'new', idea: '新增系统', createdAt: state.initializedAt },
+      [],
+    ).item;
+    const missing = structuredClone(queued);
+    missing.id = 'missing';
+    missing.status = 'tracking';
+    missing.orchestration!.reconciliationOutcome = 'missing';
+    state.items.push(queued, missing);
+    expect(nextRunnableItem(state, state.initializedAt)).toBeNull();
+  });
+
   it('runs one item at a time and wakes retry items only after their timer', () => {
     const state = createSecretaryState('2026-09-14T00:00:00.000Z');
     const first = itemFromIntake(
@@ -152,6 +216,7 @@ describe('persistent secretary state', () => {
       [],
     ).item;
     waiting.status = 'waiting-producer';
+    waiting.orchestration!.waitingSnapshot = 'run:attempt-1:block-a';
     state.items.push(waiting);
     state.activeItemId = waiting.id;
     const direction = {
@@ -174,6 +239,15 @@ describe('persistent secretary state', () => {
     expect(applyWaitingReply(state, request, intent)?.id).toBe(waiting.id);
     expect(waiting.status).toBe('retry-wait');
     expect(waiting.producerGuidance).toBe(request.idea);
+    const persisted = JSON.parse(JSON.stringify(state)) as typeof state;
+    normalizeSecretaryState(persisted);
+    expect(persisted.items[0].orchestration!.acknowledgedWaitingSnapshot).toBe(
+      'run:attempt-1:block-a',
+    );
+    persisted.items[0].orchestration!.waitingSnapshot = 'run:attempt-2:block-b';
+    expect(persisted.items[0].orchestration!.acknowledgedWaitingSnapshot).not.toBe(
+      persisted.items[0].orchestration!.waitingSnapshot,
+    );
     expect(state.activeItemId).toBe('');
   });
 
@@ -297,6 +371,44 @@ describe('persistent secretary state', () => {
     (state.orchestration.intakes[0] as { disposition: string }).disposition = 'invalid';
 
     expect(() => normalizeSecretaryState(state)).toThrow('嵌套记录损坏');
+  });
+
+  it.each(['waitingSnapshot', 'acknowledgedWaitingSnapshot'] as const)(
+    'rejects malformed %s without inventing approval',
+    (field) => {
+      const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+      const item = itemFromIntake(
+        { id: 'wait', idea: '恢复任务', createdAt: state.initializedAt },
+        [],
+      ).item;
+      state.items.push(item);
+      Reflect.set(item.orchestration!, field, null);
+      expect(() => normalizeSecretaryState(state)).toThrow('停止自动写入和派发');
+    },
+  );
+
+  it.each([null, false, 0])(
+    'rejects an explicitly present malformed secretary orchestration value %s',
+    (orchestration) => {
+      const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+      (state as unknown as { orchestration: unknown }).orchestration = orchestration;
+
+      expect(() => normalizeSecretaryState(state)).toThrow('停止自动写入和派发');
+      expect((state as unknown as { orchestration: unknown }).orchestration).toBe(orchestration);
+    },
+  );
+
+  it('rejects an explicitly present malformed item orchestration value', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'invalid-item', idea: '旧任务', createdAt: state.initializedAt },
+      [],
+    ).item;
+    (item as unknown as { orchestration: unknown }).orchestration = null;
+    state.items.push(item);
+
+    expect(() => normalizeSecretaryState(state)).toThrow('事项 invalid-item');
+    expect((item as unknown as { orchestration: unknown }).orchestration).toBeNull();
   });
 
   it('reconciles every active, tracking and retry item plus the active pointer', () => {
