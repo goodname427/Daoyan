@@ -45,6 +45,23 @@ describe('versioned player state', () => {
     }
   });
 
+  it('drops legacy spell cooldowns and cooldown attributes while loading a current save', () => {
+    const loaded = decodePlayerState(
+      JSON.stringify({
+        version: SAVE_SCHEMA_VERSION,
+        spellSource: 'spell 旧术 @cooldown=12 { 自身位置() }',
+        arenaAttrs: { ...defaults.arenaAttrs, cooldownMul: 0.5 },
+      }),
+      defaults,
+    );
+
+    expect(loaded).toMatchObject({ ok: true, migrated: false });
+    if (loaded.ok) {
+      expect(loaded.state.spellSource).not.toContain('@cooldown');
+      expect(loaded.state.arenaAttrs).not.toHaveProperty('cooldownMul');
+    }
+  });
+
   it('restores the last valid automatic save without replacing it with invalid editor input', () => {
     localStorage.clear();
     const state: PlayerState = {

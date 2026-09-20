@@ -74,13 +74,18 @@ describe('玩家操作', () => {
     expect(cast.vm.spentTicks).toBeLessThanOrEqual(15);
   });
 
-  it('冷却期间无法再次施放', () => {
-    const b = makeBattle();
-    b.setBinding('3', '爆炎咒'); // 冷却 6s
-    expect(b.castPlayer('3')).toBe(true);
-    run(b, 3); // 等它放完
-    expect(b.cooldownLeft(b.player.id, '爆炎咒')).toBeGreaterThan(0);
-    expect(b.castPlayer('3')).toBe(false);
+  it('同槽施法中不能重入，结束后无需冷却即可再次施放', () => {
+    const b = new Battle(parseSpellbook('spell 连发 @cooldown=60 { 自身位置() }'), {
+      playerBindings: { '1': '连发' },
+    });
+
+    expect(b.pressSlot('1')).toBe(true);
+    expect(b.pressSlot('1')).toBe(false);
+    run(b, 0.2);
+    expect(b.activeCasts(b.player.id)).toHaveLength(0);
+    expect(b.pressSlot('1')).toBe(false);
+    b.releaseSlot('1');
+    expect(b.pressSlot('1')).toBe(true);
   });
 
   it('持续类法术会周期性重复执行', () => {

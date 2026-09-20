@@ -50,7 +50,12 @@ test.describe('player state persistence', () => {
     const editor = page.locator('.code-input').first();
     // The editor persists the parsed AST, whose serializer deliberately does
     // not retain comments. Change a spell semantic that survives that boundary.
-    await editor.fill((await editor.inputValue()).replace('@cooldown=0.4', '@cooldown=0.5'));
+    const fireSpell = page.getByRole('button', { name: /^爆炎咒/ });
+    await fireSpell.click();
+    await expect(fireSpell).toHaveClass(/active/);
+    await expect(editor).toHaveAttribute('aria-label', '爆炎咒 法术源码');
+    await editor.fill((await editor.inputValue()).replace('伤害(f, 30)', '伤害(f, 31)'));
+    await expect(editor).toHaveValue(/伤害\(f, 31\)/);
     await page.locator('.tabs .tab').nth(1).click();
     await page.locator('.attr-editor input').first().fill('240');
     await page.locator('.bindings select').nth(1).selectOption('三连剑');
@@ -69,7 +74,9 @@ test.describe('player state persistence', () => {
     await expect(page.locator('.attr-editor input').first()).toHaveValue('240');
     await expect(page.locator('.bindings select').nth(1)).toHaveValue('三连剑');
     await page.locator('.tabs .tab').first().click();
-    await expect(editor).toHaveValue(/@cooldown=0.5/);
+    await fireSpell.click();
+    await expect(editor).toHaveAttribute('aria-label', '爆炎咒 法术源码');
+    await expect(editor).toHaveValue(/伤害\(f, 31\)/);
 
     const imported = JSON.stringify({
       ...exportedSave,
@@ -230,28 +237,23 @@ test.describe('blueprint editing tools', () => {
     // Search centres one node and can leave the next palette-created node against
     // the pane edge. Fit both into the visible pane before deriving drag points.
     await blueprint.getByRole('button', { name: 'Fit View' }).click();
-    const conditionBox = await addedCondition.boundingBox();
-    const repeatBox = await repeat.boundingBox();
+    await expect.poll(() => viewport.getAttribute('style')).not.toBe(beforeLocation);
+    const graph = blueprint.locator('.graph-wrap');
+    await graph.scrollIntoViewIfNeeded();
     const paneBox = await blueprint.locator('.react-flow__pane').boundingBox();
-    expect(conditionBox).not.toBeNull();
-    expect(repeatBox).not.toBeNull();
     expect(paneBox).not.toBeNull();
-    if (conditionBox && repeatBox && paneBox) {
-      // Bare drags begin selection only on the React Flow pane. Holding Shift
-      // also covers a start point that React Flow resolves to another element
-      // while the graph is being laid out.
+    if (paneBox) {
+      // Shift allows selection to begin on the background grid child instead
+      // of requiring the pointer target to be the pane element itself.
+      const viewportSize = page.viewportSize();
+      expect(viewportSize).not.toBeNull();
+      if (!viewportSize) return;
+      const inset = 8;
+      const left = Math.max(paneBox.x, 0) + inset;
+      const top = Math.max(paneBox.y, 0) + inset;
+      const right = Math.min(paneBox.x + paneBox.width, viewportSize.width) - inset;
+      const bottom = Math.min(paneBox.y + paneBox.height, viewportSize.height) - inset;
       await page.keyboard.down('Shift');
-      const margin = 6;
-      const left = Math.max(paneBox.x + 1, Math.min(conditionBox.x, repeatBox.x) - margin);
-      const top = Math.max(paneBox.y + 1, Math.min(conditionBox.y, repeatBox.y) - margin);
-      const right = Math.min(
-        paneBox.x + paneBox.width - 1,
-        Math.max(conditionBox.x + conditionBox.width, repeatBox.x + repeatBox.width) + margin,
-      );
-      const bottom = Math.min(
-        paneBox.y + paneBox.height - 1,
-        Math.max(conditionBox.y + conditionBox.height, repeatBox.y + repeatBox.height) + margin,
-      );
       await page.mouse.move(left, top);
       await page.mouse.down();
       await page.mouse.move(right, bottom, { steps: 8 });

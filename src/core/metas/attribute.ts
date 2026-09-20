@@ -43,6 +43,7 @@ function targetEffectCost(
 export default function register(): void {
   const N = T.num;
   const E = T.entity;
+  const B = T.bool;
 
   /** 自身增益（乘法） */
   const selfMul: Array<[string, AttrKey, string]> = [
@@ -122,7 +123,7 @@ export default function register(): void {
         { name: '倍率', t: N },
         { name: '持续秒数', t: N },
       ],
-      ret: T.void,
+      ret: B,
       mana: 8,
       ticks: 2,
       cost: (ctx, args) =>
@@ -132,19 +133,15 @@ export default function register(): void {
         ]),
       desc,
       impl: (c, a) => {
-        const target = c.world.entityById(asEntity(a[0]));
+        const target = c.world.entityWithCapability(asEntity(a[0]), 'modifiers');
         const multiplier = asNum(a[1]);
         const duration = asNum(a[2]);
-        if (
-          target?.kind !== 'actor' ||
-          !isPositiveFinite(multiplier) ||
-          !isPositiveFinite(duration)
-        ) {
-          return null;
+        if (!target || !isPositiveFinite(multiplier) || !isPositiveFinite(duration)) {
+          return false;
         }
         c.world.addModifier(target, key, 'mul', multiplier, duration, name);
         c.log.push(`对 #${target.id} 施加${name}：${key} ×${multiplier}`);
-        return null;
+        return true;
       },
     });
   }
@@ -157,7 +154,7 @@ export default function register(): void {
       { name: '数值', t: N },
       { name: '持续秒数', t: N },
     ],
-    ret: T.void,
+    ret: B,
     mana: 8,
     ticks: 2,
     cost: (ctx, args) =>
@@ -167,15 +164,15 @@ export default function register(): void {
       ]),
     desc: '削损目标护体（加法，传正数即降低减伤）',
     impl: (c, a) => {
-      const target = c.world.entityById(asEntity(a[0]));
+      const target = c.world.entityWithCapability(asEntity(a[0]), 'modifiers');
       const amount = asNum(a[1]);
       const duration = asNum(a[2]);
-      if (target?.kind !== 'actor' || !isPositiveFinite(amount) || !isPositiveFinite(duration)) {
-        return null;
+      if (!target || !isPositiveFinite(amount) || !isPositiveFinite(duration)) {
+        return false;
       }
       c.world.addModifier(target, 'armor', 'add', -amount, duration, '破防');
       c.log.push(`对 #${target.id} 破防：护体 -${amount}`);
-      return null;
+      return true;
     },
   });
 }

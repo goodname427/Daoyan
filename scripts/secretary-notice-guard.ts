@@ -174,6 +174,7 @@ const acceptedRequestIds = new Set<string>();
 const recordedCorrelationIds = new Set<string>();
 const processExitNotices = new Map<number, ChildProcess>();
 const workerExitTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const activeLaunchStartedAt = new Map<string, string>();
 
 function workerEnvironment(): NodeJS.ProcessEnv {
   const environment = { ...process.env };
@@ -1801,6 +1802,15 @@ async function reconcileItem(
       undefined;
   }
   if (!run) return false;
+  const launchStartedAt = activeLaunchStartedAt.get(item.id);
+  if (
+    item.status === 'active' &&
+    activeChild?.exitCode === null &&
+    launchStartedAt &&
+    snapshotPredatesLaunch(run.updatedAt, launchStartedAt)
+  ) {
+    return false;
+  }
   item.updatedAt = new Date().toISOString();
   const completed = unrecordedTaskCompletions(item.completedTasks, run.taskCompletions);
   if (completed.length > 0) {
@@ -1976,6 +1986,7 @@ async function launch(item: SecretaryItem): Promise<void> {
   item.status = 'active';
   item.retryAt = '';
   item.updatedAt = new Date().toISOString();
+  activeLaunchStartedAt.set(item.id, item.updatedAt);
   if (item.runDirectory) item.recoveryAttempts += 1;
   state.activeItemId = item.id;
   const log = openSync(resolve(secretaryRoot, `${item.id}.log`), 'a');
@@ -1995,6 +2006,7 @@ async function launch(item: SecretaryItem): Promise<void> {
   });
   child.on('close', (code) => {
     void (async () => {
+      activeLaunchStartedAt.delete(item.id);
       activeChild = null;
       item.processPid = 0;
       item.processIdentity = '';
@@ -2005,6 +2017,15 @@ async function launch(item: SecretaryItem): Promise<void> {
       await coordinate();
     })().catch((error) => console.error(`[notice guard] PM 退出处理失败：${String(error)}`));
   });
+}
+
+export function snapshotPredatesLaunch(
+  snapshotUpdatedAt: string,
+  launchStartedAt: string,
+): boolean {
+  const snapshot = Date.parse(snapshotUpdatedAt);
+  const launch = Date.parse(launchStartedAt);
+  return Number.isFinite(snapshot) && Number.isFinite(launch) && snapshot < launch;
 }
 
 function scheduleRetry(): void {

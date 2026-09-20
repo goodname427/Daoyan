@@ -114,8 +114,6 @@ export class Battle {
   player: Actor;
   /** actorId → 触发槽位 → 当前施法 */
   casts = new Map<number, Map<string, CastInstance>>();
-  /** actorId → 法术名 → 剩余冷却 */
-  cooldowns = new Map<number, Map<string, number>>();
   /** actorId → 所有并发 VM 当前共同占用的神识 */
   private shenshiUsage = new Map<number, number>();
 
@@ -205,7 +203,7 @@ export class Battle {
         radius: 12,
         behavior: 'chaser',
         attackRange: 260,
-        attackCooldown: 1.9,
+        attackInterval: 1.9,
         castSlow: 0.35,
         bindings: { attack: '妖兽·扑击' },
       });
@@ -226,7 +224,7 @@ export class Battle {
       radius: 11,
       behavior: 'shooter',
       attackRange: 460,
-      attackCooldown: 2.3,
+      attackInterval: 2.3,
       castSlow: 0.35,
       bindings: { attack: '妖兽·雷符' },
     });
@@ -247,14 +245,6 @@ export class Battle {
       this.world.tickActor(a, dt);
       if (a.faction === 'foe') a.attackTimer -= dt;
     }
-    for (const [, map] of this.cooldowns) {
-      for (const [spell, left] of [...map]) {
-        const next = left - dt;
-        if (next <= 0) map.delete(spell);
-        else map.set(spell, next);
-      }
-    }
-
     this.movePlayer(dt);
     for (const a of this.world.actors) {
       if (a.alive && a.faction === 'foe') this.updateFoe(a, dt);
@@ -334,7 +324,7 @@ export class Battle {
 
     if (d <= a.attackRange && a.attackTimer <= 0) {
       if (this.trigger(a.id, 'attack')) {
-        a.attackTimer = a.attackCooldown * a.attr.cooldownMul;
+        a.attackTimer = a.attackInterval;
       } else {
         a.attackTimer = 0.35;
       }
@@ -518,10 +508,6 @@ export class Battle {
 
   // ---------------- 对外接口 ----------------
 
-  cooldownLeft(actorId: number, spell: string): number {
-    return this.cooldowns.get(actorId)?.get(spell) ?? 0;
-  }
-
   activeCasts(actorId: number): CastInstance[] {
     return [...(this.casts.get(actorId)?.values() ?? [])];
   }
@@ -566,7 +552,6 @@ export class Battle {
       this.pushLog(`「${spell}」无法施展：${cost.errors[0]}`);
       return false;
     }
-    if (this.cooldownLeft(actorId, spell) > 0) return false;
     if (this.casts.get(actorId)?.has(slot)) return false;
 
     const meta = this.metas[spell] ?? normalizeMeta(null);
@@ -597,14 +582,6 @@ export class Battle {
       ended: false,
     });
     this.world.fx.push({ kind: 'cast', x: a.x, y: a.y });
-    if (meta.cooldown > 0) {
-      let map = this.cooldowns.get(actorId);
-      if (!map) {
-        map = new Map();
-        this.cooldowns.set(actorId, map);
-      }
-      map.set(spell, meta.cooldown * a.attr.cooldownMul);
-    }
     this.stats.casts++;
     return true;
   }
@@ -616,6 +593,7 @@ export class Battle {
    */
   pressSlot(slot: string): boolean {
     if (!this.started || this.paused) return false;
+    if (this.heldSlots.has(slot)) return false;
     this.heldSlots.add(slot);
     return this.castPlayer(slot);
   }
@@ -675,7 +653,6 @@ export class Battle {
     this.world.onDamage = (target) => this.handleDamage(target);
     this.casts.clear();
     this.shenshiUsage.clear();
-    this.cooldowns.clear();
     this.heldSlots.clear();
     this.clearPlayerInput();
     this.log = [];

@@ -22,8 +22,6 @@ export interface Attributes {
   power: number;
   /** 法力消耗倍率：越小越省 */
   manaCostMul: number;
-  /** 冷却倍率 */
-  cooldownMul: number;
   /** 感知半径倍率 */
   perception: number;
   /** 护体：固定减伤 */
@@ -41,7 +39,6 @@ export const ATTR_LABELS: Record<AttrKey, string> = {
   castSpeed: '施法速度',
   power: '术法威力',
   manaCostMul: '法力消耗',
-  cooldownMul: '冷却时间',
   perception: '感知半径',
   armor: '护体减伤',
 };
@@ -56,7 +53,6 @@ export function baseAttributes(over: Partial<Attributes> = {}): Attributes {
     castSpeed: 1,
     power: 1,
     manaCostMul: 1,
-    cooldownMul: 1,
     perception: 1,
     armor: 0,
     ...over,

@@ -421,7 +421,6 @@ function BindingPanel({
     <div className="bindings">
       {SLOTS.map((s) => {
         const spell = bindings[s.key] ?? '';
-        const cd = spell ? battle.cooldownLeft(battle.player.id, spell) : 0;
         const missingFromBook = spell !== '' && !spellNames.includes(spell);
         return (
           <label key={s.key} className="binding">
@@ -435,7 +434,6 @@ function BindingPanel({
                 </option>
               ))}
             </select>
-            {cd > 0 && <em className="cd">{cd.toFixed(1)}s</em>}
           </label>
         );
       })}

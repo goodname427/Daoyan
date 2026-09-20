@@ -327,8 +327,11 @@ export function conventionalCommitOrFallback(message: string, title: string): st
 }
 
 export function canResumeCompletedCommit(input: CompletedCommitRecoveryInput): boolean {
+  const deliveryPhaseCanOwnCommit =
+    input.phase === 'Git 交付' ||
+    /^(交付门禁|门禁修复|独立审查|审查修复)第 \d+ 轮$/.test(input.phase);
   return (
-    input.phase === 'Git 交付' &&
+    deliveryPhaseCanOwnCommit &&
     input.worktreeClean &&
     input.currentHead !== input.baseline &&
     input.currentParent === input.baseline &&

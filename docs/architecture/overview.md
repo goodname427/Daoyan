@@ -28,7 +28,9 @@ App 共享状态 → 推演台
 
 - 玩家与妖兽统一为 `Actor`；Actor 与 Projectile 共用同一、不复用的 `entity` 句柄空间。
 - 统一句柄不等于统一属性全集。Actor 和 Projectile 保持不同结构，操作通过 Identity、Transform、Vitality、Caster、Movement、Projectile 与 Modifiers 能力判定。
+- 旧的生命、伤害和目标属性元法术也通过统一句柄检查所需能力；能力缺失时按查询中性值或控制 `false` 确定性失败。
 - Projectile 可由 DSL 创建为未激活对象，再由所有者配置、激活和探查；旧 `发射` 保留为兼容入口。
+- 法术节奏由法力、tick、输入边沿和同槽施法占用约束，不再维护法术冷却或冷却倍率。
 - 句柄、能力、属性和实际资源公式详见 [`../reference/entities-and-attributes.md`](../reference/entities-and-attributes.md)。
 
 重要取舍见 [`../adr/`](../adr/)，不可破坏的规则见 [`invariants.md`](./invariants.md)。

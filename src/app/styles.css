@@ -343,13 +343,6 @@ body {
   border-color: var(--gold);
 }
 
-.cd {
-  font-style: normal;
-  font-size: 10px;
-  color: var(--danger);
-  font-family: ui-monospace, monospace;
-}
-
 .bindings {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

@@ -59,6 +59,15 @@ describe('AST ↔ DSL 序列化', () => {
     expect(book2['往返'].meta?.kind).toBe('duration');
     expect(book2['往返'].meta?.keys).toEqual(['蓄力']);
   });
+
+  it('兼容读取旧冷却注解，但规范化后不再保留', () => {
+    const book = parseSpellbook('spell 旧术 @cooldown=12 { 自身位置() }');
+    const source = serializeBook(book);
+
+    expect(book['旧术'].meta).not.toHaveProperty('cooldown');
+    expect(source).not.toContain('@cooldown');
+    expect(parseSpellbook(source)['旧术'].name).toBe('旧术');
+  });
 });
 
 describe('资源模型：神识定价', () => {

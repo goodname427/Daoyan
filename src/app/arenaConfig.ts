@@ -15,7 +15,6 @@ export const ARENA_ATTR_CONSTRAINTS: ReadonlyArray<{
   { key: 'castSpeed', min: 0.1, max: 5, step: 0.05 },
   { key: 'power', min: 0.1, max: 5, step: 0.05 },
   { key: 'manaCostMul', min: 0.1, max: 3, step: 0.05 },
-  { key: 'cooldownMul', min: 0.1, max: 3, step: 0.05 },
   { key: 'perception', min: 0.1, max: 3, step: 0.05 },
   { key: 'armor', min: 0, max: 120, step: 1 },
 ];

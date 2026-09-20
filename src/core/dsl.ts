@@ -190,7 +190,7 @@ class Parser {
     }
     const name = this.name();
 
-    // 生命周期注解：@kind=duration @period=1 @duration=6 @cooldown=12
+    // 生命周期注解：@kind=duration @period=1 @duration=6 @keys=蓄力
     const meta: Partial<Record<keyof SpellMeta, string | number | boolean>> = {};
     while (this.at('@')) {
       this.next();
@@ -202,7 +202,10 @@ class Parser {
       else if (tok.text === 'true' || tok.text === '真') value = true;
       else if (tok.text === 'false' || tok.text === '假') value = false;
       // keys 是字符串数组，需要把 "蓄力,辅助" 拆开
-      if (key === 'keys') {
+      if (key === 'cooldown') {
+        // 兼容旧法术书：接受后丢弃，规范化序列化不再保留法术冷却。
+        continue;
+      } else if (key === 'keys') {
         (meta as { keys?: string[] }).keys = String(value)
           .split(',')
           .map((s) => s.trim())
@@ -558,7 +561,6 @@ function serAnnotations(spell: Spell): string {
   if (m.kind) parts.push(`@kind=${m.kind}`);
   if (m.period !== undefined) parts.push(`@period=${m.period}`);
   if (m.duration !== undefined) parts.push(`@duration=${m.duration}`);
-  if (m.cooldown !== undefined) parts.push(`@cooldown=${m.cooldown}`);
   if (m.keys && m.keys.length > 0) parts.push(`@keys=${m.keys.join(',')}`);
   return parts.length > 0 ? ' ' + parts.join(' ') : '';
 }

@@ -142,7 +142,7 @@ describe('agent routing', () => {
     expect(conventionalCommitOrFallback('修复资源释放', '资源释放')).toBe('feat: 完成资源释放');
   });
 
-  it('only resumes the exact clean delivery commit after a Git-phase interruption', () => {
+  it('resumes an exact clean delivery commit from post-task delivery phases', () => {
     const input = {
       phase: 'Git 交付',
       baseline: 'base',
@@ -153,6 +153,9 @@ describe('agent routing', () => {
       worktreeClean: true,
     };
     expect(canResumeCompletedCommit(input)).toBe(true);
+    expect(canResumeCompletedCommit({ ...input, phase: '独立审查第 2 轮' })).toBe(true);
+    expect(canResumeCompletedCommit({ ...input, phase: '交付门禁第 1 轮' })).toBe(true);
+    expect(canResumeCompletedCommit({ ...input, phase: '执行任务' })).toBe(false);
     expect(canResumeCompletedCommit({ ...input, currentParent: 'other' })).toBe(false);
     expect(canResumeCompletedCommit({ ...input, currentMessage: 'feat: 外部提交' })).toBe(false);
     expect(canResumeCompletedCommit({ ...input, worktreeClean: false })).toBe(false);

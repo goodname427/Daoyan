@@ -4,6 +4,7 @@ import {
   featureTaskCompletions,
   retryTimeFromOutput,
   runArgs,
+  snapshotPredatesLaunch,
   versionMessageIsNewDirection,
   versionProducerDecision,
   windowsCodexInvocation,
@@ -52,6 +53,17 @@ describe('secretary dispatch feedback', () => {
   it('reports a failed launch as recovery instead of a successful start', () => {
     expect(continueDispatchResponse(item, 'recovering')).toContain('未稳定启动');
     expect(continueDispatchResponse(item, 'recovering')).not.toContain('已确认运行');
+  });
+});
+
+describe('secretary launch snapshot ordering', () => {
+  it('ignores a persisted failure from before the current PM launch', () => {
+    expect(snapshotPredatesLaunch('2026-09-20T14:11:21.000Z', '2026-09-20T14:23:52.000Z')).toBe(
+      true,
+    );
+    expect(snapshotPredatesLaunch('2026-09-20T14:23:58.000Z', '2026-09-20T14:23:52.000Z')).toBe(
+      false,
+    );
   });
 });
 

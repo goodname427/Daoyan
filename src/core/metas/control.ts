@@ -127,17 +127,17 @@ export default function register(): void {
       { name: '目标', t: E },
       { name: '数值', t: N },
     ],
-    ret: T.void,
+    ret: T.bool,
     mana: 5,
     ticks: 1,
     cost: (_ctx, args) => effectCost(args, 5, 1, [{ index: 1, manaPer: 0.1, tickUnit: 200 }]),
-    desc: '直接对指定单位造成请求伤害；数值越高，法力和耗时持续增加，不设人为上限',
+    desc: '伤害具备生命能力的实体并返回是否成功；数值越高，法力和耗时持续增加，不设人为上限',
     impl: (c, a) => {
       const id = asEntity(a[0]);
       const dmg = asNum(a[1]) * c.caster.attr.power;
-      if (!isPositiveFinite(dmg)) return null;
-      if (c.world.damage(id, dmg)) c.log.push(`对 #${id} 造成 ${Math.round(dmg)} 点伤害`);
-      return null;
+      if (!isPositiveFinite(dmg) || !c.world.damage(id, dmg)) return false;
+      c.log.push(`对 #${id} 造成 ${Math.round(dmg)} 点伤害`);
+      return true;
     },
   });
 

@@ -844,12 +844,33 @@ const PALETTE: Array<{ kind: NodeKind; label: string }> = [
   { kind: 'return', label: '返回' },
 ];
 
-function makeNode(kind: NodeKind): Node {
+function nextNodePosition(nodes: Node[]): { x: number; y: number } {
+  const horizontalGap = 240;
+  const verticalGap = 170;
+  const columns = 4;
+
+  for (let index = 0; index < 200; index++) {
+    const candidate = {
+      x: 120 + (index % columns) * horizontalGap,
+      y: 80 + Math.floor(index / columns) * verticalGap,
+    };
+    const overlaps = nodes.some(
+      (node) =>
+        Math.abs(node.position.x - candidate.x) < horizontalGap * 0.8 &&
+        Math.abs(node.position.y - candidate.y) < verticalGap * 0.8,
+    );
+    if (!overlaps) return candidate;
+  }
+
+  return { x: 120, y: 80 + Math.ceil(nodes.length / columns) * verticalGap };
+}
+
+function makeNode(kind: NodeKind, position: { x: number; y: number }): Node {
   const id = nid();
   const base = {
     id,
     type: 'spell',
-    position: { x: 120 + Math.random() * 200, y: 80 + Math.random() * 200 },
+    position,
   };
   switch (kind) {
     case 'callstmt':
@@ -1251,7 +1272,7 @@ export function NodeEditor({ source, spell, onSourceChange, onSpellNameChange }:
   );
 
   const addNode = (kind: NodeKind): void => {
-    const next = [...nodesRef.current, makeNode(kind)];
+    const next = [...nodesRef.current, makeNode(kind, nextNodePosition(nodesRef.current))];
     nodesRef.current = next;
     setNodes(next);
     appendHistory(next, edgesRef.current);

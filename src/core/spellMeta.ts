@@ -17,8 +17,6 @@ export interface SpellMeta {
   period: number;
   /** duration / channel：持续多少秒 */
   duration: number;
-  /** 冷却秒数（0 表示无冷却） */
-  cooldown: number;
   /** 受击是否打断 */
   interruptible: boolean;
   /** channel 类型的移动速度倍率 */
@@ -35,7 +33,6 @@ export const DEFAULT_SPELL_META: SpellMeta = {
   kind: 'instant',
   period: 1,
   duration: 3,
-  cooldown: 0,
   interruptible: true,
   channelSlow: 0.15,
   keys: [],
@@ -48,7 +45,15 @@ export const SPELL_KIND_LABELS: Record<SpellKind, string> = {
 };
 
 export function normalizeMeta(patch?: Partial<SpellMeta> | null): SpellMeta {
-  return { ...DEFAULT_SPELL_META, ...(patch ?? {}) };
+  const source = patch ?? {};
+  return {
+    kind: source.kind ?? DEFAULT_SPELL_META.kind,
+    period: source.period ?? DEFAULT_SPELL_META.period,
+    duration: source.duration ?? DEFAULT_SPELL_META.duration,
+    interruptible: source.interruptible ?? DEFAULT_SPELL_META.interruptible,
+    channelSlow: source.channelSlow ?? DEFAULT_SPELL_META.channelSlow,
+    keys: source.keys ?? DEFAULT_SPELL_META.keys,
+  };
 }
 
 export function spellMeta(spell: Spell): SpellMeta {
@@ -66,7 +71,7 @@ export function describeMeta(meta: SpellMeta): string {
   const key = meta.keys.length > 0 ? ` · ${meta.keys.length}键[${meta.keys.join(',')}]` : '';
   switch (meta.kind) {
     case 'instant':
-      return (meta.cooldown > 0 ? `瞬时 · 冷却 ${meta.cooldown}s` : '瞬时') + key;
+      return `瞬时${key}`;
     case 'duration':
       return `持续 ${meta.duration}s · 每 ${meta.period}s 触发（共 ${repeatCount(meta)} 次）${key}`;
     case 'channel':

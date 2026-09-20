@@ -147,9 +147,9 @@ export default function register(): void {
     mana: 8,
     cost: (ctx, args) => distanceCost(ctx, args, 0, 8, 2),
     ticks: 2,
-    desc: '读取单位当前生命',
+    desc: '读取具备生命能力的实体当前生命；能力缺失或句柄失效时返回 0',
     impl: (c, a) => {
-      const e = c.world.byId(asEntity(a[0]));
+      const e = c.world.entityWithCapability(asEntity(a[0]), 'vitality');
       return e ? e.hp : 0;
     },
   });

@@ -74,7 +74,7 @@ export interface Actor {
 
   behavior: Behavior;
   attackRange: number;
-  attackCooldown: number;
+  attackInterval: number;
   attackTimer: number;
   /** 游走方向（用于 shooter 走位） */
   strafe: number;
@@ -96,6 +96,12 @@ export type Entity = Actor | Projectile;
 export type EntityCapability =
   'identity' | 'transform' | 'vitality' | 'caster' | 'movement' | 'projectile' | 'modifiers';
 
+export type EntityWithCapability<C extends EntityCapability> = C extends 'projectile'
+  ? Projectile
+  : C extends 'vitality' | 'caster' | 'modifiers'
+    ? Actor
+    : Entity;
+
 /** 单个施法者在场上可同时保有的弹道上限（含尚未激活的弹道）。 */
 export const MAX_OWNED_PROJECTILES = 16;
 
@@ -110,7 +116,7 @@ export interface ActorInit {
   bindings?: Record<string, string>;
   behavior?: Behavior;
   attackRange?: number;
-  attackCooldown?: number;
+  attackInterval?: number;
   castSlow?: number;
 }
 
@@ -166,7 +172,7 @@ export class World {
       bindings: init.bindings ?? {},
       behavior: init.behavior ?? null,
       attackRange: init.attackRange ?? 240,
-      attackCooldown: init.attackCooldown ?? 1.6,
+      attackInterval: init.attackInterval ?? 1.6,
       attackTimer: 0,
       strafe: 0,
       strafeTimer: 0,
@@ -190,11 +196,23 @@ export class World {
     );
   }
 
-  hasCapability(entity: Entity, capability: EntityCapability): boolean {
+  hasCapability<C extends EntityCapability>(
+    entity: Entity,
+    capability: C,
+  ): entity is EntityWithCapability<C> {
     if (capability === 'identity' || capability === 'transform' || capability === 'movement')
       return true;
     if (entity.kind === 'projectile') return capability === 'projectile';
     return capability === 'vitality' || capability === 'caster' || capability === 'modifiers';
+  }
+
+  /** 统一句柄解析与能力判定的单一入口。 */
+  entityWithCapability<C extends EntityCapability>(
+    id: number,
+    capability: C,
+  ): EntityWithCapability<C> | null {
+    const entity = this.entityById(id);
+    return entity && this.hasCapability(entity, capability) ? entity : null;
   }
 
   positionOf(id: number): Vec2 | null {
@@ -270,7 +288,7 @@ export class World {
   }
 
   damage(id: number, amount: number): boolean {
-    const a = this.byId(id);
+    const a = this.entityWithCapability(id, 'vitality');
     if (!a || !a.alive) return false;
     const real = Math.max(1, amount - a.attr.armor);
     a.hp -= real;

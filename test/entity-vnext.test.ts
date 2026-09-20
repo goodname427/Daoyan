@@ -81,6 +81,42 @@ describe('实体句柄与控制失败边界', () => {
     expect(world.positionOf(id)).toEqual(position);
     expect(world.fx).toHaveLength(1);
   });
+
+  it('旧生命、伤害与属性控制按统一实体能力成功或确定性失败', () => {
+    const { world, call } = setup();
+    const foe = world.spawnActor({ faction: 'foe', x: 140, y: 100 });
+    const projectileId = call('创建弹道', 5) as number;
+    const projectile = world.entityById(projectileId)!;
+    const projectileBefore = structuredClone(projectile);
+
+    expect(call('生命', foe.id)).toBe(foe.hp);
+    expect(call('生命', projectileId)).toBe(0);
+    expect(call('生命', 999999)).toBe(0);
+
+    const hp = foe.hp;
+    expect(call('伤害', foe.id, 12)).toBe(true);
+    expect(foe.hp).toBeLessThan(hp);
+    expect(call('伤害', projectileId, 12)).toBe(false);
+    expect(call('伤害', foe.id, 0)).toBe(false);
+
+    for (const [name, value] of [
+      ['迟滞', 0.5],
+      ['虚弱', 0.5],
+      ['蔽识', 0.5],
+      ['破防', 2],
+    ] as const) {
+      const modCount = foe.mods.length;
+      expect(call(name, foe.id, value, 3)).toBe(true);
+      expect(foe.mods).toHaveLength(modCount + 1);
+      expect(call(name, projectileId, value, 3)).toBe(false);
+      expect(call(name, 999999, value, 3)).toBe(false);
+    }
+    expect(foe.attr.speed).toBeLessThan(foe.base.speed);
+    expect(foe.attr.power).toBeLessThan(foe.base.power);
+    expect(foe.attr.perception).toBeLessThan(foe.base.perception);
+    expect(foe.attr.armor).toBeLessThan(foe.base.armor);
+    expect(projectile).toEqual(projectileBefore);
+  });
 });
 
 describe('动态定价契约', () => {

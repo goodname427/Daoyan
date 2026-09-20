@@ -52,7 +52,7 @@ export interface Spell {
   tags: string[];
   /** 描述，展示给玩家 */
   desc?: string;
-  /** 生命周期配置（瞬时 / 持续 / 引导、周期、冷却…） */
+  /** 生命周期配置（瞬时 / 持续 / 引导、周期、按键…） */
   meta?: Partial<SpellMeta>;
 }
 
