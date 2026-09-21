@@ -129,9 +129,21 @@ export function fastGateCommandProgress(
 
 export function pendingValidationStages(
   stages: FeatureValidationStage[],
-  evidence: { fullGate: boolean; fastGate: boolean; independentReview: boolean },
+  evidence: {
+    fullGate: boolean;
+    fastGate: boolean;
+    independentReview: boolean;
+    completedDeliveryCommit?: boolean;
+  },
 ): FeatureValidationStage[] {
   if (evidence.fullGate && stages.includes('full-gate')) return [];
+  // An exact clean commit created from the Git-delivery checkpoint can only
+  // exist after Task work, the fast gate and independent review succeeded.
+  // If its final evidence is missing, repair only that final evidence instead
+  // of replaying expensive upstream model work.
+  if (evidence.completedDeliveryCommit) {
+    return stages.includes('full-gate') ? ['full-gate'] : [];
+  }
   return stages.filter(
     (stage) =>
       !(

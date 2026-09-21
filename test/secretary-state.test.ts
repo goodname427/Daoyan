@@ -9,6 +9,7 @@ import {
   inferMessageIntent,
   intentSimilarity,
   isRunEligibleForAdoption,
+  isWorkflowControlPlaneRequest,
   itemFromIntake,
   nextRunnableItem,
   normalizeSecretaryState,
@@ -39,6 +40,13 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('keeps workflow control-plane maintenance out of secretary self-dispatch', () => {
+    expect(isWorkflowControlPlaneRequest('修复常驻秘书卡住后不汇报的问题')).toBe(true);
+    expect(isWorkflowControlPlaneRequest('优化 Agent Workflow 的恢复调度')).toBe(true);
+    expect(isWorkflowControlPlaneRequest('继续开发法术实体控制功能')).toBe(false);
+    expect(isWorkflowControlPlaneRequest('让秘书安排下一个游戏版本')).toBe(false);
+  });
+
   it('migrates stale mobile and delivered desktop candidates with stable correction facts', () => {
     const state = createSecretaryState('2026-09-21T00:00:00.000Z');
     const mobile = itemFromIntake(

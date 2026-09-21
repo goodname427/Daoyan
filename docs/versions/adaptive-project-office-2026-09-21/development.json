@@ -53,9 +53,13 @@
       "id": "selective-recovery",
       "status": "completed",
       "typecheck": "passed",
-      "targetedTests": "failed",
+      "targetedTests": "passed",
       "commands": [
         { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npm test -- test/agent-dispatcher-recovery.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/secretary-dashboard.test.ts test/version-lifecycle.test.ts test/public-work-log.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 0
+        },
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
           "exitCode": 0
@@ -107,16 +111,20 @@
         "test/agent-dispatcher-recovery.test.ts covers pre-existing unrelated dirty state plus completed Tasks and a later plan-scoped change, and separately covers a checkpoint file restored until current git status is clean. The process fixture could not run in this host because Node child_process cannot spawn git (EPERM), so this item remains targetedTests failed.",
         "The pure checkpoint baseline delta used by the dispatcher passed all 36 precompiled agent-routing tests with project config and esbuild disabled; unchanged unrelated paths are excluded while later additions and restorations are retained.",
         "test/secretary-dashboard.test.ts now waits for the explicit delivered reconciliation outcome instead of assuming the event-driven inbox loop and live-worker identity probe finish within 300 ms; the independent full gate's sole assertion failure is fixed at its synchronization boundary.",
-        "The focused dashboard command after this repair was blocked before collection by the current host's esbuild spawn EPERM, so selective-recovery targetedTests remains failed pending execution in the Feature PM environment."
+        "Primary-agent maintenance reran the standard six-file process suite in the current host: 6 files and 153 tests passed, including all 3 real dispatcher recovery cases and all 19 dashboard process cases."
       ]
     },
     {
       "id": "public-timing",
       "status": "completed",
       "typecheck": "passed",
-      "targetedTests": "failed",
+      "targetedTests": "passed",
       "commands": [
         { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npm test -- test/agent-dispatcher-recovery.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/secretary-dashboard.test.ts test/version-lifecycle.test.ts test/public-work-log.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 0
+        },
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
           "exitCode": 0
@@ -137,16 +145,20 @@
         "The public revision failure path emits intact Chinese text when neither Git nor source files can identify a revision, with a direct regression assertion.",
         "Dashboard Agent projection exposes timing totals and actual launch, abnormal recovery and local repair counters; resuming either an active crash snapshot or a recoverable snapshot increments abnormal recovery, while unknown legacy values remain null.",
         "test/public-work-log.test.ts covers scoped IDs, retry/revision non-collision and six-category aggregation; test/secretary-notice-guard.test.ts covers deterministic source revision fallback and source-change invalidation.",
-        "The required test/secretary-dashboard.test.ts command still exits before test collection because the host cannot start esbuild (spawn EPERM); the dashboard acceptance path was not executed, so targetedTests is failed rather than passed."
+        "Primary-agent maintenance reran the standard six-file process suite in the current host: 6 files and 153 tests passed, including public timing and dashboard process coverage."
       ]
     },
     {
       "id": "secretary-backlog-reconciliation",
       "status": "completed",
       "typecheck": "passed",
-      "targetedTests": "failed",
+      "targetedTests": "passed",
       "commands": [
         { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npm test -- test/agent-dispatcher-recovery.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/secretary-dashboard.test.ts test/version-lifecycle.test.ts test/public-work-log.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 0
+        },
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
           "exitCode": 0
@@ -176,7 +188,7 @@
         "test/secretary-state.test.ts and test/secretary-notice-guard.test.ts cover supersession, delivery/merge reverse closure, source-without-self-reference deduplication, a second-notification failure followed by restart from only the unsent remainder, zero pending count, and future same-theme candidates that must remain open.",
         "Unlinked schedule items now use secretary:<own-id> as their stable key, so identical or prefix-colliding text remains independently countable unless an explicit secretary relation joins it.",
         "reconcileSecretaryBacklog now iterates terminal successor propagation to a fixed point, and test/secretary-state.test.ts proves A <- B <- delivered C closes and persists the entire chain in one normalization pass.",
-        "The required test/secretary-dashboard.test.ts command still exits before test collection because the host cannot start esbuild (spawn EPERM); the dashboard acceptance path was not executed, so targetedTests is failed rather than passed."
+        "Primary-agent maintenance reran the standard six-file process suite in the current host: 6 files and 153 tests passed, including backlog migration, restart persistence and dashboard process coverage."
       ]
     },
     {

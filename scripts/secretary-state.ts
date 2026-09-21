@@ -101,6 +101,8 @@ export interface SecretaryItemOrchestration {
   formalScopeRevision?: number;
   formalStageStep?: 'primary' | 'reverification';
   formalStageConsumedAt?: string;
+  lastProgressPhase?: string;
+  lastProgressNoticeAt?: string;
 }
 
 export interface ProjectFact {
@@ -298,6 +300,9 @@ function validateItemOrchestration(item: SecretaryItem): void {
     ['waitingSnapshot', 'acknowledgedWaitingSnapshot', 'formalStageConsumedAt'].some(
       (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
     ) ||
+    ['lastProgressPhase', 'lastProgressNoticeAt'].some(
+      (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
+    ) ||
     ['formalVersionId', 'formalStage'].some(
       (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
     ) ||
@@ -313,6 +318,20 @@ function validateItemOrchestration(item: SecretaryItem): void {
 export interface IntakeDecision {
   action: 'answer-completed' | 'track-active' | 'queue-scheduled' | 'queue-new';
   fact: ProjectFact | null;
+}
+
+/** Workflow control-plane changes must never be delegated back into that control plane. */
+export function isWorkflowControlPlaneRequest(value: string): boolean {
+  const normalized = value.toLowerCase().replace(/\s+/g, ' ');
+  const namesControlPlane =
+    /(常驻秘书|秘书(?:系统|功能|看板|中枢)|notice\s*guard|agent\s*workflow|agent\s*调度|feature\s*pm|版本调度器|任务调度器|项目中枢|工作流)/i.test(
+      normalized,
+    );
+  const asksForMaintenance =
+    /(修复|开发|新增|增加|调整|改进|优化|重构|排查|检查|卡住|阻塞|失效|不工作|没反应|异常|问题)/i.test(
+      normalized,
+    );
+  return namesControlPlane && asksForMaintenance;
 }
 
 export type ContinueScheduleAction = 'running' | 'resumed' | 'ready' | 'waiting' | 'idle';

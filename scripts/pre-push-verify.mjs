@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,7 +52,7 @@ export function treeFingerprint(workspaceRoot = root) {
   return fingerprintPaths(paths.filter(isValidationTreePath), workspaceRoot);
 }
 
-function configFingerprint() {
+export function configFingerprint(workspaceRoot = root) {
   const hash = createHash('sha256');
   for (const path of [
     'package.json',
@@ -61,13 +61,17 @@ function configFingerprint() {
     'vite.config.ts',
   ]) {
     hash.update(path);
-    hash.update(existsSync(resolve(root, path)) ? readFileSync(resolve(root, path)) : '[missing]');
+    hash.update(
+      existsSync(resolve(workspaceRoot, path))
+        ? readFileSync(resolve(workspaceRoot, path))
+        : '[missing]',
+    );
   }
   return hash.digest('hex');
 }
 
-function reusableEvidence(workspace, config) {
-  const runsRoot = resolve(root, '.daoyan-agent/runs');
+function reusableEvidence(workspace, config, workspaceRoot = root) {
+  const runsRoot = resolve(workspaceRoot, '.daoyan-agent/runs');
   if (!existsSync(runsRoot)) return null;
   for (const entry of readdirSync(runsRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -91,10 +95,40 @@ function reusableEvidence(workspace, config) {
   return null;
 }
 
+export function recordFullGateEvidence(workspace, config, workspaceRoot = root) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const directory = resolve(workspaceRoot, '.daoyan-agent/runs', `pre-push-${stamp}`);
+  const path = resolve(directory, 'full-gate-evidence.json');
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(
+    path,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        workspaceFingerprint: workspace,
+        configFingerprint: config,
+        command: fullCommand,
+        commandFingerprint: createHash('sha256').update(fullCommand).digest('hex'),
+        executionRound: 1,
+        log: '',
+        exitCode: 0,
+        createdAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  return path;
+}
+
 function main() {
+  let workspace = '';
+  let config = '';
   let evidence = null;
   try {
-    evidence = reusableEvidence(treeFingerprint(), configFingerprint());
+    workspace = treeFingerprint();
+    config = configFingerprint();
+    evidence = reusableEvidence(workspace, config);
   } catch (error) {
     console.warn(
       `pre-push: could not inspect reusable evidence; ${error instanceof Error ? error.message : String(error)}`,
@@ -115,7 +149,19 @@ function main() {
   console.log(`▶ pre-push: no matching evidence; running ${fullCommand}`);
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const result = spawnSync(npm, ['run', 'verify:full'], { cwd: root, stdio: 'inherit' });
-  return result.status ?? 1;
+  const exitCode = result.status ?? 1;
+  if (exitCode !== 0) return exitCode;
+  const finalWorkspace = treeFingerprint();
+  const finalConfig = configFingerprint();
+  if (finalWorkspace !== workspace || finalConfig !== config) {
+    console.error(
+      'pre-push: verification changed the tracked validation tree; commit those changes and rerun',
+    );
+    return 1;
+  }
+  const recorded = recordFullGateEvidence(finalWorkspace, finalConfig);
+  console.log(`✔ pre-push: recorded ${recorded}`);
+  return 0;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

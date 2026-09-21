@@ -16,7 +16,6 @@ import {
   fastGateCommandProgress,
   failedNpmCommandFromOutput,
   highestTier,
-  isValidationTreePath,
   isSafeRunId,
   optimizePlan,
   npmRunCommandsFromScript,
@@ -43,6 +42,7 @@ import {
   type WorkspaceChangeBaseline,
 } from './agent-routing';
 import { endChildInput } from './child-process-input';
+import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
 
@@ -584,8 +584,10 @@ async function collectTaskInputPaths(
 }
 
 async function workspaceTreeFingerprint(): Promise<string> {
-  const paths = (await filesForTaskPaths(['.'])).filter(isValidationTreePath);
-  return await taskPathFingerprint(paths);
+  // Dispatcher evidence and the pre-push hook must hash the exact same tree.
+  // Keeping a second implementation here previously made valid evidence look
+  // stale immediately after commit and restarted the whole validation chain.
+  return validationTreeFingerprint(root);
 }
 
 async function workspaceContentSnapshot(): Promise<Map<string, Buffer | null>> {
@@ -1807,6 +1809,7 @@ let activeReviewerTokens: number | null = null;
 let activeRepairerTokens: number | null = null;
 let activeNoPush = options.noPush;
 let activeTakeover = options.takeover;
+let activeCompletedDeliveryCommit = false;
 let activeActualLaunchCount: number | null = 1;
 let activeAbnormalRecoveryCount: number | null = 0;
 let activeLocalRepairRoundCount: number | null = 0;
@@ -1938,6 +1941,7 @@ try {
         expectedMessage: expectedCommitMessage,
         worktreeClean: currentStatus.stdout.trim().length === 0,
       });
+    activeCompletedDeliveryCommit = completedCommitCanResume;
     const emptyRecoveryCanRebase = canRebaseEmptyRecovery({
       status: checkpoint.status,
       taskRunCount: checkpoint.taskRuns.length,
@@ -2176,6 +2180,7 @@ try {
       fullGate: Boolean(reusableFullGateAtStart),
       fastGate: reusableFastGate,
       independentReview: reusableIndependentReview,
+      completedDeliveryCommit: activeCompletedDeliveryCommit,
     }),
   );
   const validationProfile = validationProfileForPlan(plan);

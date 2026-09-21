@@ -29,6 +29,7 @@ import {
   parseVersionWorkItems,
   persistScheduleCorrections,
   publicCodeRevision,
+  progressNoticeDecision,
   observedExitEndsPm,
   nonDocumentationChanges,
   replaceVersionWorkItems,
@@ -54,6 +55,21 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('secretary worker process launch', () => {
+  it('reports phase transitions immediately and long phases at a bounded interval', () => {
+    const started = '2026-09-21T00:00:00.000Z';
+    expect(progressNoticeDecision('', '', '独立审查第 1 轮', started)).toEqual({
+      notify: true,
+      phase: '独立审查',
+      heartbeat: false,
+    });
+    expect(
+      progressNoticeDecision('独立审查', started, '独立审查第 2 轮', '2026-09-21T00:29:59.000Z'),
+    ).toEqual({ notify: false, phase: '独立审查', heartbeat: true });
+    expect(
+      progressNoticeDecision('独立审查', started, '独立审查第 3 轮', '2026-09-21T00:30:00.000Z'),
+    ).toEqual({ notify: true, phase: '独立审查', heartbeat: true });
+  });
+
   it('uses a deterministic source revision when an isolated guard has no Git metadata', async () => {
     const fixture = await mkdtemp(resolve(tmpdir(), 'daoyan-public-revision-'));
     try {

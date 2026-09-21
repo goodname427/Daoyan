@@ -59,6 +59,7 @@ import {
   messageIsNewDirection,
   isRunEligibleForAdoption,
   itemFromIntake,
+  isWorkflowControlPlaneRequest,
   nextRunnableItem,
   normalizeSecretaryState,
   pendingScheduleCorrections,
@@ -160,6 +161,8 @@ interface RunSnapshot {
   taskCompletions: SecretaryTaskCompletion[];
   runId: string;
   attempt: number;
+  phase: string;
+  elapsedSeconds: number;
 }
 
 interface TriageResult {
@@ -229,6 +232,39 @@ const recordedCorrelationIds = new Set<string>();
 const processExitNotices = new Map<number, ChildProcess>();
 const workerExitTimers = new Map<number, ReturnType<typeof setTimeout>>();
 const activeLaunchStartedAt = new Map<string, string>();
+const progressNoticeIntervalMs = 30 * 60_000;
+
+function progressNoticePhase(rawPhase: string): string {
+  const phase = publicActivityText(rawPhase)
+    .replace(/第\s*\d+\s*轮/g, '')
+    .trim();
+  if (/快速门禁/.test(phase)) return 'Feature 快速门禁';
+  if (/独立审查|增量复审/.test(phase)) return '独立审查';
+  if (/局部修复|finding|门禁失败/.test(phase)) return '自动修复';
+  if (/完整门禁/.test(phase)) return 'Feature 完整门禁';
+  if (/Git/.test(phase)) return 'Git 交付';
+  if (/执行任务/.test(phase)) return '执行任务';
+  return phase || '正在执行';
+}
+
+export function progressNoticeDecision(
+  lastPhase: string,
+  lastNoticeAt: string,
+  rawPhase: string,
+  now: string,
+  intervalMs = progressNoticeIntervalMs,
+): { notify: boolean; phase: string; heartbeat: boolean } {
+  const phase = progressNoticePhase(rawPhase);
+  if (phase !== lastPhase) return { notify: true, phase, heartbeat: false };
+  const previous = Date.parse(lastNoticeAt);
+  const current = Date.parse(now);
+  return {
+    notify:
+      Number.isFinite(previous) && Number.isFinite(current) && current - previous >= intervalMs,
+    phase,
+    heartbeat: true,
+  };
+}
 
 function publicEventContext(item?: SecretaryItem): {
   executionRound: number;
@@ -1384,6 +1420,8 @@ async function scanRuns(): Promise<RunSnapshot[]> {
         taskCompletions: await versionTaskCompletions(directory, objective, manifest),
         runId: String(manifest.runId ?? entry.name),
         attempt: Number(manifest.attempt ?? 0),
+        phase: String(manifest.currentStage ?? manifest.status ?? ''),
+        elapsedSeconds: Number(manifest.elapsedSeconds ?? 0),
       });
     }
   }
@@ -1392,6 +1430,7 @@ async function scanRuns(): Promise<RunSnapshot[]> {
       if (!entry.isDirectory()) continue;
       const directory = resolve(runsRoot, entry.name);
       const recovery = await readJson(resolve(directory, 'recovery.json'));
+      const progress = await readJson(resolve(directory, 'progress.json'));
       const plan = await readJson(resolve(directory, 'plan.validated.json'));
       const report = await readJson(resolve(directory, 'report.json'));
       if ((!recovery || typeof recovery.status !== 'string') && !report) continue;
@@ -1419,6 +1458,8 @@ async function scanRuns(): Promise<RunSnapshot[]> {
         taskCompletions: featureTaskCompletions(directory, parentTitle, '', recovery, report),
         runId: String(recovery?.runId ?? entry.name),
         attempt: Number(recovery?.attempt ?? recovery?.recoveryAttempts ?? 0),
+        phase: String(progress?.phase ?? recovery?.phase ?? status),
+        elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
       });
     }
   }
@@ -1445,9 +1486,12 @@ async function snapshotForItem(item: SecretaryItem): Promise<RunSnapshot | null>
       attempt: Number(
         manifest.attempt ?? item.orchestration?.attempt ?? item.recoveryAttempts ?? 0,
       ),
+      phase: String(manifest.currentStage ?? manifest.status ?? ''),
+      elapsedSeconds: Number(manifest.elapsedSeconds ?? 0),
     };
   }
   const recovery = await readJson(resolve(item.runDirectory, 'recovery.json'));
+  const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
   const report = await readJson(resolve(item.runDirectory, 'report.json'));
   if ((!recovery || typeof recovery.status !== 'string') && !report) return null;
   const plan = await readJson(resolve(item.runDirectory, 'plan.validated.json'));
@@ -1486,6 +1530,8 @@ async function snapshotForItem(item: SecretaryItem): Promise<RunSnapshot | null>
         item.recoveryAttempts ??
         0,
     ),
+    phase: String(progress?.phase ?? recovery?.phase ?? status),
+    elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
   };
 }
 
@@ -2256,6 +2302,27 @@ async function processInbox(): Promise<void> {
         }
         const request = raw as unknown as IntakeRequest;
         if (await recoverProcessedRequest(request, path)) continue;
+        if (isWorkflowControlPlaneRequest(request.idea)) {
+          const maintenance = itemFromIntake(request, []).item;
+          const response =
+            '这是秘书、调度器或项目中枢自身的维护请求。为避免不成熟系统自我修改，秘书不会派发给 Feature PM；请由主 Agent 直接维护，项目开发队列保持不变。';
+          maintenance.status = 'answered';
+          maintenance.plannedTasks = [];
+          maintenance.completedAt = request.createdAt;
+          maintenance.summary = response;
+          state.items.push(maintenance);
+          await saveState();
+          await writeInboxResponse(request, response, maintenance.status, 'question');
+          await emitNotice(
+            'control-plane-maintenance',
+            response,
+            maintenance,
+            undefined,
+            request.id,
+          );
+          await rm(path, { force: true });
+          continue;
+        }
         const waiting =
           state.items.find(
             (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
@@ -2636,6 +2703,33 @@ async function markMissingSnapshot(item: SecretaryItem, exitCode: number): Promi
   }
 }
 
+async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise<void> {
+  if (!['planned', 'running', 'active'].includes(run.status)) return;
+  const pmAlive = isOwnedProcessAlive(run.processPid, run.processIdentity, 0);
+  const worker = pmAlive ? null : await activeWorkerProcess(item, true);
+  if (!pmAlive && !worker) return;
+  normalizeSecretaryState(state);
+  const orchestration = item.orchestration!;
+  const now = new Date().toISOString();
+  const decision = progressNoticeDecision(
+    orchestration.lastProgressPhase ?? '',
+    orchestration.lastProgressNoticeAt ?? '',
+    run.phase,
+    now,
+  );
+  if (!decision.notify) return;
+  orchestration.lastProgressPhase = decision.phase;
+  orchestration.lastProgressNoticeAt = now;
+  await saveState();
+  const elapsedMinutes = Math.max(0, Math.floor(run.elapsedSeconds / 60));
+  const elapsed = elapsedMinutes > 0 ? `，本轮已运行约 ${elapsedMinutes} 分钟` : '';
+  await emitNotice(
+    decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
+    `${item.scope === 'version' ? '版本' : 'Feature'}进度：${decision.phase}${elapsed}。仍在正常执行，无需你介入。`,
+    item,
+  );
+}
+
 async function reconcileItem(
   item: SecretaryItem,
   supplied?: RunSnapshot,
@@ -2748,6 +2842,7 @@ async function reconcileItem(
     run.processIdentity &&
     !isOwnedProcessAlive(run.processPid, run.processIdentity),
   );
+  await reportRunProgress(item, run);
   const completed = unrecordedTaskCompletions(item.completedTasks, run.taskCompletions);
   if (completed.length > 0) {
     item.completedTasks.push(...completed);

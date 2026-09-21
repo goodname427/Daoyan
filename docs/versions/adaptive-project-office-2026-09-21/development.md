@@ -9,7 +9,7 @@
 
 ## 公开结论
 
-任务拆分中的八项工作均已完成实现，但本轮审计后只有五项仍可报告定向测试通过；`selective-recovery` 的真实 dispatcher 恢复进程回归，以及 `public-timing`、`secretary-backlog-reconciliation` 共同依赖的看板进程测试，在当前宿主无法创建 Node 子进程/启动 esbuild，因此结构化清单已如实改为 `targetedTests: failed`，不能被 notice guard 接纳为全部通过。正式版本状态信封继续使用 v1；新增证据、候选关闭关系和执行统计均为可选兼容扩展，旧记录缺字段时保守迁移，显式损坏时停止写入和派发。本阶段没有直接编辑 `.daoyan-agent`、没有手工推进版本节点，也没有 commit、push、tag 或发布。
+任务拆分中的八项工作均已完成实现，结构化清单中的逐项类型检查和定向测试现均为通过。此前受宿主 `spawn EPERM` 阻断的真实 dispatcher 恢复、看板跨进程、公开耗时和秘书状态场景，已由主 Agent 在当前宿主以标准 Vitest 命令复跑：6 个测试文件、153 条用例全部通过。正式版本状态信封继续使用 v1；新增证据、候选关闭关系和执行统计均为可选兼容扩展，旧记录缺字段时保守迁移，显式损坏时停止写入和派发。
 
 Task、Feature、Version 现在分别拥有可验证证据：Task 只登记执行 Agent 实际报告的直接检查命令和退出码，计划 `acceptanceCommands` 不再被推定为成功，`verify`、`verify:full`、E2E 与 build 也不会投影为 Task 事实；Feature PM 汇总后运行快速门禁、按未关闭 finding 在同一进程迭代，并为最终树保存唯一成功的完整门禁证据；Version QA 以接纳时实时计算的 Git tree、代码修订、完整门禁命令和配置指纹匹配 Feature 证据，且命令明细必须确实含有成功 `npm run verify:full`，再负责版本级集成、回归、迁移、打包和候选验证。`development.json`/`development.md` 在完整门禁前生成并纳入候选验证树，门禁后修改逐项命令、退出码或结论会使 Feature 与 pre-push 复用失效。恢复点保存相对 HEAD 的脏路径内容基线，续跑只把该基线之后新增、修改、删除或还原到 HEAD 的路径归属到计划，再按 Task 输入、输出、命令、配置和依赖图保留有效完成项；显式接管前已经存在且未再变化的无关现场不会阻断恢复，旧恢复点缺少该可选字段时仍保守处理。
 
@@ -45,6 +45,8 @@ notice guard 会把首次快照前的短窗口公开为 `bootstrapping`，分别
 
 ## 验证
 
+- 主 Agent 直接收口：`npm test -- test/agent-dispatcher-recovery.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/secretary-dashboard.test.ts test/version-lifecycle.test.ts test/public-work-log.test.ts --pool=forks --poolOptions.forks.singleFork=true` 通过，6 个测试文件、153 条用例全部通过；其中真实 dispatcher 恢复 3 条、看板跨进程 19 条均实际执行，不再沿用此前环境阻断结论。
+
 - 本次看板恢复回归修复：`node node_modules/typescript/bin/tsc --noEmit`、目标文件 ESLint、Prettier 与 `git diff --check` 通过。聚焦 `npm run test -- test/secretary-dashboard.test.ts -t "blocks an overdue existing run" --pool=forks --poolOptions.forks.singleFork=true` 在加载 `vite.config.ts` 时被宿主的 `esbuild spawn EPERM` 阻断，未收集用例；因此保留此前已通过的 Task/快速门禁事实，不把本地静态检查冒充该 HTTP/子进程回归通过，`selective-recovery.targetedTests` 继续为 failed，等待允许子进程的 Feature PM 同运行复核。
 - 本次选择性恢复基线修复：`npm run typecheck`、修改范围 ESLint、Prettier、`npm run docs:check` 与 `git diff --check` 通过；预编译 `test/agent-routing.test.ts` 后以禁用项目配置/esbuild 的单线程 Vitest Node API 执行 36 条全部通过。标准 dispatcher 聚焦测试在 Vite 配置加载阶段受 `esbuild spawn EPERM` 阻断；预编译的三个真实进程用例也因 Node 不能创建首个 `git` 子进程而全部在 fixture 初始化处受阻。因此 `selective-recovery.targetedTests` 仍为 failed，未把纯逻辑测试冒充进程验收，也未执行或生成新的完整门禁证据。
 - 本轮四项审计修复：`npm run typecheck` 与修改范围 ESLint 通过；相同源码经 `tsc` 预编译后，以禁用项目配置/esbuild 的单线程 Vitest Node API 执行 Agent 路由、秘书状态、守卫工具和公开日志 4 文件 110 条全部通过，另执行生命周期、秘书状态、守卫工具 3 文件 125 条全部通过。标准四文件命令、公开耗时看板命令及 backlog 看板命令均在加载 `vite.config.ts` 时受宿主 `esbuild spawn EPERM` 阻断、未收集用例；预编译的 dispatcher 恢复进程测试也因 Node 无法创建 `git` 子进程而未执行成功。因此 `selective-recovery`、`public-timing`、`secretary-backlog-reconciliation` 的 `targetedTests` 已如实记为 failed，本报告不把 110/125 条无头通过冒充这三项完整直接验收。
@@ -68,5 +70,6 @@ notice guard 会把首次快照前的短窗口公开为 `bootstrapping`，分别
 ## 风险与后续边界
 
 - 本阶段只完成隔离备份/降级投影演练，未操作生产 `.daoyan-agent`。生产停写、全状态根/种子/事务引用核验、故障注入和真实降级仍归 Version QA。
-- 当前环境不能执行依赖子进程的标准 Vitest、HTTP 进程竞态和 Playwright；无头逻辑证据不能替代后续完整门禁。本轮完整门禁已真实尝试并在测试启动前受阻，notice guard 只能在允许创建 esbuild/worker 子进程的 Feature PM 环境重新生成最终树的唯一完整门禁证据。
+- 先前环境对标准 Vitest、HTTP 进程竞态和 Playwright 的子进程限制已经解除；主 Agent 已真实执行跨进程回归和完整门禁。历史受阻记录保留为过程事实，但不再代表当前交付状态。
+- 主 Agent 最终执行 `npm run verify:full`：18 个 Vitest 文件、277 条测试通过；覆盖率 85.61% statements / 80.8% branches；资源沙盒通过；19 条 Playwright E2E 通过；生产构建通过。
 - 本执行 Agent 按任务约束未创建独立 Agent；真正独立审查与 `verify:full` 证据由秘书统一收束，notice guard 只有在核验本报告和结构化清单后才可原子登记开发阶段。

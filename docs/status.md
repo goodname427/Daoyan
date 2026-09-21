@@ -32,6 +32,9 @@
 
 ## 当前迭代
 
+- Agent 工作流控制面改由主 Agent 直接维护，禁止常驻秘书自我派发；dispatcher 与 pre-push 共用验证树指纹，Git 交付恢复最多补跑最终门禁，秘书在阶段切换和长阶段运行时主动汇报。
+- 本轮控制面修复的完整门禁已通过：18 个 Vitest 文件、277 条测试，覆盖率 85.61% statements / 80.8% branches，资源沙盒、19 条 Playwright E2E 和生产构建全部通过；此前 `spawn EPERM` 阻断结论已由真实跨进程回归取代。
+
 - `adaptive-project-office-2026-09-21` 最终完整门禁唯一失败的看板恢复回归已修正同步边界：测试现在等待明确的 `delivered` 对账结果，不再假设 live-worker 身份探测和事件驱动落盘会在固定 300 ms 内完成；若状态真实停留在 `missing` 仍会在 10 秒内失败。类型、目标 lint/格式和差异检查通过；当前宿主的聚焦 Vitest 仍在配置加载阶段受 `esbuild spawn EPERM` 阻断，故保留既有 Task/快速门禁事实但尚未登记新的目标测试或完整门禁成功证据。
 
 - `adaptive-project-office-2026-09-21` 选择性恢复的最后一个交付阻断已修复：恢复点保存相对 HEAD 的脏路径内容基线，普通续跑只归属恢复点之后的变化；显式接管前已有且未再变化的 `module-design` 等无关现场不会阻断有效 Task 复用，计划内文件被删除或还原到 HEAD 也不会因当前脏路径为空而漏判。类型和修改范围 lint 通过，纯逻辑回归 36 条通过；两条真实 `--resume` 进程回归已补齐，但当前宿主仍分别在 Vite 配置的 `esbuild spawn EPERM` 和预编译测试内创建 `git` 子进程时受阻，因此开发清单继续如实保留 `selective-recovery.targetedTests = failed`，未登记完整门禁成功证据。

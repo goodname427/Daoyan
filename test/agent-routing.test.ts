@@ -289,6 +289,9 @@ describe('agent routing', () => {
     const dispatcher = readFileSync(resolve('scripts/agent-dispatcher.ts'), 'utf8');
     expect(dispatcher).toContain('pendingValidationStages(configuredValidationStages');
     expect(dispatcher).toContain('validationProgress: activeValidationProgress');
+    expect(dispatcher).toContain(
+      "import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs'",
+    );
   });
 
   it('selects the failed npm child command for an in-place targeted recheck', () => {
@@ -323,6 +326,17 @@ describe('agent routing', () => {
         independentReview: false,
       }),
     ).toEqual([]);
+  });
+
+  it('only rebuilds the final gate when an exact Git-delivery commit lost its evidence', () => {
+    expect(
+      pendingValidationStages(['fast-gate', 'independent-review', 'full-gate'], {
+        fullGate: false,
+        fastGate: false,
+        independentReview: false,
+        completedDeliveryCommit: true,
+      }),
+    ).toEqual(['full-gate']);
   });
 
   it('preserves valid completed tasks and only invalidates affected downstream dependencies', () => {
