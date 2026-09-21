@@ -70,10 +70,35 @@
       ]
     },
     {
+      "id": "secretary-backlog-reconciliation",
+      "title": "闭合秘书候选任务并校准排期统计",
+      "owner": "Feature PM",
+      "dependsOn": ["evidence-contract", "selective-recovery", "public-timing"],
+      "summary": "以兼容迁移和原子写入关闭已暂停的手机 Sites/手机优先中枢候选（cancelled 或 superseded，移动入口已由钉钉替代）及已交付的桌面工作台增强候选（delivered，关联既有交付记录与提交）。后续取消、替代、合并或交付事实须按稳定关联关系反向闭合原始候选；统计和问答先应用状态覆盖并去重，已发出错误排期时生成可去重更正通知。验收覆盖取消覆盖、交付反向闭合、重启持久化、任务计数、问答结果与更正通知；不得手工编辑生产 .daoyan-agent 状态。",
+      "affectedPaths": [
+        "scripts/secretary-state.ts",
+        "scripts/secretary-notice-guard.ts",
+        "scripts/secretary-dashboard.ts",
+        "test/secretary-state.test.ts",
+        "test/secretary-notice-guard.test.ts",
+        "test/secretary-dashboard.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/secretary-dashboard.test.ts"
+      ]
+    },
+    {
       "id": "feature-quality-loop",
       "title": "实现 Feature 汇总门禁与增量独立审查",
       "owner": "Feature PM",
-      "dependsOn": ["evidence-contract", "task-profile", "selective-recovery", "public-timing"],
+      "dependsOn": [
+        "evidence-contract",
+        "task-profile",
+        "selective-recovery",
+        "public-timing",
+        "secretary-backlog-reconciliation"
+      ],
       "summary": "让 Feature PM 汇总有效 Task 证据后只运行一次快速门禁、一次独立审查，并在最终代码树唯一生成一份 Feature scope npm run verify:full 证据；普通测试/格式失败、审查 finding 和局部修复在同一 PM 内按未关闭 finding 或失败命令迭代，不采用固定两轮上抛。验收为修复按问题路径选择实现模型且只复核问题、修复和受影响增量，只有无进展重复、真实外部阻塞或进程异常才恢复，pre-push 复用匹配代码树和配置指纹的完整证据。",
       "affectedPaths": [
         "scripts/agent-dispatcher.ts",
