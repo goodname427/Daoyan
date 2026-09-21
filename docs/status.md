@@ -32,7 +32,7 @@
 
 ## 当前迭代
 
-- `adaptive-project-office-2026-09-21` 已完成详细策划，公开模块契约见 [module-design.md](./versions/adaptive-project-office-2026-09-21/module-design.md)：工作台、公开活动、正式版本编排和质量闭环分别定义状态所有权、交互、边界与验收；新增 Task/Feature/Version 唯一责任、按作用域与 Git tree/命令/配置指纹复用证据、受影响增量失效与六类耗时分账。`npm run verify:full` 的唯一执行与证据归属是 Feature PM / Feature，Version QA 只复用匹配事实并做独立版本验证。当前按 `legacy-unknown` 保守采用完整执行。生产迁移/降级演练、后续阶段证据和制作人候选体验尚未发生，不能以策划完成代替版本验收。
+- `adaptive-project-office-2026-09-21` 已形成详细策划与主策审核产物，公开模块契约见 [module-design.md](./versions/adaptive-project-office-2026-09-21/module-design.md)，[审核结论](./versions/adaptive-project-office-2026-09-21/design-review.md)为通过，待 notice guard 核验报告并登记阶段证据：工作台、公开活动、正式版本编排和质量闭环分别定义状态所有权、交互、边界与验收；Task/Feature/Version 具有唯一责任，证据按作用域与 Git tree/命令/配置指纹复用，只失效受影响增量和下游，并分别统计六类耗时。`npm run verify:full` 的唯一执行与证据归属是 Feature PM / Feature，Version QA 只复用匹配事实并做独立版本验证。当前按 `legacy-unknown` 保守采用完整执行。生产迁移/降级演练、后续阶段证据和制作人候选体验尚未发生，不能以策划审核通过代替版本验收。
 
 - 本轮交付前修复补齐等待快照确认、方向入口查重和候选代码修订门禁：Feature PM 在请求决定前保存 `waiting-producer` 真实恢复点，守卫不会自动重试；包含“继续/恢复”的否定、替换和兼容性变化仍进入范围路由；修复前或修订冲突的 QA 不能覆盖当前代码。看板只显示结构化公开事件与调度状态，不读取原始模型日志。保留 v1 兼容读取与历史证据；不代表正式版本已由制作人验收。
 
