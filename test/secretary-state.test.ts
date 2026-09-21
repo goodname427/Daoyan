@@ -12,6 +12,7 @@ import {
   isRunEligibleForAdoption,
   isWorkflowControlPlaneRequest,
   itemFromIntake,
+  messageIsNewDirection,
   nextRunnableItem,
   normalizeSecretaryState,
   pendingScheduleCorrections,
@@ -73,6 +74,11 @@ describe('persistent secretary state', () => {
     expect(isWorkflowControlPlaneRequest('优化 Agent Workflow 的恢复调度')).toBe(true);
     expect(isWorkflowControlPlaneRequest('继续开发法术实体控制功能')).toBe(false);
     expect(isWorkflowControlPlaneRequest('让秘书安排下一个游戏版本')).toBe(false);
+    expect(
+      isWorkflowControlPlaneRequest(
+        '推进新的实体控制版本。普通缺陷在测试阶段修复；不要把工作流控制面改动纳入这个游戏产品版本。',
+      ),
+    ).toBe(false);
   });
 
   it('migrates stale mobile and delivered desktop candidates with stable correction facts', () => {
@@ -407,6 +413,13 @@ describe('persistent secretary state', () => {
     expect(inferMessageIntent('继续现有交易工作，但不要支持金币交易', false)).toBe('direction');
     expect(inferMessageIntent('恢复当前方案，但改成不兼容旧存档', true)).toBe('direction');
     expect(inferMessageIntent('现在不要支持金币交易', false)).toBe('direction');
+  });
+
+  it('recognizes an explicit formal version direction', () => {
+    const direction =
+      '推进一个新的正式版本，目标是统一实体创建、控制与属性模型：\n1. 合并发射与创建弹道功能。';
+    expect(messageIsNewDirection(direction)).toBe(true);
+    expect(inferMessageIntent(direction, false)).toBe('direction');
   });
 
   it('blocks the whole queue while an existing run lacks reconciliation evidence', () => {

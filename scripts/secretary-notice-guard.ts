@@ -625,6 +625,7 @@ export function resolveInboxIntent(
   modelIntent: SecretaryMessageIntent | undefined,
   message: string,
 ): SecretaryMessageIntent {
+  if (fallbackIntent === 'direction' && messageIsNewDirection(message)) return 'direction';
   // A waiting item has a concrete recovery snapshot. Semantic triage is useful
   // for recognising an explicitly changed direction, but it must not
   // reinterpret a producer's ordinary decision as a new direction: doing so

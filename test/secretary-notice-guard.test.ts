@@ -265,6 +265,16 @@ describe('secretary dispatch feedback', () => {
 });
 
 describe('secretary waiting-message intent', () => {
+  it('does not let semantic triage downgrade an explicit version direction', () => {
+    expect(
+      resolveInboxIntent(
+        'direction',
+        'continue',
+        '推进一个新的正式版本，目标是统一实体创建、控制与属性模型',
+      ),
+    ).toBe('direction');
+  });
+
   it('keeps an ordinary producer decision attached to its waiting snapshot', () => {
     expect(resolveInboxIntent('reply', 'direction', '采用方案 A，兼容已有存档')).toBe('reply');
   });

@@ -322,16 +322,20 @@ export interface IntakeDecision {
 
 /** Workflow control-plane changes must never be delegated back into that control plane. */
 export function isWorkflowControlPlaneRequest(value: string): boolean {
-  const normalized = value.toLowerCase().replace(/\s+/g, ' ');
-  const namesControlPlane =
-    /(常驻秘书|秘书(?:系统|功能|看板|中枢)|notice\s*guard|agent\s*workflow|agent\s*调度|feature\s*pm|版本调度器|任务调度器|项目中枢|工作流)/i.test(
-      normalized,
-    );
-  const asksForMaintenance =
-    /(修复|开发|新增|增加|调整|改进|优化|重构|排查|检查|卡住|阻塞|失效|不工作|没反应|异常|问题)/i.test(
-      normalized,
-    );
-  return namesControlPlane && asksForMaintenance;
+  const clauses = value
+    .toLowerCase()
+    .split(/[\r\n。！？!?；;]+/u)
+    .map((clause) => clause.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  return clauses.some(
+    (clause) =>
+      /(常驻秘书|秘书(?:系统|功能|看板|中枢)|notice\s*guard|agent\s*workflow|agent\s*调度|feature\s*pm|版本调度器|任务调度器|项目中枢|工作流)/i.test(
+        clause,
+      ) &&
+      /(修复|开发|新增|增加|调整|改进|优化|重构|排查|检查|卡住|阻塞|失效|不工作|没反应|异常|问题)/i.test(
+        clause,
+      ),
+  );
 }
 
 export type ContinueScheduleAction = 'running' | 'resumed' | 'ready' | 'waiting' | 'idle';
@@ -438,7 +442,7 @@ export function intentSimilarity(left: string, right: string): number {
 
 export function messageIsNewDirection(message: string): boolean {
   const normalized = message.replace(/\s/g, '');
-  return /(?:新方向|新需求|(?:新增|增加|加入|开发|实现|取消|删除|移除|禁止|替换|改为|调整).{0,12}(?:系统|功能|玩法|模块|视图|目标)|(?:另外|后续|以后).{0,12}(?:系统|功能|玩法|方向)|我希望.{0,12}(?:新增|增加|加入|开发|实现)|不希望|不要|不再|不能|去掉|停止|改成|换成|替换为|调整为|扩展|缩减|限制|允许|不兼容)/.test(
+  return /(?:新方向|新需求|新(?:的)?正式版本|下(?:一|个)版本|版本方向|(?:新增|增加|加入|开发|实现|取消|删除|移除|禁止|替换|改为|调整).{0,12}(?:系统|功能|玩法|模块|视图|目标)|(?:另外|后续|以后).{0,12}(?:系统|功能|玩法|方向)|我希望.{0,12}(?:新增|增加|加入|开发|实现)|不希望|不要|不再|不能|去掉|停止|改成|换成|替换为|调整为|扩展|缩减|限制|允许|不兼容)/.test(
     normalized,
   );
 }
