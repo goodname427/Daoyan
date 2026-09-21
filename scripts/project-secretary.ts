@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { isOwnedProcessAlive, isProcessAlive } from './process-identity';
 import { publicSecretaryState, type IntakeRequest, type SecretaryState } from './secretary-state';
 import { runNoticeGuard } from './secretary-notice-guard';
+import { refreshWindowsUserEnvironment } from './windows-user-environment';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const secretaryRoot = resolve(
@@ -21,6 +22,13 @@ const lockFile = resolve(secretaryRoot, 'notice-guard.lock');
 const logFile = resolve(secretaryRoot, 'notice-guard.log');
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
 const scriptPath = fileURLToPath(import.meta.url);
+const dingtalkEnvironmentNames = [
+  'DAOYAN_DINGTALK_CLIENT_ID',
+  'DAOYAN_DINGTALK_CLIENT_SECRET',
+  'DAOYAN_DINGTALK_ALLOWED_SENDER_IDS',
+  'DAOYAN_DINGTALK_NOTIFY_USER_ID',
+  'DAOYAN_DINGTALK_ROBOT_CODE',
+] as const;
 
 function printHelp(): void {
   console.log(`道衍常驻秘书（外部 notice guard）
@@ -157,9 +165,10 @@ async function startGuard(): Promise<void> {
     await rm(lockFile, { force: true });
   }
   const output = openSync(logFile, 'a');
+  const guardEnvironment = refreshWindowsUserEnvironment(process.env, dingtalkEnvironmentNames);
   const child = spawn(process.execPath, [tsxCliPath, scriptPath, 'run'], {
     cwd: root,
-    env: process.env,
+    env: guardEnvironment,
     detached: true,
     stdio: ['ignore', output, output],
     windowsHide: true,
