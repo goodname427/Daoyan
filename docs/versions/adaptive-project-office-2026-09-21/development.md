@@ -9,9 +9,19 @@
 
 ## 公开结论
 
-任务拆分中的八项工作均已完成实现和直接验证。正式版本状态信封继续使用 v1；新增证据、候选关闭关系和执行统计均为可选兼容扩展，旧记录缺字段时保守迁移，显式损坏时停止写入和派发。本阶段没有直接编辑 `.daoyan-agent`、没有手工推进版本节点，也没有 commit、push、tag 或发布。
+任务拆分中的八项工作均已完成实现，但本轮审计后只有五项仍可报告定向测试通过；`selective-recovery` 的真实 dispatcher 恢复进程回归，以及 `public-timing`、`secretary-backlog-reconciliation` 共同依赖的看板进程测试，在当前宿主无法创建 Node 子进程/启动 esbuild，因此结构化清单已如实改为 `targetedTests: failed`，不能被 notice guard 接纳为全部通过。正式版本状态信封继续使用 v1；新增证据、候选关闭关系和执行统计均为可选兼容扩展，旧记录缺字段时保守迁移，显式损坏时停止写入和派发。本阶段没有直接编辑 `.daoyan-agent`、没有手工推进版本节点，也没有 commit、push、tag 或发布。
 
-Task、Feature、Version 现在分别拥有可验证证据：Task 只登记执行 Agent 实际报告的直接检查命令和退出码，计划 `acceptanceCommands` 不再被推定为成功，`verify`、`verify:full`、E2E 与 build 也不会投影为 Task 事实；Feature PM 汇总后运行快速门禁、按未关闭 finding 在同一进程迭代，并为最终树保存唯一成功的完整门禁证据；Version QA 以接纳时实时计算的 Git tree、代码修订、完整门禁命令和配置指纹匹配 Feature 证据，且命令明细必须确实含有成功 `npm run verify:full`，再负责版本级集成、回归、迁移、打包和候选验证。恢复按 Task 输出、命令、配置和依赖图保留有效完成项，不再因整个工作区指纹变化清空进度。
+Task、Feature、Version 现在分别拥有可验证证据：Task 只登记执行 Agent 实际报告的直接检查命令和退出码，计划 `acceptanceCommands` 不再被推定为成功，`verify`、`verify:full`、E2E 与 build 也不会投影为 Task 事实；Feature PM 汇总后运行快速门禁、按未关闭 finding 在同一进程迭代，并为最终树保存唯一成功的完整门禁证据；Version QA 以接纳时实时计算的 Git tree、代码修订、完整门禁命令和配置指纹匹配 Feature 证据，且命令明细必须确实含有成功 `npm run verify:full`，再负责版本级集成、回归、迁移、打包和候选验证。`development.json`/`development.md` 在完整门禁前生成并纳入候选验证树，门禁后修改逐项命令、退出码或结论会使 Feature 与 pre-push 复用失效。恢复点保存相对 HEAD 的脏路径内容基线，续跑只把该基线之后新增、修改、删除或还原到 HEAD 的路径归属到计划，再按 Task 输入、输出、命令、配置和依赖图保留有效完成项；显式接管前已经存在且未再变化的无关现场不会阻断恢复，旧恢复点缺少该可选字段时仍保守处理。
+
+## 本轮交付前审计修复
+
+- 最后一个选择性恢复阻断：checkpoint 新增脏路径/内容哈希基线，`changesBelongToRecoveryPlan` 不再读取相对 HEAD 的完整现状。真实 `--resume` 回归覆盖接管前无关 `module-design` 改动、两个有效完成 Task 和计划内新变化，并新增恢复点内计划输出被还原、当前脏路径为空的场景；纯逻辑差分回归已实际通过，进程场景仍因宿主禁止 Node 创建 `git` 子进程而未能执行，结构化状态继续据实为 failed。
+- 最终门禁失败增量：看板恢复回归不再用固定 300 ms 猜测异步对账完成，而是最长等待 10 秒并观察明确的 `reconciliationOutcome = delivered`。收件响应只表示消息已处理，对账由同一事件循环末尾落盘；含 live worker 时进程身份探测较慢不再制造假失败，真正停留在 `missing` 仍会超时失败。
+- 选择性恢复：真实 `--resume` 控制流在整体拒绝前计算逐 Task 证据，只要当前变化全部落在计划、持久输入或实际输出范围内，就保留仍匹配的任务并沿依赖重排失效项；范围外变化继续要求显式接管。新增进程级回归构造非 takeover 的工作区指纹变化并检查 `2/2` Task 复用。
+- 证据绑定：dispatcher、notice guard 与 pre-push 的共享验证树不再排除开发清单。测试在完整门禁证据建立后把 `development.json` 中 Task 命令退出码从 0 改为 1，并确认候选树及复用结果立即失效；QA、缺陷修复、候选等真正后置报告仍不参与该树。
+- 清单诚实性：`public-timing`、`secretary-backlog-reconciliation` 和新增真实恢复进程回归没有在本宿主完成全部直接测试，结构化清单改记失败并保留实际退出码；不再以其他无头测试替代看板/进程验收。
+- 关系闭合：秘书对终态 successor 做固定点传播，`A <- B <- delivered C` 在同一次 normalize 中关闭整条链；序列化重启后无二次变更，排期计数保持 0。
+- 文本与责任：当前提示为“逐一列出”，开发日志为“守卫夹具”；仓库扫描未再发现 Unicode 替换字符。`task-breakdown.json` 与 Markdown 均保持 `version-qa-reuse.owner = Version QA`。
 
 notice guard 会把首次快照前的短窗口公开为 `bootstrapping`，分别观察 PM、dispatcher 与 worker；附着监听和主 `launch()` 子进程 close 路径都携带实际退出进程的 PID/identity，先等待原子终态落盘并重新读取，再与快照中的当前 PM 身份及存活状态核对。tsx/dispatcher 包装进程退出而当前 PM 仍存活时保持 `tracking`，不进入 `retry-wait`。普通类型、测试、格式和审查 finding 留在原 PM 闭环；只有无进展重复、外部阻塞、进程异常或持久证据损坏才进入恢复。公开事件构造拒绝缺失轮次或 `unknown` 修订，模型调用、门禁命令、制作人/额度等待、恢复和空闲状态边界分别写入实测耗时；真实启动、异常恢复、局部修复轮次独立投影，交付终态清除旧阻塞摘要。
 
@@ -31,10 +41,14 @@ notice guard 会把首次快照前的短窗口公开为 `bootstrapping`，分别
 
 本次交付前审查的三项工作流缺陷已闭环。dispatcher 在恢复点新增快速门禁和独立审查阶段进度，二者都绑定候选验证树和配置指纹；若运行在完整门禁成功后异常退出，匹配证据会直接跳过快速门禁、独立审查和完整门禁，不再清空已通过审查。快速门禁从 `package.json` 的 `verify` 链解析子命令，中段失败时持久保存已完成项和从失败点开始的待执行队列；失败命令修复通过后仍继续 format、docs、test 等原先未执行项。排期事实没有显式 `secretary:<id>` 边时使用事项自身 ID，两个同文案或同一规范化前缀的独立事项分别计数；只有显式关系图可以合并。
 
-最新四项审查问题已经闭环。候选验证树不再笼统排除 `docs/versions/**`，而是只排除开发门禁后生成的七类 Markdown/JSON 报告；`charter`、版本/模块规划、设计审核和 `task-breakdown` 等输入变化会使旧 Feature、Version QA 与 pre-push 证据失效。`development.json` 的工作项可任意排列，接纳时按经校验的依赖图拓扑排序，因此下游 Task 始终关联本轮上游证据并随其失效。dispatcher 从遗留 `active` 快照恢复时同时增加真实启动与异常恢复次数，等待制作人的正常恢复不增加异常计数。公开修订失败路径使用完整“无法读取当前代码修订”文本，精确错误断言已实际通过。
+最新四项审查问题已经闭环。候选验证树不再笼统排除 `docs/versions/**`，而是只排除开发门禁后生成的六类 Markdown/JSON 报告；`charter`、版本/模块规划、设计审核、`task-breakdown` 和门禁前的 `development` 清单等输入变化会使旧 Feature、Version QA 与 pre-push 证据失效。`development.json` 的工作项可任意排列，接纳时按经校验的依赖图拓扑排序，因此下游 Task 始终关联本轮上游证据并随其失效。dispatcher 从遗留 `active` 快照恢复时同时增加真实启动与异常恢复次数，等待制作人的正常恢复不增加异常计数。公开修订失败路径使用完整“无法读取当前代码修订”文本，精确错误断言已实际通过。
 
 ## 验证
 
+- 本次看板恢复回归修复：`node node_modules/typescript/bin/tsc --noEmit`、目标文件 ESLint、Prettier 与 `git diff --check` 通过。聚焦 `npm run test -- test/secretary-dashboard.test.ts -t "blocks an overdue existing run" --pool=forks --poolOptions.forks.singleFork=true` 在加载 `vite.config.ts` 时被宿主的 `esbuild spawn EPERM` 阻断，未收集用例；因此保留此前已通过的 Task/快速门禁事实，不把本地静态检查冒充该 HTTP/子进程回归通过，`selective-recovery.targetedTests` 继续为 failed，等待允许子进程的 Feature PM 同运行复核。
+- 本次选择性恢复基线修复：`npm run typecheck`、修改范围 ESLint、Prettier、`npm run docs:check` 与 `git diff --check` 通过；预编译 `test/agent-routing.test.ts` 后以禁用项目配置/esbuild 的单线程 Vitest Node API 执行 36 条全部通过。标准 dispatcher 聚焦测试在 Vite 配置加载阶段受 `esbuild spawn EPERM` 阻断；预编译的三个真实进程用例也因 Node 不能创建首个 `git` 子进程而全部在 fixture 初始化处受阻。因此 `selective-recovery.targetedTests` 仍为 failed，未把纯逻辑测试冒充进程验收，也未执行或生成新的完整门禁证据。
+- 本轮四项审计修复：`npm run typecheck` 与修改范围 ESLint 通过；相同源码经 `tsc` 预编译后，以禁用项目配置/esbuild 的单线程 Vitest Node API 执行 Agent 路由、秘书状态、守卫工具和公开日志 4 文件 110 条全部通过，另执行生命周期、秘书状态、守卫工具 3 文件 125 条全部通过。标准四文件命令、公开耗时看板命令及 backlog 看板命令均在加载 `vite.config.ts` 时受宿主 `esbuild spawn EPERM` 阻断、未收集用例；预编译的 dispatcher 恢复进程测试也因 Node 无法创建 `git` 子进程而未执行成功。因此 `selective-recovery`、`public-timing`、`secretary-backlog-reconciliation` 的 `targetedTests` 已如实记为 failed，本报告不把 110/125 条无头通过冒充这三项完整直接验收。
+- 本轮最终树执行 `npm run verify:full`：typecheck、全仓 lint、format:check 和 docs:check 通过（66 个元法术、102 个 Markdown 文件）；随后 Vitest 在读取项目配置时因 `esbuild spawn EPERM` 退出，coverage、sandbox、E2E 与 build 未开始。命令退出 1，未生成完整门禁成功证据。
 - 本轮五项审查修复：`node node_modules/typescript/bin/tsc --noEmit`、修改范围 ESLint、Prettier 和 `git diff --check` 通过。标准四文件 Vitest 在加载 `vite.config.ts` 时因 `esbuild spawn EPERM` 未进入用例；将相同四个实际测试文件与依赖预编译到 `node_modules/.cache/daoyan-audit-fixes/`，用禁用项目配置/esbuild 的单线程 Vitest Node API 执行，4 文件 146 条全部通过（生命周期 54、秘书状态 33、守卫工具 30、Agent 路由 29）。覆盖 Profile 实际阶段选择、失败子命令识别、生产证据接线、稳定 ID 迁移反例、删除文件哨兵和既有恢复/证据合同。最终树执行 `npm run verify:full` 时，typecheck、全仓 lint、format:check、docs:check 通过，标准 Vitest 仍在 Vite 配置加载阶段受 `esbuild spawn EPERM` 阻断，后续 coverage、sandbox、E2E、build 未开始，未生成完整门禁通过证据。
 - `node node_modules/typescript/bin/tsc --noEmit`：通过。
 - 修改范围 ESLint：通过，0 warning。

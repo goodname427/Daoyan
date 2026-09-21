@@ -31,7 +31,7 @@ export function isValidationTreePath(path) {
   const match = /^docs\/versions\/[^/]+\/(.+)$/.exec(normalized);
   return (
     !match ||
-    !/^(?:development|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)\.(?:json|md)$/.test(
+    !/^(?:qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)\.(?:json|md)$/.test(
       match[1],
     )
   );

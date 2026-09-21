@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
+  changedPathsSinceWorkspaceBaseline,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   canRefreshVersionRecoveryFingerprint,
@@ -342,6 +343,26 @@ describe('agent routing', () => {
     expect(selectReusableTaskIds(tasks, evidence)).toEqual(['unrelated']);
   });
 
+  it('attributes only dirty path content changed after the recovery checkpoint', () => {
+    const checkpoint = {
+      'docs/completed.md': 'completed-hash',
+      'docs/restored.md': 'restored-hash',
+      'module-design.md': 'unrelated-takeover-hash',
+    };
+    expect(
+      changedPathsSinceWorkspaceBaseline(checkpoint, {
+        ...checkpoint,
+        'docs/new-change.md': 'new-change-hash',
+      }),
+    ).toEqual(['docs/new-change.md']);
+    expect(
+      changedPathsSinceWorkspaceBaseline(checkpoint, {
+        'docs/completed.md': 'completed-hash',
+        'module-design.md': 'unrelated-takeover-hash',
+      }),
+    ).toEqual(['docs/restored.md']);
+  });
+
   it('binds selective recovery to read-only direct dependencies outside suggested paths', () => {
     expect(taskOutputPaths(['scripts/suggested-input.ts'], ['scripts/modified-output.ts'])).toEqual(
       ['scripts/modified-output.ts'],
@@ -386,7 +407,8 @@ describe('agent routing', () => {
       ['docs/versions/release/version-planning.md', true],
       ['docs/versions/release/module-design.md', true],
       ['docs/versions/release/task-breakdown.json', true],
-      ['docs/versions/release/development.json', false],
+      ['docs/versions/release/development.json', true],
+      ['docs/versions/release/development.md', true],
       ['docs/versions/release/qa.json', false],
       ['docs/versions/release/bugfix-reverification.md', false],
       ['docs/status.md', true],
@@ -395,6 +417,40 @@ describe('agent routing', () => {
     ] as const) {
       expect(isValidationTreePath(path)).toBe(expected);
       expect(isPrePushValidationTreePath(path)).toBe(expected);
+    }
+  });
+
+  it('invalidates full-gate evidence when development task commands are changed', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-development-evidence-'));
+    const manifest = resolve(directory, 'development.json');
+    try {
+      await writeFile(
+        manifest,
+        '{"workItems":[{"id":"task","commands":[{"command":"npm run typecheck","exitCode":0}]}]}\n',
+      );
+      const testedTree = fingerprintPaths(['development.json'], directory);
+      const evidence = {
+        schemaVersion: 1,
+        exitCode: 0,
+        workspaceFingerprint: testedTree,
+        configFingerprint: 'config',
+        command: 'npm run verify:full',
+      };
+      expect(canReuseFullGateEvidence(evidence, testedTree, 'config', 'npm run verify:full')).toBe(
+        true,
+      );
+
+      await writeFile(
+        manifest,
+        '{"workItems":[{"id":"task","commands":[{"command":"npm run typecheck","exitCode":1}]}]}\n',
+      );
+      const tamperedTree = fingerprintPaths(['development.json'], directory);
+      expect(tamperedTree).not.toBe(testedTree);
+      expect(
+        canReuseFullGateEvidence(evidence, tamperedTree, 'config', 'npm run verify:full'),
+      ).toBe(false);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 

@@ -14,13 +14,18 @@
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-four-finding-fixes/test/*.test.js)",
           "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-audit-logic/test/*.test.js)",
+          "exitCode": 0
         }
       ],
       "evidence": [
         "ValidationEvidence records Task/Feature/Version scope, Git tree, code revision, paths, commands, config, inputs, outputs and execution round.",
         "scripts/secretary-notice-guard.ts registers each Task from the execution Agent's actual command/exit-code report, never from planned acceptanceCommands; Feature and Version commands stay in their own scopes.",
         "test/version-lifecycle.test.ts: unrelated paths preserve evidence; affected evidence and downstream dependencies invalidate.",
-        "parseDevelopmentResult topologically orders validated work items before stage ingestion, so a downstream entry listed first still records the current upstream Task evidence ID and participates in transitive invalidation."
+        "parseDevelopmentResult topologically orders validated work items before stage ingestion, so a downstream entry listed first still records the current upstream Task evidence ID and participates in transitive invalidation.",
+        "development.json and development.md now remain inside the shared Feature/pre-push validation tree; regression coverage changes a Task command exit code after the gate and confirms the evidence no longer matches."
       ]
     },
     {
@@ -48,7 +53,7 @@
       "id": "selective-recovery",
       "status": "completed",
       "typecheck": "passed",
-      "targetedTests": "passed",
+      "targetedTests": "failed",
       "commands": [
         { "command": "npm run typecheck", "exitCode": 0 },
         {
@@ -62,25 +67,67 @@
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-latest-audit-fixes/test/*.test.js)",
           "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-audit-lifecycle/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/agent-dispatcher-recovery.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/version-lifecycle.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 1
+        },
+        {
+          "command": "npm test -- test/agent-dispatcher-recovery.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 1
+        },
+        {
+          "command": "npx eslint scripts/agent-routing.ts scripts/agent-dispatcher.ts test/agent-routing.test.ts test/agent-dispatcher-recovery.test.ts --max-warnings 0",
+          "exitCode": 0
+        },
+        { "command": "npm run docs:check", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-selective-baseline-logic/test/agent-routing.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-selective-baseline/test/agent-dispatcher-recovery.test.js)",
+          "exitCode": 1
+        },
+        {
+          "command": "npm run test -- test/secretary-dashboard.test.ts -t \"blocks an overdue existing run\" --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 1
         }
       ],
       "evidence": [
         "Feature recovery persists declared task paths plus statically resolved repository-local read-only module dependencies as inputPaths, fingerprints actual changedFiles separately as outputs, and retains only tasks whose inputs, outputs, commands, config and upstream dependencies remain valid.",
         "notice guard exposes bootstrapping grace and passes the actual exited PM/dispatcher/worker PID and identity into post-exit reconciliation; a reread snapshot whose current PM remains alive stays tracking instead of entering retry-wait.",
         "test/agent-routing.test.ts keeps the path-external read-only dependency out of changedFiles, changes only its input fingerprint, and proves the Task plus downstream dependency are invalidated; test/secretary-notice-guard.test.ts covers startup grace, delayed terminal snapshots, and wrapper/worker exit while the snapshot PM remains alive.",
-        "Recovery checkpoints persist fast-gate command progress and independent-review fingerprints; matching final-tree full-gate evidence removes all upstream validation stages instead of replaying them."
+        "Recovery checkpoints persist fast-gate command progress and independent-review fingerprints; matching final-tree full-gate evidence removes all upstream validation stages instead of replaying them.",
+        "Recovery checkpoints now persist the dirty path/content baseline captured after takeover; resume attribution compares only later additions, modifications, deletions or restorations, so unchanged pre-takeover module-design edits do not block valid Task reuse and a path restored to HEAD is still visible.",
+        "test/agent-dispatcher-recovery.test.ts covers pre-existing unrelated dirty state plus completed Tasks and a later plan-scoped change, and separately covers a checkpoint file restored until current git status is clean. The process fixture could not run in this host because Node child_process cannot spawn git (EPERM), so this item remains targetedTests failed.",
+        "The pure checkpoint baseline delta used by the dispatcher passed all 36 precompiled agent-routing tests with project config and esbuild disabled; unchanged unrelated paths are excluded while later additions and restorations are retained.",
+        "test/secretary-dashboard.test.ts now waits for the explicit delivered reconciliation outcome instead of assuming the event-driven inbox loop and live-worker identity probe finish within 300 ms; the independent full gate's sole assertion failure is fixed at its synchronization boundary.",
+        "The focused dashboard command after this repair was blocked before collection by the current host's esbuild spawn EPERM, so selective-recovery targetedTests remains failed pending execution in the Feature PM environment."
       ]
     },
     {
       "id": "public-timing",
       "status": "completed",
       "typecheck": "passed",
-      "targetedTests": "passed",
+      "targetedTests": "failed",
       "commands": [
         { "command": "npm run typecheck", "exitCode": 0 },
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
           "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-audit-logic/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/public-work-log.test.ts test/secretary-state.test.ts test/secretary-dashboard.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 1
         }
       ],
       "evidence": [
@@ -89,14 +136,15 @@
         "Notice guard public events use the Git revision when repository metadata exists and a deterministic source-tree revision in isolated fixtures or deployments; formal stage delivery remains gated by a real Git revision.",
         "The public revision failure path emits intact Chinese text when neither Git nor source files can identify a revision, with a direct regression assertion.",
         "Dashboard Agent projection exposes timing totals and actual launch, abnormal recovery and local repair counters; resuming either an active crash snapshot or a recoverable snapshot increments abnormal recovery, while unknown legacy values remain null.",
-        "test/public-work-log.test.ts covers scoped IDs, retry/revision non-collision and six-category aggregation; test/secretary-notice-guard.test.ts covers deterministic source revision fallback and source-change invalidation."
+        "test/public-work-log.test.ts covers scoped IDs, retry/revision non-collision and six-category aggregation; test/secretary-notice-guard.test.ts covers deterministic source revision fallback and source-change invalidation.",
+        "The required test/secretary-dashboard.test.ts command still exits before test collection because the host cannot start esbuild (spawn EPERM); the dashboard acceptance path was not executed, so targetedTests is failed rather than passed."
       ]
     },
     {
       "id": "secretary-backlog-reconciliation",
       "status": "completed",
       "typecheck": "passed",
-      "targetedTests": "passed",
+      "targetedTests": "failed",
       "commands": [
         { "command": "npm run typecheck", "exitCode": 0 },
         {
@@ -110,6 +158,14 @@
         {
           "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-latest-audit-fixes/test/*.test.js)",
           "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-audit-lifecycle/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/secretary-dashboard.test.ts --pool=forks --poolOptions.forks.singleFork=true",
+          "exitCode": 1
         }
       ],
       "evidence": [
@@ -118,7 +174,9 @@
         "Merged successors are a terminal secretary status and close their stable source relation; each successful correction publish atomically saves correctionSentAt before the next notification begins.",
         "projectFactsFromItems resolves secretary:<id> relation roots before applying activity priority, so a normal source candidate without a self-referential matchedFact is deduplicated with its active/tracking successor.",
         "test/secretary-state.test.ts and test/secretary-notice-guard.test.ts cover supersession, delivery/merge reverse closure, source-without-self-reference deduplication, a second-notification failure followed by restart from only the unsent remainder, zero pending count, and future same-theme candidates that must remain open.",
-        "Unlinked schedule items now use secretary:<own-id> as their stable key, so identical or prefix-colliding text remains independently countable unless an explicit secretary relation joins it."
+        "Unlinked schedule items now use secretary:<own-id> as their stable key, so identical or prefix-colliding text remains independently countable unless an explicit secretary relation joins it.",
+        "reconcileSecretaryBacklog now iterates terminal successor propagation to a fixed point, and test/secretary-state.test.ts proves A <- B <- delivered C closes and persists the entire chain in one normalization pass.",
+        "The required test/secretary-dashboard.test.ts command still exits before test collection because the host cannot start esbuild (spawn EPERM); the dashboard acceptance path was not executed, so targetedTests is failed rather than passed."
       ]
     },
     {

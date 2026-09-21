@@ -780,29 +780,36 @@ export function reconcileSecretaryBacklog(state: SecretaryState): boolean {
     }
   }
 
-  // A delivered/cancelled/superseded/merged successor closes the original candidate
-  // through the stable secretary:<id> relationship instead of text inference.
-  for (const successor of state.items) {
-    const reference = successor.matchedFact?.reference ?? '';
-    if (!reference.startsWith('secretary:')) continue;
-    const original = state.items.find((item) => item.id === reference.slice('secretary:'.length));
-    if (!original || original.id === successor.id) continue;
-    if (!['delivered', 'cancelled', 'superseded', 'merged'].includes(successor.status)) continue;
-    const status = successor.status as 'delivered' | 'cancelled' | 'superseded' | 'merged';
-    if (original.status !== status) {
-      original.status = status;
-      original.completedAt ||= successor.completedAt || state.updatedAt;
-      original.summary = `已由关联事项 ${successor.id} 反向闭合：${successor.summary}`;
-      changed = true;
+  // A terminal successor closes the entire stable secretary:<id> chain. Iterate
+  // to a fixed point because state.items is ordered by creation, so A/B/C is the
+  // common order even though closure must flow from terminal C back through B to A.
+  const itemsById = new Map(state.items.map((item) => [item.id, item]));
+  let propagated = true;
+  while (propagated) {
+    propagated = false;
+    for (const successor of state.items) {
+      const reference = successor.matchedFact?.reference ?? '';
+      if (!reference.startsWith('secretary:')) continue;
+      const original = itemsById.get(reference.slice('secretary:'.length));
+      if (!original || original.id === successor.id) continue;
+      if (!['delivered', 'cancelled', 'superseded', 'merged'].includes(successor.status)) continue;
+      const status = successor.status as 'delivered' | 'cancelled' | 'superseded' | 'merged';
+      if (original.status !== status) {
+        original.status = status;
+        original.completedAt ||= successor.completedAt || state.updatedAt;
+        original.summary = `已由关联事项 ${successor.id} 反向闭合：${successor.summary}`;
+        changed = true;
+        propagated = true;
+      }
+      changed =
+        addItemResolution(state, original, {
+          status,
+          reason: original.summary,
+          reference: `secretary:${successor.id}`,
+          relatedItemIds: [successor.id],
+          correctionNoticeId: `schedule-correction-${original.id}-${status}`,
+        }) || changed;
     }
-    changed =
-      addItemResolution(state, original, {
-        status,
-        reason: original.summary,
-        reference: `secretary:${successor.id}`,
-        relatedItemIds: [successor.id],
-        correctionNoticeId: `schedule-correction-${original.id}-${status}`,
-      }) || changed;
   }
   return changed;
 }

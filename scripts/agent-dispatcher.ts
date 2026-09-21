@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
+  changedPathsSinceWorkspaceBaseline,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   buildLocalPlan,
@@ -39,6 +40,7 @@ import {
   type PlannedTask,
   type ReviewResult,
   type TaskPlan,
+  type WorkspaceChangeBaseline,
 } from './agent-routing';
 import { endChildInput } from './child-process-input';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
@@ -152,6 +154,7 @@ interface RecoveryCheckpoint {
   resolvedDirection: string;
   baseline: string;
   workspaceFingerprint: string;
+  workspaceChangeBaseline?: WorkspaceChangeBaseline;
   plan: TaskPlan;
   taskRuns: TaskRun[];
   review: ReviewResult | null;
@@ -720,6 +723,59 @@ async function workspaceFingerprint(): Promise<string> {
   return hash.digest('hex');
 }
 
+async function workspaceChangedPaths(): Promise<string[]> {
+  const [tracked, untracked] = await Promise.all([
+    git(['-c', 'core.quotePath=false', 'diff', '--name-only', '-z', 'HEAD', '--']),
+    git(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard', '-z']),
+  ]);
+  if (tracked.code !== 0 || untracked.code !== 0) {
+    throw new Error('无法归属恢复点之后的工作区变化');
+  }
+  return [...new Set(`${tracked.stdout}\0${untracked.stdout}`.split('\0').filter(Boolean))]
+    .map((path) => path.replaceAll('\\', '/'))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+async function captureWorkspaceChangeBaseline(): Promise<WorkspaceChangeBaseline> {
+  const paths = await workspaceChangedPaths();
+  const entries = await Promise.all(
+    paths.map(async (path) => {
+      const content = await readFile(resolve(root, path)).catch(() => null);
+      return [
+        path,
+        content === null ? null : createHash('sha256').update(content).digest('hex'),
+      ] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
+function pathMatchesTaskScope(path: string, scope: string): boolean {
+  const normalizedPath = path.replaceAll('\\', '/').replace(/^\.\//, '');
+  const normalizedScope = scope.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
+  return (
+    normalizedScope.length > 0 &&
+    (normalizedPath === normalizedScope || normalizedPath.startsWith(`${normalizedScope}/`))
+  );
+}
+
+async function changesBelongToRecoveryPlan(
+  plan: TaskPlan,
+  taskRuns: TaskRun[],
+  checkpointBaseline?: WorkspaceChangeBaseline,
+): Promise<boolean> {
+  const changedPaths = checkpointBaseline
+    ? changedPathsSinceWorkspaceBaseline(checkpointBaseline, await captureWorkspaceChangeBaseline())
+    : await workspaceChangedPaths();
+  if (changedPaths.length === 0) return false;
+  const scopes = [
+    ...plan.tasks.flatMap((task) => task.paths),
+    ...taskRuns.flatMap((run) => run.inputPaths ?? []),
+    ...taskRuns.flatMap((run) => taskOutputPaths(run.task.paths, run.changedFiles)),
+  ];
+  return changedPaths.every((path) => scopes.some((scope) => pathMatchesTaskScope(path, scope)));
+}
+
 async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint> {
   const value = JSON.parse(
     await readFile(resolve(runDirectory, 'recovery.json'), 'utf8'),
@@ -732,6 +788,23 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
     !Array.isArray(value.taskRuns)
   ) {
     throw new Error(`恢复点无效：${resolve(runDirectory, 'recovery.json')}`);
+  }
+  if (
+    value.workspaceChangeBaseline !== undefined &&
+    (value.workspaceChangeBaseline === null ||
+      Array.isArray(value.workspaceChangeBaseline) ||
+      typeof value.workspaceChangeBaseline !== 'object' ||
+      Object.entries(value.workspaceChangeBaseline).some(
+        ([path, contentHash]) =>
+          path.length === 0 ||
+          path.includes('\\') ||
+          isAbsolute(path) ||
+          path.split('/').includes('..') ||
+          (contentHash !== null &&
+            (typeof contentHash !== 'string' || !/^[0-9a-f]{64}$/.test(contentHash))),
+      ))
+  ) {
+    throw new Error(`恢复点工作区路径基线无效：${resolve(runDirectory, 'recovery.json')}`);
   }
   return {
     version: 1,
@@ -750,6 +823,7 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
     resolvedDirection: value.resolvedDirection ?? value.plan.summary,
     baseline: value.baseline,
     workspaceFingerprint: value.workspaceFingerprint,
+    workspaceChangeBaseline: value.workspaceChangeBaseline,
     plan: validatePlan(value.plan, policy.limits.maxTasks),
     taskRuns: value.taskRuns as TaskRun[],
     review: value.review ?? null,
@@ -1757,6 +1831,7 @@ async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = '
     resolvedDirection: activeResolvedDirection,
     baseline: activeBaseline,
     workspaceFingerprint: await workspaceFingerprint(),
+    workspaceChangeBaseline: await captureWorkspaceChangeBaseline(),
     plan: activePlan,
     taskRuns: activeTaskRuns,
     review: activeReview,
@@ -1874,43 +1949,16 @@ try {
     const canAdoptAbandonedChanges =
       checkpoint.status === 'active' && checkpoint.taskRuns.length === 0;
     const fingerprintMismatch = currentFingerprint !== checkpoint.workspaceFingerprint;
+    let selectivelyReusableTaskRuns: TaskRun[] | null = null;
+    let selectiveRecoverySafe = false;
     if (
       fingerprintMismatch &&
-      !options.takeover &&
-      !canAdoptAbandonedChanges &&
+      checkpoint.taskRuns.length > 0 &&
+      currentHead.code === 0 &&
+      currentHead.stdout.trim() === checkpoint.baseline &&
       !emptyRecoveryCanRebase &&
       !completedCommitCanResume
     ) {
-      throw new Error(
-        '当前工作区与恢复点不一致。为避免跳过必要实现或提交无关改动，秘书已拒绝续跑；如需接管当前现场，请追加 --takeover。',
-      );
-    }
-    if (options.takeover) {
-      activeTakeover = true;
-      await writeTakeoverManifest(
-        runDirectory,
-        '制作人显式要求从指定恢复点强制接管当前工作区；秘书放弃旧跳过记录并重新审查。',
-      );
-      console.log(`[秘书强制接管] 已记录当前工作区现场：${resolve(runDirectory, 'takeover.json')}`);
-    } else if (completedCommitCanResume) {
-      console.log('[秘书接管] 检测到 Git 提交已完成，将续传并重新验证。');
-    } else if (emptyRecoveryCanRebase) {
-      console.log('[秘书接管] 任务尚未开始且仓库仅向前演进，已将空恢复点更新到当前基线。');
-    } else if (fingerprintMismatch) {
-      console.log(
-        '[秘书接管] 上一执行 Agent 在首个任务中异常退出，放弃旧跳过记录并审查当前遗留改动。',
-      );
-    }
-    activePlan = checkpoint.plan;
-    activeBaseline = emptyRecoveryCanRebase ? currentHead.stdout.trim() : checkpoint.baseline;
-    activeDirection = checkpoint.direction;
-    activeResolvedDirection = applyProducerGuidance(checkpoint.resolvedDirection);
-    const resetCompletedWork =
-      (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
-      options.takeover;
-    if (options.takeover) {
-      activeTaskRuns = [];
-    } else if (resetCompletedWork && checkpoint.taskRuns.length > 0) {
       const currentConfigFingerprint = await verificationConfigFingerprint();
       const reuseEvidence = await Promise.all(
         checkpoint.taskRuns.map(async (run) => ({
@@ -1928,8 +1976,57 @@ try {
           currentConfigFingerprint,
         })),
       );
-      const reusableIds = new Set(selectReusableTaskIds(activePlan.tasks, reuseEvidence));
-      activeTaskRuns = checkpoint.taskRuns.filter((run) => reusableIds.has(run.task.id));
+      const reusableIds = new Set(selectReusableTaskIds(checkpoint.plan.tasks, reuseEvidence));
+      selectivelyReusableTaskRuns = checkpoint.taskRuns.filter((run) =>
+        reusableIds.has(run.task.id),
+      );
+      selectiveRecoverySafe = await changesBelongToRecoveryPlan(
+        checkpoint.plan,
+        checkpoint.taskRuns,
+        checkpoint.workspaceChangeBaseline,
+      );
+    }
+    if (
+      fingerprintMismatch &&
+      !options.takeover &&
+      !canAdoptAbandonedChanges &&
+      !emptyRecoveryCanRebase &&
+      !completedCommitCanResume &&
+      !selectiveRecoverySafe
+    ) {
+      throw new Error(
+        '当前工作区与恢复点不一致，且变化无法安全归属到计划任务。为避免跳过必要实现或提交无关改动，秘书已拒绝续跑；如需接管当前现场，请追加 --takeover。',
+      );
+    }
+    if (options.takeover) {
+      activeTakeover = true;
+      await writeTakeoverManifest(
+        runDirectory,
+        '制作人显式要求从指定恢复点强制接管当前工作区；秘书放弃旧跳过记录并重新审查。',
+      );
+      console.log(`[秘书强制接管] 已记录当前工作区现场：${resolve(runDirectory, 'takeover.json')}`);
+    } else if (completedCommitCanResume) {
+      console.log('[秘书接管] 检测到 Git 提交已完成，将续传并重新验证。');
+    } else if (emptyRecoveryCanRebase) {
+      console.log('[秘书接管] 任务尚未开始且仓库仅向前演进，已将空恢复点更新到当前基线。');
+    } else if (fingerprintMismatch && selectiveRecoverySafe) {
+      console.log('[选择性恢复] 工作区变化均可归属到当前计划，将逐项复核已有 Task 证据。');
+    } else if (fingerprintMismatch) {
+      console.log(
+        '[秘书接管] 上一执行 Agent 在首个任务中异常退出，放弃旧跳过记录并审查当前遗留改动。',
+      );
+    }
+    activePlan = checkpoint.plan;
+    activeBaseline = emptyRecoveryCanRebase ? currentHead.stdout.trim() : checkpoint.baseline;
+    activeDirection = checkpoint.direction;
+    activeResolvedDirection = applyProducerGuidance(checkpoint.resolvedDirection);
+    const resetCompletedWork =
+      (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
+      options.takeover;
+    if (options.takeover) {
+      activeTaskRuns = [];
+    } else if (resetCompletedWork && checkpoint.taskRuns.length > 0) {
+      activeTaskRuns = selectivelyReusableTaskRuns ?? [];
       console.log(
         `[选择性恢复] 保留 ${activeTaskRuns.length}/${checkpoint.taskRuns.length} 个输入、输出与证据仍有效的已完成任务。`,
       );

@@ -32,6 +32,12 @@
 
 ## 当前迭代
 
+- `adaptive-project-office-2026-09-21` 最终完整门禁唯一失败的看板恢复回归已修正同步边界：测试现在等待明确的 `delivered` 对账结果，不再假设 live-worker 身份探测和事件驱动落盘会在固定 300 ms 内完成；若状态真实停留在 `missing` 仍会在 10 秒内失败。类型、目标 lint/格式和差异检查通过；当前宿主的聚焦 Vitest 仍在配置加载阶段受 `esbuild spawn EPERM` 阻断，故保留既有 Task/快速门禁事实但尚未登记新的目标测试或完整门禁成功证据。
+
+- `adaptive-project-office-2026-09-21` 选择性恢复的最后一个交付阻断已修复：恢复点保存相对 HEAD 的脏路径内容基线，普通续跑只归属恢复点之后的变化；显式接管前已有且未再变化的 `module-design` 等无关现场不会阻断有效 Task 复用，计划内文件被删除或还原到 HEAD 也不会因当前脏路径为空而漏判。类型和修改范围 lint 通过，纯逻辑回归 36 条通过；两条真实 `--resume` 进程回归已补齐，但当前宿主仍分别在 Vite 配置的 `esbuild spawn EPERM` 和预编译测试内创建 `git` 子进程时受阻，因此开发清单继续如实保留 `selective-recovery.targetedTests = failed`，未登记完整门禁成功证据。
+
+- `adaptive-project-office-2026-09-21` 本轮四项交付前审计已修复实现：dispatcher 在整体拒绝前执行真实逐 Task 选择性恢复并只接纳可归属变化；`development.json`/`development.md` 纳入 Feature 与 pre-push 验证树；秘书终态关系按固定点一次闭合多级链；提示与开发日志已无替换字符乱码。类型、相关 lint 和两组无配置无头回归共 235 条通过；真实 dispatcher 恢复与看板进程测试仍受宿主 `spawn EPERM` 阻断，结构化开发清单已将三项相关 `targetedTests` 如实记为 failed，当前不能登记开发阶段全部通过或复用完整门禁。
+
 - `adaptive-project-office-2026-09-21` 最新四项交付前审查问题已修复：验证树只排除开发门禁后的明确阶段报告，任务拆分、范围和规划仍参与指纹；无序 `development.json` 会在登记 Task 证据前按依赖拓扑排序；从遗留 `active` 崩溃快照恢复会增加异常恢复次数；公开修订失败文本保持“无法读取当前代码修订”并由精确断言保护。TypeScript、格式和差异检查通过，两份真实测试的无配置预编译回归 70 条通过；标准 Vitest 仍在配置加载阶段受宿主 `esbuild spawn EPERM` 阻断，未操作生产状态或 Git 交付。
 
 - `adaptive-project-office-2026-09-21` 最新三项交付前审查缺陷已修复：恢复点保存快速门禁待执行队列和独立审查阶段指纹，匹配最终树的完整门禁证据会直接跳过上游门禁与审查；聚合快速门禁中段失败后会从失败命令继续执行余下检查；无显式 `secretary:<id>` 关系的事项按唯一 ID 分别计数，不再按文案键合并。类型、相关 lint/格式通过，两份真实测试的无配置预编译回归 67 条通过；标准 Vitest 仍在配置加载阶段受宿主 `esbuild spawn EPERM` 阻断，未操作生产状态或 Git 交付。

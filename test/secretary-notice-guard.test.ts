@@ -895,6 +895,10 @@ describe('formal version stage dispatch', () => {
       const taskBreakdownPath = 'docs/versions/release/task-breakdown.json';
       const taskBreakdown = '{"workItems":[{"id":"feature"}]}\n';
       await writeFile(resolve(fixture, taskBreakdownPath), taskBreakdown);
+      const developmentManifestPath = 'docs/versions/release/development.json';
+      const developmentManifest =
+        '{"workItems":[{"id":"feature","commands":[{"command":"npm run typecheck","exitCode":0}]}]}\n';
+      await writeFile(resolve(fixture, developmentManifestPath), developmentManifest);
       const testedRevision = 'development-revision';
       const developmentPaths = [
         'scripts/feature.ts',
@@ -902,6 +906,7 @@ describe('formal version stage dispatch', () => {
         'package-lock.json',
         'vite.config.ts',
         taskBreakdownPath,
+        developmentManifestPath,
       ];
       const testedTree = validationTreeFingerprintForPaths(developmentPaths, fixture);
       const config = currentValidationConfigFingerprint(fixture);
@@ -939,6 +944,17 @@ describe('formal version stage dispatch', () => {
       );
       expect(qaTree).toBe(testedTree);
       expect(latestReusableFeatureGate(version, testedRevision, qaTree, config).id).toBe(gate.id);
+
+      await writeFile(
+        resolve(fixture, developmentManifestPath),
+        '{"workItems":[{"id":"feature","commands":[{"command":"npm run typecheck","exitCode":1}]}]}\n',
+      );
+      const changedDevelopmentTree = validationTreeFingerprintForPaths(developmentPaths, fixture);
+      expect(changedDevelopmentTree).not.toBe(testedTree);
+      expect(() =>
+        latestReusableFeatureGate(version, testedRevision, changedDevelopmentTree, config),
+      ).toThrow('缺少与候选修订匹配');
+      await writeFile(resolve(fixture, developmentManifestPath), developmentManifest);
 
       await writeFile(
         resolve(fixture, taskBreakdownPath),

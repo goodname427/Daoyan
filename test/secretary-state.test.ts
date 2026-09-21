@@ -160,6 +160,53 @@ describe('persistent secretary state', () => {
     ).toEqual(expect.objectContaining({ pendingCount: 0 }));
   });
 
+  it('reverse-closes a three-item relation chain in one reconciliation and persists it', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const original = itemFromIntake(
+      { id: 'chain-a', idea: '原始候选', createdAt: state.initializedAt },
+      [],
+    ).item;
+    const successor = itemFromIntake(
+      { id: 'chain-b', idea: '合并后的候选', createdAt: state.initializedAt },
+      [],
+    ).item;
+    const delivery = itemFromIntake(
+      { id: 'chain-c', idea: '最终交付', createdAt: state.initializedAt },
+      [],
+    ).item;
+    original.status = 'backlog';
+    successor.status = 'backlog';
+    successor.matchedFact = {
+      kind: 'scheduled',
+      text: original.idea,
+      reference: 'secretary:chain-a',
+    };
+    delivery.status = 'delivered';
+    delivery.completedAt = '2026-09-21T01:00:00.000Z';
+    delivery.matchedFact = {
+      kind: 'scheduled',
+      text: successor.idea,
+      reference: 'secretary:chain-b',
+    };
+    state.items.push(original, successor, delivery);
+
+    expect(normalizeSecretaryState(state)).toBe(true);
+    expect(state.items.map((item) => item.status)).toEqual(['delivered', 'delivered', 'delivered']);
+    expect(projectFactsFromItems(state.items)).toEqual([]);
+    expect(state.orchestration?.itemResolutions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ itemId: 'chain-a', relatedItemIds: ['chain-b'] }),
+        expect.objectContaining({ itemId: 'chain-b', relatedItemIds: ['chain-c'] }),
+      ]),
+    );
+
+    const restarted = JSON.parse(JSON.stringify(state));
+    expect(normalizeSecretaryState(restarted)).toBe(false);
+    expect(
+      (publicSecretaryState(restarted) as { schedule: { pendingCount: number } }).schedule,
+    ).toEqual(expect.objectContaining({ pendingCount: 0 }));
+  });
+
   it('deduplicates linked schedule items and lets active status override backlog counts', () => {
     const state = createSecretaryState('2026-09-21T00:00:00.000Z');
     const backlog = itemFromIntake(

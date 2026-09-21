@@ -443,7 +443,15 @@ describe('secretary dashboard server', () => {
         }),
       );
       await reviewIntake(url, secretaryState, '现在正式版本处于什么阶段？');
-      await new Promise((done) => setTimeout(done, 300));
+      await expect
+        .poll(
+          async () => {
+            const current = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
+            return current.items[0].orchestration?.reconciliationOutcome;
+          },
+          { timeout: 10_000 },
+        )
+        .toBe('delivered');
       const reconciled = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
       expect(reconciled.items[0]).toMatchObject({
         status: mode === 'live-worker' ? 'tracking' : 'delivered',

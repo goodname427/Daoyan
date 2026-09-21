@@ -168,12 +168,13 @@ export interface TaskReuseEvidence {
 }
 
 const POST_FEATURE_GATE_REPORT =
-  /^(?:development|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)\.(?:json|md)$/;
+  /^(?:qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)\.(?:json|md)$/;
 
 /**
  * Formal-version reports written after the Feature gate are not implementation
- * inputs. Earlier scope, planning and task-breakdown documents remain in the
- * validation tree because changing them can change what the gate must prove.
+ * inputs. The development manifest is written before that gate and is consumed
+ * as Task evidence, so it remains bound to the validated tree together with
+ * scope, planning and task-breakdown inputs.
  */
 export function isValidationTreePath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
@@ -193,6 +194,23 @@ export function recoveryCountersAfterResume(
         ? null
         : abnormalRecoveryCount + (status === 'active' || status === 'recoverable' ? 1 : 0),
   };
+}
+
+export type WorkspaceChangeBaseline = Record<string, string | null>;
+
+/** Compare dirty path/content snapshots so pre-checkpoint changes do not block recovery. */
+export function changedPathsSinceWorkspaceBaseline(
+  previous: WorkspaceChangeBaseline,
+  current: WorkspaceChangeBaseline,
+): string[] {
+  return [...new Set([...Object.keys(previous), ...Object.keys(current)])]
+    .filter(
+      (path) =>
+        !Object.hasOwn(previous, path) ||
+        !Object.hasOwn(current, path) ||
+        previous[path] !== current[path],
+    )
+    .sort((left, right) => left.localeCompare(right));
 }
 
 /** Persisted Task inputs include declared paths plus resolved read-only imports. */

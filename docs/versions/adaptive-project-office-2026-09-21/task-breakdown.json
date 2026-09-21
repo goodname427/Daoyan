@@ -38,16 +38,18 @@
       "dependsOn": ["evidence-contract", "task-profile"],
       "summary": "恢复仅用于进程崩溃、主机/守卫重启、外部服务或额度阻塞和持久证据损坏；逐项验证输入、输出和证据指纹，并沿依赖图只重新排队失效任务及下游。验收覆盖 runDirectory 已登记但快照未创建的 bootstrapping 宽限、PM/dispatcher/worker 分离跟踪、退出后等待并重读终态快照，以及恢复不清空无关已完成任务。",
       "affectedPaths": [
+        "scripts/agent-dispatcher.ts",
         "scripts/secretary-state.ts",
         "scripts/secretary-notice-guard.ts",
         "scripts/version-lifecycle.ts",
+        "test/agent-dispatcher-recovery.test.ts",
         "test/secretary-state.test.ts",
         "test/secretary-notice-guard.test.ts",
         "test/version-lifecycle.test.ts"
       ],
       "acceptanceCommands": [
         "npm run typecheck",
-        "npm test -- test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/version-lifecycle.test.ts"
+        "npm test -- test/agent-dispatcher-recovery.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/version-lifecycle.test.ts"
       ]
     },
     {
@@ -78,7 +80,6 @@
       "affectedPaths": [
         "scripts/secretary-state.ts",
         "scripts/secretary-notice-guard.ts",
-        "scripts/secretary-dashboard.ts",
         "test/secretary-state.test.ts",
         "test/secretary-notice-guard.test.ts",
         "test/secretary-dashboard.test.ts"
