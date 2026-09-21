@@ -937,10 +937,24 @@ ${direction}
   };
 }
 
-function workerPrompt(plan: TaskPlan, task: PlannedTask, failureContext: string): string {
+function workerPrompt(
+  plan: TaskPlan,
+  task: PlannedTask,
+  failureContext: string,
+  priorTaskRuns: TaskRun[] = [],
+): string {
   const takeoverInstruction = activeTakeover
     ? '\n这是秘书强制接管现场：工作区中可能已有执行 Agent 的部分改动。先区分与本目标相关的改动和无关改动，保留相关改动并审查其正确性；禁止为了恢复而清空或覆盖无关现场。\n'
     : '';
+  const priorEvidence =
+    task.id === 'formal-development-summary'
+      ? `\n前序 Task 证据索引（只读；需要时打开输出文件核实）：\n${priorTaskRuns
+          .map(
+            (run) =>
+              `- ${run.task.id}: 输出 ${run.outputFile}; 报告命令 ${run.tests.join('、') || '无'}; 改动 ${run.changedFiles.join('、') || '无'}`,
+          )
+          .join('\n')}\n`
+      : '';
   return `你是道衍项目的执行 Agent。只承接下面这一项任务，不重新规划整个项目，也不要创建其他 Agent。
 
 必须遵守 AGENTS.md 和 docs/workflow.md。开始前读取任务相关代码、文档和测试；优先限制在建议路径与直接依赖，不要扫描无关路线图、历史日志或整个仓库。在当前工作区直接实现。不要 commit、push、tag 或发布，这些由秘书统一处理。不要覆盖无关改动。
@@ -959,6 +973,7 @@ ${task.verification.map((item) => `- ${item}`).join('\n') || '- 运行与风险�
 
 ${failureContext}
 ${takeoverInstruction}
+${priorEvidence}
 
 完成实现后只运行改动直接相关的类型检查、定向测试或文档校验；不要运行统一 npm run verify 或 npm run verify:full，它们由 Feature PM 在汇总后的最终代码树负责。简洁报告修改、验证与剩余风险。`;
 }
@@ -968,6 +983,7 @@ async function runTask(
   task: PlannedTask,
   initialRoute: ModelRoute,
   runDirectory: string,
+  priorTaskRuns: TaskRun[] = [],
 ): Promise<TaskRun> {
   const taskStartFiles = await workspaceFileSnapshot();
   let tier = task.tier;
@@ -991,7 +1007,7 @@ async function runTask(
         'codex',
         [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
         {
-          input: workerPrompt(plan, task, failureContext),
+          input: workerPrompt(plan, task, failureContext, priorTaskRuns),
           logFile,
           stream: true,
           heartbeatLabel: `执行 ${task.id} / ${route.model}`,
@@ -2158,7 +2174,13 @@ try {
       console.log(`[恢复] 跳过已完成任务 ${task.id}`);
       continue;
     }
-    const run = await runTask(plan, task, routeForTask(policy, task.tier), runDirectory);
+    const run = await runTask(
+      plan,
+      task,
+      routeForTask(policy, task.tier),
+      runDirectory,
+      activeTaskRuns,
+    );
     activeTaskRuns = [...activeTaskRuns.filter((item) => item.task.id !== task.id), run];
     await persistCheckpoint('active');
     if (run.result === 'failed') {

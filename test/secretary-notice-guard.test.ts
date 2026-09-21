@@ -451,7 +451,7 @@ describe('formal version stage dispatch', () => {
     expect(
       ensureVersionStageItem(createSecretaryState('2026-09-21T00:00:00.000Z'), version)
         ?.plannedTasks,
-    ).toEqual(['实现核心控制']);
+    ).toEqual(['实现核心控制', '汇总开发阶段证据']);
   });
 
   it('keeps legacy development versions on the compatible single-task path', () => {

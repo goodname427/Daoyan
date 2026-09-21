@@ -302,7 +302,7 @@ describe('agent routing', () => {
         acceptanceCommands: ['npm run docs:check'],
       },
     ];
-    const direction = `[formal-stage:development]\n执行正式版本开发。\n<formal-work-items>${JSON.stringify(workItems)}</formal-work-items>`;
+    const direction = `[formal-stage:development]\n执行正式版本开发。\n同时写入 docs/versions/v1/development.json。\n<formal-work-items>${JSON.stringify(workItems)}</formal-work-items>\n将公开结论写入 docs/versions/v1/development.md。`;
     const plan = buildLocalPlan(direction);
 
     expect(plan.tasks.map((task) => task.id)).toEqual([
@@ -310,19 +310,26 @@ describe('agent routing', () => {
       'core-control',
       'ui-feedback',
       'reference-update',
+      'formal-development-summary',
     ]);
     expect(plan.tasks.map((task) => task.tier)).toEqual([
       'critical',
       'advanced',
       'standard',
       'economy',
+      'standard',
     ]);
     expect(plan.tasks[1].dependsOn).toEqual(['architecture-contract']);
+    expect(
+      plan.tasks.slice(0, 4).every((task) => !task.objective.includes('development.json')),
+    ).toBe(true);
+    expect(plan.tasks[4].dependsOn).toEqual(workItems.map((item) => item.id));
+    expect(plan.tasks[4].objective).toContain('docs/versions/v1/development.json');
     expect(plan.summary).not.toContain('formal-work-items');
     expect(planTaskLimit(direction, 4)).toBe(24);
     expect(planTaskLimit('普通 Feature', 4)).toBe(4);
     expect(() => validatePlan(plan, 2)).toThrow('超过上限');
-    expect(validatePlan(plan, planTaskLimit(direction, 4)).tasks).toHaveLength(4);
+    expect(validatePlan(plan, planTaskLimit(direction, 4)).tasks).toHaveLength(5);
   });
 
   it('keeps execution Agents on task-scoped checks', () => {

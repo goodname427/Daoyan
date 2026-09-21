@@ -495,28 +495,63 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
     stage === 'qa' ||
     stage === 'candidate' ||
     (stage === 'bugfix' && summary.includes('本轮只做独立缺陷复验'));
+  const developmentManifest =
+    stage === 'development'
+      ? /同时写入\s+([^\s，。]+\/development\.json)/u.exec(direction)?.[1]
+      : undefined;
+  const developmentReport =
+    stage === 'development'
+      ? /将公开结论写入\s+([^\s，。]+\/development\.md)/u.exec(direction)?.[1]
+      : undefined;
+  const developmentTasks: PlannedTask[] | undefined = items?.map((item) => ({
+    id: item.id,
+    title: item.title,
+    objective: `完成正式版本工作项“${item.title}”：${item.summary}\n\n只处理本工作项及其直接依赖。不要写开发阶段总报告、docs/status.md 或 docs/dev/；阶段证据由 Feature PM 在所有工作项完成后统一汇总。`,
+    type: formalWorkItemType(item),
+    tier: formalWorkItemTier(item),
+    reasoning: `来自正式版本已批准任务清单，由 ${item.owner} 负责，按声明依赖执行。`,
+    dependsOn: [...item.dependsOn],
+    paths: [...item.affectedPaths],
+    deliverables: [item.summary],
+    verification: [...item.acceptanceCommands],
+    validationProfile: 'task' as const,
+  }));
+  if (developmentTasks && developmentManifest && developmentReport) {
+    developmentTasks.push({
+      id: 'formal-development-summary',
+      title: '汇总开发阶段证据',
+      objective: `所有正式工作项完成后，只汇总一次开发阶段证据。读取 Feature PM 提供的前序 Task 输出与实际命令，写入 ${developmentManifest} 和 ${developmentReport}；JSON 必须逐一覆盖正式工作项，且不得把计划命令、未执行命令或阶段门禁伪装成 Task 直接证据。同步 docs/status.md 与当天开发日志，但不修改产品实现。`,
+      type: 'documentation',
+      tier: 'standard',
+      reasoning: '由 Feature PM 在全部工作项之后统一归档，避免每个执行 Agent 重复改写阶段报告。',
+      dependsOn: items!.map((item) => item.id),
+      paths: [developmentManifest, developmentReport, 'docs/status.md', 'docs/dev/'],
+      deliverables: ['逐工作项开发证据、阶段公开结论和一次性长期文档同步'],
+      verification: [
+        `npx prettier --check ${developmentReport} docs/status.md`,
+        'node scripts/check-docs.mjs',
+      ],
+      validationProfile: 'light',
+    });
+  }
   return {
     version: 1,
     title: template.title,
-    summary,
+    summary: items
+      ? '按已批准的正式版本工作项图完成开发；执行 Agent 仅处理自己的工作项，Feature PM 在全部任务后统一汇总阶段证据。'
+      : summary,
     producerDecisionRequired: false,
     producerQuestion: '',
     riskSignals: [`正式版本内部阶段：${stage}`],
-    acceptanceCriteria: [...template.deliverables, ...template.verification],
+    acceptanceCriteria: items
+      ? [
+          '每个正式工作项按声明依赖完成并保留直接检查证据',
+          '阶段报告只由最终汇总任务生成一次',
+          ...template.verification,
+        ]
+      : [...template.deliverables, ...template.verification],
     nonGoals: ['不创建新版本，不越过当前阶段，不替制作人作产品方向决策。'],
-    tasks: items?.map((item) => ({
-      id: item.id,
-      title: item.title,
-      objective: `${summary}\n\n当前正式工作项：${item.title}\n${item.summary}`,
-      type: formalWorkItemType(item),
-      tier: formalWorkItemTier(item),
-      reasoning: `来自正式版本已批准任务清单，由 ${item.owner} 负责，按声明依赖执行。`,
-      dependsOn: [...item.dependsOn],
-      paths: [...item.affectedPaths],
-      deliverables: [item.summary],
-      verification: [...item.acceptanceCommands],
-      validationProfile: 'task' as const,
-    })) ?? [
+    tasks: developmentTasks ?? [
       {
         id: `formal-${stage}`,
         ...template,

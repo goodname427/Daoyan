@@ -69,6 +69,7 @@ import {
   publicSecretaryState,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
+  supersedeRedundantDevelopmentItems,
   unrecordedTaskCompletions,
   reconciliationTargets,
   type DirectionDestination,
@@ -4393,6 +4394,23 @@ async function coordinateOnce(): Promise<void> {
       )
       .map((item) => item.id),
   );
+  const redundantDevelopmentItems = new Set<string>();
+  for (const item of state.items) {
+    if (!stoppedCollapsedItems.has(item.id) || !item.runDirectory) continue;
+    const rawPlan = await readJson(resolve(item.runDirectory, 'plan.json'));
+    if (!isRecord(rawPlan) || !Array.isArray(rawPlan.tasks)) continue;
+    const tasks = rawPlan.tasks.filter(isRecord);
+    if (
+      tasks.length > 1 &&
+      !tasks.some((task) => task.id === 'formal-development-summary') &&
+      tasks.every(
+        (task) =>
+          typeof task.objective === 'string' && task.objective.includes('/development.json'),
+      )
+    ) {
+      redundantDevelopmentItems.add(item.id);
+    }
+  }
   const migratedCollapsedDevelopment = activeFormalVersion
     ? supersedeCollapsedDevelopmentItems(
         state,
@@ -4400,6 +4418,14 @@ async function coordinateOnce(): Promise<void> {
         dispatchableFormalWorkItems(activeFormalVersion) ? activeFormalVersion.workItems.length : 0,
         new Date().toISOString(),
         stoppedCollapsedItems,
+      )
+    : false;
+  const migratedRedundantDevelopment = activeFormalVersion
+    ? supersedeRedundantDevelopmentItems(
+        state,
+        activeFormalVersion.id,
+        new Date().toISOString(),
+        redundantDevelopmentItems,
       )
     : false;
   const persistedCorrections = await persistScheduleCorrections(
@@ -4451,6 +4477,7 @@ async function coordinateOnce(): Promise<void> {
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
     migratedCollapsedDevelopment ||
+    migratedRedundantDevelopment ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||

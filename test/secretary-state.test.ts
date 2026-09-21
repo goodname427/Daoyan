@@ -23,6 +23,7 @@ import {
   unrecordedTaskCompletions,
   reconciliationTargets,
   supersedeCollapsedDevelopmentItems,
+  supersedeRedundantDevelopmentItems,
   type IntakeRequest,
   type SecretaryTaskCompletion,
 } from '../scripts/secretary-state';
@@ -112,6 +113,38 @@ describe('persistent secretary state', () => {
     ).toBe(true);
     expect(item.status).toBe('superseded');
     expect(item.processPid).toBe(0);
+    expect(state.activeItemId).toBe('');
+  });
+
+  it('supersedes a stopped development plan with repeated stage reporting', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'redundant-development', idea: '执行版本开发', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'tracking';
+    item.plannedTasks = ['实现核心', '更新界面'];
+    item.processPid = 123;
+    item.processIdentity = 'old';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'development',
+      processOccupied: true,
+    };
+    state.items.push(item);
+    state.activeItemId = item.id;
+
+    expect(
+      supersedeRedundantDevelopmentItems(
+        state,
+        'version-1',
+        '2026-09-21T00:01:00.000Z',
+        new Set([item.id]),
+      ),
+    ).toBe(true);
+    expect(item.status).toBe('superseded');
+    expect(item.summary).toContain('Feature PM 一次汇总');
     expect(state.activeItemId).toBe('');
   });
 
