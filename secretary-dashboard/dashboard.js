@@ -6,7 +6,7 @@ const statusLabels = {
   blocked: '受阻',
   backlog: '后续版本',
   completed: '已完成',
-  skipped: '已跳过',
+  skipped: '无需执行',
 };
 const agentStatusLabels = {
   running: '执行中',

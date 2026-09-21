@@ -68,6 +68,7 @@ import {
   applyVersionTodoDecision,
   addDecisionGate,
   createFormalVersion,
+  currentVersionStagePolicy,
   decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
@@ -75,10 +76,17 @@ import {
   readFormalVersion,
   readFormalVersionById,
   recordApproval,
+  recordFeatureVerification,
+  recordQaRun,
   recordScopeRevision,
+  recordStagePolicy,
   resolveDecisionGate,
+  setNodeEvidence,
+  transitionVersionBug,
   writeFormalVersion,
   type FormalVersion,
+  type VersionWorkItem,
+  type VersionStage,
   type VersionTodo,
 } from './version-lifecycle';
 
@@ -179,6 +187,7 @@ let inboxWatcher: FSWatcher | null = null;
 let runWatcher: FSWatcher | null = null;
 let retryTimer: NodeJS.Timeout | null = null;
 let noticeRetryTimer: NodeJS.Timeout | null = null;
+let coordinateRecoveryTimer: NodeJS.Timeout | null = null;
 const orphanTimers = new Map<string, NodeJS.Timeout>();
 let httpServer: Server | null = null;
 let processingInbox = false;
@@ -664,7 +673,7 @@ async function dashboardVersion(version: FormalVersion): Promise<object> {
   return {
     ...base,
     documents,
-    nodes: version.nodes.map((node) => ({
+    nodes: base.nodes.map((node) => ({
       ...node,
       documents: documents.filter((document) => document.stages.includes(node.id)),
     })),
@@ -1597,6 +1606,142 @@ function draftVersionId(request: IntakeRequest): string {
   const date = request.createdAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const requestKey = request.id.replace(/[^a-z0-9_-]/gi, '-').slice(0, 24) || 'direction';
   return `draft-${date}-${requestKey}`.toLowerCase();
+}
+
+const PRODUCER_STAGES = new Set<VersionStage>(['charter-review', 'producer-acceptance']);
+
+const STAGE_DELIVERABLES: Partial<Record<VersionStage, string>> = {
+  'charter-draft': '形成版本策划案，明确价值、范围、非目标、验收标准与建议阶段策略。',
+  'module-design': '完成必要模块的详细策划；不适用内容明确说明，不为凑流程制造文档。',
+  'design-review': '以主策身份审查详细策划，修正遗漏并给出通过或升级制作人的结论。',
+  'task-breakdown': '把已批准范围拆成可验证、带依赖和验收标准的工作项。',
+  'version-planning': '按依赖和风险排序工作项，控制版本工作量并冻结可执行范围。',
+  development: '完成当前版本全部开发工作、定向自测、文档、完整门禁、审查和 Git 交付。',
+  qa: '作为独立测试角色执行版本验收、集成和主线回归，不代替 Feature Agent 修代码。',
+  bugfix: '修复版本测试登记的全部未关闭缺陷，并完成独立复验和必要回归。',
+  candidate: '形成可供制作人体验的候选构建、版本说明、测试结论和遗留风险。',
+};
+
+function formalScopeRevision(version: FormalVersion): number {
+  return (
+    version.orchestration?.scopeRevisions
+      .filter((revision) => revision.status === 'approved')
+      .at(-1)?.revision ?? 1
+  );
+}
+
+export function versionStageItemId(
+  versionId: string,
+  stage: VersionStage,
+  scopeRevision: number,
+  attempt: number,
+): string {
+  return `formal-${versionId}-${scopeRevision}-${stage}-${attempt}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+}
+
+export function versionStageDirection(version: FormalVersion, stage: VersionStage): string {
+  const node = version.nodes.find((candidate) => candidate.id === stage);
+  const artifact = `${version.documentRoot}/${stage}.md`.replace(/\\/g, '/');
+  const policy = currentVersionStagePolicy(version, stage);
+  const bugfixStep =
+    stage === 'bugfix' &&
+    version.bugs.some((bug) => bug.status === 'verify') &&
+    version.bugs.every((bug) => ['verify', 'closed', 'deferred'].includes(bug.status))
+      ? 'reverification'
+      : 'primary';
+  const taskManifest = `${version.documentRoot}/task-breakdown.json`.replace(/\\/g, '/');
+  const stageManifest = `${version.documentRoot}/${
+    stage === 'bugfix' && bugfixStep === 'reverification' ? 'bugfix-reverification' : stage
+  }.json`.replace(/\\/g, '/');
+  const stageSpecific =
+    stage === 'task-breakdown'
+      ? `同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收"}]}。依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
+      : stage === 'design-review'
+        ? `同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
+        : stage === 'development'
+          ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed","targetedTests":"passed|failed","evidence":["公开证据"]}]}。不得用一份聚合结论代替逐项证据。`
+          : stage === 'qa'
+            ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}]}。任务交付成功不等于产品测试通过；发现缺陷时 status 必须为 failed 并完整登记。只运行和记录测试，不修改产品实现。`
+            : stage === 'bugfix' && bugfixStep === 'primary'
+              ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
+              : stage === 'bugfix' && bugfixStep === 'reverification'
+                ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
+                : '';
+  return [
+    `[formal-stage:${stage}]`,
+    `推进正式版本“${version.title}”（${version.id}）的“${node?.title ?? stage}”阶段。`,
+    `版本方向：${version.direction}`,
+    `阶段交付：${STAGE_DELIVERABLES[stage] ?? node?.description ?? '完成当前阶段。'}`,
+    `执行策略：${policy.mode === 'reduced' ? '精简执行' : '完整执行'}。理由：${policy.reason}`,
+    policy.evidence.length > 0 ? `策略依据：${policy.evidence.join('、')}` : '',
+    stageSpecific,
+    `将公开结论写入 ${artifact}，同步必要长期文档和开发日志。`,
+    '只处理当前正式版本和当前阶段，不另立版本，不等待制作人选择工程细节。',
+    '不要直接编辑 .daoyan-agent 运行状态，也不要手工推进版本节点；阶段交付后由 notice guard 根据可审计报告原子登记证据并继续。',
+    '若遇到只有制作人能决定的产品方向冲突或高风险架构取舍，以及账号、额度或外部访问阻塞，保存恢复点并明确报告；其他技术问题自行恢复和收束。',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function expectedVersionStageStep(
+  version: FormalVersion,
+  stage: VersionStage,
+): 'primary' | 'reverification' {
+  return stage === 'bugfix' &&
+    version.bugs.some((bug) => bug.status === 'verify') &&
+    version.bugs.every((bug) => ['verify', 'closed', 'deferred'].includes(bug.status))
+    ? 'reverification'
+    : 'primary';
+}
+
+export function ensureVersionStageItem(
+  secretary: SecretaryState,
+  version: FormalVersion,
+  now = new Date().toISOString(),
+): SecretaryItem | null {
+  const stage = version.currentStage;
+  if (
+    version.status !== 'running' ||
+    PRODUCER_STAGES.has(stage) ||
+    stage === 'archived' ||
+    currentVersionStagePolicy(version, stage).mode === 'skip'
+  ) {
+    return null;
+  }
+  const scopeRevision = formalScopeRevision(version);
+  const stageStep = expectedVersionStageStep(version, stage);
+  const linked = secretary.items.filter(
+    (item) =>
+      item.orchestration?.formalVersionId === version.id &&
+      item.orchestration.formalStage === stage &&
+      item.orchestration.formalScopeRevision === scopeRevision,
+  );
+  const linkedStep = linked.filter(
+    (item) => (item.orchestration?.formalStageStep ?? 'primary') === stageStep,
+  );
+  if (
+    linkedStep.some((item) =>
+      ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),
+    )
+  ) {
+    return null;
+  }
+  const attempt = linked.length + 1;
+  const id = versionStageItemId(version.id, stage, scopeRevision, attempt);
+  const direction = versionStageDirection(version, stage);
+  const item = itemFromIntake({ id, idea: direction, createdAt: now }, [], 'feature').item;
+  item.status = 'queued';
+  item.summary = `秘书已安排“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”阶段，完成后将自动推进。`;
+  item.orchestration = {
+    ...item.orchestration!,
+    formalVersionId: version.id,
+    formalStage: stage,
+    formalScopeRevision: scopeRevision,
+    formalStageStep: stageStep,
+  };
+  secretary.items.push(item);
+  return item;
 }
 
 async function routeNewDirection(request: IntakeRequest, item: SecretaryItem): Promise<string> {
@@ -2715,8 +2860,741 @@ function scheduleRetry(): void {
   const delay = Math.max(0, retryAt - Date.now());
   retryTimer = setTimeout(() => {
     retryTimer = null;
-    void coordinate();
+    requestCoordinate('事项恢复定时器');
   }, delay);
+}
+
+function currentGitRevision(): string {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (result.status !== 0 || !result.stdout.trim()) {
+    throw new Error('无法读取当前代码修订，不能登记版本交付证据');
+  }
+  return result.stdout.trim();
+}
+
+function changedFilesBetween(baseRevision: string, headRevision: string): string[] {
+  const result = spawnSync('git', ['diff', '--name-only', `${baseRevision}..${headRevision}`], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (result.status !== 0) {
+    throw new Error('无法核对阶段执行前后的代码树，不能登记版本交付证据');
+  }
+  return result.stdout
+    .split(/\r?\n/)
+    .map((path) => path.trim())
+    .filter(Boolean);
+}
+
+function nextStage(version: FormalVersion): VersionStage | null {
+  const index = version.nodes.findIndex((node) => node.id === version.currentStage);
+  return (version.nodes[index + 1]?.id as VersionStage | undefined) ?? null;
+}
+
+export function advanceRecordedDirection(version: FormalVersion): boolean {
+  if (version.currentStage !== 'direction') return false;
+  const target = nextStage(version);
+  if (!target) return false;
+  setNodeEvidence(version, 'direction', {
+    summary: '制作人方向已记录，秘书开始形成版本策划案。',
+    artifact: '',
+  });
+  advanceVersion(version, target);
+  return true;
+}
+
+export function isFormalVersionWriteConflict(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('已被其他操作更新，请刷新后重试');
+}
+
+async function writeDrivenFormalVersion(version: FormalVersion): Promise<boolean> {
+  try {
+    await writeFormalVersion(root, version);
+    return true;
+  } catch (error) {
+    if (isFormalVersionWriteConflict(error)) return false;
+    throw error;
+  }
+}
+
+function stageArtifact(version: FormalVersion, stage: VersionStage): string {
+  const expected = `${version.documentRoot}/${stage}.md`.replace(/\\/g, '/');
+  if (existsSync(resolve(root, expected))) return expected;
+  throw new Error(`阶段缺少必需产物：${expected}`);
+}
+
+export function parseVersionWorkItems(value: unknown, evidence: string): VersionWorkItem[] {
+  if (!isRecord(value) || !Array.isArray(value.workItems) || value.workItems.length === 0) {
+    throw new Error('任务拆分必须提供非空 workItems 清单');
+  }
+  const ids = new Set<string>();
+  const workItems = value.workItems.map((entry) => {
+    if (
+      !isRecord(entry) ||
+      typeof entry.id !== 'string' ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(entry.id) ||
+      typeof entry.title !== 'string' ||
+      !entry.title.trim() ||
+      typeof entry.owner !== 'string' ||
+      !entry.owner.trim() ||
+      typeof entry.summary !== 'string' ||
+      !entry.summary.trim() ||
+      !Array.isArray(entry.dependsOn) ||
+      entry.dependsOn.some((dependency) => typeof dependency !== 'string')
+    ) {
+      throw new Error('任务拆分清单字段不完整或 id 不合法');
+    }
+    if (ids.has(entry.id)) throw new Error(`任务拆分包含重复 id：${entry.id}`);
+    ids.add(entry.id);
+    return {
+      id: entry.id,
+      title: entry.title.trim(),
+      owner: entry.owner.trim(),
+      status: 'pending' as const,
+      dependsOn: [...entry.dependsOn],
+      summary: entry.summary.trim(),
+      evidence,
+    };
+  });
+  for (const item of workItems) {
+    const unknown = item.dependsOn.find((dependency) => !ids.has(dependency));
+    if (unknown) throw new Error(`任务 ${item.id} 引用了不存在的依赖：${unknown}`);
+    if (item.dependsOn.includes(item.id)) throw new Error(`任务 ${item.id} 不能依赖自身`);
+  }
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const byId = new Map(workItems.map((item) => [item.id, item]));
+  const visit = (id: string): void => {
+    if (visited.has(id)) return;
+    if (visiting.has(id)) throw new Error(`任务拆分包含循环依赖：${id}`);
+    visiting.add(id);
+    for (const dependency of byId.get(id)?.dependsOn ?? []) visit(dependency);
+    visiting.delete(id);
+    visited.add(id);
+  };
+  for (const item of workItems) visit(item.id);
+  return workItems;
+}
+
+export function replaceVersionWorkItems(
+  version: FormalVersion,
+  value: unknown,
+  evidence: string,
+): VersionWorkItem[] {
+  const workItems = parseVersionWorkItems(value, evidence);
+  version.workItems = workItems;
+  return workItems;
+}
+
+type StageCommand = { command: string; exitCode: number };
+
+function parseStageCommands(value: unknown): StageCommand[] {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some(
+      (entry) =>
+        !isRecord(entry) ||
+        typeof entry.command !== 'string' ||
+        !entry.command.trim() ||
+        !Number.isSafeInteger(entry.exitCode),
+    )
+  ) {
+    throw new Error('测试结论必须包含实际执行命令和退出码');
+  }
+  return value.map((entry) => ({
+    command: String((entry as Record<string, unknown>).command),
+    exitCode: Number((entry as Record<string, unknown>).exitCode),
+  }));
+}
+
+function parseStringEvidence(value: unknown): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some((entry) => typeof entry !== 'string')
+  ) {
+    throw new Error('阶段结论必须包含公开证据');
+  }
+  return value.map(String);
+}
+
+export function parseDesignReviewResult(value: unknown): {
+  decision: 'approved' | 'changes-requested' | 'producer-escalation';
+  summary: string;
+} {
+  if (
+    !isRecord(value) ||
+    !['approved', 'changes-requested', 'producer-escalation'].includes(String(value.decision)) ||
+    typeof value.summary !== 'string' ||
+    !value.summary.trim()
+  ) {
+    throw new Error('主策审核结论格式无效');
+  }
+  return {
+    decision: value.decision as 'approved' | 'changes-requested' | 'producer-escalation',
+    summary: value.summary.trim(),
+  };
+}
+
+export function parseDevelopmentResult(
+  value: unknown,
+  workItems: VersionWorkItem[],
+): Array<{
+  id: string;
+  status: 'completed' | 'skipped';
+  typecheck: 'passed' | 'failed';
+  targetedTests: 'passed' | 'failed';
+  evidence: string[];
+}> {
+  if (!isRecord(value) || !Array.isArray(value.workItems)) {
+    throw new Error('开发阶段缺少逐工作项结果');
+  }
+  const expected = workItems.filter((item) => item.status !== 'skipped').map((item) => item.id);
+  const entries = value.workItems.map((entry) => {
+    if (
+      !isRecord(entry) ||
+      typeof entry.id !== 'string' ||
+      !['completed', 'skipped'].includes(String(entry.status)) ||
+      !['passed', 'failed'].includes(String(entry.typecheck)) ||
+      !['passed', 'failed'].includes(String(entry.targetedTests))
+    ) {
+      throw new Error('开发工作项结果格式无效');
+    }
+    return {
+      id: entry.id,
+      status: entry.status as 'completed' | 'skipped',
+      typecheck: entry.typecheck as 'passed' | 'failed',
+      targetedTests: entry.targetedTests as 'passed' | 'failed',
+      evidence: parseStringEvidence(entry.evidence),
+    };
+  });
+  if (
+    new Set(entries.map((entry) => entry.id)).size !== entries.length ||
+    expected.some((id) => !entries.some((entry) => entry.id === id)) ||
+    entries.some((entry) => !expected.includes(entry.id))
+  ) {
+    throw new Error('开发结果必须与正式版本实际工作项逐一对应');
+  }
+  return entries;
+}
+
+interface QaManifestBug {
+  id: string;
+  title: string;
+  severity: 'blocker' | 'high' | 'medium' | 'low';
+  expected: string;
+  actual: string;
+  evidence: string;
+  linkedWorkItemId: string;
+}
+
+export function parseQaResult(
+  value: unknown,
+  workItems: VersionWorkItem[],
+): {
+  status: 'passed' | 'failed';
+  suites: Array<'acceptance' | 'integration' | 'regression'>;
+  commands: StageCommand[];
+  evidence: string[];
+  bugs: QaManifestBug[];
+} {
+  if (!isRecord(value) || !['passed', 'failed'].includes(String(value.status))) {
+    throw new Error('QA 结论格式无效');
+  }
+  const required = ['acceptance', 'integration', 'regression'] as const;
+  const suites = Array.isArray(value.suites) ? value.suites : [];
+  if (required.some((suite) => !suites.includes(suite))) {
+    throw new Error('QA 结论缺少验收、集成或回归套件');
+  }
+  if (!Array.isArray(value.bugs)) throw new Error('QA 结论缺少 bugs 清单');
+  const workItemIds = new Set(workItems.map((item) => item.id));
+  const ids = new Set<string>();
+  const bugs = value.bugs.map((bug) => {
+    if (
+      !isRecord(bug) ||
+      typeof bug.id !== 'string' ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(bug.id) ||
+      ids.has(bug.id) ||
+      typeof bug.title !== 'string' ||
+      !bug.title.trim() ||
+      !['blocker', 'high', 'medium', 'low'].includes(String(bug.severity)) ||
+      typeof bug.expected !== 'string' ||
+      typeof bug.actual !== 'string' ||
+      typeof bug.evidence !== 'string' ||
+      !bug.evidence.trim() ||
+      typeof bug.linkedWorkItemId !== 'string' ||
+      (bug.linkedWorkItemId && !workItemIds.has(bug.linkedWorkItemId))
+    ) {
+      throw new Error('QA 缺陷记录格式无效或未关联真实工作项');
+    }
+    ids.add(bug.id);
+    return bug as unknown as QaManifestBug;
+  });
+  if (
+    (value.status === 'passed' && bugs.length > 0) ||
+    (value.status === 'failed' && bugs.length === 0)
+  ) {
+    throw new Error('QA 状态必须与缺陷清单一致');
+  }
+  return {
+    status: value.status as 'passed' | 'failed',
+    suites: [...required],
+    commands: parseStageCommands(value.commands),
+    evidence: parseStringEvidence(value.evidence),
+    bugs,
+  };
+}
+
+export function parseBugfixResult(
+  value: unknown,
+  bugIds: string[],
+): Array<{ bugId: string; evidence: string[] }> {
+  if (!isRecord(value) || !Array.isArray(value.fixes)) throw new Error('缺陷修复缺少 fixes 清单');
+  const fixes = value.fixes.map((fix) => {
+    if (!isRecord(fix) || typeof fix.bugId !== 'string') throw new Error('缺陷修复记录格式无效');
+    return { bugId: fix.bugId, evidence: parseStringEvidence(fix.evidence) };
+  });
+  if (
+    new Set(fixes.map((fix) => fix.bugId)).size !== fixes.length ||
+    bugIds.some((id) => !fixes.some((fix) => fix.bugId === id)) ||
+    fixes.some((fix) => !bugIds.includes(fix.bugId))
+  ) {
+    throw new Error('缺陷修复结果必须逐项覆盖全部待修缺陷');
+  }
+  return fixes;
+}
+
+export function parseReverificationResult(
+  value: unknown,
+  bugIds: string[],
+): {
+  status: 'passed' | 'failed';
+  commands: StageCommand[];
+  evidence: string[];
+} {
+  if (!isRecord(value) || !['passed', 'failed'].includes(String(value.status))) {
+    throw new Error('缺陷复验结果必须逐项覆盖全部待复验缺陷和必要套件');
+  }
+  const actualBugIds = Array.isArray(value.bugIds) ? value.bugIds : [];
+  const suites = Array.isArray(value.suites) ? value.suites : [];
+  if (
+    !['acceptance', 'integration', 'regression', 'defect-reverification'].every((suite) =>
+      suites.includes(suite),
+    ) ||
+    new Set(actualBugIds).size !== actualBugIds.length ||
+    bugIds.some((id) => !actualBugIds.includes(id)) ||
+    actualBugIds.some((id) => typeof id !== 'string' || !bugIds.includes(id))
+  ) {
+    throw new Error('缺陷复验结果必须逐项覆盖全部待复验缺陷和必要套件');
+  }
+  return {
+    status: value.status as 'passed' | 'failed',
+    commands: parseStageCommands(value.commands),
+    evidence: parseStringEvidence(value.evidence),
+  };
+}
+
+function reportChangedFiles(report: Record<string, unknown>): string[] {
+  if (!Array.isArray(report.tasks)) return [];
+  return report.tasks.flatMap((task) =>
+    isRecord(task) && Array.isArray(task.changedFiles)
+      ? task.changedFiles.filter((path): path is string => typeof path === 'string')
+      : [],
+  );
+}
+
+export function nonDocumentationChanges(paths: string[]): string[] {
+  return paths.filter((path) => !path.replace(/\\/g, '/').startsWith('docs/'));
+}
+
+function assertVerificationDidNotChangeImplementation(
+  report: Record<string, unknown>,
+  stage: 'qa' | 'bugfix-reverification' | 'candidate',
+  testedRevision?: string,
+  currentRevision?: string,
+): void {
+  const reported = nonDocumentationChanges(reportChangedFiles(report));
+  const committed =
+    testedRevision && currentRevision
+      ? nonDocumentationChanges(changedFilesBetween(testedRevision, currentRevision))
+      : [];
+  const invalid = [...new Set([...reported, ...committed])];
+  if (invalid.length > 0) {
+    throw new Error(`${stage} 阶段改变了已测试的实现或测试代码：${invalid.join('、')}`);
+  }
+}
+
+export function applyAutomaticStagePolicy(version: FormalVersion, stage: VersionStage): boolean {
+  const current = currentVersionStagePolicy(version, stage);
+  if (current.decidedBy !== 'version-kernel' || current.policyRevision !== 1) return false;
+  const normalized = version.direction.replace(/\s/g, '');
+  const explicitlyDocumentationOnly =
+    /^(?:仅|只|纯文档)?(?:完善|更新|整理|补充|修订|编写|校对).*(?:文档|说明|指南)$/.test(
+      normalized,
+    );
+  if (!explicitlyDocumentationOnly) return false;
+  const plan = buildLocalPlan(version.direction);
+  if (plan.tasks.length === 0 || plan.tasks.some((task) => task.type !== 'documentation'))
+    return false;
+  const reasons: Partial<Record<VersionStage, string>> = {
+    'module-design': '该版本只有文档交付，版本策划已覆盖所需规则，无需另写模块详细策划。',
+    'design-review': '没有独立模块策划产物，无需增加主策复审轮次。',
+    'version-planning': '只有一个文档交付工作项，无需单独排期。',
+    qa: '没有运行时代码或玩家流程变化，无需执行版本运行时测试。',
+    candidate: '没有新增可执行构建，现有文档即为制作人可评审产物。',
+  };
+  const reason = reasons[stage];
+  if (!reason) return false;
+  recordStagePolicy(version, {
+    stage,
+    mode: 'skip',
+    reason,
+    evidence: [`${version.documentRoot}/charter.md`.replace(/\\/g, '/')],
+    decidedBy: 'notice-guard',
+    scopeRevision: formalScopeRevision(version),
+  });
+  return true;
+}
+
+async function finalizeDeliveredVersionStage(
+  version: FormalVersion,
+  item: SecretaryItem,
+): Promise<boolean> {
+  const stage = item.orchestration?.formalStage as VersionStage | undefined;
+  if (!stage || version.currentStage !== stage || item.status !== 'delivered') return false;
+  version = structuredClone(version);
+  const target = nextStage(version);
+  if (!target) return false;
+  const reportPath = item.runDirectory ? resolve(item.runDirectory, 'report.json') : '';
+  const report = reportPath ? await readJson(reportPath) : null;
+  if (
+    !isRecord(report) ||
+    report.status !== '已交付' ||
+    !isRecord(report.review) ||
+    report.review.verdict !== 'pass'
+  ) {
+    throw new Error('阶段运行缺少 Feature PM 完整交付与独立审查通过报告');
+  }
+  const evidence = item.runDirectory ? relative(root, reportPath).replace(/\\/g, '/') : item.id;
+  const revision = currentGitRevision();
+  const artifact = stageArtifact(version, stage);
+  setNodeEvidence(version, stage, {
+    artifact,
+    summary: `该阶段已由秘书调度完成；交付证据：${evidence}。`,
+  });
+
+  if (stage === 'design-review') {
+    const manifestPath = `${version.documentRoot}/design-review.json`.replace(/\\/g, '/');
+    const result = parseDesignReviewResult(await readJson(resolve(root, manifestPath)));
+    if (result.decision === 'changes-requested') {
+      setNodeEvidence(version, stage, { artifact, summary: result.summary });
+      recordApproval(version, {
+        stage,
+        reviewer: 'lead-designer',
+        decision: 'changes-requested',
+        documentRevision: version.charterRevision,
+        comment: `${result.summary}；证据：${evidence}`,
+      });
+      await writeFormalVersion(root, version);
+      item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+      await emitNotice(
+        'version-design-changes-requested',
+        `主策已退回“${version.title}”的详细策划：${result.summary} 秘书将自动安排修订与复审。`,
+        item,
+      );
+      return true;
+    }
+    if (result.decision === 'producer-escalation') {
+      addDecisionGate(version, {
+        kind: 'producer-escalated-design',
+        stage,
+        summary: result.summary,
+        sourceRequestId: item.id,
+      });
+      await writeFormalVersion(root, version);
+      item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+      await emitNotice(
+        'version-design-escalated',
+        `主策将“${version.title}”的详细策划升级给制作人：${result.summary}`,
+        item,
+      );
+      return true;
+    }
+    recordApproval(version, {
+      stage,
+      reviewer: 'lead-designer',
+      decision: 'approved',
+      documentRevision: version.charterRevision,
+      comment: `${result.summary}；证据：${evidence}`,
+    });
+  }
+  if (stage === 'task-breakdown') {
+    const manifest = `${version.documentRoot}/task-breakdown.json`.replace(/\\/g, '/');
+    const manifestValue = await readJson(resolve(root, manifest));
+    replaceVersionWorkItems(version, manifestValue, manifest);
+  }
+  if (stage === 'development') {
+    if (version.workItems.length === 0) {
+      throw new Error('开发阶段缺少经任务拆分登记的工作项');
+    }
+    const manifest = `${version.documentRoot}/development.json`.replace(/\\/g, '/');
+    const results = parseDevelopmentResult(
+      await readJson(resolve(root, manifest)),
+      version.workItems,
+    );
+    for (const result of results) {
+      if (
+        result.status === 'completed' &&
+        (result.typecheck !== 'passed' || result.targetedTests !== 'passed')
+      ) {
+        throw new Error(`工作项 ${result.id} 尚未形成通过的实现与自测证据`);
+      }
+      const workItem = version.workItems.find((candidate) => candidate.id === result.id)!;
+      workItem.status = result.status;
+      workItem.evidence = manifest;
+      if (result.status === 'completed') {
+        recordFeatureVerification(version, {
+          workItemId: result.id,
+          agentId: `feature:${item.id}`,
+          codeRevision: revision,
+          typecheck: result.typecheck,
+          targetedTests: result.targetedTests,
+          evidence: [evidence, manifest, ...result.evidence],
+        });
+      }
+    }
+  }
+  if (stage === 'qa') {
+    const testedRevision = version.orchestration?.codeRevision;
+    if (!testedRevision) throw new Error('版本 QA 缺少开发候选修订');
+    assertVerificationDidNotChangeImplementation(report, 'qa', testedRevision, revision);
+    const manifest = `${version.documentRoot}/qa.json`.replace(/\\/g, '/');
+    const result = parseQaResult(await readJson(resolve(root, manifest)), version.workItems);
+    const existingBugIds = new Set(version.bugs.map((bug) => bug.id));
+    if (result.bugs.some((bug) => existingBugIds.has(bug.id))) {
+      throw new Error('QA 结果包含重复缺陷 id');
+    }
+    version.bugs.push(
+      ...result.bugs.map((bug) => ({
+        ...bug,
+        status: 'open' as const,
+        verificationRunId: '',
+      })),
+    );
+    recordQaRun(version, {
+      agentId: `qa:${item.id}`,
+      independent: true,
+      codeRevision: testedRevision,
+      suites: result.suites,
+      status: result.status,
+      commands: result.commands,
+      evidence: [evidence, manifest, ...result.evidence],
+    });
+  }
+  if (stage === 'bugfix') {
+    const bugs = version.bugs.filter((bug) => !['closed', 'deferred'].includes(bug.status));
+    const stageStep = item.orchestration?.formalStageStep ?? 'primary';
+    if (bugs.length > 0 && stageStep === 'primary') {
+      const fixable = bugs.filter((bug) => bug.status !== 'verify');
+      const manifest = `${version.documentRoot}/bugfix.json`.replace(/\\/g, '/');
+      const fixes = parseBugfixResult(
+        await readJson(resolve(root, manifest)),
+        fixable.map((bug) => bug.id),
+      );
+      for (const fix of fixes) {
+        const bug = version.bugs.find((candidate) => candidate.id === fix.bugId)!;
+        if (bug.status === 'open') transitionVersionBug(version, bug.id, 'fixing');
+        transitionVersionBug(version, bug.id, 'verify', '', revision);
+        bug.evidence = `${bug.evidence}\n${fix.evidence.join('\n')}`.trim();
+      }
+      for (const bug of version.bugs.filter((candidate) => candidate.status === 'verify')) {
+        bug.fixCodeRevision = revision;
+      }
+      await writeFormalVersion(root, version);
+      item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+      await emitNotice(
+        'version-bugfix-awaiting-reverification',
+        `版本“${version.title}”的缺陷修复已提交，秘书将安排独立测试 Agent 复验后再继续。`,
+        item,
+      );
+      return true;
+    }
+    if (bugs.length > 0 && stageStep === 'reverification') {
+      if (bugs.some((bug) => bug.status !== 'verify')) {
+        throw new Error('独立缺陷复验只能消费全部处于待复验状态的缺陷');
+      }
+      const revisions = new Set(bugs.map((bug) => bug.fixCodeRevision).filter(Boolean));
+      if (revisions.size !== 1) {
+        throw new Error('独立缺陷复验缺少已提交的修复代码修订');
+      }
+      const testedRevision = [...revisions][0]!;
+      assertVerificationDidNotChangeImplementation(
+        report,
+        'bugfix-reverification',
+        testedRevision,
+        revision,
+      );
+      const manifest = `${version.documentRoot}/bugfix-reverification.json`.replace(/\\/g, '/');
+      const result = parseReverificationResult(
+        await readJson(resolve(root, manifest)),
+        bugs.map((bug) => bug.id),
+      );
+      const qa = recordQaRun(version, {
+        agentId: `qa:${item.id}`,
+        independent: true,
+        codeRevision: testedRevision,
+        suites: ['acceptance', 'integration', 'regression', 'defect-reverification'],
+        status: result.status,
+        commands: result.commands,
+        evidence: [evidence, manifest, ...result.evidence],
+        bugFixes: bugs.map((bug) => ({ bugId: bug.id, fixAttemptId: bug.fixAttemptId! })),
+      });
+      if (result.status === 'failed') {
+        for (const bug of bugs) transitionVersionBug(version, bug.id, 'open');
+        await writeFormalVersion(root, version);
+        item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        await emitNotice(
+          'version-bugfix-reverification-failed',
+          `版本“${version.title}”的独立缺陷复验未通过，秘书将自动安排下一轮修复。`,
+          item,
+        );
+        return true;
+      }
+      for (const bug of bugs) transitionVersionBug(version, bug.id, 'closed', qa.id);
+    }
+  }
+  if (stage === 'candidate') {
+    const testedRevision =
+      version.orchestration?.qaRuns.at(-1)?.codeRevision ?? version.orchestration?.codeRevision;
+    assertVerificationDidNotChangeImplementation(report, 'candidate', testedRevision, revision);
+  }
+
+  advanceVersion(version, target);
+  await writeFormalVersion(root, version);
+  item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+  await emitNotice(
+    'version-stage-complete',
+    `版本“${version.title}”的“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”已完成，秘书继续推进“${version.nodes.find((node) => node.id === target)?.title ?? target}”。`,
+    item,
+  );
+  return true;
+}
+
+async function driveFormalVersion(): Promise<boolean> {
+  let version = await readFormalVersion(root);
+  if (!version || version.status === 'archived' || version.status === 'paused') return false;
+  let changed = false;
+  for (let guard = 0; guard < version.nodes.length; guard += 1) {
+    if (version.status === 'waiting-producer' || PRODUCER_STAGES.has(version.currentStage)) break;
+    const stage = version.currentStage;
+    if (applyAutomaticStagePolicy(version, stage)) {
+      if (!(await writeDrivenFormalVersion(version))) {
+        const refreshed = await readFormalVersion(root);
+        if (!refreshed) return changed;
+        version = refreshed;
+        changed = true;
+        continue;
+      }
+    }
+    const policy = currentVersionStagePolicy(version, stage);
+    if (
+      stage === 'bugfix' &&
+      policy.mode !== 'skip' &&
+      version.bugs.every((bug) => ['closed', 'deferred'].includes(bug.status))
+    ) {
+      recordStagePolicy(version, {
+        stage,
+        mode: 'skip',
+        reason: '独立版本测试没有留下待修缺陷，本版本无需缺陷修复轮次。',
+        evidence: version.orchestration?.qaRuns.at(-1)?.evidence ?? [],
+        decidedBy: 'notice-guard',
+        scopeRevision: formalScopeRevision(version),
+      });
+      continue;
+    }
+    if (policy.mode === 'skip') {
+      const target = nextStage(version);
+      if (!target) break;
+      setNodeEvidence(version, stage, { summary: policy.reason, artifact: '' });
+      advanceVersion(version, target);
+      if (!(await writeDrivenFormalVersion(version))) {
+        const refreshed = await readFormalVersion(root);
+        if (!refreshed) return changed;
+        version = refreshed;
+        changed = true;
+        continue;
+      }
+      await emitNotice(
+        'version-stage-not-required',
+        `版本“${version.title}”的“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”无需执行：${policy.reason} 秘书继续推进下一阶段。`,
+      );
+      changed = true;
+      continue;
+    }
+    if (stage === 'direction') {
+      if (!advanceRecordedDirection(version)) break;
+      if (!(await writeDrivenFormalVersion(version))) {
+        const refreshed = await readFormalVersion(root);
+        if (!refreshed) return changed;
+        version = refreshed;
+        changed = true;
+        continue;
+      }
+      changed = true;
+      continue;
+    }
+    const delivered = state.items
+      .filter(
+        (item) =>
+          item.status === 'delivered' &&
+          !item.orchestration?.formalStageConsumedAt &&
+          item.orchestration?.formalVersionId === version!.id &&
+          item.orchestration.formalStage === stage &&
+          item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
+          (item.orchestration.formalStageStep ?? 'primary') ===
+            expectedVersionStageStep(version!, stage),
+      )
+      .at(-1);
+    if (delivered) {
+      const attemptedRevision = version.stateRevision;
+      try {
+        if (await finalizeDeliveredVersionStage(version, delivered)) {
+          changed = true;
+          version = (await readFormalVersion(root)) ?? version;
+          continue;
+        }
+      } catch (error) {
+        delivered.summary = `阶段交付未能写入正式版本，将自动安排修复：${error instanceof Error ? error.message : String(error)}`;
+        const persisted = await readFormalVersion(root);
+        if (persisted?.id === version.id) {
+          version = persisted;
+          if (persisted.stateRevision !== attemptedRevision) {
+            delete delivered.orchestration!.formalStageConsumedAt;
+            changed = true;
+            continue;
+          }
+        }
+        delivered.orchestration!.formalStageConsumedAt = new Date().toISOString();
+      }
+    }
+    const queued = ensureVersionStageItem(state, version);
+    if (queued) {
+      await emitNotice(
+        'version-stage-scheduled',
+        `秘书已安排版本“${version.title}”的“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”，完成后自动继续。`,
+        queued,
+      );
+      changed = true;
+    }
+    break;
+  }
+  return changed;
 }
 
 async function coordinateOnce(): Promise<void> {
@@ -2772,6 +3650,9 @@ async function coordinateOnce(): Promise<void> {
   }
   if (reconciliationFailed || activeChild || waiting || occupied) return;
   if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
+  if (await driveFormalVersion()) await saveState();
+  const formalVersion = await readFormalVersion(root);
+  if (formalVersionBlocksDispatch(formalVersion)) return;
   if (await adoptExistingRun()) {
     coordinatePending = true;
     return;
@@ -2779,6 +3660,19 @@ async function coordinateOnce(): Promise<void> {
   const next = nextRunnableItem(state, new Date().toISOString());
   if (next) await launch(next);
   else scheduleRetry();
+}
+
+export function formalVersionBlocksDispatch(version: FormalVersion | null): boolean {
+  return Boolean(
+    version &&
+    (version.status === 'waiting-producer' ||
+      version.status === 'paused' ||
+      version.todos.some((todo) => todo.assignee === 'producer' && todo.status === 'open') ||
+      version.orchestration?.decisionGates.some(
+        (gate) =>
+          gate.status === 'open' || (gate.status === 'rejected' && gate.kind !== 'scope-change'),
+      )),
+  );
 }
 
 async function coordinate(): Promise<void> {
@@ -2795,6 +3689,23 @@ async function coordinate(): Promise<void> {
   } finally {
     coordinating = false;
   }
+}
+
+function requestCoordinate(source: string): void {
+  void coordinate()
+    .then(() => {
+      if (!coordinateRecoveryTimer) return;
+      clearTimeout(coordinateRecoveryTimer);
+      coordinateRecoveryTimer = null;
+    })
+    .catch((error) => {
+      console.error(`[notice guard] ${source}协调失败，将自动重试：${String(error)}`);
+      if (stopping || coordinateRecoveryTimer) return;
+      coordinateRecoveryTimer = setTimeout(() => {
+        coordinateRecoveryTimer = null;
+        requestCoordinate('协调恢复');
+      }, 2_000);
+    });
 }
 
 function readBody(request: IncomingMessage): Promise<string> {
@@ -3027,6 +3938,7 @@ async function shutdown(): Promise<void> {
   stopping = true;
   if (retryTimer) clearTimeout(retryTimer);
   if (noticeRetryTimer) clearTimeout(noticeRetryTimer);
+  if (coordinateRecoveryTimer) clearTimeout(coordinateRecoveryTimer);
   for (const timer of orphanTimers.values()) clearTimeout(timer);
   orphanTimers.clear();
   inboxWatcher?.close();
@@ -3124,7 +4036,7 @@ export async function runNoticeGuard(): Promise<void> {
       normalized.startsWith(`${secretaryRelativePrefix}/`)
     )
       return;
-    void coordinate();
+    requestCoordinate('运行事件');
   });
   await processInbox();
   await coordinate();

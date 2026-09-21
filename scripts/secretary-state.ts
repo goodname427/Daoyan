@@ -78,6 +78,11 @@ export interface SecretaryItemOrchestration {
   processOccupied: boolean;
   waitingSnapshot?: string;
   acknowledgedWaitingSnapshot?: string;
+  formalVersionId?: string;
+  formalStage?: string;
+  formalScopeRevision?: number;
+  formalStageStep?: 'primary' | 'reverification';
+  formalStageConsumedAt?: string;
 }
 
 export interface ProjectFact {
@@ -248,9 +253,16 @@ function validateItemOrchestration(item: SecretaryItem): void {
     ].includes(value.reconciliationOutcome) ||
     typeof value.awaitingReview !== 'boolean' ||
     typeof value.processOccupied !== 'boolean' ||
-    ['waitingSnapshot', 'acknowledgedWaitingSnapshot'].some(
+    ['waitingSnapshot', 'acknowledgedWaitingSnapshot', 'formalStageConsumedAt'].some(
       (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
-    )
+    ) ||
+    ['formalVersionId', 'formalStage'].some(
+      (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
+    ) ||
+    (Object.hasOwn(value, 'formalStageStep') &&
+      !['primary', 'reverification'].includes(String(value.formalStageStep))) ||
+    (Object.hasOwn(value, 'formalScopeRevision') &&
+      (!Number.isSafeInteger(value.formalScopeRevision) || Number(value.formalScopeRevision) <= 0))
   ) {
     throw new Error(`秘书事项 ${item.id} 的编排扩展损坏；已停止自动写入和派发`);
   }

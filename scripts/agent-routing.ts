@@ -70,6 +70,120 @@ export interface TaskPlan {
   commitMessage: string;
 }
 
+const FORMAL_STAGE_MARKER = /^\[formal-stage:([a-z-]+)\]\s*/;
+
+const FORMAL_STAGE_TASKS: Record<
+  string,
+  Pick<PlannedTask, 'title' | 'type' | 'tier' | 'paths' | 'deliverables' | 'verification'>
+> = {
+  'charter-draft': {
+    title: '编写版本策划案',
+    type: 'documentation',
+    tier: 'standard',
+    paths: ['docs/versions/', 'docs/product/', 'docs/specs/'],
+    deliverables: ['当前版本的策划案与公开阶段结论'],
+    verification: ['核对版本方向、范围、非目标和验收标准'],
+  },
+  'module-design': {
+    title: '完成模块详细策划',
+    type: 'documentation',
+    tier: 'standard',
+    paths: ['docs/versions/', 'docs/product/', 'docs/specs/', 'docs/architecture/'],
+    deliverables: ['当前阶段的详细策划与公开阶段结论'],
+    verification: ['核对规则、交互、边界和验收标准'],
+  },
+  'design-review': {
+    title: '审核模块详细策划',
+    type: 'analysis',
+    tier: 'advanced',
+    paths: ['docs/versions/', 'docs/product/', 'docs/specs/', 'docs/architecture/'],
+    deliverables: ['结构化审核结论与公开阶段结论'],
+    verification: ['核对策划完整性、架构约束和产品冲突'],
+  },
+  'task-breakdown': {
+    title: '拆分可执行工作项',
+    type: 'analysis',
+    tier: 'standard',
+    paths: ['docs/versions/', 'docs/specs/', 'docs/status.md'],
+    deliverables: ['带稳定 ID 和依赖的任务清单'],
+    verification: ['校验任务范围、依赖和验收证据'],
+  },
+  'version-planning': {
+    title: '完成版本排期',
+    type: 'analysis',
+    tier: 'standard',
+    paths: ['docs/versions/', 'docs/status.md'],
+    deliverables: ['排序、工作量与范围冻结结论'],
+    verification: ['核对依赖顺序和版本容量'],
+  },
+  development: {
+    title: '执行版本开发',
+    type: 'implementation',
+    tier: 'advanced',
+    paths: ['src/', 'scripts/', 'test/', 'e2e/', 'docs/'],
+    deliverables: ['逐项完成正式工作项及其验证证据'],
+    verification: ['类型检查、定向测试和 npm run verify'],
+  },
+  qa: {
+    title: '执行独立版本测试',
+    type: 'test',
+    tier: 'standard',
+    paths: ['test/', 'e2e/', 'docs/versions/'],
+    deliverables: ['独立 QA 结论、命令证据和完整缺陷清单'],
+    verification: ['验收、集成与核心流程回归'],
+  },
+  bugfix: {
+    title: '修复或复验版本缺陷',
+    type: 'implementation',
+    tier: 'advanced',
+    paths: ['src/', 'scripts/', 'test/', 'e2e/', 'docs/versions/'],
+    deliverables: ['逐项缺陷修复或独立复验结论'],
+    verification: ['定向测试、缺陷复验和必要回归'],
+  },
+  candidate: {
+    title: '形成版本候选',
+    type: 'test',
+    tier: 'standard',
+    paths: ['docs/versions/', 'dist/'],
+    deliverables: ['可体验入口、版本说明和遗留风险'],
+    verification: ['确认候选内容与已测试代码修订一致'],
+  },
+  archived: {
+    title: '归档正式版本',
+    type: 'documentation',
+    tier: 'economy',
+    paths: ['docs/versions/', 'docs/status.md', 'docs/dev/'],
+    deliverables: ['完整版本档案与状态更新'],
+    verification: ['核对策划、任务、测试、缺陷和体验结论'],
+  },
+};
+
+function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null {
+  const template = FORMAL_STAGE_TASKS[stage];
+  if (!template) return null;
+  const summary = direction.replace(FORMAL_STAGE_MARKER, '').trim();
+  return {
+    version: 1,
+    title: template.title,
+    summary,
+    producerDecisionRequired: false,
+    producerQuestion: '',
+    riskSignals: [`正式版本内部阶段：${stage}`],
+    acceptanceCriteria: [...template.deliverables, ...template.verification],
+    nonGoals: ['不创建新版本，不越过当前阶段，不替制作人作产品方向决策。'],
+    tasks: [
+      {
+        id: `formal-${stage}`,
+        ...template,
+        objective: summary,
+        reasoning: '该事项由正式版本内核定向派发，不再按制作人新方向重新拆分。',
+        dependsOn: [],
+      },
+    ],
+    commitMessage: `chore: advance formal version ${stage}`,
+  };
+}
+
 export interface ReviewFinding {
   severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
@@ -483,6 +597,12 @@ export function resolveProducerDirection(direction: string, status: string): str
 export function buildLocalPlan(direction: string): TaskPlan {
   const normalized = direction.trim();
   if (!normalized) throw new Error('制作人方向不能为空');
+
+  const formalStage = FORMAL_STAGE_MARKER.exec(normalized)?.[1];
+  if (formalStage) {
+    const plan = buildFormalStagePlan(normalized, formalStage);
+    if (plan) return plan;
+  }
 
   const implementationTerms = ['新增', '实现', '修复', '支持', '调整', '重构', '改造', '开发'];
   const documentationTerms = ['文档', '说明', '指南', '日志', '链接', '格式'];

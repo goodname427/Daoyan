@@ -237,6 +237,18 @@ describe('agent routing', () => {
     expect(release.producerDecisionRequired).toBe(true);
   });
 
+  it('routes formal version stages directly without reopening producer planning', () => {
+    const qa = buildLocalPlan(
+      '[formal-stage:qa]\n\n推进正式版本测试。若遇到高风险架构取舍则报告。',
+    );
+
+    expect(qa.producerDecisionRequired).toBe(false);
+    expect(qa.tasks).toHaveLength(1);
+    expect(qa.tasks[0]).toEqual(
+      expect.objectContaining({ id: 'formal-qa', type: 'test', title: '执行独立版本测试' }),
+    );
+  });
+
   it('scales review cost with the highest task risk', () => {
     expect(reviewRouteForPlan(policy, buildLocalPlan('整理工作流文档')).model).toBe('luna-review');
     expect(reviewRouteForPlan(policy, buildLocalPlan('推演台新增 VM 单步界面')).model).toBe(

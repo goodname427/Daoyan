@@ -496,11 +496,6 @@ const UNSKIPPABLE_STAGES = new Set<VersionStage>([
   'direction',
   'charter-draft',
   'charter-review',
-  'design-review',
-  'task-breakdown',
-  'version-planning',
-  'development',
-  'qa',
   'producer-acceptance',
   'archived',
 ]);
@@ -737,17 +732,26 @@ function featureVerificationHasTrustedPass(verification: FeatureVerification): b
   );
 }
 
-function qaRunHasTrustedPass(
+function qaRunHasTrustedResult(
   orchestration: FormalVersionOrchestration,
   run: VersionQaRun,
 ): boolean {
   return (
     run.independent &&
-    run.status === 'passed' &&
     run.commands.length > 0 &&
-    run.commands.every((command) => command.exitCode === 0) &&
     run.evidence.length > 0 &&
     !orchestration.featureVerifications.some((verification) => verification.agentId === run.agentId)
+  );
+}
+
+function qaRunHasTrustedPass(
+  orchestration: FormalVersionOrchestration,
+  run: VersionQaRun,
+): boolean {
+  return (
+    qaRunHasTrustedResult(orchestration, run) &&
+    run.status === 'passed' &&
+    run.commands.every((command) => command.exitCode === 0)
   );
 }
 
@@ -774,6 +778,13 @@ export function recordStagePolicy(
     throw new Error(`${input.stage} 是固定门禁，不能跳过`);
   }
   if (!input.reason.trim()) throw new Error('阶段策略必须记录公开理由');
+  if (
+    input.stage === 'task-breakdown' &&
+    input.mode === 'skip' &&
+    version.workItems.some((item) => item.status !== 'skipped')
+  ) {
+    throw new Error('任务拆分仍有实际工作项，不能标记为无需执行');
+  }
   const orchestration = requireOrchestration(version);
   const latestScope = currentScopeRevision(orchestration);
   if (input.scopeRevision !== latestScope) throw new Error('阶段策略适用的范围修订已过期');
@@ -790,6 +801,24 @@ export function recordStagePolicy(
     decidedAt: nowIso(input.now),
   };
   orchestration.stagePolicies.push(policy);
+  if (input.stage === 'task-breakdown' && input.mode === 'skip') {
+    orchestration.stagePolicies.push({
+      stage: 'development',
+      mode: 'skip',
+      reason: `任务拆分无需执行，因此没有可进入开发的工作项：${input.reason}`,
+      evidence: [...input.evidence],
+      decidedBy: 'version-kernel',
+      policyRevision:
+        Math.max(
+          0,
+          ...orchestration.stagePolicies
+            .filter((candidate) => candidate.stage === 'development')
+            .map((candidate) => candidate.policyRevision),
+        ) + 1,
+      scopeRevision: input.scopeRevision,
+      decidedAt: policy.decidedAt,
+    });
+  }
   version.updatedAt = policy.decidedAt;
   return policy;
 }
@@ -997,13 +1026,11 @@ export function recordQaRun(
   if (!input.agentId.trim() || !input.codeRevision.trim()) {
     throw new Error('版本 QA 必须关联测试 Agent 与代码修订');
   }
-  if (
-    input.status === 'passed' &&
-    (input.commands.length === 0 ||
-      input.commands.some((command) => command.exitCode !== 0) ||
-      input.evidence.length === 0)
-  ) {
-    throw new Error('版本 QA 通过结论必须包含退出码为 0 的命令与公开证据');
+  if (input.commands.length === 0 || input.evidence.length === 0) {
+    throw new Error('版本 QA 结论必须包含实际命令与公开证据');
+  }
+  if (input.status === 'passed' && input.commands.some((command) => command.exitCode !== 0)) {
+    throw new Error('版本 QA 通过结论必须包含退出码为 0 的命令');
   }
   const orchestration = requireOrchestration(version);
   for (const fix of input.bugFixes ?? []) {
@@ -1138,7 +1165,14 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
   if (policy.mode === 'skip' && UNSKIPPABLE_STAGES.has(version.currentStage)) {
     throw new Error(`${version.currentStage} 是固定门禁，不能跳过`);
   }
-  if (version.currentStage === 'development') {
+  if (
+    version.currentStage === 'development' &&
+    policy.mode === 'skip' &&
+    version.workItems.some((item) => item.status !== 'skipped')
+  ) {
+    throw new Error('开发阶段存在实际工作项，不能标记为无需执行');
+  }
+  if (version.currentStage === 'development' && policy.mode !== 'skip') {
     const unfinished = version.workItems.find(
       (item) => !['completed', 'skipped'].includes(item.status),
     );
@@ -1155,15 +1189,17 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
     });
     if (missing) throw new Error(`Feature 尚无类型检查与定向测试通过证据：${missing.title}`);
   }
-  if (version.currentStage === 'qa') {
+  if (version.currentStage === 'qa' && policy.mode !== 'skip') {
     const qa = orchestration.qaRuns.at(-1);
     const required: QaSuite[] = ['acceptance', 'integration', 'regression'];
     if (
       !qa ||
-      !qaRunHasTrustedPass(orchestration, qa) ||
+      !qaRunHasTrustedResult(orchestration, qa) ||
       qa.scopeRevision !== scopeRevision ||
       !qaMatchesCurrentCode(version, qa) ||
-      required.some((suite) => !qa.suites.includes(suite))
+      required.some((suite) => !qa.suites.includes(suite)) ||
+      (qa.status === 'failed' &&
+        !version.bugs.some((bug) => !['closed', 'deferred'].includes(bug.status)))
     ) {
       throw new Error('版本测试尚未形成独立验收、集成与回归通过结论');
     }
@@ -1173,15 +1209,20 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
       (bug) => ['blocker', 'high'].includes(bug.severity) && !['closed'].includes(bug.status),
     );
     if (blocking) throw new Error(`阻塞或高风险缺陷尚未通过复验：${blocking.title}`);
-    const qa = orchestration.qaRuns.at(-1);
-    if (
-      !qa ||
-      !qaRunHasTrustedPass(orchestration, qa) ||
-      qa.scopeRevision !== scopeRevision ||
-      !qaMatchesCurrentCode(version, qa) ||
-      !qa.suites.includes('regression')
-    ) {
-      throw new Error('候选版本尚无当前范围与代码修订的有效独立 QA 回归通过结论');
+    const qaPolicy = orchestration.stagePolicies
+      .filter((candidate) => candidate.stage === 'qa' && candidate.scopeRevision === scopeRevision)
+      .at(-1);
+    if (qaPolicy?.mode !== 'skip') {
+      const qa = orchestration.qaRuns.at(-1);
+      if (
+        !qa ||
+        !qaRunHasTrustedPass(orchestration, qa) ||
+        qa.scopeRevision !== scopeRevision ||
+        !qaMatchesCurrentCode(version, qa) ||
+        !qa.suites.includes('regression')
+      ) {
+        throw new Error('候选版本尚无当前范围与代码修订的有效独立 QA 回归通过结论');
+      }
     }
     if (policy.mode === 'skip') {
       const unresolved = version.bugs.some((bug) => !['closed', 'deferred'].includes(bug.status));
@@ -1190,7 +1231,7 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
       }
     }
   }
-  const requiredReviewer = expectedReviewer(version.currentStage);
+  const requiredReviewer = policy.mode === 'skip' ? null : expectedReviewer(version.currentStage);
   if (requiredReviewer) {
     const currentNode = version.nodes[currentIndex];
     const approved = version.approvals.some(
@@ -1383,11 +1424,36 @@ export function completeVersionTodo(version: FormalVersion, todoId: string, now?
   version.updatedAt = todo.completedAt;
 }
 
+export function currentVersionStagePolicy(
+  version: FormalVersion,
+  stage: VersionStage,
+): VersionStagePolicy {
+  const orchestration = requireOrchestration(version);
+  const scopeRevision = currentScopeRevision(orchestration);
+  const policy = orchestration.stagePolicies
+    .filter((candidate) => candidate.stage === stage && candidate.scopeRevision === scopeRevision)
+    .at(-1);
+  if (!policy) throw new Error(`${stage} 缺少当前范围的阶段策略`);
+  return policy;
+}
+
+export function effectiveVersionNodes(version: FormalVersion): VersionNode[] {
+  return version.nodes.map((node) => {
+    const policy = currentVersionStagePolicy(version, node.id);
+    if (policy.mode !== 'skip' || node.status === 'completed') return node;
+    return {
+      ...node,
+      status: 'skipped',
+      summary: node.summary || policy.reason,
+    };
+  });
+}
+
 export function versionProgress(version: FormalVersion): number {
-  const completed = version.nodes.filter((node) =>
-    ['completed', 'skipped'].includes(node.status),
-  ).length;
-  return Math.round((completed / version.nodes.length) * 100);
+  const applicable = effectiveVersionNodes(version).filter((node) => node.status !== 'skipped');
+  if (applicable.length === 0) return 100;
+  const completed = applicable.filter((node) => node.status === 'completed').length;
+  return Math.round((completed / applicable.length) * 100);
 }
 
 export function versionHealth(version: FormalVersion): 'blocked' | 'at-risk' | 'healthy' {
@@ -1405,6 +1471,7 @@ export function versionHealth(version: FormalVersion): 'blocked' | 'at-risk' | '
 export function publicVersionState(version: FormalVersion): object {
   return {
     ...version,
+    nodes: effectiveVersionNodes(version),
     progress: versionProgress(version),
     health: versionHealth(version),
     producerTodos: version.todos.filter(

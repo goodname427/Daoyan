@@ -9,6 +9,8 @@ import {
   applyVersionTodoDecision,
   completeVersionTodo,
   createFormalVersion,
+  currentVersionStagePolicy,
+  effectiveVersionNodes,
   decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
@@ -607,6 +609,200 @@ describe('formal version lifecycle', () => {
         scopeRevision: scope.revision,
       }),
     ).toThrow('固定门禁');
+  });
+
+  it('marks unnecessary stages explicitly and removes them from the progress denominator', () => {
+    const version = createFormalVersion({
+      id: 'adaptive-progress',
+      title: '自适应进度',
+      direction: '验证无需执行节点',
+      documentRoot: 'docs/versions/adaptive-progress',
+      currentStage: 'module-design',
+    });
+    recordStagePolicy(version, {
+      stage: 'module-design',
+      mode: 'skip',
+      reason: '当前版本复用已批准规格，无需重复详细策划。',
+      evidence: ['docs/specs/existing.md'],
+      decidedBy: 'version-pm',
+      scopeRevision: 1,
+    });
+
+    expect(effectiveVersionNodes(version).find((node) => node.id === 'module-design')).toEqual(
+      expect.objectContaining({
+        status: 'skipped',
+        summary: '当前版本复用已批准规格，无需重复详细策划。',
+      }),
+    );
+    expect(versionProgress(version)).toBe(Math.round((3 / 12) * 100));
+    advanceVersion(version, 'design-review');
+    expect(version.nodes.find((node) => node.id === 'module-design')?.status).toBe('skipped');
+    expect(versionProgress(version)).toBe(Math.round((3 / 12) * 100));
+  });
+
+  it('allows optional planning and quality stages to be omitted without fabricating evidence', () => {
+    const design = createFormalVersion({
+      id: 'skip-design-review',
+      title: '精简策划',
+      direction: '小范围版本',
+      documentRoot: 'docs/versions/skip-design-review',
+      currentStage: 'design-review',
+    });
+    recordStagePolicy(design, {
+      stage: 'design-review',
+      mode: 'skip',
+      reason: '没有独立模块策划，无需主策重复审核。',
+      evidence: [],
+      decidedBy: 'version-pm',
+      scopeRevision: 1,
+    });
+    expect(() => advanceVersion(design, 'task-breakdown')).not.toThrow();
+
+    const qa = createFormalVersion({
+      id: 'skip-qa',
+      title: '无运行时变更',
+      direction: '仅整理文档',
+      documentRoot: 'docs/versions/skip-qa',
+      currentStage: 'qa',
+    });
+    recordStagePolicy(qa, {
+      stage: 'qa',
+      mode: 'skip',
+      reason: '没有运行时代码变更。',
+      evidence: ['docs-only'],
+      decidedBy: 'version-pm',
+      scopeRevision: 1,
+    });
+    expect(() => advanceVersion(qa, 'bugfix')).not.toThrow();
+  });
+
+  it('closes an omitted task breakdown over development and rejects hidden work', () => {
+    const version = createFormalVersion({
+      id: 'skip-task-breakdown',
+      title: '无需开发',
+      direction: '复用现有交付，不产生开发工作项',
+      documentRoot: 'docs/versions/skip-task-breakdown',
+      currentStage: 'task-breakdown',
+    });
+    recordStagePolicy(version, {
+      stage: 'task-breakdown',
+      mode: 'skip',
+      reason: '本版本没有需要拆分的开发内容。',
+      evidence: ['docs/specs/existing.md'],
+      decidedBy: 'version-pm',
+      scopeRevision: 1,
+    });
+
+    expect(currentVersionStagePolicy(version, 'development')).toEqual(
+      expect.objectContaining({ mode: 'skip', decidedBy: 'version-kernel' }),
+    );
+
+    const invalid = createFormalVersion({
+      id: 'hidden-work',
+      title: '隐藏工作',
+      direction: '不能绕过真实工作项',
+      documentRoot: 'docs/versions/hidden-work',
+      currentStage: 'task-breakdown',
+    });
+    invalid.workItems.push({
+      id: 'feature',
+      title: '真实工作项',
+      owner: 'Feature PM',
+      status: 'pending',
+      dependsOn: [],
+      summary: '需要开发。',
+      evidence: 'task-breakdown.json',
+    });
+    expect(() =>
+      recordStagePolicy(invalid, {
+        stage: 'task-breakdown',
+        mode: 'skip',
+        reason: '错误跳过。',
+        evidence: [],
+        decidedBy: 'version-pm',
+        scopeRevision: 1,
+      }),
+    ).toThrow('仍有实际工作项');
+  });
+
+  it('refuses to skip development while any real work item remains', () => {
+    const version = createFormalVersion({
+      id: 'skip-development',
+      title: '开发不可绕过',
+      direction: '验证开发跳过门禁',
+      documentRoot: 'docs/versions/skip-development',
+      currentStage: 'development',
+    });
+    version.workItems.push({
+      id: 'feature',
+      title: '真实工作项',
+      owner: 'Feature PM',
+      status: 'pending',
+      dependsOn: [],
+      summary: '需要实现。',
+      evidence: 'task-breakdown.json',
+    });
+    recordStagePolicy(version, {
+      stage: 'development',
+      mode: 'skip',
+      reason: '错误跳过。',
+      evidence: [],
+      decidedBy: 'version-pm',
+      scopeRevision: 1,
+    });
+
+    expect(() => advanceVersion(version, 'qa')).toThrow('存在实际工作项');
+    version.workItems[0].status = 'skipped';
+    expect(() => advanceVersion(version, 'qa')).not.toThrow();
+  });
+
+  it('lets completed QA with structured defects enter bug fixing without calling it a pass', () => {
+    const version = createFormalVersion({
+      id: 'qa-with-defects',
+      title: 'QA 缺陷闭环',
+      direction: '验证失败测试进入修复',
+      documentRoot: 'docs/versions/qa-with-defects',
+      currentStage: 'qa',
+    });
+    version.bugs.push({
+      id: 'bug-1',
+      title: '验收失败',
+      severity: 'high',
+      status: 'open',
+      expected: '通过',
+      actual: '失败',
+      evidence: 'qa.json',
+      linkedWorkItemId: '',
+    });
+    recordQaRun(version, {
+      agentId: 'independent-qa',
+      independent: true,
+      codeRevision: 'candidate-a',
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'failed',
+      commands: [{ command: 'npm test', exitCode: 1 }],
+      evidence: ['qa.json'],
+    });
+
+    expect(() => advanceVersion(version, 'bugfix')).not.toThrow();
+
+    const missingBug = createFormalVersion({
+      id: 'qa-failed-without-defect',
+      title: '无缺陷失败',
+      direction: '拒绝无结构失败',
+      documentRoot: 'docs/versions/qa-failed-without-defect',
+      currentStage: 'qa',
+    });
+    recordQaRun(missingBug, {
+      agentId: 'independent-qa',
+      independent: true,
+      codeRevision: 'candidate-a',
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'failed',
+      commands: [{ command: 'npm test', exitCode: 1 }],
+      evidence: ['qa.json'],
+    });
+    expect(() => advanceVersion(missingBug, 'bugfix')).toThrow('独立验收');
   });
 
   it.each(['irreversible-decision', 'producer-escalated-design'] as const)(
