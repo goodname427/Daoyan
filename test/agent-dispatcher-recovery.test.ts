@@ -7,7 +7,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const root = resolve(process.cwd());
 const tsxCliPath = resolve(root, 'node_modules/tsx/dist/cli.mjs');
-const dispatcherTimeoutMs = 20_000;
+// Windows process startup plus recovery fingerprint checks can cross 20 seconds
+// under a loaded full-suite run even after the delivery report is written.
+const dispatcherTimeoutMs = 30_000;
 const integrationTestTimeoutMs = dispatcherTimeoutMs + 10_000;
 let temporary = '';
 

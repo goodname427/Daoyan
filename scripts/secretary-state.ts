@@ -890,6 +890,43 @@ export function closeArchivedVersionItems(
   return changed;
 }
 
+/** Replace pre-migration development runs that collapsed a formal work-item graph into one task. */
+export function supersedeCollapsedDevelopmentItems(
+  state: SecretaryState,
+  versionId: string,
+  expectedTaskCount: number,
+  now: string,
+  eligibleItemIds?: ReadonlySet<string>,
+): boolean {
+  if (expectedTaskCount <= 1) return false;
+  let changed = false;
+  for (const item of state.items) {
+    if (
+      item.orchestration?.formalVersionId !== versionId ||
+      item.orchestration.formalStage !== 'development' ||
+      (eligibleItemIds && !eligibleItemIds.has(item.id)) ||
+      !['queued', 'active', 'tracking', 'retry-wait'].includes(item.status) ||
+      item.plannedTasks.length !== 1 ||
+      item.plannedTasks[0] !== '执行版本开发'
+    ) {
+      continue;
+    }
+    item.status = 'superseded';
+    item.summary = '旧开发计划把正式工作项压缩为单体任务，已由多任务依赖计划替代。';
+    item.completedAt ||= now;
+    item.updatedAt = now;
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration.processOccupied = false;
+    item.orchestration.awaitingReview = false;
+    item.orchestration.reconciliationOutcome = 'delivered';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+    changed = true;
+  }
+  return changed;
+}
+
 export function isRunEligibleForAdoption(
   updatedAt: string,
   initializedAt: string,

@@ -68,6 +68,7 @@ import {
   projectFactsFromStatus,
   publicSecretaryState,
   taskCompletionKey,
+  supersedeCollapsedDevelopmentItems,
   unrecordedTaskCompletions,
   reconciliationTargets,
   type DirectionDestination,
@@ -224,6 +225,7 @@ let processingInbox = false;
 let inboxPending = false;
 let coordinating = false;
 let coordinatePending = false;
+let coordinatePromise: Promise<void> | null = null;
 let stopping = false;
 let stateWrites = Promise.resolve();
 let noticeDeliveries = Promise.resolve();
@@ -1266,6 +1268,7 @@ async function applySecretaryTodoAction(
   action: string,
   note: string,
 ): Promise<{ message: string }> {
+  await coordinate();
   const item = state.items.find((candidate) => candidate.id === itemId);
   if (!item || item.status !== 'waiting-producer') throw new Error('待办已经处理或不存在');
   if (action !== 'defer' && item.runDirectory && !item.orchestration?.waitingSnapshot) {
@@ -1691,6 +1694,9 @@ async function resumeWaitingItem(
   request: IntakeRequest,
   intent: 'reply' | 'continue',
 ): Promise<void> {
+  // Producer replies mutate the same item reconciliation updates. Drain an
+  // in-flight reconciliation before capturing and acknowledging its snapshot.
+  await coordinate();
   const pending = state.items.find((item) => item.id === state.activeItemId);
   if (pending?.runDirectory && !pending.orchestration?.waitingSnapshot) {
     await reconcileItem(pending);
@@ -1832,6 +1838,24 @@ export function versionStageItemId(
   return `formal-${versionId}-${scopeRevision}-${stage}-${attempt}`.replace(/[^a-zA-Z0-9_-]/g, '-');
 }
 
+function dispatchableFormalWorkItems(version: FormalVersion): boolean {
+  return (
+    version.workItems.length > 0 &&
+    version.workItems.every(
+      (item) =>
+        /^[a-z0-9][a-z0-9-]*$/.test(item.id) &&
+        item.title.trim().length > 0 &&
+        item.owner.trim().length > 0 &&
+        item.summary.trim().length > 0 &&
+        Array.isArray(item.dependsOn) &&
+        Array.isArray(item.affectedPaths) &&
+        item.affectedPaths.length > 0 &&
+        Array.isArray(item.acceptanceCommands) &&
+        item.acceptanceCommands.length > 0,
+    )
+  );
+}
+
 export function versionStageDirection(version: FormalVersion, stage: VersionStage): string {
   const node = version.nodes.find((candidate) => candidate.id === stage);
   const artifact = `${version.documentRoot}/${stage}.md`.replace(/\\/g, '/');
@@ -1860,6 +1884,10 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
               : stage === 'bugfix' && bugfixStep === 'reverification'
                 ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
                 : '';
+  const formalWorkItems =
+    stage === 'development' && dispatchableFormalWorkItems(version)
+      ? `<formal-work-items>${JSON.stringify(version.workItems)}</formal-work-items>`
+      : '';
   return [
     `[formal-stage:${stage}]`,
     `推进正式版本“${version.title}”（${version.id}）的“${node?.title ?? stage}”阶段。`,
@@ -1868,6 +1896,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     `执行策略：${policy.mode === 'reduced' ? '精简执行' : '完整执行'}。理由：${policy.reason}`,
     policy.evidence.length > 0 ? `策略依据：${policy.evidence.join('、')}` : '',
     stageSpecific,
+    formalWorkItems,
     `将公开结论写入 ${artifact}，同步必要长期文档和开发日志。`,
     '只处理当前正式版本和当前阶段，不另立版本，不等待制作人选择工程细节。',
     '不要直接编辑 .daoyan-agent 运行状态，也不要手工推进版本节点；阶段交付后由 notice guard 根据可审计报告原子登记证据并继续。',
@@ -4353,6 +4382,26 @@ async function coordinateOnce(): Promise<void> {
   retryTimer = null;
   const stateBeforeNormalization = JSON.stringify(state);
   const normalized = normalizeSecretaryState(state);
+  const activeFormalVersion = await readFormalVersion(root);
+  const stoppedCollapsedItems = new Set(
+    state.items
+      .filter(
+        (item) =>
+          !isOwnedProcessAlive(item.processPid, item.processIdentity) &&
+          item.orchestration?.formalVersionId === activeFormalVersion?.id &&
+          item.orchestration?.formalStage === 'development',
+      )
+      .map((item) => item.id),
+  );
+  const migratedCollapsedDevelopment = activeFormalVersion
+    ? supersedeCollapsedDevelopmentItems(
+        state,
+        activeFormalVersion.id,
+        dispatchableFormalWorkItems(activeFormalVersion) ? activeFormalVersion.workItems.length : 0,
+        new Date().toISOString(),
+        stoppedCollapsedItems,
+      )
+    : false;
   const persistedCorrections = await persistScheduleCorrections(
     state,
     async (correction) => {
@@ -4401,6 +4450,7 @@ async function coordinateOnce(): Promise<void> {
   // event.  Do not turn that no-op observation into a fresh state write (and
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
+    migratedCollapsedDevelopment ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||
@@ -4452,17 +4502,22 @@ export function formalVersionBlocksDispatch(version: FormalVersion | null): bool
 async function coordinate(): Promise<void> {
   if (coordinating) {
     coordinatePending = true;
+    await coordinatePromise;
     return;
   }
   coordinating = true;
-  try {
-    do {
-      coordinatePending = false;
-      await coordinateOnce();
-    } while (coordinatePending && !stopping);
-  } finally {
-    coordinating = false;
-  }
+  coordinatePromise = (async () => {
+    try {
+      do {
+        coordinatePending = false;
+        await coordinateOnce();
+      } while (coordinatePending && !stopping);
+    } finally {
+      coordinating = false;
+      coordinatePromise = null;
+    }
+  })();
+  await coordinatePromise;
 }
 
 function requestCoordinate(source: string): void {

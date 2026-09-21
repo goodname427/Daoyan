@@ -20,6 +20,7 @@ import {
   optimizePlan,
   npmRunCommandsFromScript,
   pendingValidationStages,
+  planTaskLimit,
   preferredWindowsExecutable,
   qualityLoopAction,
   resolveProducerDirection,
@@ -260,6 +261,68 @@ describe('agent routing', () => {
 
     const release = buildLocalPlan('发布大版本');
     expect(release.producerDecisionRequired).toBe(true);
+  });
+
+  it('expands formal development work items into dependency-aware Agent tasks', () => {
+    const workItems = [
+      {
+        id: 'architecture-contract',
+        title: '记录不可逆合同 ADR',
+        owner: '架构 Agent',
+        dependsOn: [],
+        summary: '固定统一控制合同。',
+        affectedPaths: ['docs/adr/0017.md'],
+        acceptanceCommands: ['node scripts/check-docs.mjs'],
+      },
+      {
+        id: 'core-control',
+        title: '实现核心控制',
+        owner: '核心 Feature PM',
+        dependsOn: ['architecture-contract'],
+        summary: '实现无头核心控制。',
+        affectedPaths: ['src/core/world.ts'],
+        acceptanceCommands: ['npm test -- test/core.test.ts'],
+      },
+      {
+        id: 'ui-feedback',
+        title: '更新交互反馈',
+        owner: '交互 Feature PM',
+        dependsOn: ['core-control'],
+        summary: '展示持续消耗与停止原因。',
+        affectedPaths: ['src/app/CombatView.tsx'],
+        acceptanceCommands: ['npm test -- test/render.test.tsx'],
+      },
+      {
+        id: 'reference-update',
+        title: '更新玩家参考',
+        owner: '文档 Agent',
+        dependsOn: ['ui-feedback'],
+        summary: '同步 ADR 与架构说明。',
+        affectedPaths: ['docs/architecture/invariants.md'],
+        acceptanceCommands: ['npm run docs:check'],
+      },
+    ];
+    const direction = `[formal-stage:development]\n执行正式版本开发。\n<formal-work-items>${JSON.stringify(workItems)}</formal-work-items>`;
+    const plan = buildLocalPlan(direction);
+
+    expect(plan.tasks.map((task) => task.id)).toEqual([
+      'architecture-contract',
+      'core-control',
+      'ui-feedback',
+      'reference-update',
+    ]);
+    expect(plan.tasks.map((task) => task.tier)).toEqual([
+      'critical',
+      'advanced',
+      'standard',
+      'economy',
+    ]);
+    expect(plan.tasks[1].dependsOn).toEqual(['architecture-contract']);
+    expect(plan.summary).not.toContain('formal-work-items');
+    expect(planTaskLimit(direction, 4)).toBe(24);
+    expect(planTaskLimit('普通 Feature', 4)).toBe(4);
+    expect(() => validatePlan(plan, 2)).toThrow('超过上限');
+    expect(validatePlan(plan, planTaskLimit(direction, 4)).tasks).toHaveLength(4);
   });
 
   it('keeps execution Agents on task-scoped checks', () => {

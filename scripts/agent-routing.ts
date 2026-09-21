@@ -328,6 +328,74 @@ export function qualityLoopAction(input: {
 }
 
 const FORMAL_STAGE_MARKER = /^\[formal-stage:([a-z-]+)\]\s*/;
+const FORMAL_WORK_ITEMS_PATTERN = /\n<formal-work-items>([\s\S]*?)<\/formal-work-items>\n?/u;
+const FORMAL_VERSION_TASK_LIMIT = 24;
+
+interface FormalWorkItemInput {
+  id: string;
+  title: string;
+  owner: string;
+  dependsOn: string[];
+  summary: string;
+  affectedPaths: string[];
+  acceptanceCommands: string[];
+}
+
+function formalWorkItems(direction: string): FormalWorkItemInput[] | null {
+  const match = FORMAL_WORK_ITEMS_PATTERN.exec(direction);
+  if (!match) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(match[1]);
+  } catch {
+    throw new Error('正式版本开发工作项上下文不是合法 JSON');
+  }
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some(
+      (entry) =>
+        !entry ||
+        typeof entry !== 'object' ||
+        typeof entry.id !== 'string' ||
+        !/^[a-z0-9][a-z0-9-]*$/.test(entry.id) ||
+        typeof entry.title !== 'string' ||
+        typeof entry.owner !== 'string' ||
+        typeof entry.summary !== 'string' ||
+        !isStringArray(entry.dependsOn) ||
+        !isStringArray(entry.affectedPaths) ||
+        !isStringArray(entry.acceptanceCommands),
+    )
+  ) {
+    throw new Error('正式版本开发工作项上下文字段不完整');
+  }
+  return value as FormalWorkItemInput[];
+}
+
+function formalWorkItemTier(item: FormalWorkItemInput): ModelTier {
+  const responsibility = `${item.owner} ${item.title}`;
+  if (/架构/i.test(item.owner) || /(不可逆合同|\badr\b)/i.test(item.title)) return 'critical';
+  if (/(文档|参考|指南)/i.test(responsibility)) return 'economy';
+  if (
+    /(核心|dsl|ast|vm|编译器|战斗)/i.test(responsibility) ||
+    item.affectedPaths.some((path) => path.startsWith('src/core/'))
+  )
+    return 'advanced';
+  return 'standard';
+}
+
+function formalWorkItemType(item: FormalWorkItemInput): TaskType {
+  if (/(文档|参考|指南)/i.test(`${item.owner} ${item.title}`)) return 'documentation';
+  if (/(架构|评审|分析)/i.test(`${item.owner} ${item.title}`)) return 'analysis';
+  if (/(测试|验证|回归)/i.test(`${item.owner} ${item.title}`)) return 'test';
+  return 'implementation';
+}
+
+export function planTaskLimit(direction: string, configuredLimit: number): number {
+  return /^\[formal-stage:development\]/u.test(direction.trim())
+    ? Math.max(configuredLimit, FORMAL_VERSION_TASK_LIMIT)
+    : configuredLimit;
+}
 
 const FORMAL_STAGE_TASKS: Record<
   string,
@@ -418,7 +486,11 @@ const FORMAL_STAGE_TASKS: Record<
 function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null {
   const template = FORMAL_STAGE_TASKS[stage];
   if (!template) return null;
-  const summary = direction.replace(FORMAL_STAGE_MARKER, '').trim();
+  const items = stage === 'development' ? formalWorkItems(direction) : null;
+  const summary = direction
+    .replace(FORMAL_STAGE_MARKER, '')
+    .replace(FORMAL_WORK_ITEMS_PATTERN, '\n')
+    .trim();
   const versionValidation =
     stage === 'qa' ||
     stage === 'candidate' ||
@@ -432,7 +504,19 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
     riskSignals: [`正式版本内部阶段：${stage}`],
     acceptanceCriteria: [...template.deliverables, ...template.verification],
     nonGoals: ['不创建新版本，不越过当前阶段，不替制作人作产品方向决策。'],
-    tasks: [
+    tasks: items?.map((item) => ({
+      id: item.id,
+      title: item.title,
+      objective: `${summary}\n\n当前正式工作项：${item.title}\n${item.summary}`,
+      type: formalWorkItemType(item),
+      tier: formalWorkItemTier(item),
+      reasoning: `来自正式版本已批准任务清单，由 ${item.owner} 负责，按声明依赖执行。`,
+      dependsOn: [...item.dependsOn],
+      paths: [...item.affectedPaths],
+      deliverables: [item.summary],
+      verification: [...item.acceptanceCommands],
+      validationProfile: 'task' as const,
+    })) ?? [
       {
         id: `formal-${stage}`,
         ...template,

@@ -18,6 +18,7 @@ import {
   highestTier,
   isSafeRunId,
   optimizePlan,
+  planTaskLimit,
   npmRunCommandsFromScript,
   pendingValidationStages,
   preferredWindowsExecutable,
@@ -826,7 +827,13 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
     baseline: value.baseline,
     workspaceFingerprint: value.workspaceFingerprint,
     workspaceChangeBaseline: value.workspaceChangeBaseline,
-    plan: validatePlan(value.plan, policy.limits.maxTasks),
+    plan: validatePlan(
+      value.plan,
+      planTaskLimit(
+        value.resolvedDirection ?? value.direction ?? value.plan.summary,
+        policy.limits.maxTasks,
+      ),
+    ),
     taskRuns: value.taskRuns as TaskRun[],
     review: value.review ?? null,
     validationProgress: value.validationProgress ?? {
@@ -921,7 +928,10 @@ ${direction}
   if (result.code !== 0) throw new Error(`秘书规划失败，详见 ${logFile}`);
   return {
     plan: optimizePlan(
-      validatePlan(parseJsonFile(await readFile(outputFile, 'utf8')), policy.limits.maxTasks),
+      validatePlan(
+        parseJsonFile(await readFile(outputFile, 'utf8')),
+        planTaskLimit(direction, policy.limits.maxTasks),
+      ),
     ),
     tokensUsed: parseTokenUsage(`${result.stdout}\n${result.stderr}`),
   };
@@ -2075,14 +2085,20 @@ try {
           `[规划接管] 深度规划不可用，改用本地零 token 路由：${error instanceof Error ? error.message : String(error)}`,
         );
         plannerRun = {
-          plan: validatePlan(buildLocalPlan(activeResolvedDirection), policy.limits.maxTasks),
+          plan: validatePlan(
+            buildLocalPlan(activeResolvedDirection),
+            planTaskLimit(activeResolvedDirection, policy.limits.maxTasks),
+          ),
           tokensUsed: null,
         };
         localPlannerUsed = true;
       }
     } else {
       plannerRun = {
-        plan: validatePlan(buildLocalPlan(activeResolvedDirection), policy.limits.maxTasks),
+        plan: validatePlan(
+          buildLocalPlan(activeResolvedDirection),
+          planTaskLimit(activeResolvedDirection, policy.limits.maxTasks),
+        ),
         tokensUsed: 0,
       };
     }

@@ -22,6 +22,7 @@ import {
   taskCompletionKey,
   unrecordedTaskCompletions,
   reconciliationTargets,
+  supersedeCollapsedDevelopmentItems,
   type IntakeRequest,
   type SecretaryTaskCompletion,
 } from '../scripts/secretary-state';
@@ -79,6 +80,39 @@ describe('persistent secretary state', () => {
         '推进新的实体控制版本。普通缺陷在测试阶段修复；不要把工作流控制面改动纳入这个游戏产品版本。',
       ),
     ).toBe(false);
+  });
+
+  it('supersedes a stopped collapsed formal development plan before redispatch', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'old-development', idea: '执行版本开发', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'tracking';
+    item.plannedTasks = ['执行版本开发'];
+    item.processPid = 123;
+    item.processIdentity = 'old';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'development',
+      processOccupied: true,
+    };
+    state.items.push(item);
+    state.activeItemId = item.id;
+
+    expect(
+      supersedeCollapsedDevelopmentItems(
+        state,
+        'version-1',
+        3,
+        '2026-09-21T00:01:00.000Z',
+        new Set([item.id]),
+      ),
+    ).toBe(true);
+    expect(item.status).toBe('superseded');
+    expect(item.processPid).toBe(0);
+    expect(state.activeItemId).toBe('');
   });
 
   it('migrates stale mobile and delivered desktop candidates with stable correction facts', () => {

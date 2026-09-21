@@ -425,6 +425,64 @@ describe('formal version stage dispatch', () => {
     expect(advanceRecordedDirection(version)).toBe(false);
   });
 
+  it('embeds approved work items into formal development dispatch', () => {
+    const version = createFormalVersion({
+      id: 'development-version',
+      title: '开发版本',
+      direction: '统一实体控制',
+      documentRoot: 'docs/versions/development-version',
+      currentStage: 'development',
+    });
+    version.workItems.push({
+      id: 'core-control',
+      title: '实现核心控制',
+      owner: '核心 Feature PM',
+      status: 'pending',
+      dependsOn: [],
+      summary: '实现统一入口。',
+      affectedPaths: ['src/core/world.ts'],
+      acceptanceCommands: ['npm test -- test/core.test.ts'],
+      evidence: 'task-breakdown.json',
+    });
+
+    const direction = versionStageDirection(version, 'development');
+    expect(direction).toContain('<formal-work-items>');
+    expect(direction).toContain('core-control');
+    expect(
+      ensureVersionStageItem(createSecretaryState('2026-09-21T00:00:00.000Z'), version)
+        ?.plannedTasks,
+    ).toEqual(['实现核心控制']);
+  });
+
+  it('keeps legacy development versions on the compatible single-task path', () => {
+    const empty = createFormalVersion({
+      id: 'legacy-empty',
+      title: '旧版本',
+      direction: '继续旧版本开发',
+      documentRoot: 'docs/versions/legacy-empty',
+      currentStage: 'development',
+    });
+    expect(versionStageDirection(empty, 'development')).not.toContain('<formal-work-items>');
+
+    const incomplete = {
+      ...empty,
+      workItems: [
+        {
+          id: 'legacy-item',
+          title: '旧工作项',
+          owner: '开发',
+          status: 'pending' as const,
+          dependsOn: [],
+          summary: '历史数据没有执行证据字段',
+          affectedPaths: [],
+          acceptanceCommands: [],
+          evidence: '',
+        },
+      ],
+    };
+    expect(versionStageDirection(incomplete, 'development')).not.toContain('<formal-work-items>');
+  });
+
   it('recognizes optimistic version write conflicts as recoverable coordination events', () => {
     expect(
       isFormalVersionWriteConflict(new Error('版本 current 已被其他操作更新，请刷新后重试')),
