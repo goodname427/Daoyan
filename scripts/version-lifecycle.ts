@@ -175,6 +175,10 @@ export interface VersionWorkItem {
   status: LifecycleStatus;
   dependsOn: string[];
   summary: string;
+  /** Concrete implementation and test paths, preserved from the task manifest. */
+  affectedPaths?: string[];
+  /** Direct checks that establish this task's acceptance evidence. */
+  acceptanceCommands?: string[];
   evidence: string;
 }
 

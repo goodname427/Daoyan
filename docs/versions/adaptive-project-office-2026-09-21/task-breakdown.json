@@ -1,0 +1,134 @@
+{
+  "workItems": [
+    {
+      "id": "evidence-contract",
+      "title": "实现分作用域验证证据与增量失效合同",
+      "owner": "Feature PM",
+      "dependsOn": [],
+      "summary": "在正式版本生命周期中保存 Task、Feature、Version 证据的输入/输出、Git tree、路径、命令和配置指纹，并用可测试的相交与下游规则失效证据；验收为无关树变化保留证据，路径、命令、配置或下游输入变化只失效受影响范围，旧/缺失值保守不可复用。",
+      "affectedPaths": [
+        "scripts/version-lifecycle.ts",
+        "scripts/secretary-notice-guard.ts",
+        "test/version-lifecycle.test.ts",
+        "test/secretary-notice-guard.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/version-lifecycle.test.ts test/secretary-notice-guard.test.ts"
+      ]
+    },
+    {
+      "id": "task-profile",
+      "title": "落实执行 Agent 的 Task 轻量验证边界",
+      "owner": "Feature PM",
+      "dependsOn": ["evidence-contract"],
+      "summary": "调整 Agent 路由和工作项报告，使执行 Agent 只记录改动直接相关的类型检查、定向测试或文档校验及其 Task 证据；验收为规划/纯文档走 light Profile、不产生完整门禁证据，Task 不运行统一 npm run verify，也不能声明 Feature 门禁、独立 QA 或版本通过。",
+      "affectedPaths": [
+        "scripts/agent-routing.ts",
+        "scripts/agent-dispatcher.ts",
+        "scripts/version-dispatcher.ts",
+        "test/agent-routing.test.ts"
+      ],
+      "acceptanceCommands": ["npm run typecheck", "npm test -- test/agent-routing.test.ts"]
+    },
+    {
+      "id": "selective-recovery",
+      "title": "实现保留有效任务的依赖恢复",
+      "owner": "Feature PM",
+      "dependsOn": ["evidence-contract", "task-profile"],
+      "summary": "将恢复对账改为逐项验证输入、输出和证据指纹，并沿工作项依赖图只重新排队失效任务及下游；验收为重启/接管和缺失或损坏证据的场景不清空无关已完成任务，且仍阻止受影响路径越过门禁。",
+      "affectedPaths": [
+        "scripts/secretary-state.ts",
+        "scripts/secretary-notice-guard.ts",
+        "scripts/version-lifecycle.ts",
+        "test/secretary-state.test.ts",
+        "test/secretary-notice-guard.test.ts",
+        "test/version-lifecycle.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/secretary-state.test.ts test/secretary-notice-guard.test.ts test/version-lifecycle.test.ts"
+      ]
+    },
+    {
+      "id": "public-timing",
+      "title": "补齐公开事件轮次修订与六类耗时统计",
+      "owner": "Feature PM",
+      "dependsOn": ["evidence-contract"],
+      "summary": "扩展公开工作日志、状态和看板投影，使 eventId 区分 executionRound 与 codeRevision，并分别持久展示模型计算、命令执行、等待制作人、等待额度、恢复和空闲时间；验收为重试或代码修订不碰撞、时段互斥且跨重启闭合，旧未知值显示不可用而非零。",
+      "affectedPaths": [
+        "scripts/public-work-log.ts",
+        "scripts/secretary-state.ts",
+        "scripts/secretary-notice-guard.ts",
+        "test/public-work-log.test.ts",
+        "test/secretary-state.test.ts",
+        "test/secretary-dashboard.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/public-work-log.test.ts test/secretary-state.test.ts test/secretary-dashboard.test.ts"
+      ]
+    },
+    {
+      "id": "feature-quality-loop",
+      "title": "实现 Feature 汇总门禁与增量独立审查",
+      "owner": "Feature PM",
+      "dependsOn": ["evidence-contract", "task-profile", "selective-recovery", "public-timing"],
+      "summary": "让 Feature PM 汇总有效 Task 证据后只运行一次快速门禁、一次独立审查，并在最终代码树唯一生成一份 Feature scope npm run verify:full 证据；验收为修复按问题路径选择实现模型且只复核问题、修复和受影响增量，失败/漂移会失效相交结论，不重复无关 Task 或完整门禁。",
+      "affectedPaths": [
+        "scripts/agent-dispatcher.ts",
+        "scripts/agent-routing.ts",
+        "scripts/version-lifecycle.ts",
+        "scripts/secretary-notice-guard.ts",
+        "test/agent-routing.test.ts",
+        "test/version-lifecycle.test.ts",
+        "test/secretary-notice-guard.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/agent-routing.test.ts test/version-lifecycle.test.ts test/secretary-notice-guard.test.ts",
+        "npm run verify",
+        "npm run verify:full"
+      ]
+    },
+    {
+      "id": "version-qa-reuse",
+      "title": "落实 Version QA 的证据复用与候选约束",
+      "owner": "测试 Agent",
+      "dependsOn": ["feature-quality-loop"],
+      "summary": "让 Version QA 仅消费代码树、命令和配置指纹仍匹配的 Feature 完整门禁，并独立记录跨 Feature 集成、主线回归、迁移、打包和候选验证；验收为 QA 不重跑 verify:full 或 Feature 局部自测，候选修订或当前范围不匹配时退回 Feature PM 重建证据。",
+      "affectedPaths": [
+        "scripts/version-lifecycle.ts",
+        "scripts/secretary-notice-guard.ts",
+        "test/version-lifecycle.test.ts",
+        "test/secretary-notice-guard.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/version-lifecycle.test.ts test/secretary-notice-guard.test.ts",
+        "npm run test:e2e",
+        "npm run build"
+      ]
+    },
+    {
+      "id": "migration-drill",
+      "title": "交付编排状态迁移与保留增量降级演练",
+      "owner": "Version QA",
+      "dependsOn": ["selective-recovery", "version-qa-reuse"],
+      "summary": "提供并验证停写、原始字节备份、隔离预览、current/历史/事务及引用整组校验、可中断重放和保留新增事实的安全降级投影；验收为缺失扩展按 legacy-unknown 保守完整执行，损坏/未来状态不写入不派发，演练不操作生产 .daoyan-agent 现场。",
+      "affectedPaths": [
+        "scripts/version-lifecycle.ts",
+        "scripts/secretary-state.ts",
+        "scripts/secretary-notice-guard.ts",
+        "test/version-lifecycle.test.ts",
+        "test/secretary-state.test.ts",
+        "test/secretary-notice-guard.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm run typecheck",
+        "npm test -- test/version-lifecycle.test.ts test/secretary-state.test.ts test/secretary-notice-guard.test.ts",
+        "npm run build"
+      ]
+    }
+  ]
+}

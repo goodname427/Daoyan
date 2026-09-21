@@ -346,6 +346,8 @@ describe('formal version stage dispatch', () => {
               owner: 'Feature PM',
               dependsOn: [],
               summary: '实现并通过定向测试。',
+              affectedPaths: ['scripts/core.ts', 'test/core.test.ts'],
+              acceptanceCommands: ['npm test -- test/core.test.ts'],
             },
             {
               id: 'ui',
@@ -353,6 +355,8 @@ describe('formal version stage dispatch', () => {
               owner: 'Feature PM',
               dependsOn: ['core'],
               summary: '完成交互和 E2E。',
+              affectedPaths: ['src/app/', 'test/ui.test.ts'],
+              acceptanceCommands: ['npm test -- test/ui.test.ts'],
             },
           ],
         },
@@ -372,12 +376,30 @@ describe('formal version stage dispatch', () => {
               owner: 'Feature PM',
               dependsOn: ['missing'],
               summary: '完成交互。',
+              affectedPaths: ['src/app/'],
+              acceptanceCommands: ['npm test -- test/ui.test.ts'],
             },
           ],
         },
         'manifest.json',
       ),
     ).toThrow('不存在的依赖');
+    expect(() =>
+      parseVersionWorkItems(
+        {
+          workItems: [
+            {
+              id: 'incomplete',
+              title: '缺少可审计验收的任务',
+              owner: 'Feature PM',
+              dependsOn: [],
+              summary: '不应被登记。',
+            },
+          ],
+        },
+        'manifest.json',
+      ),
+    ).toThrow('字段不完整');
   });
 
   it('replaces stale task-breakdown state with the current validated manifest', () => {
@@ -408,6 +430,8 @@ describe('formal version stage dispatch', () => {
             owner: 'Feature PM',
             dependsOn: [],
             summary: '当前范围',
+            affectedPaths: ['scripts/current.ts'],
+            acceptanceCommands: ['npm test -- test/current.test.ts'],
           },
         ],
       },
@@ -461,6 +485,8 @@ describe('formal version stage dispatch', () => {
             owner: 'Feature PM',
             dependsOn: [],
             summary: '完成核心行为。',
+            affectedPaths: ['scripts/core.ts', 'test/core.test.ts'],
+            acceptanceCommands: ['npm test -- test/core.test.ts'],
           },
         ],
       },

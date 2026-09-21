@@ -1655,7 +1655,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
   }.json`.replace(/\\/g, '/');
   const stageSpecific =
     stage === 'task-breakdown'
-      ? `同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收"}]}。依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
+      ? `同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
       : stage === 'design-review'
         ? `同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
         : stage === 'development'
@@ -2943,6 +2943,12 @@ export function parseVersionWorkItems(value: unknown, evidence: string): Version
       !entry.owner.trim() ||
       typeof entry.summary !== 'string' ||
       !entry.summary.trim() ||
+      !Array.isArray(entry.affectedPaths) ||
+      entry.affectedPaths.length === 0 ||
+      entry.affectedPaths.some((path) => typeof path !== 'string' || !path.trim()) ||
+      !Array.isArray(entry.acceptanceCommands) ||
+      entry.acceptanceCommands.length === 0 ||
+      entry.acceptanceCommands.some((command) => typeof command !== 'string' || !command.trim()) ||
       !Array.isArray(entry.dependsOn) ||
       entry.dependsOn.some((dependency) => typeof dependency !== 'string')
     ) {
@@ -2957,6 +2963,8 @@ export function parseVersionWorkItems(value: unknown, evidence: string): Version
       status: 'pending' as const,
       dependsOn: [...entry.dependsOn],
       summary: entry.summary.trim(),
+      affectedPaths: entry.affectedPaths.map((path) => path.trim()),
+      acceptanceCommands: entry.acceptanceCommands.map((command) => command.trim()),
       evidence,
     };
   });
