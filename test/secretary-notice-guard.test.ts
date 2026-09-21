@@ -483,6 +483,35 @@ describe('formal version stage dispatch', () => {
     expect(versionStageDirection(incomplete, 'development')).not.toContain('<formal-work-items>');
   });
 
+  it('marks a replacement development attempt to take over the preserved workspace', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'takeover-version',
+      title: '接管版本',
+      direction: '继续统一实体控制',
+      documentRoot: 'docs/versions/takeover-version',
+      currentStage: 'development',
+    });
+    version.workItems.push({
+      id: 'core-control',
+      title: '实现核心控制',
+      owner: '核心 Feature PM',
+      status: 'pending',
+      dependsOn: [],
+      summary: '实现统一入口。',
+      affectedPaths: ['src/core/world.ts'],
+      acceptanceCommands: ['npm run typecheck'],
+      evidence: 'task-breakdown.json',
+    });
+    const previous = ensureVersionStageItem(state, version, '2026-09-21T00:01:00.000Z')!;
+    previous.status = 'superseded';
+    previous.summary = '旧开发计划已由新计划替代。';
+
+    const replacement = ensureVersionStageItem(state, version, '2026-09-21T00:02:00.000Z')!;
+    expect(replacement.orchestration?.takeoverReason).toContain('接管正式版本开发计划迁移前');
+    expect(runArgs(replacement, false)).toContain('--takeover');
+  });
+
   it('recognizes optimistic version write conflicts as recoverable coordination events', () => {
     expect(
       isFormalVersionWriteConflict(new Error('版本 current 已被其他操作更新，请刷新后重试')),

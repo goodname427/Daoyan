@@ -23,6 +23,7 @@ import {
   unrecordedTaskCompletions,
   reconciliationTargets,
   supersedeCollapsedDevelopmentItems,
+  supersedeDevelopmentMigrationBootstrapFailures,
   supersedeRedundantDevelopmentItems,
   type IntakeRequest,
   type SecretaryTaskCompletion,
@@ -145,6 +146,35 @@ describe('persistent secretary state', () => {
     ).toBe(true);
     expect(item.status).toBe('superseded');
     expect(item.summary).toContain('Feature PM 一次汇总');
+    expect(state.activeItemId).toBe('');
+  });
+
+  it('supersedes a failed development migration bootstrap without dropping its workspace', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'bootstrap-failure', idea: '执行版本开发', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'tracking';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'development',
+      processOccupied: false,
+    };
+    state.items.push(item);
+    state.activeItemId = item.id;
+
+    expect(
+      supersedeDevelopmentMigrationBootstrapFailures(
+        state,
+        'version-1',
+        '2026-09-21T00:01:00.000Z',
+        new Set([item.id]),
+      ),
+    ).toBe(true);
+    expect(item.status).toBe('superseded');
+    expect(item.summary).toContain('takeover');
     expect(state.activeItemId).toBe('');
   });
 

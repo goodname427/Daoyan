@@ -69,6 +69,7 @@ import {
   publicSecretaryState,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
+  supersedeDevelopmentMigrationBootstrapFailures,
   supersedeRedundantDevelopmentItems,
   unrecordedTaskCompletions,
   reconciliationTargets,
@@ -1962,6 +1963,14 @@ export function ensureVersionStageItem(
     formalStage: stage,
     formalScopeRevision: scopeRevision,
     formalStageStep: stageStep,
+    ...(stage === 'development' &&
+    linked.some(
+      (candidate) =>
+        candidate.status === 'superseded' &&
+        /旧开发计划|计划迁移后的首次启动/.test(candidate.summary),
+    )
+      ? { takeoverReason: '接管正式版本开发计划迁移前保留的同一工作区现场。' }
+      : {}),
   };
   secretary.items.push(item);
   return item;
@@ -3137,6 +3146,7 @@ export function runArgs(
     agentDispatcherPath,
     '--run-id',
     runId,
+    ...(item.orchestration?.takeoverReason ? ['--takeover'] : []),
     ...(item.producerGuidance ? ['--decision-confirmed'] : []),
     item.idea,
   ];
@@ -4395,8 +4405,23 @@ async function coordinateOnce(): Promise<void> {
       .map((item) => item.id),
   );
   const redundantDevelopmentItems = new Set<string>();
+  const migrationBootstrapFailures = new Set<string>();
+  const hasSupersededDevelopmentMigration = state.items.some(
+    (item) =>
+      item.orchestration?.formalVersionId === activeFormalVersion?.id &&
+      item.orchestration?.formalStage === 'development' &&
+      item.status === 'superseded' &&
+      /旧开发计划/.test(item.summary),
+  );
   for (const item of state.items) {
     if (!stoppedCollapsedItems.has(item.id) || !item.runDirectory) continue;
+    if (
+      hasSupersededDevelopmentMigration &&
+      !existsSync(resolve(item.runDirectory, 'recovery.json'))
+    ) {
+      migrationBootstrapFailures.add(item.id);
+      continue;
+    }
     const rawPlan = await readJson(resolve(item.runDirectory, 'plan.json'));
     if (!isRecord(rawPlan) || !Array.isArray(rawPlan.tasks)) continue;
     const tasks = rawPlan.tasks.filter(isRecord);
@@ -4426,6 +4451,14 @@ async function coordinateOnce(): Promise<void> {
         activeFormalVersion.id,
         new Date().toISOString(),
         redundantDevelopmentItems,
+      )
+    : false;
+  const migratedBootstrapFailure = activeFormalVersion
+    ? supersedeDevelopmentMigrationBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        new Date().toISOString(),
+        migrationBootstrapFailures,
       )
     : false;
   const persistedCorrections = await persistScheduleCorrections(
@@ -4478,6 +4511,7 @@ async function coordinateOnce(): Promise<void> {
   const stateChanged =
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
+    migratedBootstrapFailure ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||

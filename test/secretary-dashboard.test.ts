@@ -60,7 +60,9 @@ async function waitForIntakeCompletion(
   requestId: string,
 ): Promise<IntakeCompletion> {
   const responsePath = resolve(secretaryState, 'responses', `${requestId}.json`);
-  const deadline = Date.now() + 10_000;
+  // The guard is intentionally asynchronous; full-suite Windows I/O can delay
+  // an otherwise healthy response beyond ten seconds while other child tests run.
+  const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     try {
       return JSON.parse(await readFile(responsePath, 'utf8')) as IntakeCompletion;
