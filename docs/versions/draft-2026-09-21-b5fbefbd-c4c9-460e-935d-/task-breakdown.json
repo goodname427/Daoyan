@@ -1,0 +1,215 @@
+{
+  "workItems": [
+    {
+      "id": "adr-control-model",
+      "title": "采纳统一实体控制不可逆合同 ADR",
+      "owner": "架构 Agent",
+      "dependsOn": [],
+      "summary": "采纳并记录逻辑属性 descriptor/binding、commit/overlay/maintain、控制会话、0.25 秒周期结算、资源预算、关系/抗性定价、AST 迁移和回退边界；验收为合同覆盖详细策划列出的不可逆决定，且不引入实体类型特判。",
+      "affectedPaths": [
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/architecture/invariants.md",
+        "docs/versions/draft-2026-09-21-b5fbefbd-c4c9-460e-935d-/module-design.md"
+      ],
+      "acceptanceCommands": [
+        "npx prettier --check docs/adr/0017-统一实体控制属性模型.md docs/architecture/invariants.md docs/versions/draft-2026-09-21-b5fbefbd-c4c9-460e-935d-/module-design.md",
+        "node scripts/check-docs.mjs"
+      ]
+    },
+    {
+      "id": "core-property-bindings",
+      "title": "建立逻辑属性描述符与目标能力绑定",
+      "owner": "核心 Feature PM",
+      "dependsOn": ["adr-control-model"],
+      "summary": "在无头核心中实现稳定 property key、效果域校验、binding 查询和确定性能力拒绝；首批覆盖 position、rotation、speed、damage、lifetime、perception、armor，并让 Actor/Projectile 仅通过 binding 映射实现。验收为同一 damage/speed 请求跨 Actor、Projectile 走同一入口，缺 binding 返回 false 且无状态改动。",
+      "affectedPaths": [
+        "src/core/world.ts",
+        "src/core/attributes.ts",
+        "src/core/types.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "acceptanceCommands": ["npm test -- test/entity-vnext.test.ts", "npm run typecheck"]
+    },
+    {
+      "id": "core-control-records",
+      "title": "实现覆写记录与核心控制会话",
+      "owner": "核心 Feature PM",
+      "dependsOn": ["core-property-bindings"],
+      "summary": "实现 commit、有限/无限 overlay 和 maintain 租约的结构化记录、稳定合并次序、同源替换与原子清理；绑定目标、属性、权限或施法实例失效时不得留下部分效果。验收为 position/lifetime 只接受时间 0 的 commit，overlay 到期恢复下层，maintain 在取消、打断、余额不足与失效时释放。",
+      "affectedPaths": [
+        "src/core/world.ts",
+        "src/core/vm.ts",
+        "src/core/types.ts",
+        "test/entity-vnext.test.ts",
+        "test/core.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm test -- test/entity-vnext.test.ts test/core.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "core-period-budget",
+      "title": "接入控制定价与周期资源预算",
+      "owner": "核心 Feature PM",
+      "dependsOn": ["adr-control-model", "core-property-bindings", "core-control-records"],
+      "summary": "将关系固定门槛、关系倍率、binding 抗性和实际效果强度同时用于法力与 tick；扩展 MetaCost、分析器和 VM，使有限维持显示起手加最多周期、无限维持显示无界周期项，并在每个成功周期原子实扣法力、登记 tick 执行债务。验收为己方成本严格为正、敌方门槛严格为正、抗性单调加价，分析与实扣使用同一价格函数。",
+      "affectedPaths": [
+        "src/core/meta.ts",
+        "src/core/pricing.ts",
+        "src/core/analyzer.ts",
+        "src/core/vm.ts",
+        "test/entity-vnext.test.ts",
+        "test/core.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm test -- test/entity-vnext.test.ts test/core.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "dsl-compat-migration",
+      "title": "规范化统一创建与旧控制 DSL",
+      "owner": "DSL 迁移 Feature PM",
+      "dependsOn": ["adr-control-model", "core-property-bindings", "core-period-budget"],
+      "summary": "把新创建调用和所有公开控制归一为 AST 中的统一契约；无损转换旧发射、可证明安全的四步弹道链、旧自身/目标属性及两参位置调用，其他链给出定位诊断并保留原文和最后可运行 AST。验收为迁移不产生第二套 IR，不可合并的句柄逃逸/重赋值链不会被猜测性改写。",
+      "affectedPaths": [
+        "src/core/ast.ts",
+        "src/core/compiler.ts",
+        "src/core/analyzer.ts",
+        "src/core/parser.ts",
+        "test/entity-vnext.test.ts",
+        "test/persistence.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm test -- test/entity-vnext.test.ts test/persistence.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "meta-unified-controls",
+      "title": "迁移创建入口和具名属性元法术",
+      "owner": "核心 Feature PM",
+      "dependsOn": [
+        "core-property-bindings",
+        "core-control-records",
+        "core-period-budget",
+        "dsl-compat-migration"
+      ],
+      "summary": "用立即激活并返回句柄的创建弹道入口替代玩家可见的发射/创建/配置/激活链；将位置、朝向、速度、伤害、寿命、感知和护体节点统一为目标、效果、时间三参数，并只经 applyEntityControl 与 binding 分派。验收为不存在按 Actor/Projectile 或 ownedProjectile 的公开元法术分叉，失败均返回 false 且没有局部写入。",
+      "affectedPaths": [
+        "src/core/metas/entity.ts",
+        "src/core/metas/control.ts",
+        "src/core/metas/attribute.ts",
+        "src/core/metas/index.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "acceptanceCommands": ["npm test -- test/entity-vnext.test.ts", "npm run typecheck"]
+    },
+    {
+      "id": "battle-control-bridge",
+      "title": "连接战斗施法生命周期与控制会话",
+      "owner": "战斗 Feature PM",
+      "dependsOn": ["core-control-records", "core-period-budget", "meta-unified-controls"],
+      "summary": "Battle 仅向核心控制会话提供共享法力账户、时钟、施法实例完成/取消/打断和结束施法事件；核心而非 UI 负责 0.25 秒结算与清理。验收为无限维持会持续扣法力直至耗尽、主动结束、目标死亡或打断，并且并发施法不绕过共享资源。",
+      "affectedPaths": [
+        "src/game/battle.ts",
+        "src/core/vm.ts",
+        "src/core/world.ts",
+        "test/combat.test.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm test -- test/combat.test.ts test/entity-vnext.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "spellbook-persistence",
+      "title": "迁移默认法术书与持久化边界",
+      "owner": "DSL 迁移 Feature PM",
+      "dependsOn": ["dsl-compat-migration", "meta-unified-controls"],
+      "summary": "把默认与示例法术改为统一入口；导入和本地法术书仅保存可规范化的新版 AST，未解决诊断不得覆盖最后可运行版本；旧 Modifier 和损坏的新 ControlRecord 按 ADR 的兼容/拒绝规则处理。验收为默认法术无旧玩家入口，旧存档可读边界和失败回退均有回归。",
+      "affectedPaths": [
+        "src/game/spells.dy",
+        "src/demo/spells.dy",
+        "src/app/persistence.ts",
+        "test/persistence.test.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npm test -- test/persistence.test.ts test/entity-vnext.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "ui-control-feedback",
+      "title": "更新推演台、蓝图与演武场控制反馈",
+      "owner": "交互 Feature PM",
+      "dependsOn": [
+        "core-period-budget",
+        "meta-unified-controls",
+        "battle-control-bridge",
+        "spellbook-persistence"
+      ],
+      "summary": "让目录、节点编辑器和元法术检查器展示属性、效果域、binding 能力、时间 0 的无限含义以及基础加动态/周期成本；让演武场显示维持实例、持续法力/tick 和结束原因。验收为旧专用入口不再展示，缺能力、无权限、非法参数和余额不足都有可理解反馈。",
+      "affectedPaths": [
+        "src/app/LabView.tsx",
+        "src/app/NodeEditor.tsx",
+        "src/app/CombatView.tsx",
+        "src/app/renderer.ts",
+        "src/app/styles.css",
+        "test/render.test.tsx"
+      ],
+      "acceptanceCommands": ["npm test -- test/render.test.tsx", "npm run typecheck"]
+    },
+    {
+      "id": "reference-update",
+      "title": "生成玩家参考并同步长期架构说明",
+      "owner": "文档 Agent",
+      "dependsOn": [
+        "adr-control-model",
+        "meta-unified-controls",
+        "spellbook-persistence",
+        "ui-control-feedback"
+      ],
+      "summary": "更新实体/属性、法术编写和自动生成元法术参考，说明统一创建、三参数控制、能力拒绝、write/maintain、无限时间和资源公式；同步状态页，不将尚未验证的版本结果写为已具备能力。验收为参考只列新玩家入口，生成结果与注册元法术一致，链接和版本元数据有效。",
+      "affectedPaths": [
+        "docs/reference/entities-and-attributes.md",
+        "docs/reference/spell-authoring.md",
+        "docs/reference/meta-spells.md",
+        "docs/architecture/invariants.md",
+        "docs/status.md",
+        "scripts/generate-meta-reference.ts"
+      ],
+      "acceptanceCommands": ["npm run docs:generate", "npm run docs:check"]
+    },
+    {
+      "id": "entity-model-integration",
+      "title": "完成跨层迁移与回归验证",
+      "owner": "测试 Agent",
+      "dependsOn": [
+        "core-period-budget",
+        "dsl-compat-migration",
+        "meta-unified-controls",
+        "battle-control-bridge",
+        "spellbook-persistence",
+        "ui-control-feedback",
+        "reference-update"
+      ],
+      "summary": "以真实 AST、VM、Battle、持久化和界面路径验证统一模型：创建即激活、旧调用迁移/诊断、跨实体同属性控制、关系与抗性双资源单调性、无限维持停止边界和缺能力拒绝。验收为新增回归覆盖不含实体种类分支，并把发现的普通缺陷登记给版本测试闭环。",
+      "affectedPaths": [
+        "test/entity-vnext.test.ts",
+        "test/core.test.ts",
+        "test/combat.test.ts",
+        "test/persistence.test.ts",
+        "test/render.test.tsx",
+        "e2e/smoke.spec.ts"
+      ],
+      "acceptanceCommands": [
+        "npm test -- test/entity-vnext.test.ts test/core.test.ts test/combat.test.ts test/persistence.test.ts test/render.test.tsx",
+        "npm run test:e2e -- e2e/smoke.spec.ts"
+      ]
+    }
+  ]
+}
