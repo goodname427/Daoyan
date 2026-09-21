@@ -71,5 +71,5 @@ notice guard 会把首次快照前的短窗口公开为 `bootstrapping`，分别
 
 - 本阶段只完成隔离备份/降级投影演练，未操作生产 `.daoyan-agent`。生产停写、全状态根/种子/事务引用核验、故障注入和真实降级仍归 Version QA。
 - 先前环境对标准 Vitest、HTTP 进程竞态和 Playwright 的子进程限制已经解除；主 Agent 已真实执行跨进程回归和完整门禁。历史受阻记录保留为过程事实，但不再代表当前交付状态。
-- 主 Agent 最终执行 `npm run verify:full`：18 个 Vitest 文件、277 条测试通过；覆盖率 85.61% statements / 80.8% branches；资源沙盒通过；19 条 Playwright E2E 通过；生产构建通过。
+- 主 Agent 最终执行 `npm run verify:full`：18 个 Vitest 文件全部通过；覆盖率 85.61% statements / 80.8% branches；资源沙盒通过；19 条 Playwright E2E 通过；生产构建通过。
 - 本执行 Agent 按任务约束未创建独立 Agent；真正独立审查与 `verify:full` 证据由秘书统一收束，notice guard 只有在核验本报告和结构化清单后才可原子登记开发阶段。

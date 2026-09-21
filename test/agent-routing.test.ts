@@ -46,6 +46,7 @@ import {
 import {
   fingerprintPaths,
   isValidationTreePath as isPrePushValidationTreePath,
+  npmInvocation,
 } from '../scripts/pre-push-verify.mjs';
 
 const policy: AgentPolicy = {
@@ -337,6 +338,15 @@ describe('agent routing', () => {
         completedDeliveryCommit: true,
       }),
     ).toEqual(['full-gate']);
+  });
+
+  it('starts npm through Node when a CLI entrypoint is available to Windows hooks', () => {
+    const invocation = npmInvocation();
+    expect(invocation.args.slice(-2)).toEqual(['run', 'verify:full']);
+    if (process.platform === 'win32') {
+      expect(invocation.command).toBe(process.execPath);
+      expect(invocation.args[0]).toMatch(/npm-cli\.js$/);
+    }
   });
 
   it('preserves valid completed tasks and only invalidates affected downstream dependencies', () => {

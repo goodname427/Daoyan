@@ -856,6 +856,36 @@ export function reconciliationTargets(state: SecretaryState): SecretaryItem[] {
   return targets;
 }
 
+/** Close stale PM items after a control-plane formal version is retired or archived. */
+export function closeArchivedVersionItems(
+  state: SecretaryState,
+  versionId: string,
+  now: string,
+): boolean {
+  let changed = false;
+  for (const item of state.items) {
+    if (
+      item.orchestration?.formalVersionId !== versionId ||
+      !['queued', 'active', 'tracking', 'retry-wait', 'waiting-producer'].includes(item.status)
+    ) {
+      continue;
+    }
+    item.status = 'superseded';
+    item.summary = '该工作流控制面阶段已由主 Agent 直接收口，旧 PM 事项不再恢复或派发。';
+    item.completedAt ||= now;
+    item.updatedAt = now;
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration.processOccupied = false;
+    item.orchestration.awaitingReview = false;
+    item.orchestration.reconciliationOutcome = 'delivered';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+    changed = true;
+  }
+  return changed;
+}
+
 export function isRunEligibleForAdoption(
   updatedAt: string,
   initializedAt: string,

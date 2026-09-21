@@ -121,6 +121,18 @@ export function recordFullGateEvidence(workspace, config, workspaceRoot = root) 
   return path;
 }
 
+export function npmInvocation(environment = process.env) {
+  const configured = environment.npm_execpath;
+  const bundled = resolve(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+  const cli =
+    configured && existsSync(configured) ? configured : existsSync(bundled) ? bundled : '';
+  if (cli) return { command: process.execPath, args: [cli, 'run', 'verify:full'] };
+  return {
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    args: ['run', 'verify:full'],
+  };
+}
+
 function main() {
   let workspace = '';
   let config = '';
@@ -147,8 +159,12 @@ function main() {
   }
 
   console.log(`▶ pre-push: no matching evidence; running ${fullCommand}`);
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const result = spawnSync(npm, ['run', 'verify:full'], { cwd: root, stdio: 'inherit' });
+  const invocation = npmInvocation();
+  const result = spawnSync(invocation.command, invocation.args, { cwd: root, stdio: 'inherit' });
+  if (result.error) {
+    console.error(`pre-push: could not start verification: ${result.error.message}`);
+    return 1;
+  }
   const exitCode = result.status ?? 1;
   if (exitCode !== 0) return exitCode;
   const finalWorkspace = treeFingerprint();

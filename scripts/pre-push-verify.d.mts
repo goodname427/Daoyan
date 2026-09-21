@@ -7,3 +7,7 @@ export function recordFullGateEvidence(
   config: string,
   workspaceRoot?: string,
 ): string;
+export function npmInvocation(environment?: NodeJS.ProcessEnv): {
+  command: string;
+  args: string[];
+};

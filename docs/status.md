@@ -33,7 +33,7 @@
 ## 当前迭代
 
 - Agent 工作流控制面改由主 Agent 直接维护，禁止常驻秘书自我派发；dispatcher 与 pre-push 共用验证树指纹，Git 交付恢复最多补跑最终门禁，秘书在阶段切换和长阶段运行时主动汇报。
-- 本轮控制面修复的完整门禁已通过：18 个 Vitest 文件、277 条测试，覆盖率 85.61% statements / 80.8% branches，资源沙盒、19 条 Playwright E2E 和生产构建全部通过；此前 `spawn EPERM` 阻断结论已由真实跨进程回归取代。
+- 本轮控制面修复的完整门禁已通过：18 个 Vitest 文件全部通过，覆盖率 85.61% statements / 80.8% branches，资源沙盒、19 条 Playwright E2E 和生产构建全部通过；此前 `spawn EPERM` 阻断结论已由真实跨进程回归取代。
 
 - `adaptive-project-office-2026-09-21` 最终完整门禁唯一失败的看板恢复回归已修正同步边界：测试现在等待明确的 `delivered` 对账结果，不再假设 live-worker 身份探测和事件驱动落盘会在固定 300 ms 内完成；若状态真实停留在 `missing` 仍会在 10 秒内失败。类型、目标 lint/格式和差异检查通过；当前宿主的聚焦 Vitest 仍在配置加载阶段受 `esbuild spawn EPERM` 阻断，故保留既有 Task/快速门禁事实但尚未登记新的目标测试或完整门禁成功证据。
 

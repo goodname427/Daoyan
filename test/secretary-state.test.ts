@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyContinueToSchedule,
   applyWaitingReply,
+  closeArchivedVersionItems,
   createSecretaryState,
   decideIntake,
   directionDestination,
@@ -40,6 +41,33 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('retires stale formal-stage work when its control-plane version is archived', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'formal-development', idea: '修复秘书工作流', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'tracking';
+    item.processPid = 123;
+    item.processIdentity = 'old-process';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'workflow-version',
+      formalStage: 'development',
+      processOccupied: true,
+    };
+    state.items.push(item);
+    state.activeItemId = item.id;
+
+    expect(closeArchivedVersionItems(state, 'workflow-version', '2026-09-21T01:00:00.000Z')).toBe(
+      true,
+    );
+    expect(item.status).toBe('superseded');
+    expect(item.processPid).toBe(0);
+    expect(item.orchestration.processOccupied).toBe(false);
+    expect(state.activeItemId).toBe('');
+  });
+
   it('keeps workflow control-plane maintenance out of secretary self-dispatch', () => {
     expect(isWorkflowControlPlaneRequest('修复常驻秘书卡住后不汇报的问题')).toBe(true);
     expect(isWorkflowControlPlaneRequest('优化 Agent Workflow 的恢复调度')).toBe(true);

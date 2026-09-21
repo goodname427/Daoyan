@@ -54,6 +54,7 @@ import {
   applyWaitingReply,
   acknowledgeWaitingSnapshot,
   createSecretaryState,
+  closeArchivedVersionItems,
   directionDestination,
   inferMessageIntent,
   messageIsNewDirection,
@@ -4748,6 +4749,7 @@ async function synchronizeArchivedVersion(): Promise<void> {
   const archived = version.nodes.find((node) => node.id === 'archived');
   if (archived && !archived.summary) archived.summary = '版本档案已保存，正式版本流程完成。';
   await writeFormalVersion(root, version);
+  closeArchivedVersionItems(state, version.id, new Date().toISOString());
   const messageId = `version-archived-${version.id}`;
   if (state.messages.some((message) => message.id === messageId)) return;
   const leftAtArchive = state.messages.some(
