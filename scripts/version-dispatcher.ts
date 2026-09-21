@@ -528,31 +528,14 @@ async function executeFeature(
 }
 
 async function runFinalVerification(directory: string): Promise<boolean> {
-  const npmExecPath = process.env.npm_execpath;
-  const logFile = resolve(directory, 'verify-full.log');
-  if (npmExecPath) {
-    return (
-      (await runProcess(
-        process.execPath,
-        [npmExecPath, 'run', 'verify:full'],
-        logFile,
-        policy.timeouts.verificationMinutes * 60_000,
-        '版本最终完整门禁',
-      )) === 0
-    );
-  }
-  const command = process.platform === 'win32' ? 'cmd.exe' : 'npm';
-  const args =
-    process.platform === 'win32'
-      ? ['/d', '/s', '/c', 'npm run verify:full']
-      : ['run', 'verify:full'];
+  const logFile = resolve(directory, 'feature-gate-reuse.log');
   return (
     (await runProcess(
-      command,
-      args,
+      process.execPath,
+      [resolve(root, 'scripts/pre-push-verify.mjs'), '--check-only'],
       logFile,
-      policy.timeouts.verificationMinutes * 60_000,
-      '版本最终完整门禁',
+      60_000,
+      '版本复用 Feature 完整门禁证据',
     )) === 0
   );
 }
@@ -724,10 +707,10 @@ try {
     }
   }
 
-  console.log('\n[版本收束] 重新运行完整门禁确认跨 feature 状态。');
+  console.log('\n[版本收束] 核对最终树是否存在可复用的 Feature 完整门禁证据。');
   const passed = await runFinalVerification(directory);
   manifest.finalVerification = passed ? 'passed' : 'failed';
-  if (!passed) throw new Error('版本最终完整门禁失败');
+  if (!passed) throw new Error('最终树缺少匹配的 Feature 完整门禁证据');
   manifest.status = 'review-ready';
   manifest.completedAt = new Date().toISOString();
   manifest.error = '';

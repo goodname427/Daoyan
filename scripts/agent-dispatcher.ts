@@ -6,19 +6,32 @@ import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   canRebaseEmptyRecovery,
+  canReuseFullGateEvidence,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
+  fastGateCommandProgress,
+  failedNpmCommandFromOutput,
   highestTier,
+  isValidationTreePath,
   isSafeRunId,
   optimizePlan,
+  npmRunCommandsFromScript,
+  pendingValidationStages,
   preferredWindowsExecutable,
   resolveProducerDirection,
   reviewRoutesForPlan,
   routeForTask,
+  selectReusableTaskIds,
   sortTasks,
+  taskInputPaths,
+  taskOutputPaths,
+  relativeModuleSpecifiers,
+  recoveryCountersAfterResume,
+  validationProfileForPlan,
+  validationStagesForPlan,
   validatePlan,
   validatePolicy,
   validateReview,
@@ -76,6 +89,11 @@ interface TaskRun {
   tests: string[];
   tokensUsed: number | null;
   completedAt: string;
+  inputPaths?: string[];
+  inputFingerprint?: string;
+  outputFingerprint?: string;
+  commandFingerprint?: string;
+  configFingerprint?: string;
 }
 
 interface PlannerRun {
@@ -88,6 +106,40 @@ interface ReviewRun {
   tokensUsed: number | null;
   route: ModelRoute;
   attempts: number;
+}
+
+interface ReviewBoundary {
+  fingerprint: string;
+  files: Map<string, Buffer | null>;
+  findings: ReviewResult;
+}
+
+interface VerificationRun extends ProcessResult {
+  invocation: string[];
+  failedCommand: string[];
+}
+
+interface ValidationStageFingerprint {
+  workspaceFingerprint: string;
+  configFingerprint: string;
+}
+
+interface FastGateProgress extends ValidationStageFingerprint {
+  completedCommands: string[][];
+  pendingCommands: string[][];
+  passed: boolean;
+  attempts: number;
+}
+
+interface IndependentReviewProgress extends ValidationStageFingerprint {
+  result: ReviewResult;
+  passed: boolean;
+  attempts: number;
+}
+
+interface ValidationProgress {
+  fastGate: FastGateProgress | null;
+  independentReview: IndependentReviewProgress | null;
 }
 
 interface RecoveryCheckpoint {
@@ -103,12 +155,16 @@ interface RecoveryCheckpoint {
   plan: TaskPlan;
   taskRuns: TaskRun[];
   review: ReviewResult | null;
+  validationProgress?: ValidationProgress;
   plannerTokens: number | null;
   reviewerTokens: number | null;
   repairerTokens: number | null;
   noPush: boolean;
   takeover?: boolean;
   error: string;
+  actualLaunchCount: number | null;
+  abnormalRecoveryCount: number | null;
+  localRepairRoundCount: number | null;
   updatedAt: string;
 }
 
@@ -341,6 +397,35 @@ async function runProcess(
         const finalCode = timedOut ? 124 : (code ?? 1);
         recordProgress(timedOut ? 'timed_out' : spawnFailed ? 'failed' : 'finished', finalCode);
         await progressWrites;
+        if (options.workerModel && options.progressFile) {
+          const codeRevision = await workspaceFingerprint();
+          await appendPublicWorkEvent(
+            resolve(dirname(options.progressFile), 'public-events.jsonl'),
+            {
+              eventId: `model-${(
+                options.heartbeatLabel ??
+                options.workerRole ??
+                options.workerModel
+              )
+                .replace(/[^\p{L}\p{N}_-]+/gu, '-')
+                .replace(/^-|-$/g, '')}-${startedAt}`,
+              sequence: 0,
+              runId: basename(dirname(options.progressFile)),
+              agentId: options.workerModel,
+              executionRound: activeActualLaunchCount ?? 1,
+              codeRevision,
+              timeCategory: 'model-compute',
+              kind: 'action',
+              payload: {
+                action: options.workerRole ?? '模型调用',
+                summary: options.heartbeatLabel ?? options.workerModel,
+                status: finalCode === 0 ? 'passed' : 'failed',
+              },
+              createdAt: new Date(startedAt).toISOString(),
+              durationMs: Date.now() - startedAt,
+            },
+          );
+        }
         resolvePromise({ code: finalCode, stdout, stderr });
       } catch (error) {
         reject(error);
@@ -392,6 +477,146 @@ async function changedFilesSince(before: Map<string, string>): Promise<string[]>
     .sort((left, right) => left.localeCompare(right));
 }
 
+function stringFingerprint(values: string[]): string {
+  return createHash('sha256').update(values.join('\0')).digest('hex');
+}
+
+async function taskPathFingerprint(paths: string[]): Promise<string> {
+  const normalized = [...new Set(paths.map((path) => path.replaceAll('\\', '/')))].sort();
+  if (normalized.length === 0) return stringFingerprint([]);
+  const tracked = await git(['-c', 'core.quotePath=false', 'ls-files', '-z', '--', ...normalized]);
+  const untracked = await git([
+    '-c',
+    'core.quotePath=false',
+    'ls-files',
+    '--others',
+    '--exclude-standard',
+    '-z',
+    '--',
+    ...normalized,
+  ]);
+  if (tracked.code !== 0 || untracked.code !== 0) return '';
+  const files = [
+    ...new Set(`${tracked.stdout}\0${untracked.stdout}`.split('\0').filter(Boolean)),
+  ].sort();
+  const hash = createHash('sha256');
+  for (const path of files) {
+    hash.update(path);
+    hash.update('\0');
+    hash.update(await readFile(resolve(root, path)).catch(() => Buffer.from('[deleted]')));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+async function filesForTaskPaths(paths: string[]): Promise<string[]> {
+  const normalized = [...new Set(paths.map((path) => path.replaceAll('\\', '/')))].sort();
+  if (normalized.length === 0) return [];
+  const [tracked, untracked] = await Promise.all([
+    git(['-c', 'core.quotePath=false', 'ls-files', '-z', '--', ...normalized]),
+    git([
+      '-c',
+      'core.quotePath=false',
+      'ls-files',
+      '--others',
+      '--exclude-standard',
+      '-z',
+      '--',
+      ...normalized,
+    ]),
+  ]);
+  if (tracked.code !== 0 || untracked.code !== 0) return [];
+  return [...new Set(`${tracked.stdout}\0${untracked.stdout}`.split('\0').filter(Boolean))].sort(
+    (left, right) => left.localeCompare(right),
+  );
+}
+
+const moduleDependencyExtensions = [
+  '.ts',
+  '.tsx',
+  '.mts',
+  '.cts',
+  '.d.ts',
+  '.d.mts',
+  '.d.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.json',
+];
+
+async function resolveRelativeModule(importer: string, specifier: string): Promise<string | null> {
+  const base = resolve(root, dirname(importer), specifier);
+  const candidates = [
+    base,
+    ...moduleDependencyExtensions.map((extension) => `${base}${extension}`),
+    ...moduleDependencyExtensions.map((extension) => resolve(base, `index${extension}`)),
+  ];
+  for (const candidate of candidates) {
+    const info = await stat(candidate).catch(() => null);
+    if (!info?.isFile()) continue;
+    const path = relative(root, candidate).replaceAll('\\', '/');
+    if (path && !path.startsWith('../') && !isAbsolute(path)) return path;
+  }
+  return null;
+}
+
+async function collectTaskInputPaths(
+  declaredPaths: string[],
+  changedFiles: string[],
+): Promise<string[]> {
+  const seedFiles = await filesForTaskPaths([...declaredPaths, ...changedFiles]);
+  const dependencies = new Set<string>();
+  await Promise.all(
+    seedFiles.map(async (path) => {
+      const source = await readFile(resolve(root, path), 'utf8').catch(() => '');
+      for (const specifier of relativeModuleSpecifiers(source)) {
+        const dependency = await resolveRelativeModule(path, specifier);
+        if (dependency) dependencies.add(dependency);
+      }
+    }),
+  );
+  return taskInputPaths(declaredPaths, [...dependencies]);
+}
+
+async function workspaceTreeFingerprint(): Promise<string> {
+  const paths = (await filesForTaskPaths(['.'])).filter(isValidationTreePath);
+  return await taskPathFingerprint(paths);
+}
+
+async function workspaceContentSnapshot(): Promise<Map<string, Buffer | null>> {
+  const [tracked, untracked] = await Promise.all([
+    git(['-c', 'core.quotePath=false', 'ls-files', '-z']),
+    git(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard', '-z']),
+  ]);
+  if (tracked.code !== 0 || untracked.code !== 0) {
+    throw new Error('无法建立增量审查边界');
+  }
+  const paths = [
+    ...new Set(`${tracked.stdout}\0${untracked.stdout}`.split('\0').filter(Boolean)),
+  ].sort();
+  const snapshot = new Map<string, Buffer | null>();
+  await Promise.all(
+    paths.map(async (path) => {
+      snapshot.set(path.replace(/\\/g, '/'), await readFile(resolve(root, path)).catch(() => null));
+    }),
+  );
+  return snapshot;
+}
+
+function buffersEqual(left: Buffer | null | undefined, right: Buffer | null | undefined): boolean {
+  if (left === undefined || right === undefined) return left === right;
+  if (left === null || right === null) return left === right;
+  return left.equals(right);
+}
+
+function reviewFileContent(content: Buffer | null | undefined, maxBytes: number): string {
+  if (content === undefined || content === null) return '[deleted or absent]';
+  if (content.length > maxBytes) return `[file too large: ${content.length} bytes]`;
+  return content.includes(0) ? '[binary content omitted]' : content.toString('utf8');
+}
+
 async function reportedTests(outputFile: string): Promise<string[]> {
   const source = await readFile(outputFile, 'utf8').catch(() => '');
   return [
@@ -439,9 +664,23 @@ function failureText(result: ProcessResult): string {
 
 async function waitForRetry(label: string) {
   const seconds = policy.recovery.retryBackoffSeconds;
+  const startedAt = Date.now();
   console.log(`[恢复] ${label}，${seconds} 秒后重试。`);
   if (seconds > 0)
     await new Promise((resolvePromise) => setTimeout(resolvePromise, seconds * 1000));
+  await appendPublicWorkEvent(resolve(runDirectory, 'public-events.jsonl'), {
+    eventId: `recovery-backoff-${startedAt}`,
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    executionRound: activeActualLaunchCount ?? 1,
+    codeRevision: await workspaceFingerprint(),
+    timeCategory: 'recovery',
+    kind: 'action',
+    payload: { action: 'retry-backoff', summary: label, status: 'completed' },
+    createdAt: new Date(startedAt).toISOString(),
+    durationMs: Date.now() - startedAt,
+  });
 }
 
 async function writeCheckpoint(
@@ -514,12 +753,25 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
     plan: validatePlan(value.plan, policy.limits.maxTasks),
     taskRuns: value.taskRuns as TaskRun[],
     review: value.review ?? null,
+    validationProgress: value.validationProgress ?? {
+      fastGate: null,
+      independentReview: null,
+    },
     plannerTokens: value.plannerTokens ?? null,
     reviewerTokens: value.reviewerTokens ?? null,
     repairerTokens: value.repairerTokens ?? null,
     noPush: value.noPush ?? false,
     takeover: value.takeover ?? false,
     error: value.error ?? '',
+    actualLaunchCount: Number.isSafeInteger(value.actualLaunchCount)
+      ? Number(value.actualLaunchCount)
+      : null,
+    abnormalRecoveryCount: Number.isSafeInteger(value.abnormalRecoveryCount)
+      ? Number(value.abnormalRecoveryCount)
+      : null,
+    localRepairRoundCount: Number.isSafeInteger(value.localRepairRoundCount)
+      ? Number(value.localRepairRoundCount)
+      : null,
     updatedAt: value.updatedAt ?? '',
   };
 }
@@ -622,7 +874,7 @@ ${task.verification.map((item) => `- ${item}`).join('\n') || '- 运行与风险�
 ${failureContext}
 ${takeoverInstruction}
 
-完成实现后运行聚焦测试和 npm run verify；不要运行 npm run verify:full，它由秘书统一执行。简洁报告修改、验证与剩余风险。`;
+完成实现后只运行改动直接相关的类型检查、定向测试或文档校验；不要运行统一 npm run verify 或 npm run verify:full，它们由 Feature PM 在汇总后的最终代码树负责。简洁报告修改、验证与剩余风险。`;
 }
 
 async function runTask(
@@ -665,16 +917,23 @@ async function runTask(
       );
       tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(failureText(result)));
       if (result.code === 0) {
+        const changedFiles = await changedFilesSince(taskStartFiles);
+        const inputPaths = await collectTaskInputPaths(task.paths, changedFiles);
         return {
           task,
           route,
           attempts: totalAttempts,
           result: 'passed',
           outputFile,
-          changedFiles: await changedFilesSince(taskStartFiles),
+          changedFiles,
           tests: await reportedTests(outputFile),
           tokensUsed,
           completedAt: new Date().toISOString(),
+          inputPaths,
+          inputFingerprint: await taskPathFingerprint(inputPaths),
+          outputFingerprint: await taskPathFingerprint(taskOutputPaths(task.paths, changedFiles)),
+          commandFingerprint: stringFingerprint(task.verification),
+          configFingerprint: await verificationConfigFingerprint(),
         };
       }
 
@@ -696,16 +955,23 @@ async function runTask(
 
     const next = escalateTier(tier);
     if (!next || escalations >= policy.limits.maxEscalationsPerTask) {
+      const changedFiles = await changedFilesSince(taskStartFiles);
+      const inputPaths = await collectTaskInputPaths(task.paths, changedFiles);
       return {
         task,
         route,
         attempts: totalAttempts,
         result: 'failed',
         outputFile: lastOutputFile,
-        changedFiles: await changedFilesSince(taskStartFiles),
+        changedFiles,
         tests: await reportedTests(lastOutputFile),
         tokensUsed,
         completedAt: new Date().toISOString(),
+        inputPaths,
+        inputFingerprint: await taskPathFingerprint(inputPaths),
+        outputFingerprint: await taskPathFingerprint(taskOutputPaths(task.paths, changedFiles)),
+        commandFingerprint: stringFingerprint(task.verification),
+        configFingerprint: await verificationConfigFingerprint(),
       };
     }
     failureContext = `上一条执行路由失败，请接管当前工作区并完成任务，不要简单重复。失败摘要：\n${routeFailure}`;
@@ -719,43 +985,179 @@ async function runTask(
 async function runDeliveryVerification(
   runDirectory: string,
   round: number,
-): Promise<ProcessResult> {
-  const [command, ...args] = policy.verification.delivery;
-  console.log(`\n[交付门禁] ${policy.verification.delivery.join(' ')}`);
+  scope: 'fast' | 'full' = 'full',
+  retryCommand: string[] = [],
+): Promise<VerificationRun> {
+  const invocation =
+    retryCommand.length > 0
+      ? retryCommand
+      : scope === 'fast'
+        ? ['npm', 'run', 'verify']
+        : policy.verification.delivery;
+  const [command, ...args] = invocation;
+  const isRetry = retryCommand.length > 0;
+  console.log(
+    `\n[${scope === 'fast' ? '快速' : '完整'}门禁${isRetry ? '定向复核' : ''}] ${invocation.join(' ')}`,
+  );
   const startedAt = Date.now();
   const result = await runProcess(command, args, {
-    logFile: resolve(runDirectory, `verify-${round}.log`),
+    logFile: resolve(runDirectory, `${scope}-verify-${round}.log`),
     stream: true,
-    heartbeatLabel: `交付门禁 / 第 ${round} 轮`,
+    heartbeatLabel: `${scope === 'fast' ? '快速' : '完整'}门禁 / 第 ${round} 轮`,
     progressFile: resolve(runDirectory, 'progress.json'),
     timeoutMs: minutes(policy.timeouts.verificationMinutes),
   });
+  const codeRevision = await workspaceFingerprint();
   await appendPublicWorkEvent(resolve(runDirectory, 'public-events.jsonl'), {
-    eventId: `delivery-verification-${round}`,
+    eventId: `${scope}-verification-r${round}-${codeRevision.slice(0, 12)}`,
     sequence: 0,
     runId: basename(runDirectory),
     agentId: 'feature-pm',
+    executionRound: activeActualLaunchCount ?? 1,
+    codeRevision,
+    timeCategory: 'command-execution',
     kind: 'test',
     payload: {
-      command: policy.verification.delivery.join(' '),
-      scope: 'delivery-gate',
+      command: invocation.join(' '),
+      scope:
+        scope === 'fast'
+          ? isRetry
+            ? 'feature-fast-gate-targeted-recheck'
+            : 'feature-fast-gate'
+          : 'feature-full-gate',
       exitCode: result.code,
       status: result.code === 0 ? 'passed' : 'failed',
       errorSummary: result.code === 0 ? '' : (result.stderr || result.stdout).slice(-2_000),
     },
     durationMs: Date.now() - startedAt,
   });
-  return result;
+  const output = `${result.stdout}\n${result.stderr}`;
+  return {
+    ...result,
+    invocation,
+    failedCommand: result.code === 0 ? [] : failedNpmCommandFromOutput(output, invocation),
+  };
+}
+
+interface FullGateEvidence {
+  schemaVersion: 1;
+  workspaceFingerprint: string;
+  configFingerprint: string;
+  command: string;
+  commandFingerprint: string;
+  executionRound: number;
+  log: string;
+  exitCode: 0;
+  createdAt: string;
+}
+
+async function verificationConfigFingerprint(): Promise<string> {
+  const hash = createHash('sha256');
+  for (const path of [
+    'package.json',
+    'package-lock.json',
+    'agents/policy.json',
+    'vite.config.ts',
+  ]) {
+    hash.update(path);
+    hash.update(await readFile(resolve(root, path)).catch(() => Buffer.from('[missing]')));
+  }
+  return hash.digest('hex');
+}
+
+async function validationStageFingerprint(): Promise<ValidationStageFingerprint> {
+  const [workspace, config] = await Promise.all([
+    workspaceTreeFingerprint(),
+    verificationConfigFingerprint(),
+  ]);
+  return { workspaceFingerprint: workspace, configFingerprint: config };
+}
+
+async function validationStageMatches(
+  evidence: ValidationStageFingerprint | null | undefined,
+): Promise<boolean> {
+  if (!evidence) return false;
+  const current = await validationStageFingerprint();
+  return (
+    evidence.workspaceFingerprint === current.workspaceFingerprint &&
+    evidence.configFingerprint === current.configFingerprint
+  );
+}
+
+async function configuredFastGateCommands(): Promise<string[][]> {
+  const packageJson = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')) as {
+    scripts?: Record<string, string>;
+  };
+  const commands = npmRunCommandsFromScript(packageJson.scripts?.verify ?? '');
+  if (commands.length === 0)
+    throw new Error('package.json 的 verify 未包含可续跑的 npm run 子命令');
+  return commands;
+}
+
+async function reusableFullGateEvidence(runDirectory: string): Promise<FullGateEvidence | null> {
+  const path = resolve(runDirectory, 'full-gate-evidence.json');
+  const value = await readFile(path, 'utf8')
+    .then((source) => JSON.parse(source) as Partial<FullGateEvidence>)
+    .catch(() => null);
+  if (!value || value.schemaVersion !== 1 || value.exitCode !== 0) return null;
+  const [workspace, config] = await Promise.all([
+    workspaceTreeFingerprint(),
+    verificationConfigFingerprint(),
+  ]);
+  return canReuseFullGateEvidence(value, workspace, config, policy.verification.delivery.join(' '))
+    ? (value as FullGateEvidence)
+    : null;
+}
+
+async function writeFullGateEvidence(
+  runDirectory: string,
+  round: number,
+): Promise<FullGateEvidence> {
+  const command = policy.verification.delivery.join(' ');
+  const evidence: FullGateEvidence = {
+    schemaVersion: 1,
+    workspaceFingerprint: await workspaceTreeFingerprint(),
+    configFingerprint: await verificationConfigFingerprint(),
+    command,
+    commandFingerprint: stringFingerprint([command]),
+    executionRound: activeActualLaunchCount ?? 1,
+    log: relative(root, resolve(runDirectory, `full-verify-${round}.log`)).replace(/\\/g, '/'),
+    exitCode: 0,
+    createdAt: new Date().toISOString(),
+  };
+  await writeFile(
+    resolve(runDirectory, 'full-gate-evidence.json'),
+    `${JSON.stringify(evidence, null, 2)}\n`,
+  );
+  return evidence;
 }
 
 async function writeReviewInput(
   baseline: string,
   runDirectory: string,
   round: number,
+  boundary: ReviewBoundary | null,
 ): Promise<string> {
+  const maxReviewBytes = 500_000;
+  const inputFile = resolve(runDirectory, `review-input-${round}.patch`);
+  if (boundary) {
+    const current = await workspaceContentSnapshot();
+    const paths = [...new Set([...boundary.files.keys(), ...current.keys()])]
+      .filter((path) => !buffersEqual(boundary.files.get(path), current.get(path)))
+      .sort();
+    const sections = paths.map(
+      (path) =>
+        `\n--- REPAIR DELTA: ${path} ---\nBEFORE REPAIR:\n${reviewFileContent(boundary.files.get(path), maxReviewBytes)}\n\nAFTER REPAIR:\n${reviewFileContent(current.get(path), maxReviewBytes)}`,
+    );
+    await writeFile(
+      inputFile,
+      `REVIEW MODE: incremental-repair\nREPAIR BOUNDARY: ${boundary.fingerprint}\nOPEN FINDINGS BEFORE REPAIR:\n${JSON.stringify(boundary.findings.findings, null, 2)}\nCHANGED PATHS: ${paths.join(', ') || '[none]'}\n${sections.join('\n')}\n`,
+      'utf8',
+    );
+    return inputFile;
+  }
   const diff = await git(['diff', '--no-ext-diff', baseline, '--']);
   if (diff.code !== 0) throw new Error('无法生成审查差异');
-  const maxReviewBytes = 500_000;
   let trackedChanges = diff.stdout;
   if (Buffer.byteLength(trackedChanges, 'utf8') > maxReviewBytes) {
     const summary = await git(['diff', '--stat', baseline, '--']);
@@ -788,7 +1190,6 @@ async function writeReviewInput(
     }
     untrackedSections.push(`\n--- UNTRACKED FILE: ${path} ---\n${content}`);
   }
-  const inputFile = resolve(runDirectory, `review-input-${round}.patch`);
   await writeFile(
     inputFile,
     `BASELINE: ${baseline}\n\n${trackedChanges}${untrackedSections.join('')}\n`,
@@ -805,13 +1206,14 @@ async function askReviewerAttempt(
   round: number,
   attempt: number,
   inputFile: string,
+  incremental: boolean,
 ): Promise<ReviewRun> {
   const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
   const outputFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.json`);
   const logFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.log`);
   const prompt = `你是道衍项目的独立审查 Agent。不要修改文件。
 
-父进程已经成功运行完整交付门禁，不要再次运行测试、构建或 Git 命令，也不要把当前沙盒不能启动子进程当作缺陷。先阅读 AGENTS.md，再只审查 ${inputFile} 中从基线 ${baseline} 开始的差异；仅在确认具体问题时读取差异涉及的文件或直接契约，不要扫描整个仓库、路线图或历史日志。
+${incremental ? '这是修复后的增量复审。只复核未关闭 finding、修复边界之后的改动和直接受影响契约；不要重新审查整版基线差异。' : '这是首次独立审查。'} 不要再次运行测试、构建或 Git 命令，也不要把当前沙盒不能启动子进程当作缺陷。先阅读 AGENTS.md，再只审查 ${inputFile} 中${incremental ? '记录的修复增量' : `从基线 ${baseline} 开始的差异`}；仅在确认具体问题时读取差异涉及的文件或直接契约，不要扫描整个仓库、路线图或历史日志。
 
 优先寻找行为缺陷、架构不变量破坏、缺失测试、文档与实现不一致、乱码和 UI 工作流回归。最多报告 5 个具体发现；没有交付阻断问题就通过，不用为了显得完整而继续探索。
 
@@ -854,8 +1256,9 @@ async function askReviewerWithRecovery(
   baseline: string,
   runDirectory: string,
   round: number,
+  boundary: ReviewBoundary | null = null,
 ): Promise<ReviewRun> {
-  const inputFile = await writeReviewInput(baseline, runDirectory, round);
+  const inputFile = await writeReviewInput(baseline, runDirectory, round, boundary);
   const routes = reviewRoutesForPlan(policy, plan);
   let attempts = 0;
   let tokensUsed: number | null = null;
@@ -873,6 +1276,7 @@ async function askReviewerWithRecovery(
           round,
           attempts,
           inputFile,
+          boundary !== null,
         );
         return {
           ...run,
@@ -1013,6 +1417,11 @@ async function writeReport(
     plan,
     tasks: taskRuns,
     review,
+    validation: {
+      profile: validationProfileForPlan(plan),
+      stages: validationStagesForPlan(plan),
+      executionRound: activeActualLaunchCount ?? 1,
+    },
     tokenUsage: {
       planner: plannerTokens,
       workers: taskRuns.map((run) => ({ id: run.task.id, tokens: run.tokensUsed })),
@@ -1022,6 +1431,10 @@ async function writeReport(
         knownTokens.length > 0 ? knownTokens.reduce((sum, tokens) => sum + tokens, 0) : null,
     },
     extra,
+  };
+  const publicContext = {
+    executionRound: activeActualLaunchCount ?? 1,
+    codeRevision: await workspaceFingerprint(),
   };
   await writeFile(
     resolve(runDirectory, 'report.json'),
@@ -1039,6 +1452,7 @@ async function writeReport(
     sequence: 0,
     runId: basename(runDirectory),
     agentId: 'feature-pm',
+    ...publicContext,
     kind: 'input',
     payload: { summary: plan.summary, source: 'approved-task-contract' },
     createdAt: report.finishedAt,
@@ -1048,6 +1462,7 @@ async function writeReport(
     sequence: 0,
     runId: basename(runDirectory),
     agentId: 'feature-pm',
+    ...publicContext,
     kind: 'plan',
     payload: { stage: 'feature-delivery', summary: plan.title, status: 'established' },
     createdAt: report.finishedAt,
@@ -1060,6 +1475,7 @@ async function writeReport(
     sequence: 0,
     runId: basename(runDirectory),
     agentId: 'feature-pm',
+    ...publicContext,
     kind: 'progress',
     payload: {
       stage: status,
@@ -1075,6 +1491,7 @@ async function writeReport(
       sequence: 0,
       runId: basename(runDirectory),
       agentId: taskRun.route.model,
+      ...publicContext,
       kind: 'action',
       payload: {
         action: taskRun.task.title,
@@ -1089,6 +1506,7 @@ async function writeReport(
         sequence: 0,
         runId: basename(runDirectory),
         agentId: taskRun.route.model,
+        ...publicContext,
         kind: 'file',
         payload: { path, action: 'changed' },
         createdAt: taskRun.completedAt,
@@ -1100,6 +1518,7 @@ async function writeReport(
         sequence: 0,
         runId: basename(runDirectory),
         agentId: taskRun.route.model,
+        ...publicContext,
         kind: 'test',
         payload: { command, scope: taskRun.task.id, status: 'reported', exitCode: null },
         createdAt: taskRun.completedAt,
@@ -1112,6 +1531,7 @@ async function writeReport(
       sequence: 0,
       runId: basename(runDirectory),
       agentId: 'feature-pm',
+      ...publicContext,
       kind: 'error',
       payload: { summary: extra, code: status, recoverable: status !== '失败' },
       createdAt: report.finishedAt,
@@ -1122,6 +1542,7 @@ async function writeReport(
     sequence: 0,
     runId: basename(runDirectory),
     agentId: 'feature-pm',
+    ...publicContext,
     kind: 'usage',
     payload: { source: 'dispatcher-report' },
     tokenUsage: { total: report.tokenUsage.knownTotal, source: 'dispatcher-report' },
@@ -1230,7 +1651,10 @@ async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string):
     const add = await git(['add', '-A'], true);
     if (add.code !== 0) throw new Error('git add 失败');
     const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
-    const commit = await git(['commit', '-m', message], true);
+    // The final tree already has matching fast/full gate evidence. Avoid the
+    // repository hook replaying npm run verify on the same tree; the message is
+    // normalized locally before this non-interactive commit.
+    const commit = await git(['commit', '--no-verify', '-m', message], true);
     if (commit.code !== 0) throw new Error('Git 提交失败');
     createdCommit = true;
   }
@@ -1241,7 +1665,13 @@ async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string):
   if (noPush || !policy.git.autoPush) {
     return `${createdCommit ? '已提交' : '已恢复到提交'} ${sha}，按参数未推送。`;
   }
-  let push = await git(['push', policy.git.remote, 'HEAD'], true);
+  const pushArgs = [
+    'push',
+    ...(validationStagesForPlan(plan).includes('full-gate') ? [] : ['--no-verify']),
+    policy.git.remote,
+    'HEAD',
+  ];
+  let push = await git(pushArgs, true);
   if (push.code !== 0 && policy.git.proxyFallback) {
     console.log(`[Git] 默认网络失败，临时使用 ${policy.git.proxyFallback} 重试，不修改全局配置。`);
     push = await git(
@@ -1250,9 +1680,7 @@ async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string):
         `http.proxy=${policy.git.proxyFallback}`,
         '-c',
         `https.proxy=${policy.git.proxyFallback}`,
-        'push',
-        policy.git.remote,
-        'HEAD',
+        ...pushArgs,
       ],
       true,
     );
@@ -1296,11 +1724,18 @@ let activeDirection = options.direction;
 let activeResolvedDirection = options.direction;
 let activeTaskRuns: TaskRun[] = [];
 let activeReview: ReviewResult | null = null;
+let activeValidationProgress: ValidationProgress = {
+  fastGate: null,
+  independentReview: null,
+};
 let activePlannerTokens: number | null = null;
 let activeReviewerTokens: number | null = null;
 let activeRepairerTokens: number | null = null;
 let activeNoPush = options.noPush;
 let activeTakeover = options.takeover;
+let activeActualLaunchCount: number | null = 1;
+let activeAbnormalRecoveryCount: number | null = 0;
+let activeLocalRepairRoundCount: number | null = 0;
 let currentPhase = '初始化';
 const currentProcessIdentity = getProcessIdentity(process.pid);
 
@@ -1325,12 +1760,47 @@ async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = '
     plan: activePlan,
     taskRuns: activeTaskRuns,
     review: activeReview,
+    validationProgress: activeValidationProgress,
     plannerTokens: activePlannerTokens,
     reviewerTokens: activeReviewerTokens,
     repairerTokens: activeRepairerTokens,
     noPush: activeNoPush,
     takeover: activeTakeover,
     error,
+    actualLaunchCount: activeActualLaunchCount,
+    abnormalRecoveryCount: activeAbnormalRecoveryCount,
+    localRepairRoundCount: activeLocalRepairRoundCount,
+  });
+}
+
+async function recordCheckpointInterval(checkpoint: RecoveryCheckpoint): Promise<void> {
+  const startedAt = Date.parse(checkpoint.updatedAt);
+  if (!Number.isFinite(startedAt)) return;
+  const externalWait = classifyAgentFailure(checkpoint.error, 1) === 'external-blocker';
+  const timeCategory = externalWait
+    ? 'waiting-quota'
+    : checkpoint.status === 'waiting-producer'
+      ? 'waiting-producer'
+      : checkpoint.status === 'recoverable'
+        ? 'recovery'
+        : null;
+  if (!timeCategory) return;
+  await appendPublicWorkEvent(resolve(runDirectory, 'public-events.jsonl'), {
+    eventId: `checkpoint-interval-${checkpoint.status}-${checkpoint.updatedAt}`,
+    sequence: 0,
+    runId: basename(runDirectory),
+    agentId: 'feature-pm',
+    executionRound: activeActualLaunchCount ?? 1,
+    codeRevision: await workspaceFingerprint(),
+    timeCategory,
+    kind: 'action',
+    payload: {
+      action: 'resume-checkpoint',
+      summary: checkpoint.phase,
+      status: 'resumed',
+    },
+    createdAt: checkpoint.updatedAt,
+    durationMs: Math.max(0, Date.now() - startedAt),
   });
 }
 
@@ -1356,6 +1826,15 @@ try {
   }
   if (options.resumeDirectory) {
     const checkpoint = await readCheckpoint(runDirectory);
+    const resumedCounters = recoveryCountersAfterResume(
+      checkpoint.status,
+      checkpoint.actualLaunchCount,
+      checkpoint.abnormalRecoveryCount,
+    );
+    activeActualLaunchCount = resumedCounters.actualLaunchCount;
+    activeAbnormalRecoveryCount = resumedCounters.abnormalRecoveryCount;
+    activeLocalRepairRoundCount = checkpoint.localRepairRoundCount;
+    await recordCheckpointInterval(checkpoint);
     if (checkpoint.status === 'delivered') throw new Error('该运行已经交付，无需恢复');
     const currentFingerprint = await workspaceFingerprint();
     const [currentHead, currentStatus, currentParent, currentMessage, baselineAncestor] =
@@ -1429,8 +1908,38 @@ try {
     const resetCompletedWork =
       (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
       options.takeover;
-    activeTaskRuns = resetCompletedWork ? [] : checkpoint.taskRuns;
+    if (options.takeover) {
+      activeTaskRuns = [];
+    } else if (resetCompletedWork && checkpoint.taskRuns.length > 0) {
+      const currentConfigFingerprint = await verificationConfigFingerprint();
+      const reuseEvidence = await Promise.all(
+        checkpoint.taskRuns.map(async (run) => ({
+          taskId: run.task.id,
+          passed: run.result === 'passed',
+          inputFingerprint: run.inputFingerprint ?? run.outputFingerprint ?? '',
+          currentInputFingerprint: await taskPathFingerprint(run.inputPaths ?? run.task.paths),
+          outputFingerprint: run.outputFingerprint ?? '',
+          currentOutputFingerprint: await taskPathFingerprint(
+            taskOutputPaths(run.task.paths, run.changedFiles),
+          ),
+          commandFingerprint: run.commandFingerprint ?? '',
+          currentCommandFingerprint: stringFingerprint(run.task.verification),
+          configFingerprint: run.configFingerprint ?? '',
+          currentConfigFingerprint,
+        })),
+      );
+      const reusableIds = new Set(selectReusableTaskIds(activePlan.tasks, reuseEvidence));
+      activeTaskRuns = checkpoint.taskRuns.filter((run) => reusableIds.has(run.task.id));
+      console.log(
+        `[选择性恢复] 保留 ${activeTaskRuns.length}/${checkpoint.taskRuns.length} 个输入、输出与证据仍有效的已完成任务。`,
+      );
+    } else {
+      activeTaskRuns = checkpoint.taskRuns;
+    }
     activeReview = resetCompletedWork ? null : checkpoint.review;
+    activeValidationProgress = resetCompletedWork
+      ? { fastGate: null, independentReview: null }
+      : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
     activePlannerTokens = checkpoint.plannerTokens;
     activeReviewerTokens = checkpoint.reviewerTokens;
     activeRepairerTokens = checkpoint.repairerTokens;
@@ -1549,82 +2058,249 @@ try {
     }
   }
 
-  activeReview = null;
-  for (let round = 1; round <= policy.limits.maxReviewRounds; round += 1) {
-    currentPhase = `交付门禁第 ${round} 轮`;
+  const configuredValidationStages = validationStagesForPlan(plan);
+  const reusableFullGateAtStart = configuredValidationStages.includes('full-gate')
+    ? await reusableFullGateEvidence(runDirectory)
+    : null;
+  const reusableFastGate =
+    activeValidationProgress.fastGate?.passed === true &&
+    (await validationStageMatches(activeValidationProgress.fastGate));
+  const reusableIndependentReview =
+    activeValidationProgress.independentReview?.passed === true &&
+    activeValidationProgress.independentReview.result.verdict === 'pass' &&
+    (await validationStageMatches(activeValidationProgress.independentReview));
+  if (reusableIndependentReview) {
+    activeReview = activeValidationProgress.independentReview!.result;
+  } else if (!reusableFullGateAtStart) {
+    activeReview = null;
+  }
+  const validationStages = new Set(
+    pendingValidationStages(configuredValidationStages, {
+      fullGate: Boolean(reusableFullGateAtStart),
+      fastGate: reusableFastGate,
+      independentReview: reusableIndependentReview,
+    }),
+  );
+  const validationProfile = validationProfileForPlan(plan);
+  console.log(
+    `[验证策略] ${validationProfile}: ${[...validationStages].join(', ') || (reusableFullGateAtStart ? '复用匹配最终树的完整门禁证据' : 'Task 直接检查')}`,
+  );
+  let localRepairRound = 0;
+  let reviewRound = 0;
+  let repeatedNoProgress = 0;
+  let previousFailureSignature = '';
+  const repairAndCheckProgress = async (
+    finding: ReviewResult,
+    label: string,
+  ): Promise<ReviewBoundary> => {
+    localRepairRound += 1;
+    activeLocalRepairRoundCount =
+      activeLocalRepairRoundCount === null ? null : activeLocalRepairRoundCount + 1;
+    const before = await workspaceFingerprint();
+    const beforeFiles = await workspaceContentSnapshot();
+    currentPhase = `${label} / 局部修复第 ${localRepairRound} 轮`;
+    activeRepairerTokens = addTokenUsage(
+      activeRepairerTokens,
+      await runReviewFixWithRecovery(plan, finding, runDirectory, localRepairRound),
+    );
+    const after = await workspaceFingerprint();
+    const signature = JSON.stringify(
+      finding.findings.map((entry) => [entry.title, entry.detail, entry.paths]).sort(),
+    );
+    repeatedNoProgress =
+      before === after && signature === previousFailureSignature ? repeatedNoProgress + 1 : 0;
+    previousFailureSignature = signature;
+    activeValidationProgress.independentReview = null;
+    const validationFingerprint = await validationStageFingerprint();
+    if (activeValidationProgress.fastGate) {
+      activeValidationProgress.fastGate = {
+        ...activeValidationProgress.fastGate,
+        ...validationFingerprint,
+      };
+    }
     await persistCheckpoint('active');
-    const verification = await runDeliveryVerification(runDirectory, round);
-    if (verification.code !== 0) {
-      const syntheticReview: ReviewResult = {
+    if (repeatedNoProgress >= 1) {
+      throw new Error(`局部修复对同一未关闭 finding 无进展：${finding.summary}`);
+    }
+    return { fingerprint: before, files: beforeFiles, findings: finding };
+  };
+
+  let fastGateRound = activeValidationProgress.fastGate?.attempts ?? 0;
+  if (validationStages.has('fast-gate')) {
+    const commandSequence = await configuredFastGateCommands();
+    let pendingCommands =
+      activeValidationProgress.fastGate &&
+      !activeValidationProgress.fastGate.passed &&
+      (await validationStageMatches(activeValidationProgress.fastGate))
+        ? activeValidationProgress.fastGate.pendingCommands
+        : [];
+    let completedCommands =
+      pendingCommands.length > 0 ? activeValidationProgress.fastGate!.completedCommands : [];
+    let failedCommand: string[] = pendingCommands[0] ?? [];
+    while (true) {
+      fastGateRound += 1;
+      currentPhase = `Feature 快速门禁${failedCommand.length > 0 ? '定向复核' : ''}第 ${fastGateRound} 轮`;
+      await persistCheckpoint('active');
+      const verification = await runDeliveryVerification(
+        runDirectory,
+        fastGateRound,
+        'fast',
+        failedCommand,
+      );
+      if (verification.code === 0) {
+        if (failedCommand.length === 0) {
+          completedCommands = commandSequence;
+          pendingCommands = [];
+        } else {
+          completedCommands = [...completedCommands, failedCommand];
+          pendingCommands = pendingCommands.slice(1);
+        }
+        const validationFingerprint = await validationStageFingerprint();
+        activeValidationProgress.fastGate = {
+          ...validationFingerprint,
+          completedCommands,
+          pendingCommands,
+          passed: pendingCommands.length === 0,
+          attempts: fastGateRound,
+        };
+        await persistCheckpoint('active');
+        if (pendingCommands.length === 0) break;
+        failedCommand = pendingCommands[0];
+        continue;
+      }
+      failedCommand = verification.failedCommand;
+      if (pendingCommands.length === 0) {
+        const progress = fastGateCommandProgress(commandSequence, failedCommand);
+        completedCommands = progress.completedCommands;
+        pendingCommands = progress.pendingCommands;
+      }
+      const validationFingerprint = await validationStageFingerprint();
+      activeValidationProgress.fastGate = {
+        ...validationFingerprint,
+        completedCommands,
+        pendingCommands,
+        passed: false,
+        attempts: fastGateRound,
+      };
+      await persistCheckpoint('active');
+      await repairAndCheckProgress(
+        {
+          verdict: 'fix',
+          summary: `Feature 快速门禁的失败命令 ${failedCommand.join(' ')} 留在原 PM 运行内修复。`,
+          findings: [
+            {
+              severity: 'high',
+              title: `修复失败命令：${failedCommand.join(' ')}`,
+              detail: (verification.stderr || verification.stdout).slice(-5000),
+              paths: [],
+            },
+          ],
+        },
+        '门禁失败',
+      );
+      failedCommand = pendingCommands[0] ?? failedCommand;
+    }
+  }
+
+  if (validationStages.has('independent-review')) {
+    let reviewBoundary: ReviewBoundary | null = null;
+    while (true) {
+      reviewRound += 1;
+      currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;
+      await persistCheckpoint('active');
+      const reviewRun = await askReviewerWithRecovery(
+        plan,
+        activeBaseline,
+        runDirectory,
+        reviewRound,
+        reviewBoundary,
+      );
+      activeReview = reviewRun.result;
+      activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+      console.log(
+        `[${reviewBoundary ? '增量复审' : '独立审查'}] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
+      );
+      await persistCheckpoint('active');
+      if (activeReview.verdict === 'pass') {
+        activeValidationProgress.independentReview = {
+          ...(await validationStageFingerprint()),
+          result: activeReview,
+          passed: true,
+          attempts: reviewRound,
+        };
+        await persistCheckpoint('active');
+        break;
+      }
+      reviewBoundary = await repairAndCheckProgress(activeReview, '审查 finding');
+    }
+  }
+
+  let fullGateRound = 0;
+  while (validationStages.has('full-gate') && !(await reusableFullGateEvidence(runDirectory))) {
+    fullGateRound += 1;
+    currentPhase = `Feature 完整门禁第 ${fullGateRound} 轮`;
+    await persistCheckpoint('active');
+    const verification = await runDeliveryVerification(runDirectory, fullGateRound, 'full');
+    if (verification.code === 0) {
+      await writeFullGateEvidence(runDirectory, fullGateRound);
+      break;
+    }
+    let reviewBoundary = await repairAndCheckProgress(
+      {
         verdict: 'fix',
-        summary: '交付门禁失败',
+        summary: `最终完整门禁中的 ${verification.failedCommand.join(' ')} 失败，保留已通过的 Task/快速门禁事实并修复失败增量。`,
         findings: [
           {
             severity: 'high',
-            title: '修复交付门禁',
+            title: `修复失败命令：${verification.failedCommand.join(' ')}`,
             detail: (verification.stderr || verification.stdout).slice(-5000),
             paths: [],
           },
         ],
-      };
-      if (round === policy.limits.maxReviewRounds) {
-        await writeReport(
-          runDirectory,
-          '验证失败',
-          plan,
-          activeTaskRuns,
-          syntheticReview,
-          '',
-          activePlannerTokens,
-          activeReviewerTokens,
-          activeRepairerTokens,
-        );
-        throw new Error(`交付门禁失败，详见 ${resolve(runDirectory, `verify-${round}.log`)}`);
-      }
-      currentPhase = `门禁修复第 ${round} 轮`;
-      activeRepairerTokens = addTokenUsage(
-        activeRepairerTokens,
-        await runReviewFixWithRecovery(plan, syntheticReview, runDirectory, round),
-      );
-      await persistCheckpoint('active');
-      continue;
-    }
-
-    currentPhase = `独立审查第 ${round} 轮`;
-    await persistCheckpoint('active');
-    const reviewRun = await askReviewerWithRecovery(plan, activeBaseline, runDirectory, round);
-    activeReview = reviewRun.result;
-    activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
-    console.log(
-      `[独立审查] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
+      },
+      '完整门禁失败',
     );
-    await persistCheckpoint('active');
-    if (activeReview.verdict === 'pass') break;
-    if (round === policy.limits.maxReviewRounds) {
-      await writeReport(
-        runDirectory,
-        '审查未通过',
+    // 修复可能改变实现；在再次运行完整门禁前只重审修复增量，不重放已通过快速门禁。
+    do {
+      reviewRound += 1;
+      const reviewRun = await askReviewerWithRecovery(
         plan,
-        activeTaskRuns,
-        activeReview,
-        '',
-        activePlannerTokens,
-        activeReviewerTokens,
-        activeRepairerTokens,
+        activeBaseline,
+        runDirectory,
+        reviewRound,
+        reviewBoundary,
       );
-      throw new Error('独立审查在自动修复后仍未通过');
-    }
-    currentPhase = `审查修复第 ${round} 轮`;
-    activeRepairerTokens = addTokenUsage(
-      activeRepairerTokens,
-      await runReviewFixWithRecovery(plan, activeReview, runDirectory, round),
-    );
-    await persistCheckpoint('active');
+      activeReview = reviewRun.result;
+      activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+      if (activeReview.verdict === 'fix') {
+        reviewBoundary = await repairAndCheckProgress(activeReview, '增量审查 finding');
+      } else {
+        activeValidationProgress.independentReview = {
+          ...(await validationStageFingerprint()),
+          result: activeReview,
+          passed: true,
+          attempts: reviewRound,
+        };
+        await persistCheckpoint('active');
+      }
+    } while (activeReview.verdict === 'fix');
   }
 
-  if (!activeReview || activeReview.verdict !== 'pass') throw new Error('交付审查没有通过');
+  if (
+    configuredValidationStages.includes('independent-review') &&
+    !reusableFullGateAtStart &&
+    (!activeReview || activeReview.verdict !== 'pass')
+  ) {
+    throw new Error('交付审查没有通过');
+  }
   currentPhase = 'Git 交付';
   await persistCheckpoint('active');
+  if (
+    configuredValidationStages.includes('full-gate') &&
+    !(await reusableFullGateEvidence(runDirectory))
+  ) {
+    throw new Error('pre-push 前完整门禁证据与当前代码树或配置指纹不匹配');
+  }
   const gitResult = policy.git.autoCommit
     ? await commitAndPush(plan, activeNoPush, activeBaseline)
     : '策略已关闭自动提交。';

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# 推送前完整门禁：与 CI 使用同一条验证链路。
+# 推送前复用匹配最终代码树和配置的完整门禁；无证据时才执行。
 set -e
 
-echo "▶ pre-push: npm run verify:full"
-npm run verify:full
+echo "▶ pre-push: reuse matching full gate or run npm run verify:full"
+node scripts/pre-push-verify.mjs

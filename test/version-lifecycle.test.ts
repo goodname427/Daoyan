@@ -8,12 +8,17 @@ import {
   advanceVersion,
   applyVersionTodoDecision,
   completeVersionTodo,
+  createMigrationBackup,
   createFormalVersion,
   currentVersionStagePolicy,
   effectiveVersionNodes,
   decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
+  downgradeFormalVersionPreservingFacts,
+  invalidateValidationEvidence,
+  recordValidationEvidence,
+  reusableValidationEvidence,
   recordFeatureVerification,
   recordQaRun,
   recordRiskAssessment,
@@ -27,10 +32,217 @@ import {
   versionHealth,
   versionProgress,
   writeFormalVersion,
+  verifyMigrationBackup,
   type FormalVersion,
 } from '../scripts/version-lifecycle';
 
 describe('formal version lifecycle', () => {
+  it('backs up isolated migration bytes atomically and preserves extension facts for downgrade', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-migration-drill-'));
+    const source = resolve(directory, 'source');
+    const backup = resolve(directory, 'backup');
+    try {
+      await mkdir(source, { recursive: true });
+      await writeFile(resolve(source, 'current.json'), '{"legacy":true}\n', 'utf8');
+      const manifest = await createMigrationBackup(
+        source,
+        backup,
+        ['current.json', 'missing.json'],
+        '2026-09-21T00:00:00.000Z',
+      );
+      expect(manifest.entries).toEqual([
+        expect.objectContaining({ path: 'current.json', existed: true }),
+        { path: 'missing.json', existed: false, sha256: '' },
+      ]);
+      expect(await verifyMigrationBackup(manifest)).toBe(true);
+
+      const version = createFormalVersion({
+        id: 'downgrade',
+        title: '保留增量降级',
+        direction: '迁移演练',
+        documentRoot: 'docs/versions/downgrade',
+      });
+      recordScopeRevision(version, {
+        direction: '迁移后新增事实',
+        sourceRequestId: 'after-migration',
+        disposition: 'merged',
+        reason: '验证降级不丢事实',
+      });
+      const projection = downgradeFormalVersionPreservingFacts(version);
+      expect(projection.legacy).not.toHaveProperty('orchestration');
+      expect(projection.preservedExtension.scopeRevisions.at(-1)?.direction).toBe('迁移后新增事实');
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+  it('reuses scoped evidence across unrelated changes and invalidates affected downstream facts', () => {
+    const version = createFormalVersion({
+      id: 'evidence-contract',
+      title: '证据合同',
+      direction: '验证增量证据',
+      documentRoot: 'docs/versions/evidence-contract',
+    });
+    const task = recordValidationEvidence(version, {
+      id: 'task-a',
+      scope: 'task',
+      ownerId: 'task-a',
+      status: 'passed',
+      gitTree: 'tree-a',
+      codeRevision: 'rev-a',
+      commandFingerprint: 'command-a',
+      configFingerprint: 'config-a',
+      affectedPaths: ['scripts/version-lifecycle.ts'],
+      inputEvidenceIds: [],
+      outputFingerprint: 'output-a',
+      executionRound: 1,
+      commands: [{ command: 'npm test -- lifecycle', exitCode: 0 }],
+      evidence: ['task-a.log'],
+    });
+    recordValidationEvidence(version, {
+      id: 'feature-a',
+      scope: 'feature',
+      ownerId: 'feature-a',
+      status: 'passed',
+      gitTree: 'tree-a',
+      codeRevision: 'rev-a',
+      commandFingerprint: 'command-feature',
+      configFingerprint: 'config-a',
+      affectedPaths: ['scripts/'],
+      inputEvidenceIds: [task.id],
+      outputFingerprint: 'output-feature',
+      executionRound: 1,
+      commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+      evidence: ['feature.log'],
+    });
+
+    expect(
+      reusableValidationEvidence(version, {
+        scope: 'task',
+        ownerId: 'task-a',
+        gitTree: 'tree-a',
+        codeRevision: 'rev-a',
+        commandFingerprint: 'command-a',
+        configFingerprint: 'config-a',
+        changedPaths: ['docs/status.md'],
+      })?.id,
+    ).toBe('task-a');
+    expect(
+      invalidateValidationEvidence(version, {
+        changedPaths: ['scripts/version-lifecycle.ts'],
+        now: '2026-09-21T12:00:00.000Z',
+      }),
+    ).toEqual(['task-a', 'feature-a']);
+    expect(
+      reusableValidationEvidence(version, {
+        scope: 'feature',
+        ownerId: 'feature-a',
+        gitTree: 'tree-a',
+        codeRevision: 'rev-a',
+        commandFingerprint: 'command-feature',
+        configFingerprint: 'config-a',
+      }),
+    ).toBeNull();
+  });
+
+  it('lets Version QA reuse a matching Feature full gate without rerunning it', () => {
+    const version = createFormalVersion({
+      id: 'version-qa-reuse',
+      title: 'QA 复用',
+      direction: '复用 Feature 门禁',
+      documentRoot: 'docs/versions/version-qa-reuse',
+    });
+    const gate = recordValidationEvidence(version, {
+      id: 'feature-full',
+      scope: 'feature',
+      ownerId: 'feature',
+      status: 'passed',
+      gitTree: 'tree-a',
+      codeRevision: 'rev-a',
+      commandFingerprint: 'full-command',
+      configFingerprint: 'config-a',
+      affectedPaths: ['scripts/'],
+      inputEvidenceIds: [],
+      outputFingerprint: 'output-a',
+      executionRound: 1,
+      commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+      evidence: ['full-gate.json'],
+    });
+    expect(() =>
+      recordQaRun(version, {
+        agentId: 'version-qa',
+        independent: true,
+        codeRevision: 'rev-a',
+        suites: ['integration', 'regression'],
+        status: 'passed',
+        commands: [
+          { command: 'npm run test:e2e', exitCode: 0 },
+          { command: 'npm run build', exitCode: 0 },
+        ],
+        evidence: ['qa.json'],
+        reusedFeatureEvidenceId: gate.id,
+        gitTree: 'tree-a',
+        commandFingerprint: 'full-command',
+        configFingerprint: 'config-a',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      recordQaRun(version, {
+        agentId: 'version-qa-2',
+        independent: true,
+        codeRevision: 'rev-a',
+        suites: ['regression'],
+        status: 'passed',
+        commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+        evidence: ['qa-2.json'],
+        reusedFeatureEvidenceId: gate.id,
+        gitTree: 'tree-a',
+        commandFingerprint: 'full-command',
+        configFingerprint: 'config-a',
+      }),
+    ).toThrow('不得重复');
+
+    const targeted = recordValidationEvidence(version, {
+      id: 'feature-targeted',
+      scope: 'feature',
+      ownerId: 'feature',
+      status: 'passed',
+      gitTree: 'tree-a',
+      codeRevision: 'rev-a',
+      commandFingerprint: 'targeted-command',
+      configFingerprint: 'config-a',
+      affectedPaths: ['scripts/'],
+      inputEvidenceIds: [],
+      outputFingerprint: 'output-targeted',
+      executionRound: 1,
+      commands: [{ command: 'npm test -- test/version-lifecycle.test.ts', exitCode: 0 }],
+      evidence: ['targeted.log'],
+    });
+    expect(() =>
+      recordQaRun(version, {
+        agentId: 'version-qa-targeted',
+        independent: true,
+        codeRevision: 'rev-a',
+        suites: ['regression'],
+        status: 'passed',
+        commands: [{ command: 'npm run build', exitCode: 0 }],
+        evidence: ['qa-targeted.json'],
+        reusedFeatureEvidenceId: targeted.id,
+        gitTree: 'tree-a',
+        commandFingerprint: 'targeted-command',
+        configFingerprint: 'config-a',
+      }),
+    ).toThrow('Feature verify:full');
+    expect(
+      reusableValidationEvidence(version, {
+        scope: 'feature',
+        ownerId: 'feature',
+        gitTree: 'tree-b',
+        codeRevision: 'rev-a',
+        commandFingerprint: 'full-command',
+        configFingerprint: 'config-a',
+      }),
+    ).toBeNull();
+  });
   it('advances every canonical stage through approval and QA gates to complete archival', () => {
     const stages = [
       'direction',

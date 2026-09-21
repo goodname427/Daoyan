@@ -23,5 +23,5 @@ for (const name of readdirSync(resolve(root, '.githooks'))) {
 }
 console.log('✔ git hooks 已启用：.githooks/');
 console.log('  pre-commit  → npm run verify');
-console.log('  pre-push    → npm run verify:full');
+console.log('  pre-push    → 复用匹配代码树/配置的完整门禁，否则 npm run verify:full');
 console.log('  commit-msg  → 校验 Conventional Commits 格式');

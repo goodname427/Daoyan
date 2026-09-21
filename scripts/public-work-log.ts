@@ -16,6 +16,15 @@ export const PUBLIC_WORK_EVENT_KINDS = [
 ] as const;
 
 export type PublicWorkEventKind = (typeof PUBLIC_WORK_EVENT_KINDS)[number];
+export const PUBLIC_TIME_CATEGORIES = [
+  'model-compute',
+  'command-execution',
+  'waiting-producer',
+  'waiting-quota',
+  'recovery',
+  'idle',
+] as const;
+export type PublicTimeCategory = (typeof PUBLIC_TIME_CATEGORIES)[number];
 
 export interface PublicTokenUsage {
   input: number | null;
@@ -33,6 +42,9 @@ export interface PublicWorkEvent {
   itemId: string;
   runId: string;
   agentId: string;
+  executionRound: number;
+  codeRevision: string;
+  timeCategory: PublicTimeCategory | null;
   kind: PublicWorkEventKind;
   payload: Record<string, string | number | boolean | string[] | null>;
   createdAt: string;
@@ -86,6 +98,17 @@ function publicValue(value: unknown): string | number | boolean | string[] | nul
   return undefined;
 }
 
+function scopedEventId(
+  eventId: string | undefined,
+  runId: string | undefined,
+  executionRound: number,
+  codeRevision: string,
+): string {
+  const base = cleanText(eventId ?? `${runId ?? 'run'}:${randomUUID()}`);
+  if (/:r\d+:[^:]+$/.test(base)) return base;
+  return `${base}:r${executionRound}:${cleanText(codeRevision)}`;
+}
+
 export function projectPublicWorkEvent(input: {
   eventId?: string;
   sequence: number;
@@ -94,6 +117,9 @@ export function projectPublicWorkEvent(input: {
   itemId?: string;
   runId?: string;
   agentId?: string;
+  executionRound: number;
+  codeRevision: string;
+  timeCategory?: PublicTimeCategory | null;
   kind: PublicWorkEventKind;
   payload: Record<string, unknown>;
   createdAt?: string;
@@ -101,6 +127,12 @@ export function projectPublicWorkEvent(input: {
   tokenUsage?: Partial<PublicTokenUsage>;
 }): PublicWorkEvent {
   if (!PUBLIC_WORK_EVENT_KINDS.includes(input.kind)) throw new Error('公开日志事件类型无效');
+  if (!Number.isSafeInteger(input.executionRound) || input.executionRound <= 0) {
+    throw new Error('公开日志必须包含真实执行轮次');
+  }
+  if (!input.codeRevision.trim() || input.codeRevision === 'unknown') {
+    throw new Error('公开日志必须包含真实代码修订');
+  }
   for (const field of Object.keys(input.payload)) {
     if (PRIVATE_FIELDS.has(field)) throw new Error(`公开日志禁止接收私有字段：${field}`);
   }
@@ -118,13 +150,19 @@ export function projectPublicWorkEvent(input: {
   };
   return {
     schemaVersion: 1,
-    eventId: input.eventId ?? randomUUID(),
+    eventId: scopedEventId(input.eventId, input.runId, input.executionRound, input.codeRevision),
     sequence: input.sequence,
     requestId: input.requestId ?? '',
     versionId: input.versionId ?? '',
     itemId: input.itemId ?? '',
     runId: input.runId ?? '',
     agentId: input.agentId ?? '',
+    executionRound: input.executionRound,
+    codeRevision: cleanText(input.codeRevision),
+    timeCategory:
+      input.timeCategory && PUBLIC_TIME_CATEGORIES.includes(input.timeCategory)
+        ? input.timeCategory
+        : null,
     kind: input.kind,
     payload,
     createdAt: input.createdAt ?? new Date().toISOString(),
@@ -143,7 +181,12 @@ export async function appendPublicWorkEvent(
     .catch(() => undefined)
     .then(async () => {
       const existing = await readPublicWorkEvents(path);
-      const eventId = input.eventId ?? randomUUID();
+      const eventId = scopedEventId(
+        input.eventId,
+        input.runId,
+        input.executionRound,
+        input.codeRevision,
+      );
       const duplicate = existing.find((event) => event.eventId === eventId);
       if (duplicate) {
         result = duplicate;
@@ -197,4 +240,17 @@ export function totalKnownTokenUsage(events: PublicWorkEvent[]): number | null {
     byRun.set(key, Math.max(byRun.get(key) ?? 0, event.tokenUsage.total));
   }
   return byRun.size > 0 ? [...byRun.values()].reduce((sum, value) => sum + value, 0) : null;
+}
+
+export function summarizePublicTiming(
+  events: PublicWorkEvent[],
+): Record<PublicTimeCategory, number | null> {
+  const result = Object.fromEntries(
+    PUBLIC_TIME_CATEGORIES.map((category) => [category, null]),
+  ) as Record<PublicTimeCategory, number | null>;
+  for (const event of events) {
+    if (!event.timeCategory || event.durationMs === null) continue;
+    result[event.timeCategory] = (result[event.timeCategory] ?? 0) + event.durationMs;
+  }
+  return result;
 }

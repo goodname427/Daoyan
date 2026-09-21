@@ -1,0 +1,194 @@
+{
+  "workItems": [
+    {
+      "id": "evidence-contract",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-four-finding-fixes/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "ValidationEvidence records Task/Feature/Version scope, Git tree, code revision, paths, commands, config, inputs, outputs and execution round.",
+        "scripts/secretary-notice-guard.ts registers each Task from the execution Agent's actual command/exit-code report, never from planned acceptanceCommands; Feature and Version commands stay in their own scopes.",
+        "test/version-lifecycle.test.ts: unrelated paths preserve evidence; affected evidence and downstream dependencies invalidate.",
+        "parseDevelopmentResult topologically orders validated work items before stage ingestion, so a downstream entry listed first still records the current upstream Task evidence ID and participates in transitive invalidation."
+      ]
+    },
+    {
+      "id": "task-profile",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-four-finding-fixes/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "scripts/agent-routing.ts derives the effective plan Profile; scripts/agent-dispatcher.ts consumes it so light runs only Task checks, task/feature runs Feature gates, and version reuses Feature gates while retaining report review.",
+        "test/agent-routing.test.ts verifies the actual dispatcher stage selector for light, task and formal QA plans, and confirms execution Agents remain task-scoped."
+      ]
+    },
+    {
+      "id": "selective-recovery",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-three-finding-fixes/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-latest-audit-fixes/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "Feature recovery persists declared task paths plus statically resolved repository-local read-only module dependencies as inputPaths, fingerprints actual changedFiles separately as outputs, and retains only tasks whose inputs, outputs, commands, config and upstream dependencies remain valid.",
+        "notice guard exposes bootstrapping grace and passes the actual exited PM/dispatcher/worker PID and identity into post-exit reconciliation; a reread snapshot whose current PM remains alive stays tracking instead of entering retry-wait.",
+        "test/agent-routing.test.ts keeps the path-external read-only dependency out of changedFiles, changes only its input fingerprint, and proves the Task plus downstream dependency are invalidated; test/secretary-notice-guard.test.ts covers startup grace, delayed terminal snapshots, and wrapper/worker exit while the snapshot PM remains alive.",
+        "Recovery checkpoints persist fast-gate command progress and independent-review fingerprints; matching final-tree full-gate evidence removes all upstream validation stages instead of replaying them."
+      ]
+    },
+    {
+      "id": "public-timing",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "Public event IDs include execution round and code revision; timing is split into model, command, producer wait, quota wait, recovery and idle categories.",
+        "Public event construction rejects missing/unknown revision context; dispatcher model calls and secretary wait, quota, recovery and idle intervals write measured durations with the actual run attempt.",
+        "Notice guard public events use the Git revision when repository metadata exists and a deterministic source-tree revision in isolated fixtures or deployments; formal stage delivery remains gated by a real Git revision.",
+        "The public revision failure path emits intact Chinese text when neither Git nor source files can identify a revision, with a direct regression assertion.",
+        "Dashboard Agent projection exposes timing totals and actual launch, abnormal recovery and local repair counters; resuming either an active crash snapshot or a recoverable snapshot increments abnormal recovery, while unknown legacy values remain null.",
+        "test/public-work-log.test.ts covers scoped IDs, retry/revision non-collision and six-category aggregation; test/secretary-notice-guard.test.ts covers deterministic source revision fallback and source-change invalidation."
+      ]
+    },
+    {
+      "id": "secretary-backlog-reconciliation",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-three-finding-fixes/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-latest-audit-fixes/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "Compatible secretary normalization binds the two one-time repairs to stable production item IDs, then atomically persists mobile Sites as superseded by DingTalk and desktop workbench as delivered with commit fddcdcb.",
+        "Schedule facts and public counts exclude closed candidates and deduplicate stable relations; pending corrections carry persistent correlation IDs.",
+        "Merged successors are a terminal secretary status and close their stable source relation; each successful correction publish atomically saves correctionSentAt before the next notification begins.",
+        "projectFactsFromItems resolves secretary:<id> relation roots before applying activity priority, so a normal source candidate without a self-referential matchedFact is deduplicated with its active/tracking successor.",
+        "test/secretary-state.test.ts and test/secretary-notice-guard.test.ts cover supersession, delivery/merge reverse closure, source-without-self-reference deduplication, a second-notification failure followed by restart from only the unsent remainder, zero pending count, and future same-theme candidates that must remain open.",
+        "Unlinked schedule items now use secretary:<own-id> as their stable key, so identical or prefix-colliding text remains independently countable unless an explicit secretary relation joins it."
+      ]
+    },
+    {
+      "id": "feature-quality-loop",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-latest-audit-fixes/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "Feature PM runs the aggregate fast gate once, persists completed and pending child commands, and after repair reruns the failed command before continuing every previously unexecuted command; subsequent reviews use a captured before/after boundary instead of replaying the baseline diff.",
+        "pre-push consumes full-gate-evidence.json only when worktree, verification config and command fingerprints match; deleted tracked files use the same [deleted] tree sentinel as dispatcher instead of throwing ENOENT.",
+        "test/agent-dispatcher-recovery.test.ts gives the real dispatcher process a 20-second child limit and the enclosing integration case a 30-second budget, so Windows fixture and Git setup cannot trip Vitest's unrelated 5-second default while a hung dispatcher still fails deterministically.",
+        "test/agent-routing.test.ts covers Profile-driven production stages, middle-command failure continuation, full-gate upstream-stage reuse, second-round findings, no-progress recovery, pre-push evidence reuse and a deleted-file fingerprint."
+      ]
+    },
+    {
+      "id": "version-qa-reuse",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-three-finding-fixes/test/*.test.js)",
+          "exitCode": 0
+        },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-four-finding-fixes/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "Version QA may bind only a passed Feature evidence ID whose Git tree, code revision, command fingerprint and config fingerprint match the values computed from the live candidate and whose successful commands include npm run verify:full.",
+        "scripts/agent-dispatcher.ts, scripts/secretary-notice-guard.ts and scripts/pre-push-verify.mjs compute the same validation tree, excluding only named post-Feature-gate reports while retaining code, tests, validation configuration, charter, planning, design and task-breakdown inputs.",
+        "scripts/secretary-notice-guard.ts computes the current candidate validation tree, fixed full-gate command fingerprint and current verification config while ingesting real QA/reverification, then passes reusedFeatureEvidenceId plus those values to recordQaRun before recording Version evidence.",
+        "test/version-lifecycle.test.ts rejects targeted-only Feature evidence and duplicate Version QA verify:full execution; test/secretary-notice-guard.test.ts follows development-to-QA report order, accepts mandatory QA documents, and rejects task-breakdown, code or config drift.",
+        "docs/versions/adaptive-project-office-2026-09-21/task-breakdown.json assigns owner Version QA."
+      ]
+    },
+    {
+      "id": "migration-drill",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "node --input-type=module (stdin: startVitest config=false esbuild=false include=node_modules/.cache/daoyan-current-development/test/*.test.js)",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "createMigrationBackup records original bytes, SHA-256 and missing-file facts with atomic isolated writes and rejects overlapping roots.",
+        "downgradeFormalVersionPreservingFacts separates the legacy projection from preserved orchestration increments.",
+        "test/version-lifecycle.test.ts executes an isolated backup verification and confirms post-migration scope facts survive downgrade projection."
+      ]
+    }
+  ]
+}

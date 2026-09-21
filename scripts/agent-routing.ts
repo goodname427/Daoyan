@@ -2,6 +2,9 @@ export const MODEL_TIERS = ['economy', 'standard', 'advanced', 'critical'] as co
 
 export type ModelTier = (typeof MODEL_TIERS)[number];
 export type TaskType = 'analysis' | 'implementation' | 'test' | 'documentation';
+export type ValidationProfile = 'light' | 'task' | 'feature' | 'version';
+
+export type FeatureValidationStage = 'fast-gate' | 'independent-review' | 'full-gate';
 
 export interface ModelRoute {
   model: string;
@@ -55,6 +58,87 @@ export interface PlannedTask {
   paths: string[];
   deliverables: string[];
   verification: string[];
+  validationProfile?: ValidationProfile;
+}
+
+export function validationProfileForTask(task: PlannedTask): ValidationProfile {
+  if (task.validationProfile) return task.validationProfile;
+  return task.type === 'documentation' || task.type === 'analysis' ? 'light' : 'task';
+}
+
+const VALIDATION_PROFILE_WEIGHT: Record<ValidationProfile, number> = {
+  light: 0,
+  task: 1,
+  feature: 2,
+  version: 3,
+};
+
+/** Resolve mixed plans conservatively while keeping planning/docs work genuinely light. */
+export function validationProfileForPlan(plan: TaskPlan): ValidationProfile {
+  return plan.tasks
+    .map(validationProfileForTask)
+    .reduce((selected, profile) =>
+      VALIDATION_PROFILE_WEIGHT[profile] > VALIDATION_PROFILE_WEIGHT[selected] ? profile : selected,
+    );
+}
+
+/**
+ * This is the production execution contract consumed by the Feature PM.
+ * Version work owns its own integration commands and only receives a report review;
+ * it must not replay Feature gates. Light work remains at Task-scoped direct checks.
+ */
+export function validationStagesForPlan(plan: TaskPlan): FeatureValidationStage[] {
+  const profile = validationProfileForPlan(plan);
+  if (profile === 'light') return [];
+  if (profile === 'version') return ['independent-review'];
+  return ['fast-gate', 'independent-review', 'full-gate'];
+}
+
+export function failedNpmCommandFromOutput(output: string, fallback: string[]): string[] {
+  const scripts = [...output.matchAll(/^>\s+\S+@\S+\s+([a-z0-9:_-]+)\s*$/gim)].map(
+    (match) => match[1],
+  );
+  const failedScript = [...scripts]
+    .reverse()
+    .find((script) => !['verify', 'verify:full'].includes(script));
+  return failedScript ? ['npm', 'run', failedScript] : [...fallback];
+}
+
+export function npmRunCommandsFromScript(script: string): string[][] {
+  return script
+    .split(/\s*&&\s*/)
+    .map((segment) => /^npm\s+run\s+([a-z0-9:_-]+)$/i.exec(segment.trim()))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .map((match) => ['npm', 'run', match[1]]);
+}
+
+export function fastGateCommandProgress(
+  commands: string[][],
+  failedCommand: string[],
+): { completedCommands: string[][]; pendingCommands: string[][] } {
+  const failedKey = failedCommand.join('\0');
+  const failedIndex = commands.findIndex((command) => command.join('\0') === failedKey);
+  if (failedIndex < 0) {
+    return { completedCommands: [], pendingCommands: [[...failedCommand]] };
+  }
+  return {
+    completedCommands: commands.slice(0, failedIndex).map((command) => [...command]),
+    pendingCommands: commands.slice(failedIndex).map((command) => [...command]),
+  };
+}
+
+export function pendingValidationStages(
+  stages: FeatureValidationStage[],
+  evidence: { fullGate: boolean; fastGate: boolean; independentReview: boolean },
+): FeatureValidationStage[] {
+  if (evidence.fullGate && stages.includes('full-gate')) return [];
+  return stages.filter(
+    (stage) =>
+      !(
+        (stage === 'fast-gate' && evidence.fastGate) ||
+        (stage === 'independent-review' && evidence.independentReview)
+      ),
+  );
 }
 
 export interface TaskPlan {
@@ -68,6 +152,149 @@ export interface TaskPlan {
   nonGoals: string[];
   tasks: PlannedTask[];
   commitMessage: string;
+}
+
+export interface TaskReuseEvidence {
+  taskId: string;
+  passed: boolean;
+  inputFingerprint: string;
+  currentInputFingerprint: string;
+  outputFingerprint: string;
+  currentOutputFingerprint: string;
+  commandFingerprint: string;
+  currentCommandFingerprint: string;
+  configFingerprint: string;
+  currentConfigFingerprint: string;
+}
+
+const POST_FEATURE_GATE_REPORT =
+  /^(?:development|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)\.(?:json|md)$/;
+
+/**
+ * Formal-version reports written after the Feature gate are not implementation
+ * inputs. Earlier scope, planning and task-breakdown documents remain in the
+ * validation tree because changing them can change what the gate must prove.
+ */
+export function isValidationTreePath(path: string): boolean {
+  const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
+  const match = /^docs\/versions\/[^/]+\/(.+)$/.exec(normalized);
+  return !match || !POST_FEATURE_GATE_REPORT.test(match[1]);
+}
+
+export function recoveryCountersAfterResume(
+  status: 'active' | 'recoverable' | 'waiting-producer' | 'delivered',
+  actualLaunchCount: number | null,
+  abnormalRecoveryCount: number | null,
+): { actualLaunchCount: number | null; abnormalRecoveryCount: number | null } {
+  return {
+    actualLaunchCount: actualLaunchCount === null ? null : actualLaunchCount + 1,
+    abnormalRecoveryCount:
+      abnormalRecoveryCount === null
+        ? null
+        : abnormalRecoveryCount + (status === 'active' || status === 'recoverable' ? 1 : 0),
+  };
+}
+
+/** Persisted Task inputs include declared paths plus resolved read-only imports. */
+export function taskInputPaths(declaredPaths: string[], directDependencies: string[]): string[] {
+  return [
+    ...new Set([...declaredPaths, ...directDependencies].map((path) => path.replaceAll('\\', '/'))),
+  ].sort((left, right) => left.localeCompare(right));
+}
+
+/** Extract relative module references that can be resolved to repository files. */
+export function relativeModuleSpecifiers(source: string): string[] {
+  const specifiers = new Set<string>();
+  const patterns = [
+    /\b(?:import|export)\s+(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]/g,
+    /\b(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      if (match[1]?.startsWith('.')) specifiers.add(match[1]);
+    }
+  }
+  return [...specifiers].sort((left, right) => left.localeCompare(right));
+}
+
+/**
+ * New checkpoints bind output evidence to the files the Agent actually changed.
+ * Declared task paths remain a legacy fallback because older checkpoints did not
+ * distinguish suggested inputs from observed outputs.
+ */
+export function taskOutputPaths(
+  declaredPaths: string[],
+  changedFiles: string[] | undefined,
+): string[] {
+  const selected = changedFiles === undefined ? declaredPaths : changedFiles;
+  return [...new Set(selected.map((path) => path.replaceAll('\\', '/')))].sort((left, right) =>
+    left.localeCompare(right),
+  );
+}
+
+export function selectReusableTaskIds(
+  tasks: PlannedTask[],
+  evidence: TaskReuseEvidence[],
+): string[] {
+  const byTask = new Map(evidence.map((entry) => [entry.taskId, entry]));
+  const reusable = new Set<string>();
+  for (const task of sortTasks(tasks)) {
+    const entry = byTask.get(task.id);
+    if (
+      entry?.passed &&
+      entry.inputFingerprint.length > 0 &&
+      entry.inputFingerprint === entry.currentInputFingerprint &&
+      entry.outputFingerprint.length > 0 &&
+      entry.outputFingerprint === entry.currentOutputFingerprint &&
+      entry.commandFingerprint.length > 0 &&
+      entry.commandFingerprint === entry.currentCommandFingerprint &&
+      entry.configFingerprint.length > 0 &&
+      entry.configFingerprint === entry.currentConfigFingerprint &&
+      task.dependsOn.every((dependency) => reusable.has(dependency))
+    ) {
+      reusable.add(task.id);
+    }
+  }
+  return [...reusable];
+}
+
+export function canReuseFullGateEvidence(
+  value: {
+    schemaVersion?: number;
+    exitCode?: number;
+    workspaceFingerprint?: string;
+    configFingerprint?: string;
+    command?: string;
+  } | null,
+  workspaceFingerprint: string,
+  configFingerprint: string,
+  command: string,
+): boolean {
+  return Boolean(
+    value &&
+    value.schemaVersion === 1 &&
+    value.exitCode === 0 &&
+    value.workspaceFingerprint === workspaceFingerprint &&
+    value.configFingerprint === configFingerprint &&
+    value.command === command,
+  );
+}
+
+export type QualityLoopAction = 'complete' | 'repair-in-place' | 'recover' | 'wait-external';
+
+export function qualityLoopAction(input: {
+  commandPassed: boolean;
+  hasOpenFindings: boolean;
+  madeProgress: boolean;
+  failureKind?: AgentFailureKind;
+  processAbnormal?: boolean;
+}): QualityLoopAction {
+  if (input.failureKind === 'external-blocker') return 'wait-external';
+  if (input.processAbnormal || input.failureKind === 'transient') return 'recover';
+  if (!input.commandPassed || input.hasOpenFindings) {
+    return input.madeProgress ? 'repair-in-place' : 'recover';
+  }
+  return 'complete';
 }
 
 const FORMAL_STAGE_MARKER = /^\[formal-stage:([a-z-]+)\]\s*/;
@@ -122,7 +349,7 @@ const FORMAL_STAGE_TASKS: Record<
     tier: 'advanced',
     paths: ['src/', 'scripts/', 'test/', 'e2e/', 'docs/'],
     deliverables: ['逐项完成正式工作项及其验证证据'],
-    verification: ['类型检查、定向测试和 npm run verify'],
+    verification: ['执行 Agent 运行类型检查与定向测试；Feature PM 汇总后运行快速门禁'],
   },
   qa: {
     title: '执行独立版本测试',
@@ -162,6 +389,10 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
   const template = FORMAL_STAGE_TASKS[stage];
   if (!template) return null;
   const summary = direction.replace(FORMAL_STAGE_MARKER, '').trim();
+  const versionValidation =
+    stage === 'qa' ||
+    stage === 'candidate' ||
+    (stage === 'bugfix' && summary.includes('本轮只做独立缺陷复验'));
   return {
     version: 1,
     title: template.title,
@@ -178,6 +409,11 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
         objective: summary,
         reasoning: '该事项由正式版本内核定向派发，不再按制作人新方向重新拆分。',
         dependsOn: [],
+        validationProfile: versionValidation
+          ? 'version'
+          : stage === 'development' || stage === 'bugfix'
+            ? 'task'
+            : 'light',
       },
     ],
     commitMessage: `chore: advance formal version ${stage}`,
@@ -311,6 +547,11 @@ export function validatePlan(value: unknown, maxTasks: number): TaskPlan {
     assert(isStringArray(task.paths), `任务 ${task.id} 的 paths 非法`);
     assert(isStringArray(task.deliverables), `任务 ${task.id} 的 deliverables 非法`);
     assert(isStringArray(task.verification), `任务 ${task.id} 的 verification 非法`);
+    assert(
+      task.validationProfile === undefined ||
+        ['light', 'task', 'feature', 'version'].includes(task.validationProfile),
+      `任务 ${task.id} 的 validationProfile 非法`,
+    );
   }
   for (const task of plan.tasks) {
     for (const dependency of task.dependsOn) {
@@ -365,6 +606,7 @@ export function optimizePlan(plan: TaskPlan): TaskPlan {
     paths: unique(sorted.flatMap((task) => task.paths)),
     deliverables: unique(sorted.flatMap((task) => task.deliverables)),
     verification: unique(sorted.flatMap((task) => task.verification)),
+    validationProfile: validationProfileForPlan(plan),
   };
   return { ...plan, tasks: [merged] };
 }
@@ -654,7 +896,8 @@ export function buildLocalPlan(direction: string): TaskPlan {
       dependsOn: [],
       paths: ['README.md', 'docs/', '.codebuddy/memory/'],
       deliverables: ['完成方向要求的文档改动', '同步必要入口与开发日志'],
-      verification: ['npm run docs:check', 'npm run verify'],
+      verification: ['npm run docs:check'],
+      validationProfile: 'light',
     });
   } else if (critical) {
     tasks.push({
@@ -668,6 +911,7 @@ export function buildLocalPlan(direction: string): TaskPlan {
       paths: ['docs/architecture/', 'docs/adr/', 'docs/specs/', 'docs/status.md'],
       deliverables: ['已采纳 ADR 或明确无需 ADR 的规格', '迁移、兼容与回退边界'],
       verification: ['核对架构不变量和现有 ADR'],
+      validationProfile: 'light',
     });
     tasks.push({
       id: 'implementation',
@@ -679,7 +923,8 @@ export function buildLocalPlan(direction: string): TaskPlan {
       dependsOn: ['architecture'],
       paths: ['src/core/', 'src/game/', 'test/', 'docs/'],
       deliverables: ['可运行的最小完整实现', '风险相称的测试和长期文档'],
-      verification: ['运行相关单元与集成测试', 'npm run verify'],
+      verification: ['运行相关类型检查与单元/集成测试'],
+      validationProfile: 'task',
     });
     if (experience) {
       tasks.push({
@@ -693,6 +938,7 @@ export function buildLocalPlan(direction: string): TaskPlan {
         paths: ['src/app/', 'e2e/', 'docs/product/', 'docs/reference/'],
         deliverables: ['完整可操作体验', 'E2E 覆盖与玩家文档'],
         verification: ['npm run test:e2e', '实际体验受影响路径'],
+        validationProfile: 'task',
       });
     }
   } else if (advanced && experience) {
@@ -706,7 +952,8 @@ export function buildLocalPlan(direction: string): TaskPlan {
       dependsOn: [],
       paths: ['src/core/', 'src/game/', 'test/', 'docs/architecture/'],
       deliverables: ['核心实现与单元/集成测试', '必要的规格或 ADR'],
-      verification: ['运行相关单元与集成测试', 'npm run verify'],
+      verification: ['运行相关类型检查与单元/集成测试'],
+      validationProfile: 'task',
     });
     tasks.push({
       id: 'experience',
@@ -719,6 +966,7 @@ export function buildLocalPlan(direction: string): TaskPlan {
       paths: ['src/app/', 'e2e/', 'docs/product/', 'docs/reference/'],
       deliverables: ['可操作 UI、E2E 和相关文档'],
       verification: ['npm run test:e2e', '实际体验受影响路径'],
+      validationProfile: 'task',
     });
   } else {
     const tier: ModelTier = advanced ? 'advanced' : experience ? 'standard' : 'standard';
@@ -736,7 +984,8 @@ export function buildLocalPlan(direction: string): TaskPlan {
         ? ['src/core/', 'src/game/', 'test/', 'docs/']
         : ['src/app/', 'src/game/', 'test/', 'e2e/', 'docs/'],
       deliverables: ['可体验的完整改动', '风险相称的测试', '同步长期文档与开发日志'],
-      verification: ['npm run verify', 'npm run verify:full', '实际体验受影响路径'],
+      verification: ['运行改动直接相关的类型检查和定向测试', '实际体验受影响路径'],
+      validationProfile: 'task',
     });
   }
 

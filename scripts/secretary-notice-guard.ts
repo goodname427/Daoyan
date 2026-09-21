@@ -1,6 +1,14 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, openSync, watch, type FSWatcher } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  watch,
+  type FSWatcher,
+} from 'node:fs';
 import {
   appendFile,
   mkdir,
@@ -16,7 +24,12 @@ import {
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildLocalPlan, classifyAgentFailure, preferredWindowsExecutable } from './agent-routing';
+import {
+  buildLocalPlan,
+  classifyAgentFailure,
+  isValidationTreePath,
+  preferredWindowsExecutable,
+} from './agent-routing';
 import {
   externalRequestId,
   type SecretaryChannelHub,
@@ -28,6 +41,7 @@ import { secretaryChannelHubFromEnvironment } from './secretary-channels';
 import {
   appendPublicWorkEvent,
   readPublicWorkEvents,
+  summarizePublicTiming,
   type PublicWorkEvent,
 } from './public-work-log';
 import {
@@ -47,6 +61,7 @@ import {
   itemFromIntake,
   nextRunnableItem,
   normalizeSecretaryState,
+  pendingScheduleCorrections,
   projectFactsFromItems,
   projectFactsFromStatus,
   publicSecretaryState,
@@ -58,6 +73,7 @@ import {
   type IntakeDisposition,
   type ProjectFact,
   type SecretaryItem,
+  type SecretaryItemResolution,
   type SecretaryMessageIntent,
   type SecretaryScope,
   type SecretaryState,
@@ -77,14 +93,18 @@ import {
   readFormalVersionById,
   recordApproval,
   recordFeatureVerification,
+  recordValidationEvidence,
   recordQaRun,
   recordScopeRevision,
   recordStagePolicy,
   resolveDecisionGate,
   setNodeEvidence,
   transitionVersionBug,
+  reusableValidationEvidence,
+  invalidateValidationEvidence,
   writeFormalVersion,
   type FormalVersion,
+  type ValidationEvidence,
   type VersionWorkItem,
   type VersionStage,
   type VersionTodo,
@@ -178,6 +198,12 @@ interface DashboardAgent {
     label: string;
     detail: string;
   }>;
+  timing?: ReturnType<typeof summarizePublicTiming>;
+  executionMetrics?: {
+    actualLaunchCount: number | null;
+    abnormalRecoveryCount: number | null;
+    localRepairRoundCount: number | null;
+  };
 }
 
 let state = createSecretaryState(new Date().toISOString());
@@ -203,6 +229,41 @@ const recordedCorrelationIds = new Set<string>();
 const processExitNotices = new Map<number, ChildProcess>();
 const workerExitTimers = new Map<number, ReturnType<typeof setTimeout>>();
 const activeLaunchStartedAt = new Map<string, string>();
+
+function publicEventContext(item?: SecretaryItem): {
+  executionRound: number;
+  codeRevision: string;
+} {
+  return {
+    executionRound: Math.max(1, item?.orchestration?.attempt ?? 1),
+    codeRevision: publicCodeRevision(),
+  };
+}
+
+async function appendSecretaryTiming(
+  eventId: string,
+  category: 'waiting-producer' | 'waiting-quota' | 'recovery' | 'idle',
+  startedAt: string,
+  endedAt: string,
+  item?: SecretaryItem,
+): Promise<void> {
+  const start = Date.parse(startedAt);
+  const end = Date.parse(endedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return;
+  await appendPublicWorkEvent(publicEventsFile, {
+    eventId,
+    sequence: 0,
+    itemId: item?.id ?? '',
+    runId: item?.orchestration?.runId ?? 'secretary',
+    agentId: 'secretary',
+    ...publicEventContext(item),
+    timeCategory: category,
+    kind: 'action',
+    payload: { action: category, summary: item?.summary ?? '秘书空闲等待', status: 'completed' },
+    createdAt: startedAt,
+    durationMs: end - start,
+  });
+}
 
 function workerEnvironment(): NodeJS.ProcessEnv {
   const environment = { ...process.env };
@@ -350,6 +411,17 @@ async function emitNotice(
     } satisfies NoticeOutboxEntry);
   }
   await appendFile(eventsFile, `${JSON.stringify(event)}\n`, 'utf8');
+  await appendPublicWorkEvent(publicEventsFile, {
+    eventId: `notice-${event.id}`,
+    sequence: 0,
+    itemId: item?.id ?? '',
+    runId: item?.orchestration?.runId ?? 'secretary',
+    agentId: 'secretary',
+    ...publicEventContext(item),
+    kind: 'action',
+    payload: { action: kind, summary: message, status: 'published' },
+    createdAt: event.createdAt,
+  });
   if (correlationId) recordedCorrelationIds.add(correlationId);
   console.log(`[常驻秘书] ${message}`);
   if (pendingChannelIds.length > 0) {
@@ -568,6 +640,7 @@ async function modelTriage(
   ];
   const invocation = codexInvocation(args);
   if (!invocation) return null;
+  const startedAt = Date.now();
   const code = await new Promise<number>((resolveCode) => {
     let child: ChildProcess;
     try {
@@ -597,6 +670,24 @@ async function modelTriage(
     child.on('close', (result) => finish(result ?? 1));
     child.stdin?.on('error', () => finish(1));
     child.stdin?.end(prompt);
+  });
+  await appendPublicWorkEvent(publicEventsFile, {
+    eventId: `triage-model-${request.id}`,
+    sequence: 0,
+    requestId: request.id,
+    itemId: waiting?.id ?? request.id,
+    runId: waiting?.orchestration?.runId ?? 'secretary',
+    agentId: config.triage.model,
+    ...publicEventContext(waiting ?? undefined),
+    timeCategory: 'model-compute',
+    kind: 'action',
+    payload: {
+      action: 'semantic-triage',
+      summary: request.idea,
+      status: code === 0 ? 'passed' : 'failed',
+    },
+    createdAt: new Date(startedAt).toISOString(),
+    durationMs: Date.now() - startedAt,
   });
   if (code !== 0) return null;
   try {
@@ -939,6 +1030,18 @@ async function dashboardAgentForItem(item: SecretaryItem): Promise<DashboardAgen
       publicEvents.length > 0
         ? mergeDashboardActivity(dashboardActivityFromPublicEvents(publicEvents), liveActivity)
         : liveActivity,
+    timing: summarizePublicTiming(publicEvents),
+    executionMetrics: {
+      actualLaunchCount: Number.isSafeInteger(recovery?.actualLaunchCount)
+        ? Number(recovery?.actualLaunchCount)
+        : null,
+      abnormalRecoveryCount: Number.isSafeInteger(recovery?.abnormalRecoveryCount)
+        ? Number(recovery?.abnormalRecoveryCount)
+        : null,
+      localRepairRoundCount: Number.isSafeInteger(recovery?.localRepairRoundCount)
+        ? Number(recovery?.localRepairRoundCount)
+        : null,
+    },
   };
 }
 
@@ -964,6 +1067,7 @@ async function dashboardAgents(): Promise<DashboardAgent[]> {
   const guardBusy = processingInbox || coordinating;
   const snapshotAt = new Date().toISOString();
   const initializedAt = Date.parse(state.initializedAt);
+  const secretaryPublicEvents = await readPublicWorkEvents(publicEventsFile);
   const agents: DashboardAgent[] = [
     {
       id: 'notice-guard',
@@ -990,6 +1094,7 @@ async function dashboardAgents(): Promise<DashboardAgent[]> {
           detail: guardBusy ? '正在处理项目事件。' : '事件休眠，等待消息或运行状态变化。',
         },
       ],
+      timing: summarizePublicTiming(secretaryPublicEvents),
     },
   ];
   const visibleItems = state.items.filter((item) =>
@@ -1424,7 +1529,7 @@ function applyModelTriage(item: SecretaryItem, result: TriageResult): string {
   return result.response;
 }
 
-function localQuestionResponse(message: string, facts: ProjectFact[]): string {
+export function localQuestionResponse(message: string, facts: ProjectFact[]): string {
   if (!/(进度|状态|做到|当前|现在|排期)/.test(message))
     return '当前项目记录里没有足够信息直接回答这个问题；秘书不会把它误排成开发任务。';
   const summarize = (fact: ProjectFact): string => {
@@ -1499,12 +1604,16 @@ async function writeInboxResponse(
     });
   }
   await saveState();
+  const publicItem = state.items.find(
+    (item) => item.id === request.id || item.lastProducerRequestId === request.id,
+  );
   await appendPublicWorkEvent(publicEventsFile, {
     eventId: `input-${request.id}`,
     sequence: 0,
     requestId: request.id,
     itemId: request.id,
     agentId: 'secretary',
+    ...publicEventContext(publicItem),
     kind: 'input',
     payload: { summary: request.idea, source: 'producer-message' },
     createdAt: request.createdAt,
@@ -1515,6 +1624,7 @@ async function writeInboxResponse(
     requestId: request.id,
     itemId: request.id,
     agentId: 'secretary',
+    ...publicEventContext(publicItem),
     kind: intent === 'reply' ? 'decision' : 'action',
     payload:
       intent === 'reply'
@@ -1537,8 +1647,23 @@ async function resumeWaitingItem(
   if (pending?.runDirectory && !pending.orchestration?.waitingSnapshot) {
     await reconcileItem(pending);
   }
+  const waitingStartedAt = pending
+    ? ([...(state.orchestration?.reconciliations ?? [])]
+        .reverse()
+        .find((record) => record.itemId === pending.id && record.outcome === 'waiting-producer')
+        ?.reconciledAt ?? pending.updatedAt)
+    : '';
+  const waitingCategory =
+    pending && externalBlocker(pending.summary) ? 'waiting-quota' : 'waiting-producer';
   const waiting = applyWaitingReply(state, request, intent);
   if (!waiting) throw new Error('等待事项已变化，无法应用当前回复');
+  await appendSecretaryTiming(
+    `wait-${waiting.id}-${waitingStartedAt}`,
+    waitingCategory,
+    waitingStartedAt,
+    request.createdAt,
+    waiting,
+  );
   await saveState();
   await coordinate();
   const response = continueDispatchResponse(waiting, await confirmDispatchEvidence(waiting));
@@ -1679,7 +1804,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
       : stage === 'design-review'
         ? `同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
         : stage === 'development'
-          ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed","targetedTests":"passed|failed","evidence":["公开证据"]}]}。不得用一份聚合结论代替逐项证据。`
+          ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。不得用计划命令或一份聚合结论代替逐项执行证据；npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
           : stage === 'qa'
             ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}]}。任务交付成功不等于产品测试通过；发现缺陷时 status 必须为 failed 并完整登记。只运行和记录测试，不修改产品实现。`
             : stage === 'bugfix' && bugfixStep === 'primary'
@@ -2325,9 +2450,61 @@ function terminateProcessTree(pid: number, identity: string): void {
   } else process.kill(pid, 'SIGTERM');
 }
 
+export async function waitForTerminalSnapshot<T extends { status: string }>(
+  readSnapshot: () => Promise<T | null | undefined>,
+  attempts = 4,
+  settleMs = 100,
+): Promise<T | undefined> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) await new Promise((resolveWait) => setTimeout(resolveWait, settleMs));
+    const snapshot = await readSnapshot();
+    if (
+      snapshot &&
+      ['review-ready', 'delivered', 'waiting-producer', 'recoverable'].includes(snapshot.status)
+    ) {
+      return snapshot;
+    }
+  }
+  return undefined;
+}
+
+export function observedExitEndsPm(
+  source: 'pm' | 'worker',
+  exited: { pid: number; identity: string },
+  pm: { pid: number; identity: string },
+  isAlive: (pid: number, identity: string) => boolean = (pid, identity) =>
+    isOwnedProcessAlive(pid, identity, 0),
+): boolean {
+  const currentPmIsExitedProcess = exited.pid === pm.pid && exited.identity === pm.identity;
+  if (pm.pid > 0 && pm.identity && isAlive(pm.pid, pm.identity)) return false;
+  if (currentPmIsExitedProcess) return true;
+  return source === 'worker' || (pm.pid > 0 && Boolean(pm.identity));
+}
+
+async function reconcileAfterProcessExit(
+  item: SecretaryItem,
+  source: 'pm' | 'worker' = 'pm',
+  exited = { pid: item.processPid, identity: item.processIdentity },
+): Promise<void> {
+  // The wrapper/worker can exit slightly before its atomic terminal snapshot is
+  // visible.  Give the writer a short bounded settle window and always re-read
+  // from disk before deciding that recovery is required.
+  const terminal = await waitForTerminalSnapshot<RunSnapshot>(() => snapshotForItem(item));
+  if (terminal) {
+    await reconcileItem(item, terminal, true);
+    return;
+  }
+  const latest = item.runDirectory ? await snapshotForItem(item) : null;
+  const pm = latest
+    ? { pid: latest.processPid, identity: latest.processIdentity }
+    : { pid: item.processPid, identity: item.processIdentity };
+  await reconcileItem(item, latest ?? undefined, observedExitEndsPm(source, exited, pm));
+}
+
 function attachProcessExitNotice(item: SecretaryItem): void {
   const pid = item.processPid;
-  if (!isOwnedProcessAlive(pid, item.processIdentity) || processExitNotices.has(pid)) return;
+  const identity = item.processIdentity;
+  if (!isOwnedProcessAlive(pid, identity) || processExitNotices.has(pid)) return;
   if (process.platform !== 'win32') {
     scheduleOrphanRecovery(item);
     return;
@@ -2345,10 +2522,9 @@ function attachProcessExitNotice(item: SecretaryItem): void {
   processExitNotices.set(pid, waiter);
   waiter.on('close', () => {
     processExitNotices.delete(pid);
-    if (stopping || item.processPid !== pid) return;
-    item.processPid = 0;
-    item.processIdentity = '';
-    void reconcileItem(item, undefined, true)
+    if (stopping || item.processPid !== pid || item.processIdentity !== identity) return;
+    const exited = { pid, identity };
+    void reconcileAfterProcessExit(item, 'pm', exited)
       .then(() => saveState())
       .then(() => coordinate())
       .catch((error) => console.error(`[notice guard] 进程退出通知处理失败：${String(error)}`));
@@ -2362,7 +2538,7 @@ function attachWorkerExitNotice(
   if (processExitNotices.has(worker.pid) || workerExitTimers.has(worker.pid)) return;
   const resume = () => {
     if (stopping) return;
-    void reconcileItem(item, undefined, true)
+    void reconcileAfterProcessExit(item, 'worker', worker)
       .then(() => saveState())
       .then(() => coordinate())
       .catch((error) => console.error(`[notice guard] worker 退出处理失败：${String(error)}`));
@@ -2472,6 +2648,39 @@ async function reconcileItem(
       (await scanRuns()).find((candidate) => candidate.directory === item.runDirectory) ??
       undefined;
   }
+  const launchStartedAt =
+    activeLaunchStartedAt.get(item.id) ??
+    (['active', 'tracking'].includes(item.status) &&
+    isOwnedProcessAlive(item.processPid, item.processIdentity, 0)
+      ? item.updatedAt
+      : undefined);
+  if (!run && launchStartedAt && isBootstrapGraceActive(launchStartedAt)) {
+    normalizeSecretaryState(state);
+    item.status = 'tracking';
+    item.summary = 'PM 已登记运行目录，正在创建首个恢复快照。';
+    item.orchestration!.reconciliationOutcome = 'bootstrapping';
+    item.orchestration!.processOccupied = true;
+    state.activeItemId = item.id;
+    const alreadyRecorded = state.orchestration!.reconciliations.some(
+      (record) =>
+        record.itemId === item.id &&
+        record.attempt === item.orchestration!.attempt &&
+        record.outcome === 'bootstrapping',
+    );
+    if (!alreadyRecorded) {
+      state.orchestration!.reconciliations.push({
+        itemId: item.id,
+        runId: item.orchestration!.runId,
+        attempt: item.orchestration!.attempt,
+        snapshotStatus: 'bootstrapping',
+        outcome: 'bootstrapping',
+        reason: item.summary,
+        evidence: [item.runDirectory],
+        reconciledAt: new Date().toISOString(),
+      });
+    }
+    return true;
+  }
   if (
     !run ||
     ![
@@ -2524,7 +2733,6 @@ async function reconcileItem(
       reconciledAt: new Date().toISOString(),
     });
   };
-  const launchStartedAt = activeLaunchStartedAt.get(item.id);
   if (
     item.status === 'active' &&
     activeChild?.exitCode === null &&
@@ -2568,6 +2776,9 @@ async function reconcileItem(
     const pmOccupied = isOwnedProcessAlive(run.processPid, run.processIdentity, 0);
     const processOccupied = pmOccupied || Boolean(worker);
     item.status = processOccupied ? 'tracking' : 'delivered';
+    item.summary = awaitingReview
+      ? '本轮实现已完成，等待独立审查；旧恢复与修复摘要已清理。'
+      : '本轮交付已完成；旧恢复、阻塞与修复摘要已清理。';
     if (!item.completedAt) item.completedAt = item.updatedAt;
     item.retryAt = '';
     item.recoveryAttempts = 0;
@@ -2753,6 +2964,11 @@ async function reconcileItem(
   if (worker) {
     clearOrphanRecovery(item.id);
     attachWorkerExitNotice(item, worker);
+  } else if (isOwnedProcessAlive(run.processPid, run.processIdentity, 0)) {
+    clearOrphanRecovery(item.id);
+    item.processPid = run.processPid;
+    item.processIdentity = run.processIdentity;
+    attachProcessExitNotice(item);
   } else if (!isOwnedProcessAlive(item.processPid, item.processIdentity)) {
     scheduleOrphanRecovery(item);
   }
@@ -2817,6 +3033,13 @@ async function launch(item: SecretaryItem): Promise<void> {
     await saveState();
     return;
   }
+  const recovering = item.status === 'retry-wait';
+  const recoveryStartedAt = recovering
+    ? ([...(state.orchestration?.reconciliations ?? [])]
+        .reverse()
+        .find((record) => record.itemId === item.id && record.outcome === 'retry-wait')
+        ?.reconciledAt ?? item.updatedAt)
+    : '';
   clearOrphanRecovery(item.id);
   item.status = 'active';
   item.retryAt = '';
@@ -2839,19 +3062,26 @@ async function launch(item: SecretaryItem): Promise<void> {
   activeChild = child;
   item.processPid = child.pid ?? 0;
   item.processIdentity = item.processPid ? await waitForProcessIdentity(item.processPid) : '';
+  const launchedProcess = { pid: item.processPid, identity: item.processIdentity };
   await saveState();
+  if (recovering) {
+    await appendSecretaryTiming(
+      `recovery-launch-${item.id}-${item.orchestration!.attempt}`,
+      'recovery',
+      recoveryStartedAt,
+      item.updatedAt,
+      item,
+    );
+  }
   child.on('error', async (error) => {
     item.summary = `无法启动 PM 调度器：${error.message}`;
   });
-  child.on('close', (code) => {
+  child.on('close', () => {
     void (async () => {
-      activeLaunchStartedAt.delete(item.id);
-      activeChild = null;
-      item.processPid = 0;
-      item.processIdentity = '';
+      if (activeChild === child) activeChild = null;
       await locateVersionRun(item);
-      const found = await reconcileItem(item, undefined, true);
-      if (!found) await markMissingSnapshot(item, code ?? 1);
+      await reconcileAfterProcessExit(item, 'pm', launchedProcess);
+      activeLaunchStartedAt.delete(item.id);
       await saveState();
       await coordinate();
     })().catch((error) => console.error(`[notice guard] PM 退出处理失败：${String(error)}`));
@@ -2865,6 +3095,15 @@ export function snapshotPredatesLaunch(
   const snapshot = Date.parse(snapshotUpdatedAt);
   const launch = Date.parse(launchStartedAt);
   return Number.isFinite(snapshot) && Number.isFinite(launch) && snapshot < launch;
+}
+
+export function isBootstrapGraceActive(
+  launchStartedAt: string,
+  now = Date.now(),
+  graceMs = 15_000,
+): boolean {
+  const started = Date.parse(launchStartedAt);
+  return Number.isFinite(started) && now >= started && now - started <= Math.max(0, graceMs);
 }
 
 function scheduleRetry(): void {
@@ -2893,6 +3132,51 @@ function currentGitRevision(): string {
     throw new Error('无法读取当前代码修订，不能登记版本交付证据');
   }
   return result.stdout.trim();
+}
+
+/**
+ * Public activity still needs a stable, real code identity when the guard is
+ * run from an isolated deployment or test fixture without repository metadata.
+ * Formal stage evidence deliberately continues to use currentGitRevision(),
+ * because a source snapshot must never stand in for its Git delivery gate.
+ */
+export function publicCodeRevision(workspaceRoot = root): string {
+  const git = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: workspaceRoot,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (git.status === 0 && git.stdout.trim()) return git.stdout.trim();
+
+  const sources = ['package.json', 'scripts']
+    .map((path) => resolve(workspaceRoot, path))
+    .filter((path) => existsSync(path));
+  if (sources.length === 0) {
+    throw new Error('无法读取当前代码修订，不能登记公开事件');
+  }
+
+  const files: string[] = [];
+  const collect = (path: string): void => {
+    const entries = readdirSync(path, { withFileTypes: true });
+    for (const entry of entries) {
+      const child = resolve(path, entry.name);
+      if (entry.isDirectory()) collect(child);
+      else if (entry.isFile()) files.push(child);
+    }
+  };
+  for (const source of sources) {
+    if (source.endsWith('package.json')) files.push(source);
+    else collect(source);
+  }
+
+  const hash = createHash('sha256');
+  for (const file of files.sort()) {
+    hash.update(relative(workspaceRoot, file).replace(/\\/g, '/'));
+    hash.update('\0');
+    hash.update(readFileSync(file));
+    hash.update('\0');
+  }
+  return `source-${hash.digest('hex')}`;
 }
 
 function changedFilesBetween(baseRevision: string, headRevision: string): string[] {
@@ -3020,6 +3304,18 @@ export function replaceVersionWorkItems(
 
 type StageCommand = { command: string; exitCode: number };
 
+export function isTaskScopeCommand(command: string): boolean {
+  const normalized = command.trim().replace(/\s+/g, ' ').toLowerCase();
+  if (
+    /(?:^|\s)npm(?:\.cmd)?\s+run\s+(?:verify(?::full|:ci)?|coverage|sandbox|test:e2e|build|dist|release)(?:\s|$)/.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function parseStageCommands(value: unknown): StageCommand[] {
   if (
     !Array.isArray(value) ||
@@ -3077,6 +3373,7 @@ export function parseDevelopmentResult(
   status: 'completed' | 'skipped';
   typecheck: 'passed' | 'failed';
   targetedTests: 'passed' | 'failed';
+  commands: StageCommand[];
   evidence: string[];
 }> {
   if (!isRecord(value) || !Array.isArray(value.workItems)) {
@@ -3093,11 +3390,33 @@ export function parseDevelopmentResult(
     ) {
       throw new Error('开发工作项结果格式无效');
     }
+    const status = entry.status as 'completed' | 'skipped';
+    const commands =
+      status === 'skipped' && entry.commands === undefined
+        ? []
+        : parseStageCommands(entry.commands);
+    const passedCommands = commands
+      .filter((command) => command.exitCode === 0)
+      .map((command) => command.command);
+    if (
+      status === 'completed' &&
+      (passedCommands.length === 0 ||
+        commands.some((command) => !isTaskScopeCommand(command.command)) ||
+        (entry.typecheck === 'passed' &&
+          !passedCommands.some((command) => /(?:typecheck|\btsc\b)/i.test(command))) ||
+        (entry.targetedTests === 'passed' &&
+          !passedCommands.some((command) =>
+            /(?:\btest\b|vitest|startVitest|eslint|prettier|docs:check|check-docs)/i.test(command),
+          )))
+    ) {
+      throw new Error('完成的 Task 必须登记实际运行且至少一项通过的类型、定向测试或文档检查命令');
+    }
     return {
       id: entry.id,
-      status: entry.status as 'completed' | 'skipped',
+      status,
       typecheck: entry.typecheck as 'passed' | 'failed',
       targetedTests: entry.targetedTests as 'passed' | 'failed',
+      commands,
       evidence: parseStringEvidence(entry.evidence),
     };
   });
@@ -3108,7 +3427,22 @@ export function parseDevelopmentResult(
   ) {
     throw new Error('开发结果必须与正式版本实际工作项逐一对应');
   }
-  return entries;
+  const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+  const workItemsById = new Map(workItems.map((item) => [item.id, item]));
+  const ordered: typeof entries = [];
+  const visited = new Set<string>();
+  const visit = (id: string): void => {
+    if (visited.has(id)) return;
+    for (const dependency of workItemsById.get(id)?.dependsOn ?? []) {
+      if (entriesById.has(dependency)) visit(dependency);
+    }
+    visited.add(id);
+    ordered.push(entriesById.get(id)!);
+  };
+  for (const item of workItems) {
+    if (entriesById.has(item.id)) visit(item.id);
+  }
+  return ordered;
 }
 
 interface QaManifestBug {
@@ -3240,6 +3574,145 @@ export function nonDocumentationChanges(paths: string[]): string[] {
   return paths.filter((path) => !path.replace(/\\/g, '/').startsWith('docs/'));
 }
 
+interface FeatureGateArtifact {
+  schemaVersion: 1;
+  workspaceFingerprint: string;
+  configFingerprint: string;
+  command: string;
+  commandFingerprint: string;
+  executionRound?: number;
+  log?: string;
+  exitCode: 0;
+  createdAt: string;
+}
+
+function fingerprintStrings(values: string[]): string {
+  return createHash('sha256').update(values.join('\0')).digest('hex');
+}
+
+export function validationTreeFingerprintForPaths(paths: string[], workspaceRoot = root): string {
+  const hash = createHash('sha256');
+  for (const path of [...new Set(paths)].filter(isValidationTreePath).sort()) {
+    hash.update(path);
+    hash.update('\0');
+    hash.update(
+      existsSync(resolve(workspaceRoot, path))
+        ? readFileSync(resolve(workspaceRoot, path))
+        : '[deleted]',
+    );
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+export function currentValidationTreeFingerprint(workspaceRoot = root): string {
+  const gitPaths = (args: string[]): string[] => {
+    const result = spawnSync('git', args, {
+      cwd: workspaceRoot,
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    if (result.status !== 0) throw new Error('无法计算正式验证代码树指纹');
+    return result.stdout.split('\0').filter(Boolean);
+  };
+  const paths = [
+    ...gitPaths(['-c', 'core.quotePath=false', 'ls-files', '-z']),
+    ...gitPaths(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard', '-z']),
+  ];
+  return validationTreeFingerprintForPaths(paths, workspaceRoot);
+}
+
+export function currentValidationConfigFingerprint(workspaceRoot = root): string {
+  const hash = createHash('sha256');
+  for (const path of [
+    'package.json',
+    'package-lock.json',
+    'agents/policy.json',
+    'vite.config.ts',
+  ]) {
+    hash.update(path);
+    hash.update(
+      existsSync(resolve(workspaceRoot, path))
+        ? readFileSync(resolve(workspaceRoot, path))
+        : '[missing]',
+    );
+  }
+  return hash.digest('hex');
+}
+
+async function readFeatureGateArtifact(runDirectory: string): Promise<FeatureGateArtifact> {
+  const path = resolve(runDirectory, 'full-gate-evidence.json');
+  const value = await readJson(path);
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== 1 ||
+    value.exitCode !== 0 ||
+    typeof value.workspaceFingerprint !== 'string' ||
+    typeof value.configFingerprint !== 'string' ||
+    typeof value.commandFingerprint !== 'string' ||
+    value.command !== 'npm run verify:full' ||
+    typeof value.createdAt !== 'string'
+  ) {
+    throw new Error('Feature PM 缺少可登记的完整门禁证据');
+  }
+  if (value.workspaceFingerprint !== currentValidationTreeFingerprint()) {
+    throw new Error('Feature 完整门禁证据与当前代码树不匹配');
+  }
+  if (
+    value.configFingerprint !== currentValidationConfigFingerprint() ||
+    value.commandFingerprint !== fingerprintStrings([value.command])
+  ) {
+    throw new Error('Feature 完整门禁证据与当前命令或验证配置不匹配');
+  }
+  return value as unknown as FeatureGateArtifact;
+}
+
+export function latestReusableFeatureGate(
+  version: FormalVersion,
+  codeRevision: string,
+  currentGitTree = currentValidationTreeFingerprint(),
+  currentConfigFingerprint = currentValidationConfigFingerprint(),
+  currentCommand = 'npm run verify:full',
+): ValidationEvidence {
+  const currentCommandFingerprint = fingerprintStrings([currentCommand]);
+  const records = version.orchestration?.validationEvidence ?? [];
+  for (const candidate of [...records].reverse()) {
+    if (
+      candidate.scope !== 'feature' ||
+      candidate.codeRevision !== codeRevision ||
+      !candidate.commands.some(
+        (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
+      )
+    ) {
+      continue;
+    }
+    const reusable = reusableValidationEvidence(version, {
+      scope: 'feature',
+      ownerId: candidate.ownerId,
+      gitTree: currentGitTree,
+      codeRevision,
+      commandFingerprint: currentCommandFingerprint,
+      configFingerprint: currentConfigFingerprint,
+    });
+    if (reusable?.id === candidate.id) return reusable;
+  }
+  throw new Error('Version QA 缺少与候选修订匹配的 Feature verify:full 证据');
+}
+
+function reportValidationProfile(report: Record<string, unknown>): string {
+  return isRecord(report.validation) && typeof report.validation.profile === 'string'
+    ? report.validation.profile
+    : 'task';
+}
+
+function reportExecutionRound(report: Record<string, unknown>): number {
+  return isRecord(report.validation) &&
+    Number.isInteger(report.validation.executionRound) &&
+    Number(report.validation.executionRound) > 0
+    ? Number(report.validation.executionRound)
+    : 1;
+}
+
 function assertVerificationDidNotChangeImplementation(
   report: Record<string, unknown>,
   stage: 'qa' | 'bugfix-reverification' | 'candidate',
@@ -3300,13 +3773,15 @@ async function finalizeDeliveredVersionStage(
   if (!target) return false;
   const reportPath = item.runDirectory ? resolve(item.runDirectory, 'report.json') : '';
   const report = reportPath ? await readJson(reportPath) : null;
+  if (!isRecord(report) || report.status !== '已交付') {
+    throw new Error('阶段运行缺少 PM 交付报告');
+  }
+  const validationProfile = reportValidationProfile(report);
   if (
-    !isRecord(report) ||
-    report.status !== '已交付' ||
-    !isRecord(report.review) ||
-    report.review.verdict !== 'pass'
+    validationProfile !== 'light' &&
+    (!isRecord(report.review) || report.review.verdict !== 'pass')
   ) {
-    throw new Error('阶段运行缺少 Feature PM 完整交付与独立审查通过报告');
+    throw new Error('阶段运行缺少当前验证 Profile 要求的独立审查通过报告');
   }
   const evidence = item.runDirectory ? relative(root, reportPath).replace(/\\/g, '/') : item.id;
   const revision = currentGitRevision();
@@ -3375,6 +3850,8 @@ async function finalizeDeliveredVersionStage(
       await readJson(resolve(root, manifest)),
       version.workItems,
     );
+    const gate = await readFeatureGateArtifact(item.runDirectory!);
+    const taskEvidenceIds: string[] = [];
     for (const result of results) {
       if (
         result.status === 'completed' &&
@@ -3394,8 +3871,64 @@ async function finalizeDeliveredVersionStage(
           targetedTests: result.targetedTests,
           evidence: [evidence, manifest, ...result.evidence],
         });
+        const commands = result.commands;
+        const taskEvidence = recordValidationEvidence(version, {
+          scope: 'task',
+          ownerId: result.id,
+          status: 'passed',
+          gitTree: gate.workspaceFingerprint,
+          codeRevision: revision,
+          commandFingerprint: fingerprintStrings(
+            commands.map((command) => `${command.command}\0${command.exitCode}`),
+          ),
+          configFingerprint: gate.configFingerprint,
+          affectedPaths: workItem.affectedPaths ?? [],
+          inputEvidenceIds: workItem.dependsOn
+            .map((dependency) =>
+              (version.orchestration?.validationEvidence ?? [])
+                .filter(
+                  (entry) =>
+                    entry.scope === 'task' &&
+                    entry.ownerId === dependency &&
+                    entry.codeRevision === revision &&
+                    !entry.invalidatedAt,
+                )
+                .at(-1),
+            )
+            .filter((entry): entry is ValidationEvidence => Boolean(entry))
+            .map((entry) => entry.id),
+          outputFingerprint: fingerprintStrings([
+            result.id,
+            result.typecheck,
+            result.targetedTests,
+            ...result.evidence,
+          ]),
+          executionRound: gate.executionRound ?? reportExecutionRound(report),
+          commands,
+          evidence: [manifest, ...result.evidence],
+        });
+        taskEvidenceIds.push(taskEvidence.id);
       }
     }
+    recordValidationEvidence(version, {
+      scope: 'feature',
+      ownerId: item.id,
+      status: 'passed',
+      gitTree: gate.workspaceFingerprint,
+      codeRevision: revision,
+      commandFingerprint: gate.commandFingerprint ?? fingerprintStrings([gate.command]),
+      configFingerprint: gate.configFingerprint,
+      affectedPaths: version.workItems.flatMap((workItem) => workItem.affectedPaths ?? []),
+      inputEvidenceIds: taskEvidenceIds,
+      outputFingerprint: gate.workspaceFingerprint,
+      executionRound: gate.executionRound ?? reportExecutionRound(report),
+      commands: [{ command: gate.command, exitCode: 0 }],
+      evidence: [
+        evidence,
+        manifest,
+        gate.log || relative(root, resolve(item.runDirectory!, 'full-gate-evidence.json')),
+      ],
+    });
   }
   if (stage === 'qa') {
     const testedRevision = version.orchestration?.codeRevision;
@@ -3414,12 +3947,32 @@ async function finalizeDeliveredVersionStage(
         verificationRunId: '',
       })),
     );
-    recordQaRun(version, {
+    const featureGate = latestReusableFeatureGate(version, testedRevision);
+    const qa = recordQaRun(version, {
       agentId: `qa:${item.id}`,
       independent: true,
       codeRevision: testedRevision,
       suites: result.suites,
       status: result.status,
+      commands: result.commands,
+      evidence: [evidence, manifest, ...result.evidence],
+      reusedFeatureEvidenceId: featureGate.id,
+      gitTree: featureGate.gitTree,
+      commandFingerprint: featureGate.commandFingerprint,
+      configFingerprint: featureGate.configFingerprint,
+    });
+    recordValidationEvidence(version, {
+      scope: 'version',
+      ownerId: qa.id,
+      status: result.status,
+      gitTree: featureGate.gitTree,
+      codeRevision: testedRevision,
+      commandFingerprint: fingerprintStrings(result.commands.map((command) => command.command)),
+      configFingerprint: featureGate.configFingerprint,
+      affectedPaths: version.workItems.flatMap((workItem) => workItem.affectedPaths ?? []),
+      inputEvidenceIds: [featureGate.id],
+      outputFingerprint: fingerprintStrings([result.status, ...result.suites, ...result.evidence]),
+      executionRound: reportExecutionRound(report),
       commands: result.commands,
       evidence: [evidence, manifest, ...result.evidence],
     });
@@ -3429,6 +3982,35 @@ async function finalizeDeliveredVersionStage(
     const stageStep = item.orchestration?.formalStageStep ?? 'primary';
     if (bugs.length > 0 && stageStep === 'primary') {
       const fixable = bugs.filter((bug) => bug.status !== 'verify');
+      const previousRevision =
+        version.orchestration?.qaRuns.at(-1)?.codeRevision ?? version.orchestration?.codeRevision;
+      if (previousRevision && previousRevision !== revision) {
+        invalidateValidationEvidence(version, {
+          changedPaths: changedFilesBetween(previousRevision, revision),
+        });
+      }
+      const gate = await readFeatureGateArtifact(item.runDirectory!);
+      recordValidationEvidence(version, {
+        scope: 'feature',
+        ownerId: item.id,
+        status: 'passed',
+        gitTree: gate.workspaceFingerprint,
+        codeRevision: revision,
+        commandFingerprint: gate.commandFingerprint ?? fingerprintStrings([gate.command]),
+        configFingerprint: gate.configFingerprint,
+        affectedPaths: fixable.flatMap((bug) => {
+          const workItem = version.workItems.find((entry) => entry.id === bug.linkedWorkItemId);
+          return workItem?.affectedPaths ?? [];
+        }),
+        inputEvidenceIds: [],
+        outputFingerprint: gate.workspaceFingerprint,
+        executionRound: gate.executionRound ?? reportExecutionRound(report),
+        commands: [{ command: gate.command, exitCode: 0 }],
+        evidence: [
+          evidence,
+          gate.log || relative(root, resolve(item.runDirectory!, 'full-gate-evidence.json')),
+        ],
+      });
       const manifest = `${version.documentRoot}/bugfix.json`.replace(/\\/g, '/');
       const fixes = parseBugfixResult(
         await readJson(resolve(root, manifest)),
@@ -3472,6 +4054,7 @@ async function finalizeDeliveredVersionStage(
         await readJson(resolve(root, manifest)),
         bugs.map((bug) => bug.id),
       );
+      const featureGate = latestReusableFeatureGate(version, testedRevision);
       const qa = recordQaRun(version, {
         agentId: `qa:${item.id}`,
         independent: true,
@@ -3481,6 +4064,32 @@ async function finalizeDeliveredVersionStage(
         commands: result.commands,
         evidence: [evidence, manifest, ...result.evidence],
         bugFixes: bugs.map((bug) => ({ bugId: bug.id, fixAttemptId: bug.fixAttemptId! })),
+        reusedFeatureEvidenceId: featureGate.id,
+        gitTree: featureGate.gitTree,
+        commandFingerprint: featureGate.commandFingerprint,
+        configFingerprint: featureGate.configFingerprint,
+      });
+      recordValidationEvidence(version, {
+        scope: 'version',
+        ownerId: qa.id,
+        status: result.status,
+        gitTree: featureGate.gitTree,
+        codeRevision: testedRevision,
+        commandFingerprint: fingerprintStrings(result.commands.map((command) => command.command)),
+        configFingerprint: featureGate.configFingerprint,
+        affectedPaths: bugs.flatMap((bug) => {
+          const workItem = version.workItems.find((entry) => entry.id === bug.linkedWorkItemId);
+          return workItem?.affectedPaths ?? [];
+        }),
+        inputEvidenceIds: [featureGate.id],
+        outputFingerprint: fingerprintStrings([
+          result.status,
+          ...bugs.map((bug) => bug.fixAttemptId ?? ''),
+          ...result.evidence,
+        ]),
+        executionRound: reportExecutionRound(report),
+        commands: result.commands,
+        evidence: [evidence, manifest, ...result.evidence],
       });
       if (result.status === 'failed') {
         for (const bug of bugs) transitionVersionBug(version, bug.id, 'open');
@@ -3624,13 +4233,43 @@ async function driveFormalVersion(): Promise<boolean> {
   return changed;
 }
 
+export async function persistScheduleCorrections(
+  secretaryState: SecretaryState,
+  publish: (correction: SecretaryItemResolution) => Promise<void>,
+  persist: () => Promise<void>,
+  now: () => string = () => new Date().toISOString(),
+): Promise<number> {
+  const corrections = pendingScheduleCorrections(secretaryState);
+  for (const correction of corrections) {
+    await publish(correction);
+    correction.correctionSentAt = now();
+    await persist();
+  }
+  return corrections.length;
+}
+
 async function coordinateOnce(): Promise<void> {
   if (stopping) return;
   // Re-arm only after the entire queue is reconciled and dispatch is unblocked.
   // Due retries blocked by a decision or writer wait for that owner's next event.
   if (retryTimer) clearTimeout(retryTimer);
   retryTimer = null;
+  const stateBeforeNormalization = JSON.stringify(state);
   const normalized = normalizeSecretaryState(state);
+  const persistedCorrections = await persistScheduleCorrections(
+    state,
+    async (correction) => {
+      const item = state.items.find((candidate) => candidate.id === correction.itemId);
+      await emitNotice(
+        'schedule-correction',
+        `排期更正：${correction.reason} 原候选已标记为 ${correction.status}，不再计入待办。`,
+        item,
+        undefined,
+        correction.correctionNoticeId,
+      );
+    },
+    saveState,
+  );
   const stateBeforeReconciliation = JSON.stringify(state);
   const targets = reconciliationTargets(state);
   let reconciliationFailed = false;
@@ -3664,7 +4303,11 @@ async function coordinateOnce(): Promise<void> {
   // producer decision must remain asleep until the decision owner emits a new
   // event.  Do not turn that no-op observation into a fresh state write (and
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
-  const stateChanged = normalized || JSON.stringify(state) !== stateBeforeReconciliation;
+  const stateChanged =
+    (normalized &&
+      persistedCorrections === 0 &&
+      stateBeforeNormalization !== JSON.stringify(state)) ||
+    JSON.stringify(state) !== stateBeforeReconciliation;
   if (stateChanged) await saveState();
   if (occupiedItems.length > 1) {
     const ids = occupiedItems.map((item) => item.id).sort();
@@ -3672,6 +4315,7 @@ async function coordinateOnce(): Promise<void> {
       eventId: `multiple-writers-${ids.join('-')}`,
       sequence: 0,
       agentId: 'secretary',
+      ...publicEventContext(),
       kind: 'blocker',
       payload: {
         summary: `检测到多个仍占用工作区的运行：${ids.join('、')}`,
@@ -4042,12 +4686,19 @@ export async function runNoticeGuard(): Promise<void> {
     JSON.parse(await readFile(resolve(root, 'agents/secretary.json'), 'utf8')),
   );
   state = await loadState();
+  const idleStartedAt = state.lastEventAt;
+  const wasIdle = !state.items.some((item) =>
+    ['queued', 'active', 'tracking', 'retry-wait', 'waiting-producer'].includes(item.status),
+  );
   state.status = 'running';
   state.pid = process.pid;
   state.processIdentity = guardProcessIdentity;
   await synchronizeArchivedVersion();
   await saveState();
   await loadRecordedCorrelations();
+  if (wasIdle) {
+    await appendSecretaryTiming(`idle-${idleStartedAt}`, 'idle', idleStartedAt, state.lastEventAt);
+  }
   process.once('SIGINT', () => void shutdown().then(() => process.exit(0)));
   process.once('SIGTERM', () => void shutdown().then(() => process.exit(0)));
   channelHub = await secretaryChannelHubFromEnvironment(process.env, {

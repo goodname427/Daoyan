@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { getProcessIdentity, isOwnedProcessAlive, isProcessAlive } from './process-identity';
 
 export const VERSION_STAGES = [
@@ -263,6 +263,33 @@ export interface FeatureVerification {
   createdAt: string;
 }
 
+export type VerificationScope = 'task' | 'feature' | 'version';
+
+/**
+ * Reusable validation fact.  A Git revision alone is deliberately not enough:
+ * worktree evidence is reusable only when its inputs, commands and validation
+ * configuration still match, and when none of its affected paths changed.
+ */
+export interface ValidationEvidence {
+  id: string;
+  scope: VerificationScope;
+  ownerId: string;
+  status: 'passed' | 'failed';
+  gitTree: string;
+  codeRevision: string;
+  commandFingerprint: string;
+  configFingerprint: string;
+  affectedPaths: string[];
+  inputEvidenceIds: string[];
+  outputFingerprint: string;
+  executionRound: number;
+  commands: Array<{ command: string; exitCode: number }>;
+  evidence: string[];
+  createdAt: string;
+  invalidatedAt?: string;
+  invalidationReason?: string;
+}
+
 export type QaSuite = 'acceptance' | 'integration' | 'regression' | 'defect-reverification';
 
 export interface VersionQaRun {
@@ -277,6 +304,10 @@ export interface VersionQaRun {
   evidence: string[];
   createdAt: string;
   bugFixes?: Array<{ bugId: string; fixAttemptId: string }>;
+  reusedFeatureEvidenceId?: string;
+  gitTree?: string;
+  commandFingerprint?: string;
+  configFingerprint?: string;
 }
 
 export interface FormalVersionOrchestration {
@@ -288,8 +319,57 @@ export interface FormalVersionOrchestration {
   decisionGates: VersionDecisionGate[];
   featureVerifications: FeatureVerification[];
   qaRuns: VersionQaRun[];
+  validationEvidence?: ValidationEvidence[];
   codeRevision?: string;
   qaInvalidatedThrough?: number;
+}
+
+function normalizedPath(path: string): string {
+  return path.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$/, '');
+}
+
+function pathsIntersect(left: string, right: string): boolean {
+  const a = normalizedPath(left);
+  const b = normalizedPath(right);
+  return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+}
+
+function validateValidationEvidence(value: unknown): value is ValidationEvidence {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string' &&
+    value.id.trim().length > 0 &&
+    ['task', 'feature', 'version'].includes(String(value.scope)) &&
+    typeof value.ownerId === 'string' &&
+    value.ownerId.trim().length > 0 &&
+    ['passed', 'failed'].includes(String(value.status)) &&
+    [
+      value.gitTree,
+      value.codeRevision,
+      value.commandFingerprint,
+      value.configFingerprint,
+      value.outputFingerprint,
+      value.createdAt,
+    ].every((field) => typeof field === 'string' && field.trim().length > 0) &&
+    isStringArray(value.affectedPaths) &&
+    value.affectedPaths.length > 0 &&
+    isStringArray(value.inputEvidenceIds) &&
+    Number.isSafeInteger(value.executionRound) &&
+    Number(value.executionRound) > 0 &&
+    Array.isArray(value.commands) &&
+    value.commands.length > 0 &&
+    value.commands.every(
+      (command) =>
+        isRecord(command) &&
+        typeof command.command === 'string' &&
+        command.command.trim().length > 0 &&
+        Number.isSafeInteger(command.exitCode),
+    ) &&
+    isStringArray(value.evidence) &&
+    value.evidence.length > 0 &&
+    (!Object.hasOwn(value, 'invalidatedAt') || typeof value.invalidatedAt === 'string') &&
+    (!Object.hasOwn(value, 'invalidationReason') || typeof value.invalidationReason === 'string')
+  );
 }
 
 export interface FormalVersion {
@@ -312,6 +392,110 @@ export interface FormalVersion {
   updatedAt: string;
   completedAt: string;
   orchestration?: FormalVersionOrchestration;
+}
+
+export interface MigrationBackupEntry {
+  path: string;
+  existed: boolean;
+  sha256: string;
+}
+
+export interface MigrationBackupManifest {
+  schemaVersion: 1;
+  sourceRoot: string;
+  backupRoot: string;
+  entries: MigrationBackupEntry[];
+  createdAt: string;
+}
+
+function safeRelativeMigrationPath(path: string): string {
+  const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
+  if (
+    !normalized ||
+    isAbsolute(path) ||
+    normalized.startsWith('/') ||
+    normalized.split('/').includes('..')
+  ) {
+    throw new Error(`迁移文件路径必须是安全的相对路径：${path}`);
+  }
+  return normalized;
+}
+
+/** Creates an atomic byte-for-byte backup for an isolated migration drill. */
+export async function createMigrationBackup(
+  sourceRoot: string,
+  backupRoot: string,
+  paths: string[],
+  now = new Date().toISOString(),
+): Promise<MigrationBackupManifest> {
+  const source = resolve(sourceRoot);
+  const backup = resolve(backupRoot);
+  const backupWithinSource = relative(source, backup);
+  const sourceWithinBackup = relative(backup, source);
+  if (
+    source === backup ||
+    (!backupWithinSource.startsWith('..') && !isAbsolute(backupWithinSource)) ||
+    (!sourceWithinBackup.startsWith('..') && !isAbsolute(sourceWithinBackup))
+  ) {
+    throw new Error('迁移备份根目录必须与源状态根隔离');
+  }
+  const entries: MigrationBackupEntry[] = [];
+  for (const rawPath of [...new Set(paths)]) {
+    const path = safeRelativeMigrationPath(rawPath);
+    const sourcePath = resolve(source, path);
+    const bytes = await readFile(sourcePath).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+    const sha256 = bytes ? createHash('sha256').update(bytes).digest('hex') : '';
+    entries.push({ path, existed: bytes !== null, sha256 });
+    if (!bytes) continue;
+    const destination = resolve(backup, path);
+    await mkdir(dirname(destination), { recursive: true });
+    const temporary = `${destination}.${randomUUID()}.tmp`;
+    await writeFile(temporary, bytes);
+    await rename(temporary, destination);
+  }
+  const manifest: MigrationBackupManifest = {
+    schemaVersion: 1,
+    sourceRoot: source,
+    backupRoot: backup,
+    entries,
+    createdAt: now,
+  };
+  await mkdir(backup, { recursive: true });
+  const manifestPath = resolve(backup, 'migration-backup.json');
+  const temporaryManifest = `${manifestPath}.${randomUUID()}.tmp`;
+  await writeFile(temporaryManifest, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  await rename(temporaryManifest, manifestPath);
+  return manifest;
+}
+
+export async function verifyMigrationBackup(manifest: MigrationBackupManifest): Promise<boolean> {
+  for (const entry of manifest.entries) {
+    const bytes = await readFile(resolve(manifest.backupRoot, entry.path)).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      },
+    );
+    if (!entry.existed) {
+      if (bytes !== null) return false;
+      continue;
+    }
+    if (!bytes || createHash('sha256').update(bytes).digest('hex') !== entry.sha256) return false;
+  }
+  return true;
+}
+
+export function downgradeFormalVersionPreservingFacts(version: FormalVersion): {
+  legacy: Omit<FormalVersion, 'orchestration'>;
+  preservedExtension: FormalVersionOrchestration;
+} {
+  normalizeFormalVersion(version);
+  const { orchestration, ...legacy } = JSON.parse(JSON.stringify(version)) as FormalVersion;
+  if (!orchestration) throw new Error('正式版本缺少可保留的编排扩展');
+  return { legacy, preservedExtension: orchestration };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -359,6 +543,15 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
   const decisionGates = value.decisionGates as unknown[];
   const featureVerifications = value.featureVerifications as unknown[];
   const qaRuns = value.qaRuns as unknown[];
+  const validationEvidence = Object.hasOwn(value, 'validationEvidence')
+    ? value.validationEvidence
+    : [];
+  if (
+    !Array.isArray(validationEvidence) ||
+    validationEvidence.some((entry) => !validateValidationEvidence(entry))
+  ) {
+    throw new Error('正式版本验证证据损坏；已停止自动写入和派发');
+  }
   const invalidRisk = riskAssessments.some(
     (entry) =>
       !isRecord(entry) ||
@@ -462,6 +655,14 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
               typeof fix.fixAttemptId !== 'string' ||
               !fix.fixAttemptId.trim(),
           ))) ||
+      (Object.hasOwn(entry, 'reusedFeatureEvidenceId') &&
+        (typeof entry.reusedFeatureEvidenceId !== 'string' ||
+          !entry.reusedFeatureEvidenceId.trim())) ||
+      ['gitTree', 'commandFingerprint', 'configFingerprint'].some(
+        (field) =>
+          Object.hasOwn(entry, field) &&
+          (typeof entry[field] !== 'string' || !String(entry[field]).trim()),
+      ) ||
       [entry.id, entry.agentId, entry.codeRevision, entry.createdAt].some(
         (field) => typeof field !== 'string',
       ),
@@ -563,6 +764,7 @@ function createOrchestration(
     decisionGates: [],
     featureVerifications: [],
     qaRuns: [],
+    validationEvidence: [],
   };
 }
 
@@ -1022,6 +1224,124 @@ export function recordFeatureVerification(
   return result;
 }
 
+export function recordValidationEvidence(
+  version: FormalVersion,
+  input: Omit<ValidationEvidence, 'id' | 'createdAt'> & { id?: string; now?: string },
+): ValidationEvidence {
+  const candidate: ValidationEvidence = {
+    ...input,
+    id: input.id ?? randomUUID(),
+    affectedPaths: [...new Set(input.affectedPaths.map(normalizedPath))].sort(),
+    inputEvidenceIds: [...new Set(input.inputEvidenceIds)],
+    commands: input.commands.map((command) => ({ ...command })),
+    evidence: [...input.evidence],
+    createdAt: nowIso(input.now),
+  };
+  if (!validateValidationEvidence(candidate)) {
+    throw new Error('验证证据必须包含作用域、责任者、代码树、命令/配置指纹、轮次和公开证据');
+  }
+  const orchestration = requireOrchestration(version);
+  orchestration.validationEvidence ??= [];
+  if (orchestration.validationEvidence.some((entry) => entry.id === candidate.id)) {
+    throw new Error(`验证证据 id 重复：${candidate.id}`);
+  }
+  orchestration.validationEvidence.push(candidate);
+  version.updatedAt = candidate.createdAt;
+  return candidate;
+}
+
+export function reusableValidationEvidence(
+  version: FormalVersion,
+  input: {
+    scope: VerificationScope;
+    ownerId: string;
+    gitTree: string;
+    codeRevision: string;
+    commandFingerprint: string;
+    configFingerprint: string;
+    changedPaths?: string[];
+  },
+): ValidationEvidence | null {
+  const orchestration = requireOrchestration(version);
+  const records = orchestration.validationEvidence ?? [];
+  const validIds = new Set(
+    records
+      .filter((entry) => entry.status === 'passed' && !entry.invalidatedAt)
+      .map((entry) => entry.id),
+  );
+  return (
+    [...records]
+      .reverse()
+      .find(
+        (entry) =>
+          entry.scope === input.scope &&
+          entry.ownerId === input.ownerId &&
+          entry.status === 'passed' &&
+          !entry.invalidatedAt &&
+          entry.gitTree === input.gitTree &&
+          entry.codeRevision === input.codeRevision &&
+          entry.commandFingerprint === input.commandFingerprint &&
+          entry.configFingerprint === input.configFingerprint &&
+          entry.inputEvidenceIds.every((id) => validIds.has(id)) &&
+          !(input.changedPaths ?? []).some((changed) =>
+            entry.affectedPaths.some((affected) => pathsIntersect(changed, affected)),
+          ),
+      ) ?? null
+  );
+}
+
+export function invalidateValidationEvidence(
+  version: FormalVersion,
+  input: {
+    changedPaths?: string[];
+    commandFingerprint?: string;
+    configFingerprint?: string;
+    now?: string;
+  },
+): string[] {
+  const records = requireOrchestration(version).validationEvidence ?? [];
+  const invalid = new Set(records.filter((entry) => entry.invalidatedAt).map((entry) => entry.id));
+  const reasons = new Map<string, string>();
+  for (const entry of records) {
+    if (entry.invalidatedAt) continue;
+    const pathChanged = (input.changedPaths ?? []).some((changed) =>
+      entry.affectedPaths.some((affected) => pathsIntersect(changed, affected)),
+    );
+    const commandChanged =
+      input.commandFingerprint !== undefined &&
+      input.commandFingerprint !== entry.commandFingerprint;
+    const configChanged =
+      input.configFingerprint !== undefined && input.configFingerprint !== entry.configFingerprint;
+    if (!pathChanged && !commandChanged && !configChanged) continue;
+    invalid.add(entry.id);
+    reasons.set(
+      entry.id,
+      pathChanged
+        ? 'affected-path-changed'
+        : commandChanged
+          ? 'command-fingerprint-changed'
+          : 'config-fingerprint-changed',
+    );
+  }
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const entry of records) {
+      if (invalid.has(entry.id) || !entry.inputEvidenceIds.some((id) => invalid.has(id))) continue;
+      invalid.add(entry.id);
+      reasons.set(entry.id, 'upstream-evidence-invalidated');
+      expanded = true;
+    }
+  }
+  const invalidatedAt = nowIso(input.now);
+  for (const entry of records) {
+    if (entry.invalidatedAt || !invalid.has(entry.id)) continue;
+    entry.invalidatedAt = invalidatedAt;
+    entry.invalidationReason = reasons.get(entry.id) ?? 'upstream-evidence-invalidated';
+  }
+  return [...invalid];
+}
+
 export function recordQaRun(
   version: FormalVersion,
   input: Omit<VersionQaRun, 'id' | 'scopeRevision' | 'createdAt'> & { now?: string },
@@ -1037,6 +1357,35 @@ export function recordQaRun(
     throw new Error('版本 QA 通过结论必须包含退出码为 0 的命令');
   }
   const orchestration = requireOrchestration(version);
+  if (input.reusedFeatureEvidenceId) {
+    const featureEvidence = (orchestration.validationEvidence ?? []).find(
+      (entry) => entry.id === input.reusedFeatureEvidenceId,
+    );
+    if (
+      !featureEvidence ||
+      featureEvidence.scope !== 'feature' ||
+      featureEvidence.status !== 'passed' ||
+      featureEvidence.invalidatedAt ||
+      featureEvidence.codeRevision !== input.codeRevision ||
+      !input.gitTree ||
+      featureEvidence.gitTree !== input.gitTree ||
+      !input.commandFingerprint ||
+      featureEvidence.commandFingerprint !== input.commandFingerprint ||
+      !input.configFingerprint ||
+      featureEvidence.configFingerprint !== input.configFingerprint ||
+      !featureEvidence.commands.some(
+        (command) =>
+          /^npm\s+run\s+verify:full(?:\s|$)/.test(command.command.trim()) && command.exitCode === 0,
+      )
+    ) {
+      throw new Error(
+        'Version QA 只能复用代码树、代码修订、命令与配置指纹均匹配的 Feature verify:full 证据',
+      );
+    }
+    if (input.commands.some((command) => /(?:^|\s)verify:full(?:\s|$)/.test(command.command))) {
+      throw new Error('Version QA 不得重复 Feature 的 verify:full');
+    }
+  }
   for (const fix of input.bugFixes ?? []) {
     const bug = version.bugs.find((entry) => entry.id === fix.bugId);
     if (
@@ -1508,6 +1857,10 @@ export function normalizeFormalVersion(version: FormalVersion): boolean {
   }
   const orchestration = version.orchestration;
   if (!orchestration) throw new Error('正式版本编排扩展损坏；已停止自动写入和派发');
+  if (!Object.hasOwn(orchestration, 'validationEvidence')) {
+    orchestration.validationEvidence = [];
+    orchestrationChanged = true;
+  }
   // Old decision todos used summary/stage instead of an explicit foreign key.
   // Link only unambiguous matches; never turn an ambiguous decision into a stage approval.
   for (const todo of version.todos) {

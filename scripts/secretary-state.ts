@@ -11,6 +11,9 @@ export type SecretaryItemStatus =
   | 'backlog'
   | 'answered'
   | 'delivered'
+  | 'cancelled'
+  | 'superseded'
+  | 'merged'
   | 'failed';
 
 export type IntakeDisposition =
@@ -43,6 +46,19 @@ export interface NextVersionCandidate {
   createdAt: string;
 }
 
+export interface SecretaryItemResolution {
+  id: string;
+  stableKey: string;
+  itemId: string;
+  status: 'delivered' | 'cancelled' | 'superseded' | 'merged';
+  reason: string;
+  reference: string;
+  relatedItemIds: string[];
+  correctionNoticeId: string;
+  correctionSentAt: string;
+  createdAt: string;
+}
+
 export interface SecretaryReconciliation {
   itemId: string;
   runId: string;
@@ -55,6 +71,7 @@ export interface SecretaryReconciliation {
     | 'waiting-producer'
     | 'retry-wait'
     | 'blocked'
+    | 'bootstrapping'
     | 'missing';
   reason: string;
   evidence: string[];
@@ -66,6 +83,7 @@ export interface SecretaryOrchestration {
   intakes: SecretaryIntakeRecord[];
   nextVersionCandidates: NextVersionCandidate[];
   reconciliations: SecretaryReconciliation[];
+  itemResolutions?: SecretaryItemResolution[];
   migratedFrom: 'native' | 'secretary-v1';
 }
 
@@ -174,6 +192,28 @@ function validateSecretaryOrchestration(value: unknown): asserts value is Secret
   ) {
     throw new Error('秘书编排扩展损坏；已停止自动写入和派发');
   }
+  const itemResolutions = Object.hasOwn(value, 'itemResolutions') ? value.itemResolutions : [];
+  if (
+    !Array.isArray(itemResolutions) ||
+    itemResolutions.some(
+      (entry) =>
+        !isRecord(entry) ||
+        !['delivered', 'cancelled', 'superseded', 'merged'].includes(String(entry.status)) ||
+        !isStringArray(entry.relatedItemIds) ||
+        [
+          entry.id,
+          entry.stableKey,
+          entry.itemId,
+          entry.reason,
+          entry.reference,
+          entry.correctionNoticeId,
+          entry.correctionSentAt,
+          entry.createdAt,
+        ].some((field) => typeof field !== 'string'),
+    )
+  ) {
+    throw new Error('秘书事项对账记录损坏；已停止自动写入和派发');
+  }
   const invalidIntake = value.intakes.some(
     (entry) =>
       !isRecord(entry) ||
@@ -221,6 +261,7 @@ function validateSecretaryOrchestration(value: unknown): asserts value is Secret
         'waiting-producer',
         'retry-wait',
         'blocked',
+        'bootstrapping',
         'missing',
       ].includes(String(entry.outcome)) ||
       !isStringArray(entry.evidence) ||
@@ -249,6 +290,7 @@ function validateItemOrchestration(item: SecretaryItem): void {
       'waiting-producer',
       'retry-wait',
       'blocked',
+      'bootstrapping',
       'missing',
     ].includes(value.reconciliationOutcome) ||
     typeof value.awaitingReview !== 'boolean' ||
@@ -514,16 +556,46 @@ export function projectFactsFromStatus(markdown: string): ProjectFact[] {
 }
 
 export function projectFactsFromItems(items: SecretaryItem[]): ProjectFact[] {
-  return items
+  const seen = new Set<string>();
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const secretaryReferenceId = (item: SecretaryItem): string | null => {
+    const match = /^secretary:(.+)$/.exec(item.matchedFact?.reference ?? '');
+    return match?.[1] || null;
+  };
+  const referencedIds = new Set(items.map(secretaryReferenceId).filter((id): id is string => !!id));
+  const stableReference = (item: SecretaryItem): string => {
+    let current = item;
+    const visited = new Set<string>();
+    while (!visited.has(current.id)) {
+      visited.add(current.id);
+      const targetId = secretaryReferenceId(current);
+      if (!targetId || targetId === current.id) break;
+      const target = byId.get(targetId);
+      if (!target) return `secretary:${targetId}`;
+      current = target;
+    }
+    if (referencedIds.has(current.id) || current.id !== item.id) return `secretary:${current.id}`;
+    return `secretary:${item.id}`;
+  };
+  const priority = (item: SecretaryItem): number =>
+    ['active', 'tracking', 'retry-wait', 'waiting-producer'].includes(item.status) ? 0 : 1;
+  return [...items]
+    .sort((left, right) => priority(left) - priority(right))
     .filter((item) =>
       ['queued', 'backlog', 'active', 'tracking', 'retry-wait', 'waiting-producer'].includes(
         item.status,
       ),
     )
+    .filter((item) => {
+      const reference = stableReference(item);
+      if (seen.has(reference)) return false;
+      seen.add(reference);
+      return true;
+    })
     .map((item) => ({
       kind: item.status === 'queued' || item.status === 'backlog' ? 'scheduled' : 'active',
       text: item.idea,
-      reference: `secretary:${item.id}`,
+      reference: stableReference(item),
     }));
 }
 
@@ -563,6 +635,7 @@ export function createSecretaryState(now: string): SecretaryState {
       intakes: [],
       nextVersionCandidates: [],
       reconciliations: [],
+      itemResolutions: [],
       migratedFrom: 'native',
     },
   };
@@ -578,8 +651,13 @@ export function normalizeSecretaryState(state: SecretaryState): boolean {
       intakes: [],
       nextVersionCandidates: [],
       reconciliations: [],
+      itemResolutions: [],
       migratedFrom: 'secretary-v1',
     };
+    changed = true;
+  }
+  if (!Object.hasOwn(state.orchestration!, 'itemResolutions')) {
+    state.orchestration!.itemResolutions = [];
     changed = true;
   }
   for (const item of state.items) {
@@ -597,7 +675,142 @@ export function normalizeSecretaryState(state: SecretaryState): boolean {
       changed = true;
     }
   }
+  if (reconcileSecretaryBacklog(state)) changed = true;
   return changed;
+}
+
+function stableIdeaKey(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\s，。！？、；：,.!?;:()（）【】[\]"']/g, '')
+    .slice(0, 160);
+}
+
+function addItemResolution(
+  state: SecretaryState,
+  item: SecretaryItem,
+  input: Omit<
+    SecretaryItemResolution,
+    'id' | 'stableKey' | 'itemId' | 'createdAt' | 'correctionSentAt'
+  >,
+): boolean {
+  const records = state.orchestration!.itemResolutions!;
+  const stableKey = stableIdeaKey(item.idea);
+  if (records.some((entry) => entry.itemId === item.id && entry.status === input.status))
+    return false;
+  const createdAt = state.updatedAt || item.updatedAt || new Date().toISOString();
+  records.push({
+    id: `resolution-${item.id}-${input.status}`,
+    stableKey,
+    itemId: item.id,
+    ...input,
+    correctionSentAt: '',
+    createdAt,
+  });
+  return true;
+}
+
+/** Compatible, auditable migration for candidate facts that were already superseded or delivered. */
+export function reconcileSecretaryBacklog(state: SecretaryState): boolean {
+  state.orchestration ??= {
+    schemaVersion: 1,
+    intakes: [],
+    nextVersionCandidates: [],
+    reconciliations: [],
+    itemResolutions: [],
+    migratedFrom: 'secretary-v1',
+  };
+  state.orchestration.itemResolutions ??= [];
+  let changed = false;
+  const legacyCandidates = new Map<
+    string,
+    {
+      status: 'delivered' | 'superseded';
+      summary: string;
+      reason: string;
+      reference: string;
+    }
+  >([
+    [
+      '42c7e743-2bdc-4152-aaf4-c8cd979df279',
+      {
+        status: 'superseded',
+        summary: '该候选已被钉钉常驻秘书移动入口替代，不再进入开发排期。',
+        reason: '移动入口已由钉钉常驻秘书替代。',
+        reference: 'docs/dev/2026-09-20-dingtalk-secretary-channel.md',
+      },
+    ],
+    [
+      '85d190db-9843-4f83-a35f-ea0608fa9d7c',
+      {
+        status: 'delivered',
+        summary: '桌面项目中枢工作台增强已经交付，已从候选排期反向闭合。',
+        reason: '桌面项目中枢工作台增强已经交付。',
+        reference: 'commit:fddcdcb; docs/dev/2026-09-21-adaptive-project-office-vertical-slice.md',
+      },
+    ],
+  ]);
+  for (const item of state.items) {
+    const migration = legacyCandidates.get(item.id);
+    if (!migration || !['queued', 'backlog'].includes(item.status)) continue;
+    if (migration.status === 'superseded') {
+      item.status = 'superseded';
+      item.summary = migration.summary;
+      item.completedAt ||= state.updatedAt || item.updatedAt;
+      changed =
+        addItemResolution(state, item, {
+          status: 'superseded',
+          reason: migration.reason,
+          reference: migration.reference,
+          relatedItemIds: [],
+          correctionNoticeId: `schedule-correction-${item.id}-superseded`,
+        }) || changed;
+    } else {
+      item.status = 'delivered';
+      item.summary = migration.summary;
+      item.completedAt ||= state.updatedAt || item.updatedAt;
+      changed =
+        addItemResolution(state, item, {
+          status: 'delivered',
+          reason: migration.reason,
+          reference: migration.reference,
+          relatedItemIds: [],
+          correctionNoticeId: `schedule-correction-${item.id}-delivered`,
+        }) || changed;
+    }
+  }
+
+  // A delivered/cancelled/superseded/merged successor closes the original candidate
+  // through the stable secretary:<id> relationship instead of text inference.
+  for (const successor of state.items) {
+    const reference = successor.matchedFact?.reference ?? '';
+    if (!reference.startsWith('secretary:')) continue;
+    const original = state.items.find((item) => item.id === reference.slice('secretary:'.length));
+    if (!original || original.id === successor.id) continue;
+    if (!['delivered', 'cancelled', 'superseded', 'merged'].includes(successor.status)) continue;
+    const status = successor.status as 'delivered' | 'cancelled' | 'superseded' | 'merged';
+    if (original.status !== status) {
+      original.status = status;
+      original.completedAt ||= successor.completedAt || state.updatedAt;
+      original.summary = `已由关联事项 ${successor.id} 反向闭合：${successor.summary}`;
+      changed = true;
+    }
+    changed =
+      addItemResolution(state, original, {
+        status,
+        reason: original.summary,
+        reference: `secretary:${successor.id}`,
+        relatedItemIds: [successor.id],
+        correctionNoticeId: `schedule-correction-${original.id}-${status}`,
+      }) || changed;
+  }
+  return changed;
+}
+
+export function pendingScheduleCorrections(state: SecretaryState): SecretaryItemResolution[] {
+  return (state.orchestration?.itemResolutions ?? []).filter(
+    (resolution) => resolution.correctionNoticeId && !resolution.correctionSentAt,
+  );
 }
 
 export function reconciliationTargets(state: SecretaryState): SecretaryItem[] {
@@ -729,6 +942,12 @@ export function nextRunnableItem(state: SecretaryState, now: string): SecretaryI
 }
 
 export function publicSecretaryState(state: SecretaryState): object {
+  const pending = state.items.filter((item) =>
+    ['queued', 'backlog', 'active', 'tracking', 'retry-wait', 'waiting-producer'].includes(
+      item.status,
+    ),
+  );
+  const effectiveFacts = projectFactsFromItems(pending);
   return {
     status: state.status,
     lastEventAt: state.lastEventAt,
@@ -737,5 +956,11 @@ export function publicSecretaryState(state: SecretaryState): object {
     items: state.items.map(
       ({ processPid: _processPid, processIdentity: _processIdentity, ...item }) => item,
     ),
+    schedule: {
+      pendingCount: effectiveFacts.length,
+      activeCount: effectiveFacts.filter((fact) => fact.kind === 'active').length,
+      backlogCount: effectiveFacts.filter((fact) => fact.kind === 'scheduled').length,
+    },
+    itemResolutions: state.orchestration?.itemResolutions ?? [],
   };
 }

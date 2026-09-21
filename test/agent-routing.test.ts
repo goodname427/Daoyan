@@ -1,30 +1,51 @@
 import { readFileSync } from 'node:fs';
+import { mkdtemp, rm, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   canRebaseEmptyRecovery,
+  canReuseFullGateEvidence,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   canRefreshVersionRecoveryFingerprint,
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
+  fastGateCommandProgress,
+  failedNpmCommandFromOutput,
+  isValidationTreePath,
   isSafeRunId,
   optimizePlan,
+  npmRunCommandsFromScript,
+  pendingValidationStages,
   preferredWindowsExecutable,
+  qualityLoopAction,
   resolveProducerDirection,
   reviewRouteForPlan,
   reviewRoutesForPlan,
   routeForTask,
+  relativeModuleSpecifiers,
+  recoveryCountersAfterResume,
   sortTasks,
+  taskInputPaths,
+  taskOutputPaths,
   validatePlan,
   validatePolicy,
   validateReview,
   versionTasksFromStatus,
+  validationProfileForTask,
+  validationProfileForPlan,
+  validationStagesForPlan,
+  selectReusableTaskIds,
   type AgentPolicy,
   type PlannedTask,
   type TaskPlan,
 } from '../scripts/agent-routing';
+import {
+  fingerprintPaths,
+  isValidationTreePath as isPrePushValidationTreePath,
+} from '../scripts/pre-push-verify.mjs';
 
 const policy: AgentPolicy = {
   version: 1,
@@ -228,6 +249,8 @@ describe('agent routing', () => {
     const docs = buildLocalPlan('整理制作人工作流文档');
     expect(docs.tasks).toHaveLength(1);
     expect(docs.tasks[0].tier).toBe('economy');
+    expect(validationProfileForTask(docs.tasks[0])).toBe('light');
+    expect(docs.tasks[0].verification).not.toContain('npm run verify');
 
     const crossLayer = buildLocalPlan('推演台新增 VM 单步执行界面');
     expect(crossLayer.tasks.map((item) => item.tier)).toEqual(['advanced', 'standard']);
@@ -235,6 +258,221 @@ describe('agent routing', () => {
 
     const release = buildLocalPlan('发布大版本');
     expect(release.producerDecisionRequired).toBe(true);
+  });
+
+  it('keeps execution Agents on task-scoped checks', () => {
+    const implementation = buildLocalPlan('修复秘书恢复竞态').tasks[0];
+    expect(validationProfileForTask(implementation)).toBe('task');
+    expect(implementation.verification.join(' ')).not.toContain('verify:full');
+    expect(implementation.verification.join(' ')).not.toMatch(/npm run verify(?:\s|$)/);
+  });
+
+  it('drives the real Feature PM validation stages from the effective plan profile', () => {
+    const light = buildLocalPlan('整理制作人工作流文档');
+    const implementation = buildLocalPlan('修复秘书恢复竞态');
+    const qa = buildLocalPlan('[formal-stage:qa]\n\n执行版本集成与候选验证。');
+    const reverification = buildLocalPlan(
+      '[formal-stage:bugfix]\n\n本轮只做独立缺陷复验，不修改产品代码。',
+    );
+
+    expect(validationProfileForPlan(light)).toBe('light');
+    expect(validationStagesForPlan(light)).toEqual([]);
+    expect(validationStagesForPlan(implementation)).toEqual([
+      'fast-gate',
+      'independent-review',
+      'full-gate',
+    ]);
+    expect(validationStagesForPlan(qa)).toEqual(['independent-review']);
+    expect(validationStagesForPlan(reverification)).toEqual(['independent-review']);
+
+    const dispatcher = readFileSync(resolve('scripts/agent-dispatcher.ts'), 'utf8');
+    expect(dispatcher).toContain('pendingValidationStages(configuredValidationStages');
+    expect(dispatcher).toContain('validationProgress: activeValidationProgress');
+  });
+
+  it('selects the failed npm child command for an in-place targeted recheck', () => {
+    const output = `> daoyan@0.2.0 verify\n> npm run typecheck && npm run format:check\n\n> daoyan@0.2.0 typecheck\n> tsc --noEmit\n\n> daoyan@0.2.0 format:check\n> prettier --check .\n`;
+    expect(failedNpmCommandFromOutput(output, ['npm', 'run', 'verify'])).toEqual([
+      'npm',
+      'run',
+      'format:check',
+    ]);
+  });
+
+  it('continues the fast gate from a middle failure through every unexecuted command', () => {
+    const commands = npmRunCommandsFromScript(
+      'npm run typecheck && npm run lint && npm run format:check && npm run docs:check && npm run test',
+    );
+    expect(fastGateCommandProgress(commands, ['npm', 'run', 'lint'])).toEqual({
+      completedCommands: [['npm', 'run', 'typecheck']],
+      pendingCommands: [
+        ['npm', 'run', 'lint'],
+        ['npm', 'run', 'format:check'],
+        ['npm', 'run', 'docs:check'],
+        ['npm', 'run', 'test'],
+      ],
+    });
+  });
+
+  it('skips upstream Feature gates when the final-tree full gate evidence is reusable', () => {
+    expect(
+      pendingValidationStages(['fast-gate', 'independent-review', 'full-gate'], {
+        fullGate: true,
+        fastGate: false,
+        independentReview: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it('preserves valid completed tasks and only invalidates affected downstream dependencies', () => {
+    const tasks = [task('foundation'), task('consumer', ['foundation']), task('unrelated')];
+    const evidence = tasks.map((entry) => ({
+      taskId: entry.id,
+      passed: true,
+      inputFingerprint: `${entry.id}-input`,
+      currentInputFingerprint: `${entry.id}-input`,
+      outputFingerprint: `${entry.id}-output`,
+      currentOutputFingerprint: `${entry.id}-output`,
+      commandFingerprint: `${entry.id}-command`,
+      currentCommandFingerprint: `${entry.id}-command`,
+      configFingerprint: 'config',
+      currentConfigFingerprint: 'config',
+    }));
+    evidence[0].currentOutputFingerprint = 'changed';
+    expect(selectReusableTaskIds(tasks, evidence)).toEqual(['unrelated']);
+  });
+
+  it('binds selective recovery to read-only direct dependencies outside suggested paths', () => {
+    expect(taskOutputPaths(['scripts/suggested-input.ts'], ['scripts/modified-output.ts'])).toEqual(
+      ['scripts/modified-output.ts'],
+    );
+    expect(
+      taskInputPaths(['scripts/suggested-input.ts'], ['scripts/read-only-dependency.ts']),
+    ).toEqual(['scripts/read-only-dependency.ts', 'scripts/suggested-input.ts']);
+    expect(
+      relativeModuleSpecifiers(
+        "import { helper } from './read-only-dependency';\nexport * from '../shared/value';\n",
+      ),
+    ).toEqual(['../shared/value', './read-only-dependency']);
+
+    const dispatcher = readFileSync(resolve('scripts/agent-dispatcher.ts'), 'utf8');
+    expect(dispatcher).toContain('collectTaskInputPaths(task.paths, changedFiles)');
+    expect(dispatcher).toContain('inputPaths,');
+    expect(dispatcher).toContain('taskOutputPaths(run.task.paths, run.changedFiles)');
+    expect(dispatcher).toContain(
+      'currentInputFingerprint: await taskPathFingerprint(run.inputPaths ?? run.task.paths)',
+    );
+
+    const tasks = [task('implementation'), task('downstream', ['implementation'])];
+    const evidence = tasks.map((entry) => ({
+      taskId: entry.id,
+      passed: true,
+      inputFingerprint: `${entry.id}-input`,
+      currentInputFingerprint: `${entry.id}-input`,
+      outputFingerprint: `${entry.id}-output`,
+      currentOutputFingerprint: `${entry.id}-output`,
+      commandFingerprint: `${entry.id}-command`,
+      currentCommandFingerprint: `${entry.id}-command`,
+      configFingerprint: 'config',
+      currentConfigFingerprint: 'config',
+    }));
+    evidence[0].currentInputFingerprint = 'read-only-direct-dependency-changed';
+    expect(selectReusableTaskIds(tasks, evidence)).toEqual([]);
+  });
+
+  it('excludes only formal-version stage artifacts from the validation tree', () => {
+    for (const [path, expected] of [
+      ['docs/versions/release/charter.md', true],
+      ['docs/versions/release/version-planning.md', true],
+      ['docs/versions/release/module-design.md', true],
+      ['docs/versions/release/task-breakdown.json', true],
+      ['docs/versions/release/development.json', false],
+      ['docs/versions/release/qa.json', false],
+      ['docs/versions/release/bugfix-reverification.md', false],
+      ['docs/status.md', true],
+      ['scripts/version-lifecycle.ts', true],
+      ['test/version-lifecycle.test.ts', true],
+    ] as const) {
+      expect(isValidationTreePath(path)).toBe(expected);
+      expect(isPrePushValidationTreePath(path)).toBe(expected);
+    }
+  });
+
+  it('counts a resumed active checkpoint as an abnormal crash recovery', () => {
+    expect(recoveryCountersAfterResume('active', 2, 0)).toEqual({
+      actualLaunchCount: 3,
+      abnormalRecoveryCount: 1,
+    });
+    expect(recoveryCountersAfterResume('recoverable', 3, 1)).toEqual({
+      actualLaunchCount: 4,
+      abnormalRecoveryCount: 2,
+    });
+    expect(recoveryCountersAfterResume('waiting-producer', 4, 2)).toEqual({
+      actualLaunchCount: 5,
+      abnormalRecoveryCount: 2,
+    });
+    expect(recoveryCountersAfterResume('active', null, null)).toEqual({
+      actualLaunchCount: null,
+      abnormalRecoveryCount: null,
+    });
+  });
+
+  it('reuses a successful full gate only for the exact tree, configuration and command', () => {
+    const evidence = {
+      schemaVersion: 1,
+      exitCode: 0,
+      workspaceFingerprint: 'tree-a',
+      configFingerprint: 'config-a',
+      command: 'npm run verify:full',
+    };
+    expect(canReuseFullGateEvidence(evidence, 'tree-a', 'config-a', 'npm run verify:full')).toBe(
+      true,
+    );
+    expect(canReuseFullGateEvidence(evidence, 'tree-b', 'config-a', 'npm run verify:full')).toBe(
+      false,
+    );
+    expect(canReuseFullGateEvidence(evidence, 'tree-a', 'config-b', 'npm run verify:full')).toBe(
+      false,
+    );
+  });
+
+  it('fingerprints a deleted tracked file with the shared deleted sentinel', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-pre-push-delete-'));
+    try {
+      await writeFile(resolve(directory, 'deleted.txt'), 'tracked\n', 'utf8');
+      const before = fingerprintPaths(['deleted.txt'], directory);
+      await unlink(resolve(directory, 'deleted.txt'));
+      expect(() => fingerprintPaths(['deleted.txt'], directory)).not.toThrow();
+      expect(fingerprintPaths(['deleted.txt'], directory)).not.toBe(before);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps Version PM on evidence reuse instead of rerunning the Feature full gate', () => {
+    const source = readFileSync(resolve('scripts/version-dispatcher.ts'), 'utf8');
+    expect(source).toContain("[resolve(root, 'scripts/pre-push-verify.mjs'), '--check-only']");
+    expect(source).not.toContain("[npmExecPath, 'run', 'verify:full']");
+  });
+
+  it('keeps format failures and newly discovered review findings in the same PM loop', () => {
+    expect(
+      qualityLoopAction({ commandPassed: false, hasOpenFindings: false, madeProgress: true }),
+    ).toBe('repair-in-place');
+    expect(
+      qualityLoopAction({ commandPassed: true, hasOpenFindings: true, madeProgress: true }),
+    ).toBe('repair-in-place');
+    expect(
+      qualityLoopAction({ commandPassed: true, hasOpenFindings: true, madeProgress: false }),
+    ).toBe('recover');
+    expect(
+      qualityLoopAction({
+        commandPassed: false,
+        hasOpenFindings: false,
+        madeProgress: false,
+        failureKind: 'external-blocker',
+      }),
+    ).toBe('wait-external');
   });
 
   it('routes formal version stages directly without reopening producer planning', () => {

@@ -12,6 +12,8 @@ import {
   itemFromIntake,
   nextRunnableItem,
   normalizeSecretaryState,
+  pendingScheduleCorrections,
+  publicSecretaryState,
   projectFactsFromItems,
   projectFactsFromStatus,
   taskCompletionKey,
@@ -37,6 +39,180 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('migrates stale mobile and delivered desktop candidates with stable correction facts', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const mobile = itemFromIntake(
+      {
+        id: '42c7e743-2bdc-4152-aaf4-c8cd979df279',
+        idea: '开发手机 Sites 项目中枢 MVP',
+        createdAt: state.initializedAt,
+      },
+      [],
+    ).item;
+    const desktop = itemFromIntake(
+      {
+        id: '85d190db-9843-4f83-a35f-ea0608fa9d7c',
+        idea: '增强桌面项目中枢工作台',
+        createdAt: state.initializedAt,
+      },
+      [],
+    ).item;
+    mobile.status = 'backlog';
+    desktop.status = 'backlog';
+    state.items.push(mobile, desktop);
+
+    expect(normalizeSecretaryState(state)).toBe(true);
+    expect(state.items.map((item) => item.status)).toEqual(['superseded', 'delivered']);
+    expect(pendingScheduleCorrections(state)).toHaveLength(2);
+    expect(projectFactsFromItems(state.items)).toEqual([]);
+    expect(
+      (publicSecretaryState(state) as { schedule: { pendingCount: number } }).schedule.pendingCount,
+    ).toBe(0);
+
+    const serialized = JSON.parse(JSON.stringify(state));
+    expect(normalizeSecretaryState(serialized)).toBe(false);
+    expect(serialized.orchestration.itemResolutions).toHaveLength(2);
+  });
+
+  it('does not text-match future mobile or desktop work during the one-time legacy migration', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const futureMobile = itemFromIntake(
+      {
+        id: 'future-mobile',
+        idea: '重新设计手机优先项目中枢 MVP 的离线模式',
+        createdAt: state.initializedAt,
+      },
+      [],
+    ).item;
+    const futureDesktop = itemFromIntake(
+      {
+        id: 'future-desktop',
+        idea: '继续增强桌面项目中枢工作台的快捷键',
+        createdAt: state.initializedAt,
+      },
+      [],
+    ).item;
+    futureMobile.status = 'backlog';
+    futureDesktop.status = 'queued';
+    state.items.push(futureMobile, futureDesktop);
+
+    expect(normalizeSecretaryState(state)).toBe(false);
+    expect(state.items.map((item) => item.status)).toEqual(['backlog', 'queued']);
+    expect(state.orchestration?.itemResolutions).toEqual([]);
+  });
+
+  it('reverse-closes an original candidate through its stable secretary relation', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const original = itemFromIntake(
+      { id: 'original', idea: '新增宗门经营', createdAt: state.initializedAt },
+      [],
+    ).item;
+    original.status = 'backlog';
+    const delivery = itemFromIntake(
+      { id: 'delivery', idea: '交付宗门经营', createdAt: state.initializedAt },
+      [],
+    ).item;
+    delivery.status = 'delivered';
+    delivery.matchedFact = {
+      kind: 'scheduled',
+      text: original.idea,
+      reference: 'secretary:original',
+    };
+    delivery.completedAt = '2026-09-21T01:00:00.000Z';
+    state.items.push(original, delivery);
+
+    normalizeSecretaryState(state);
+    expect(original.status).toBe('delivered');
+    expect(state.orchestration?.itemResolutions?.[0]).toEqual(
+      expect.objectContaining({ itemId: 'original', relatedItemIds: ['delivery'] }),
+    );
+  });
+
+  it('reverse-closes a merged candidate and excludes it from schedule answers', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const original = itemFromIntake(
+      { id: 'merge-source', idea: '增加版本耗时面板', createdAt: state.initializedAt },
+      [],
+    ).item;
+    original.status = 'backlog';
+    const merged = itemFromIntake(
+      { id: 'merge-target', idea: '合并到项目中枢观测工作', createdAt: state.initializedAt },
+      [],
+    ).item;
+    merged.status = 'merged';
+    merged.matchedFact = {
+      kind: 'scheduled',
+      text: original.idea,
+      reference: 'secretary:merge-source',
+    };
+    state.items.push(original, merged);
+
+    expect(normalizeSecretaryState(state)).toBe(true);
+    expect(original.status).toBe('merged');
+    expect(projectFactsFromItems(state.items)).toEqual([]);
+    expect(state.orchestration?.itemResolutions).toContainEqual(
+      expect.objectContaining({ itemId: original.id, status: 'merged' }),
+    );
+    const restarted = JSON.parse(JSON.stringify(state));
+    expect(normalizeSecretaryState(restarted)).toBe(false);
+    expect(
+      (publicSecretaryState(restarted) as { schedule: { pendingCount: number } }).schedule,
+    ).toEqual(expect.objectContaining({ pendingCount: 0 }));
+  });
+
+  it('deduplicates linked schedule items and lets active status override backlog counts', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const backlog = itemFromIntake(
+      { id: 'queued', idea: '境界成长', createdAt: state.initializedAt },
+      [],
+    ).item;
+    backlog.status = 'backlog';
+    const active = itemFromIntake(
+      { id: 'active', idea: '境界成长实现', createdAt: state.initializedAt },
+      [],
+    ).item;
+    active.status = 'active';
+    active.matchedFact = { kind: 'scheduled', text: backlog.idea, reference: 'secretary:queued' };
+    state.items.push(backlog, active);
+
+    expect(projectFactsFromItems(state.items)).toEqual([
+      { kind: 'active', text: active.idea, reference: 'secretary:queued' },
+    ]);
+    expect((publicSecretaryState(state) as { schedule: Record<string, number> }).schedule).toEqual({
+      pendingCount: 1,
+      activeCount: 1,
+      backlogCount: 0,
+    });
+  });
+
+  it('counts independent items with identical text unless an explicit relation links them', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const first = itemFromIntake(
+      { id: 'same-text-a', idea: '整理宗门任务面板', createdAt: state.initializedAt },
+      [],
+    ).item;
+    const second = itemFromIntake(
+      { id: 'same-text-b', idea: '整理宗门任务面板', createdAt: state.initializedAt },
+      [],
+    ).item;
+    first.status = 'backlog';
+    second.status = 'queued';
+    first.matchedFact = {
+      kind: 'scheduled',
+      text: first.idea,
+      reference: 'docs/status.md#下一阶段候选',
+    };
+    second.matchedFact = { ...first.matchedFact };
+    state.items.push(first, second);
+
+    expect(projectFactsFromItems(state.items)).toEqual([
+      { kind: 'scheduled', text: first.idea, reference: 'secretary:same-text-a' },
+      { kind: 'scheduled', text: second.idea, reference: 'secretary:same-text-b' },
+    ]);
+    expect(
+      (publicSecretaryState(state) as { schedule: { pendingCount: number } }).schedule,
+    ).toEqual(expect.objectContaining({ pendingCount: 2 }));
+  });
   it('extracts completed and scheduled facts from the status source of truth', () => {
     expect(projectFactsFromStatus(status).map((fact) => fact.kind)).toEqual([
       'completed',

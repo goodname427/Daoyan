@@ -1,6 +1,12 @@
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   continueDispatchResponse,
+  currentValidationConfigFingerprint,
   advanceRecordedDirection,
   applyAutomaticStagePolicy,
   featureTaskCompletions,
@@ -8,32 +14,196 @@ import {
   resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
+  isBootstrapGraceActive,
+  localQuestionResponse,
   ensureVersionStageItem,
   formalVersionBlocksDispatch,
   isFormalVersionWriteConflict,
   parseBugfixResult,
   parseDesignReviewResult,
   parseDevelopmentResult,
+  isTaskScopeCommand,
+  latestReusableFeatureGate,
   parseQaResult,
   parseReverificationResult,
   parseVersionWorkItems,
+  persistScheduleCorrections,
+  publicCodeRevision,
+  observedExitEndsPm,
   nonDocumentationChanges,
   replaceVersionWorkItems,
   versionStageDirection,
   versionMessageIsNewDirection,
   versionProducerDecision,
+  validationTreeFingerprintForPaths,
+  waitForTerminalSnapshot,
   windowsCodexInvocation,
 } from '../scripts/secretary-notice-guard';
-import { itemFromIntake } from '../scripts/secretary-state';
-import { createSecretaryState } from '../scripts/secretary-state';
+import {
+  createSecretaryState,
+  itemFromIntake,
+  normalizeSecretaryState,
+  pendingScheduleCorrections,
+} from '../scripts/secretary-state';
 import {
   createFormalVersion,
   currentVersionStagePolicy,
+  recordValidationEvidence,
   recordStagePolicy,
   transitionVersionBug,
 } from '../scripts/version-lifecycle';
 
 describe('secretary worker process launch', () => {
+  it('uses a deterministic source revision when an isolated guard has no Git metadata', async () => {
+    const fixture = await mkdtemp(resolve(tmpdir(), 'daoyan-public-revision-'));
+    try {
+      await mkdir(resolve(fixture, 'scripts'));
+      await writeFile(resolve(fixture, 'package.json'), JSON.stringify({ type: 'module' }));
+      await writeFile(resolve(fixture, 'scripts/guard.ts'), 'export const revision = 1;\n');
+
+      const first = publicCodeRevision(fixture);
+      expect(first).toMatch(/^source-[a-f0-9]{64}$/);
+      expect(publicCodeRevision(fixture)).toBe(first);
+
+      await writeFile(resolve(fixture, 'scripts/guard.ts'), 'export const revision = 2;\n');
+      expect(publicCodeRevision(fixture)).not.toBe(first);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
+  it('reports an intact error when neither Git nor source files can identify the revision', async () => {
+    const fixture = await mkdtemp(resolve(tmpdir(), 'daoyan-missing-public-revision-'));
+    try {
+      expect(() => publicCodeRevision(fixture)).toThrowError(
+        '无法读取当前代码修订，不能登记公开事件',
+      );
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
+  it('uses a bounded bootstrapping grace before classifying a missing first snapshot', () => {
+    const started = Date.parse('2026-09-21T00:00:00.000Z');
+    expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 5_000)).toBe(true);
+    expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 15_001)).toBe(false);
+  });
+
+  it('rereads a delayed terminal snapshot after the launched PM wrapper exits', async () => {
+    let reads = 0;
+    const snapshot = await waitForTerminalSnapshot(
+      async () => {
+        reads += 1;
+        return reads < 3 ? undefined : { status: 'delivered', revision: 'final' };
+      },
+      4,
+      0,
+    );
+
+    expect(reads).toBe(3);
+    expect(snapshot).toEqual({ status: 'delivered', revision: 'final' });
+  });
+
+  it('does not treat a worker exit as the end of a still-running PM', () => {
+    const wrapper = { pid: 41, identity: 'tsx-wrapper' };
+    const pm = { pid: 42, identity: 'pm-start' };
+    expect(observedExitEndsPm('worker', wrapper, pm, () => true)).toBe(false);
+    expect(observedExitEndsPm('worker', wrapper, pm, () => false)).toBe(true);
+    expect(observedExitEndsPm('pm', wrapper, pm, () => true)).toBe(false);
+    expect(observedExitEndsPm('pm', pm, pm, () => false)).toBe(true);
+
+    const source = readFileSync(resolve('scripts/secretary-notice-guard.ts'), 'utf8');
+    expect(source).toContain("reconcileAfterProcessExit(item, 'worker', worker)");
+    expect(source).toContain("reconcileAfterProcessExit(item, 'pm', launchedProcess)");
+    expect(source).toContain('item.processPid = run.processPid');
+  });
+
+  it('persists a sent schedule correction even when reconciliation has no other changes', async () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const stale = itemFromIntake(
+      {
+        id: '42c7e743-2bdc-4152-aaf4-c8cd979df279',
+        idea: '开发手机 Sites 项目中枢 MVP',
+        createdAt: state.initializedAt,
+      },
+      [],
+    ).item;
+    stale.status = 'backlog';
+    state.items.push(stale);
+    normalizeSecretaryState(state);
+    let persisted = '';
+
+    expect(
+      await persistScheduleCorrections(
+        state,
+        async () => undefined,
+        async () => {
+          persisted = JSON.stringify(state);
+        },
+        () => '2026-09-21T01:00:00.000Z',
+      ),
+    ).toBe(1);
+
+    const restarted = JSON.parse(persisted) as typeof state;
+    expect(restarted.orchestration?.itemResolutions?.[0].correctionSentAt).toBe(
+      '2026-09-21T01:00:00.000Z',
+    );
+    expect(pendingScheduleCorrections(restarted)).toEqual([]);
+  });
+
+  it('persists each correction before a later notification fails and resumes from the remainder', async () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    for (const [id, idea] of [
+      ['42c7e743-2bdc-4152-aaf4-c8cd979df279', '开发手机 Sites 项目中枢 MVP'],
+      ['85d190db-9843-4f83-a35f-ea0608fa9d7c', '增强桌面项目中枢工作台'],
+    ]) {
+      const item = itemFromIntake({ id, idea, createdAt: state.initializedAt }, []).item;
+      item.status = 'backlog';
+      state.items.push(item);
+    }
+    normalizeSecretaryState(state);
+    let persisted = '';
+    let publishCount = 0;
+
+    await expect(
+      persistScheduleCorrections(
+        state,
+        async () => {
+          publishCount += 1;
+          if (publishCount === 2) throw new Error('second publish failed');
+        },
+        async () => {
+          persisted = JSON.stringify(state);
+        },
+        () => '2026-09-21T01:00:00.000Z',
+      ),
+    ).rejects.toThrow('second publish failed');
+
+    const restarted = JSON.parse(persisted) as typeof state;
+    expect(pendingScheduleCorrections(restarted).map((entry) => entry.itemId)).toEqual([
+      '85d190db-9843-4f83-a35f-ea0608fa9d7c',
+    ]);
+    const resumed: string[] = [];
+    await persistScheduleCorrections(
+      restarted,
+      async (correction) => {
+        resumed.push(correction.itemId);
+      },
+      async () => undefined,
+      () => '2026-09-21T02:00:00.000Z',
+    );
+    expect(resumed).toEqual(['85d190db-9843-4f83-a35f-ea0608fa9d7c']);
+    expect(pendingScheduleCorrections(restarted)).toEqual([]);
+  });
+
+  it('answers schedule questions from reconciled facts without stale backlog items', () => {
+    expect(localQuestionResponse('现在排期是什么？', [])).toContain('没有未承接的后续排期');
+    expect(
+      localQuestionResponse('现在排期是什么？', [
+        { kind: 'scheduled', text: '境界成长', reference: 'secretary:realm' },
+      ]),
+    ).toContain('后续排期：境界成长');
+  });
   it('runs a Windows codex cmd shim through its Node entrypoint', () => {
     const shim = 'C:\\Users\\dev\\npm\\codex.cmd';
     const expectedEntry = 'C:\\Users\\dev\\npm\\node_modules\\@openai\\codex\\bin\\codex.js';
@@ -526,6 +696,49 @@ describe('formal version stage dispatch', () => {
       )[0].status,
     ).toBe('skipped');
     expect(
+      parseDevelopmentResult(
+        {
+          workItems: [
+            {
+              id: 'core',
+              status: 'completed',
+              typecheck: 'passed',
+              targetedTests: 'passed',
+              commands: [
+                { command: 'npm run typecheck', exitCode: 0 },
+                { command: 'npm test -- test/core.test.ts', exitCode: 0 },
+              ],
+              evidence: ['task-output.md'],
+            },
+          ],
+        },
+        workItems,
+      )[0].commands,
+    ).toEqual([
+      { command: 'npm run typecheck', exitCode: 0 },
+      { command: 'npm test -- test/core.test.ts', exitCode: 0 },
+    ]);
+    expect(() =>
+      parseDevelopmentResult(
+        {
+          workItems: [
+            {
+              id: 'core',
+              status: 'completed',
+              typecheck: 'passed',
+              targetedTests: 'passed',
+              commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+              evidence: ['planned-command-only.md'],
+            },
+          ],
+        },
+        workItems,
+      ),
+    ).toThrow('Task 必须登记实际运行');
+    expect(isTaskScopeCommand('npm run test:e2e')).toBe(false);
+    expect(isTaskScopeCommand('npm run build')).toBe(false);
+    expect(isTaskScopeCommand('cmd /c npm.cmd run verify:full')).toBe(false);
+    expect(
       parseQaResult(
         {
           status: 'failed',
@@ -560,6 +773,193 @@ describe('formal version stage dispatch', () => {
         ['bug-1'],
       ),
     ).toThrow('逐项覆盖');
+  });
+
+  it('topologically orders development results before Task evidence is linked', () => {
+    const workItems = parseVersionWorkItems(
+      {
+        workItems: [
+          {
+            id: 'downstream',
+            title: '下游',
+            owner: 'Feature PM',
+            dependsOn: ['upstream'],
+            summary: '消费上游证据。',
+            affectedPaths: ['scripts/downstream.ts'],
+            acceptanceCommands: ['npm test -- test/downstream.test.ts'],
+          },
+          {
+            id: 'upstream',
+            title: '上游',
+            owner: 'Feature PM',
+            dependsOn: [],
+            summary: '提供依赖证据。',
+            affectedPaths: ['scripts/upstream.ts'],
+            acceptanceCommands: ['npm test -- test/upstream.test.ts'],
+          },
+        ],
+      },
+      'task-breakdown.json',
+    );
+    const result = parseDevelopmentResult(
+      {
+        workItems: [
+          {
+            id: 'downstream',
+            status: 'completed',
+            typecheck: 'passed',
+            targetedTests: 'passed',
+            commands: [
+              { command: 'npm run typecheck', exitCode: 0 },
+              { command: 'npm test -- test/downstream.test.ts', exitCode: 0 },
+            ],
+            evidence: ['downstream.md'],
+          },
+          {
+            id: 'upstream',
+            status: 'completed',
+            typecheck: 'passed',
+            targetedTests: 'passed',
+            commands: [
+              { command: 'npm run typecheck', exitCode: 0 },
+              { command: 'npm test -- test/upstream.test.ts', exitCode: 0 },
+            ],
+            evidence: ['upstream.md'],
+          },
+        ],
+      },
+      workItems,
+    );
+
+    expect(result.map((entry) => entry.id)).toEqual(['upstream', 'downstream']);
+  });
+
+  it('wires Task, Feature, and Version validation evidence into formal stage ingestion', () => {
+    const source = readFileSync(resolve('scripts/secretary-notice-guard.ts'), 'utf8');
+    expect(source.match(/recordValidationEvidence\(version/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(source).toContain('reusedFeatureEvidenceId: featureGate.id');
+    expect(source).toContain('latestReusableFeatureGate(version, testedRevision)');
+    expect(source).toContain("scope: 'task'");
+    expect(source).toContain("scope: 'feature'");
+    expect(source).toContain("scope: 'version'");
+    expect(source).toContain('const commands = result.commands');
+    expect(source).not.toContain('commands.map((command) => ({ command, exitCode: 0 }))');
+  });
+
+  it('checks the live candidate tree and validation config before QA reuses a Feature gate', () => {
+    const version = createFormalVersion({
+      id: 'live-gate-reuse',
+      title: '实时门禁复用',
+      direction: '验证当前候选树。',
+      documentRoot: 'docs/versions/live-gate-reuse',
+      currentStage: 'qa',
+    });
+    const commandFingerprint = createHash('sha256').update('npm run verify:full').digest('hex');
+    const gate = recordValidationEvidence(version, {
+      id: 'feature-gate',
+      scope: 'feature',
+      ownerId: 'feature-pm',
+      status: 'passed',
+      gitTree: 'tree-current',
+      codeRevision: 'rev-current',
+      commandFingerprint,
+      configFingerprint: 'config-current',
+      affectedPaths: ['scripts/'],
+      inputEvidenceIds: [],
+      outputFingerprint: 'tree-current',
+      executionRound: 1,
+      commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+      evidence: ['full-gate-evidence.json'],
+    });
+
+    expect(
+      latestReusableFeatureGate(version, 'rev-current', 'tree-current', 'config-current').id,
+    ).toBe(gate.id);
+    expect(() =>
+      latestReusableFeatureGate(version, 'rev-current', 'tree-changed', 'config-current'),
+    ).toThrow('缺少与候选修订匹配');
+    expect(() =>
+      latestReusableFeatureGate(version, 'rev-current', 'tree-current', 'config-changed'),
+    ).toThrow('缺少与候选修订匹配');
+  });
+
+  it('reuses the development Feature gate after mandatory QA stage documents are recorded', async () => {
+    const fixture = await mkdtemp(resolve(tmpdir(), 'daoyan-feature-gate-qa-order-'));
+    try {
+      await mkdir(resolve(fixture, 'scripts'), { recursive: true });
+      await mkdir(resolve(fixture, 'docs/versions/release'), { recursive: true });
+      await writeFile(resolve(fixture, 'scripts/feature.ts'), 'export const feature = true;\n');
+      await writeFile(resolve(fixture, 'package.json'), '{"scripts":{}}\n');
+      await writeFile(resolve(fixture, 'package-lock.json'), '{}\n');
+      await writeFile(resolve(fixture, 'vite.config.ts'), 'export default {};\n');
+      const taskBreakdownPath = 'docs/versions/release/task-breakdown.json';
+      const taskBreakdown = '{"workItems":[{"id":"feature"}]}\n';
+      await writeFile(resolve(fixture, taskBreakdownPath), taskBreakdown);
+      const testedRevision = 'development-revision';
+      const developmentPaths = [
+        'scripts/feature.ts',
+        'package.json',
+        'package-lock.json',
+        'vite.config.ts',
+        taskBreakdownPath,
+      ];
+      const testedTree = validationTreeFingerprintForPaths(developmentPaths, fixture);
+      const config = currentValidationConfigFingerprint(fixture);
+      const version = createFormalVersion({
+        id: 'qa-stage-order',
+        title: '开发到 QA 顺序',
+        direction: 'QA 阶段产物不得使 Feature 门禁失效。',
+        documentRoot: 'docs/versions/release',
+        currentStage: 'qa',
+      });
+      const commandFingerprint = createHash('sha256').update('npm run verify:full').digest('hex');
+      const gate = recordValidationEvidence(version, {
+        id: 'development-feature-gate',
+        scope: 'feature',
+        ownerId: 'feature-pm',
+        status: 'passed',
+        gitTree: testedTree,
+        codeRevision: testedRevision,
+        commandFingerprint,
+        configFingerprint: config,
+        affectedPaths: ['scripts/'],
+        inputEvidenceIds: [],
+        outputFingerprint: testedTree,
+        executionRound: 1,
+        commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+        evidence: ['full-gate-evidence.json'],
+      });
+
+      await writeFile(resolve(fixture, 'docs/versions/release/qa.json'), '{"status":"passed"}\n');
+      await writeFile(resolve(fixture, 'docs/versions/release/qa.md'), '# QA\n\n通过。\n');
+
+      const qaTree = validationTreeFingerprintForPaths(
+        [...developmentPaths, 'docs/versions/release/qa.json', 'docs/versions/release/qa.md'],
+        fixture,
+      );
+      expect(qaTree).toBe(testedTree);
+      expect(latestReusableFeatureGate(version, testedRevision, qaTree, config).id).toBe(gate.id);
+
+      await writeFile(
+        resolve(fixture, taskBreakdownPath),
+        '{"workItems":[{"id":"changed-scope"}]}\n',
+      );
+      const changedScopeTree = validationTreeFingerprintForPaths(developmentPaths, fixture);
+      expect(changedScopeTree).not.toBe(testedTree);
+      expect(() =>
+        latestReusableFeatureGate(version, testedRevision, changedScopeTree, config),
+      ).toThrow('缺少与候选修订匹配');
+
+      await writeFile(resolve(fixture, taskBreakdownPath), taskBreakdown);
+      await writeFile(resolve(fixture, 'scripts/feature.ts'), 'export const feature = false;\n');
+      const changedCodeTree = validationTreeFingerprintForPaths(developmentPaths, fixture);
+      expect(changedCodeTree).not.toBe(testedTree);
+      expect(() =>
+        latestReusableFeatureGate(version, testedRevision, changedCodeTree, config),
+      ).toThrow('缺少与候选修订匹配');
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
   });
 
   it('treats candidate changes outside version documents as untested implementation drift', () => {
