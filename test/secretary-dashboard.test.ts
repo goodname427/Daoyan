@@ -119,9 +119,17 @@ async function reviewIntake(
 }
 
 afterEach(async () => {
-  if (child && child.exitCode === null) child.kill('SIGTERM');
+  // A failed assertion may bypass the explicit shutdown in a test body.  Wait
+  // for the guard here as well: on Windows its tsx child can otherwise keep
+  // the fixture (and its node_modules junction) open while cleanup removes it.
+  if (child && child.exitCode === null) await stopSecretaryDashboard(child);
   child = null;
-  if (nestedWorker && nestedWorker.exitCode === null) nestedWorker.kill('SIGTERM');
+  if (nestedWorker && nestedWorker.exitCode === null) {
+    await new Promise<void>((resolveExit) => {
+      nestedWorker!.once('exit', () => resolveExit());
+      nestedWorker!.kill('SIGTERM');
+    });
+  }
   nestedWorker = null;
   if (artifactLink) await rm(artifactLink, { recursive: true, force: true });
   artifactLink = '';
@@ -319,6 +327,9 @@ describe('secretary dashboard server', () => {
         expect(result.status).toBe(200);
       }
       const acknowledged = (await readState()).items[0];
+      // The semantic triage path also sees this reply.  A decision without an
+      // explicit commitment change must remain attached to the waiting
+      // snapshot rather than being reclassified as a fresh direction.
       expect(acknowledged.status).toBe('retry-wait');
       expect(acknowledged.orchestration!.acknowledgedWaitingSnapshot).toBe(
         acknowledged.orchestration!.waitingSnapshot,

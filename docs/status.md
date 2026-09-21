@@ -32,7 +32,7 @@
 
 ## 当前迭代
 
-- `adaptive-project-office-2026-09-21` 已完成详细策划、主策审核、[任务拆分](./versions/adaptive-project-office-2026-09-21/task-breakdown.md)与[版本排期](./versions/adaptive-project-office-2026-09-21/version-planning.md)，待 notice guard 核验报告并原子登记阶段证据。范围冻结为七项工作：先建立分作用域证据合同，随后在一个基础层并行窗口完成 Task 轻量验证与公开耗时统计，再完成选择性恢复、Feature 汇总门禁、Version QA 证据复用和隔离迁移/降级演练；Feature 汇总后严格串行，避免重复完整门禁。每项清单已登记受影响路径与直接验收命令，作为证据复用/失效边界；规划阶段只做文档、结构与直接检查，不产生代码完整门禁。Task/Feature/Version 具有唯一责任，证据按作用域与 Git tree/命令/配置指纹复用，只失效受影响增量和下游，并分别统计六类耗时。`npm run verify:full` 的唯一执行与证据归属是 Feature PM /Feature，Version QA 只复用匹配事实并做独立版本验证。当前按 `legacy-unknown` 保守采用完整执行。生产迁移/降级演练、后续阶段证据和制作人候选体验尚未发生，不能以排期完成代替版本验收。
+- `adaptive-project-office-2026-09-21` 已完成详细策划、主策审核、[任务拆分](./versions/adaptive-project-office-2026-09-21/task-breakdown.md)与[版本排期](./versions/adaptive-project-office-2026-09-21/version-planning.md)，待 notice guard 核验报告并原子登记阶段证据。范围修订 3 冻结为七项工作：先建立分作用域证据合同，随后在一个基础层并行窗口完成 Task 轻量验证与公开耗时统计，再完成选择性异常恢复、Feature 汇总门禁、Version QA 证据复用和隔离迁移/降级演练；Feature 汇总后严格串行，避免重复完整门禁。审计澄清已纳入同一范围：普通失败、格式和审查 finding 在原 PM 内按未关闭 finding 闭环；恢复仅用于真正异常；启动快照使用 `bootstrapping` 宽限并分离 PM/dispatcher/worker 退出对账。每项清单已登记受影响路径与直接验收命令，作为证据复用/失效边界；规划阶段只做文档、结构与直接检查，不产生代码完整门禁。Task/Feature/Version 具有唯一责任，证据按作用域与 Git tree/命令/配置指纹复用，只失效受影响增量和下游；公开事件绑定轮次/修订、耗时分六类，且另列真实启动、异常恢复、局部修复轮次。`npm run verify:full` 的唯一执行与证据归属是 Feature PM /Feature，pre-push 复用匹配最终树/配置指纹的证据，Version QA（含 `version-qa-reuse`）只复用匹配事实并做独立版本验证。当前按 `legacy-unknown` 保守采用完整执行。生产迁移/降级演练、后续阶段证据和制作人候选体验尚未发生，不能以排期完成代替版本验收。
 
 - 本轮交付前修复补齐等待快照确认、方向入口查重和候选代码修订门禁：Feature PM 在请求决定前保存 `waiting-producer` 真实恢复点，守卫不会自动重试；包含“继续/恢复”的否定、替换和兼容性变化仍进入范围路由；修复前或修订冲突的 QA 不能覆盖当前代码。看板只显示结构化公开事件与调度状态，不读取原始模型日志。保留 v1 兼容读取与历史证据；不代表正式版本已由制作人验收。
 

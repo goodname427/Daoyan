@@ -5,6 +5,7 @@ import {
   applyAutomaticStagePolicy,
   featureTaskCompletions,
   retryTimeFromOutput,
+  resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
   ensureVersionStageItem,
@@ -74,6 +75,18 @@ describe('secretary dispatch feedback', () => {
   it('reports a failed launch as recovery instead of a successful start', () => {
     expect(continueDispatchResponse(item, 'recovering')).toContain('未稳定启动');
     expect(continueDispatchResponse(item, 'recovering')).not.toContain('已确认运行');
+  });
+});
+
+describe('secretary waiting-message intent', () => {
+  it('keeps an ordinary producer decision attached to its waiting snapshot', () => {
+    expect(resolveInboxIntent('reply', 'direction', '采用方案 A，兼容已有存档')).toBe('reply');
+  });
+
+  it('keeps an explicit commitment change as a new direction', () => {
+    expect(resolveInboxIntent('reply', 'direction', '取消旧方案，替换为新兼容方案')).toBe(
+      'direction',
+    );
   });
 });
 

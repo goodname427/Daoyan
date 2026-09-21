@@ -5,7 +5,7 @@
       "title": "实现分作用域验证证据与增量失效合同",
       "owner": "Feature PM",
       "dependsOn": [],
-      "summary": "在正式版本生命周期中保存 Task、Feature、Version 证据的输入/输出、Git tree、路径、命令和配置指纹，并用可测试的相交与下游规则失效证据；验收为无关树变化保留证据，路径、命令、配置或下游输入变化只失效受影响范围，旧/缺失值保守不可复用。",
+      "summary": "在正式版本生命周期中保存 Task、Feature、Version 证据的输入/输出、Git tree、路径、命令、配置指纹及执行轮次/代码修订，并用可测试的相交与下游规则失效证据；验收为无关树变化保留证据，路径、命令、配置或下游输入变化只失效受影响范围，旧/缺失值保守不可复用。",
       "affectedPaths": [
         "scripts/version-lifecycle.ts",
         "scripts/secretary-notice-guard.ts",
@@ -36,7 +36,7 @@
       "title": "实现保留有效任务的依赖恢复",
       "owner": "Feature PM",
       "dependsOn": ["evidence-contract", "task-profile"],
-      "summary": "将恢复对账改为逐项验证输入、输出和证据指纹，并沿工作项依赖图只重新排队失效任务及下游；验收为重启/接管和缺失或损坏证据的场景不清空无关已完成任务，且仍阻止受影响路径越过门禁。",
+      "summary": "恢复仅用于进程崩溃、主机/守卫重启、外部服务或额度阻塞和持久证据损坏；逐项验证输入、输出和证据指纹，并沿依赖图只重新排队失效任务及下游。验收覆盖 runDirectory 已登记但快照未创建的 bootstrapping 宽限、PM/dispatcher/worker 分离跟踪、退出后等待并重读终态快照，以及恢复不清空无关已完成任务。",
       "affectedPaths": [
         "scripts/secretary-state.ts",
         "scripts/secretary-notice-guard.ts",
@@ -55,7 +55,7 @@
       "title": "补齐公开事件轮次修订与六类耗时统计",
       "owner": "Feature PM",
       "dependsOn": ["evidence-contract"],
-      "summary": "扩展公开工作日志、状态和看板投影，使 eventId 区分 executionRound 与 codeRevision，并分别持久展示模型计算、命令执行、等待制作人、等待额度、恢复和空闲时间；验收为重试或代码修订不碰撞、时段互斥且跨重启闭合，旧未知值显示不可用而非零。",
+      "summary": "扩展公开工作日志、状态和看板投影，使 eventId 区分 executionRound 与 codeRevision，并分别持久展示模型计算、命令执行、等待制作人、等待额度、恢复和空闲时间，以及真实启动、异常恢复、局部修复轮次；验收为重试或代码修订不碰撞、时段互斥且跨重启闭合，交付后清理陈旧摘要，旧未知值显示不可用而非零。",
       "affectedPaths": [
         "scripts/public-work-log.ts",
         "scripts/secretary-state.ts",
@@ -74,7 +74,7 @@
       "title": "实现 Feature 汇总门禁与增量独立审查",
       "owner": "Feature PM",
       "dependsOn": ["evidence-contract", "task-profile", "selective-recovery", "public-timing"],
-      "summary": "让 Feature PM 汇总有效 Task 证据后只运行一次快速门禁、一次独立审查，并在最终代码树唯一生成一份 Feature scope npm run verify:full 证据；验收为修复按问题路径选择实现模型且只复核问题、修复和受影响增量，失败/漂移会失效相交结论，不重复无关 Task 或完整门禁。",
+      "summary": "让 Feature PM 汇总有效 Task 证据后只运行一次快速门禁、一次独立审查，并在最终代码树唯一生成一份 Feature scope npm run verify:full 证据；普通测试/格式失败、审查 finding 和局部修复在同一 PM 内按未关闭 finding 或失败命令迭代，不采用固定两轮上抛。验收为修复按问题路径选择实现模型且只复核问题、修复和受影响增量，只有无进展重复、真实外部阻塞或进程异常才恢复，pre-push 复用匹配代码树和配置指纹的完整证据。",
       "affectedPaths": [
         "scripts/agent-dispatcher.ts",
         "scripts/agent-routing.ts",
@@ -94,7 +94,7 @@
     {
       "id": "version-qa-reuse",
       "title": "落实 Version QA 的证据复用与候选约束",
-      "owner": "测试 Agent",
+      "owner": "Version QA",
       "dependsOn": ["feature-quality-loop"],
       "summary": "让 Version QA 仅消费代码树、命令和配置指纹仍匹配的 Feature 完整门禁，并独立记录跨 Feature 集成、主线回归、迁移、打包和候选验证；验收为 QA 不重跑 verify:full 或 Feature 局部自测，候选修订或当前范围不匹配时退回 Feature PM 重建证据。",
       "affectedPaths": [

@@ -511,6 +511,26 @@ function validateTriage(value: unknown): TriageResult | null {
   return value as unknown as TriageResult;
 }
 
+export function resolveInboxIntent(
+  fallbackIntent: SecretaryMessageIntent,
+  modelIntent: SecretaryMessageIntent | undefined,
+  message: string,
+): SecretaryMessageIntent {
+  // A waiting item has a concrete recovery snapshot. Semantic triage is useful
+  // for recognising an explicitly changed direction, but it must not
+  // reinterpret a producer's ordinary decision as a new direction: doing so
+  // leaves the existing item in waiting-producer and drops the acknowledgement
+  // that makes its original snapshot runnable.
+  if (
+    modelIntent === 'direction' &&
+    !messageIsNewDirection(message) &&
+    (fallbackIntent === 'reply' || fallbackIntent === 'continue')
+  ) {
+    return fallbackIntent;
+  }
+  return modelIntent ?? fallbackIntent;
+}
+
 async function modelTriage(
   request: IntakeRequest,
   facts: ProjectFact[],
@@ -2145,7 +2165,7 @@ async function processInbox(): Promise<void> {
             console.error(`[notice guard] 语义判断失败，使用本地规则：${String(error)}`);
           }
         }
-        const intent = model?.intent ?? fallbackIntent;
+        const intent = resolveInboxIntent(fallbackIntent, model?.intent, request.idea);
         if (waiting && (intent === 'reply' || intent === 'continue')) {
           await resumeWaitingItem(request, intent);
           await rm(path, { force: true });
