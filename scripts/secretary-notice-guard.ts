@@ -2520,7 +2520,6 @@ async function reconcileItem(
     run.processIdentity &&
     !isOwnedProcessAlive(run.processPid, run.processIdentity),
   );
-  item.updatedAt = new Date().toISOString();
   const completed = unrecordedTaskCompletions(item.completedTasks, run.taskCompletions);
   if (completed.length > 0) {
     item.completedTasks.push(...completed);
@@ -3603,7 +3602,8 @@ async function coordinateOnce(): Promise<void> {
   // Due retries blocked by a decision or writer wait for that owner's next event.
   if (retryTimer) clearTimeout(retryTimer);
   retryTimer = null;
-  normalizeSecretaryState(state);
+  const normalized = normalizeSecretaryState(state);
+  const stateBeforeReconciliation = JSON.stringify(state);
   const targets = reconciliationTargets(state);
   let reconciliationFailed = false;
   for (const item of targets) {
@@ -3632,7 +3632,12 @@ async function coordinateOnce(): Promise<void> {
     (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
   );
   state.activeItemId = occupied?.id ?? activeWaiting?.id ?? '';
-  await saveState();
+  // Reconciliation is often deliberately observational: a due retry behind a
+  // producer decision must remain asleep until the decision owner emits a new
+  // event.  Do not turn that no-op observation into a fresh state write (and
+  // therefore a fresh event) merely by refreshing bookkeeping timestamps.
+  const stateChanged = normalized || JSON.stringify(state) !== stateBeforeReconciliation;
+  if (stateChanged) await saveState();
   if (occupiedItems.length > 1) {
     const ids = occupiedItems.map((item) => item.id).sort();
     await appendPublicWorkEvent(publicEventsFile, {
