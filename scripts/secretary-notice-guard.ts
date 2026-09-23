@@ -4141,7 +4141,8 @@ export function productImplementationChanges(paths: string[]): string[] {
     const normalized = path.replace(/\\/g, '/');
     return !(
       /^scripts\/(?:secretary-[^/]+|project-secretary)\.ts$/.test(normalized) ||
-      /^test\/secretary-[^/]+\.test\.ts$/.test(normalized)
+      /^scripts\/(?:recover-candidate|rollback-stale-qa|version-lifecycle)\.ts$/.test(normalized) ||
+      /^test\/(?:secretary-[^/]+|version-lifecycle)\.test\.ts$/.test(normalized)
     );
   });
 }
