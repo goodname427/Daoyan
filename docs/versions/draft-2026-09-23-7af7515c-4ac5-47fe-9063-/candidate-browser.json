@@ -1,0 +1,9 @@
+{
+  "sourceRevision": "b791f53d634a5ac136dd166c98fa4bddbfbf925e",
+  "checks": [
+    { "title": "candidate-journey", "passed": true },
+    { "title": "candidate-narrow", "passed": true },
+    { "title": "candidate-ledger", "passed": true }
+  ],
+  "finishedAt": "2026-09-23T17:20:08.779Z"
+}

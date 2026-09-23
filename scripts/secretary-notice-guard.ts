@@ -32,6 +32,7 @@ import {
   reviewFindingSignature,
   validateReview,
 } from './agent-routing';
+import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
 import {
   externalRequestId,
   type SecretaryChannelHub,
@@ -882,6 +883,22 @@ export function versionTechnicalBlocker(
   return item?.status === 'failed' && item.summary.startsWith('技术阻断：')
     ? { stage: version.currentStage, reason: item.summary }
     : null;
+}
+
+export function formalStageBlockedByEnvironment(
+  version: FormalVersion,
+  items: SecretaryItem[],
+): boolean {
+  const startedAt = version.nodes.find((node) => node.id === version.currentStage)?.startedAt ?? '';
+  return items.some(
+    (item) =>
+      item.status === 'failed' &&
+      /^(?:版本测试环境阻断：|候选环境阻断：|技术阻断：候选环境阻断：)/.test(item.summary) &&
+      item.orchestration?.formalVersionId === version.id &&
+      item.orchestration.formalStage === version.currentStage &&
+      item.orchestration.formalScopeRevision === formalScopeRevision(version) &&
+      item.createdAt >= startedAt,
+  );
 }
 
 async function dashboardVersion(version: FormalVersion, isCurrent: boolean): Promise<object> {
@@ -2150,7 +2167,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
               ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
               : stage === 'bugfix' && bugfixStep === 'reverification'
                 ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
-                : '';
+                : stage === 'candidate'
+                  ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
+                  : '';
   const formalWorkItems =
     stage === 'development' && dispatchableFormalWorkItems(version)
       ? `<formal-work-items>${JSON.stringify(version.workItems)}</formal-work-items>`
@@ -3396,6 +3415,10 @@ async function reconcileItem(
       await blockTechnicalStall(run.error);
       return true;
     }
+    if (run.error.startsWith('候选环境阻断：')) {
+      await blockTechnicalStall(run.error);
+      return true;
+    }
     if (externalBlocker(run.error)) {
       const firstBlock = item.status !== 'waiting-producer';
       item.status = 'waiting-producer';
@@ -3983,6 +4006,7 @@ interface QaManifestBug {
 }
 
 class QaEnvironmentBlockedError extends Error {}
+class CandidateEnvironmentBlockedError extends Error {}
 
 export function qaEnvironmentBlockerReason(value: unknown): string | null {
   if (!isRecord(value) || !['blocked', 'failed'].includes(String(value.status))) return null;
@@ -4142,8 +4166,13 @@ export function productImplementationChanges(paths: string[]): string[] {
     const normalized = path.replace(/\\/g, '/');
     return !(
       /^scripts\/(?:secretary-[^/]+|project-secretary)\.ts$/.test(normalized) ||
+      normalized === 'scripts/agent-dispatcher.ts' ||
       /^scripts\/(?:recover-candidate|rollback-stale-qa|version-lifecycle)\.ts$/.test(normalized) ||
-      /^test\/(?:secretary-[^/]+|version-lifecycle)\.test\.ts$/.test(normalized)
+      /^scripts\/(?:accept-host-candidate|candidate-evidence|verify-candidate)\.ts$/.test(
+        normalized,
+      ) ||
+      /^(?:e2e\/candidate\.spec\.ts|playwright\.candidate\.config\.ts)$/.test(normalized) ||
+      /^test\/(?:candidate-evidence|secretary-[^/]+|version-lifecycle)\.test\.ts$/.test(normalized)
     );
   });
 }
@@ -4846,9 +4875,37 @@ async function finalizeDeliveredVersionStage(
     }
   }
   if (stage === 'candidate') {
-    const testedRevision =
-      version.orchestration?.qaRuns.at(-1)?.codeRevision ?? version.orchestration?.codeRevision;
-    assertVerificationDidNotChangeImplementation(report, 'candidate', testedRevision, revision);
+    try {
+      const manifest = `${version.documentRoot}/candidate.json`.replace(/\\/g, '/');
+      const candidate = parseCandidateEvidence(await readJson(resolve(root, manifest)));
+      if (candidate.status === 'blocked') {
+        throw new CandidateEnvironmentBlockedError(candidate.blocker);
+      }
+      if (!evidenceAfterStageStart(stageStartedAt, candidate.build.finishedAt)) {
+        throw new Error('候选构建早于本轮节点启动，不能复用旧产物');
+      }
+      if (!evidenceAfterStageStart(stageStartedAt, candidate.browser.finishedAt)) {
+        throw new Error('候选体验早于本轮节点启动，不能复用旧结果');
+      }
+      if (
+        productImplementationChanges(changedFilesBetween(candidate.sourceRevision, revision)).length
+      ) {
+        throw new Error('候选构建后产品实现已变化，必须重新构建和体验');
+      }
+      await verifyCandidateFiles(root, candidate);
+      const testedRevision =
+        version.orchestration?.qaRuns.at(-1)?.codeRevision ?? version.orchestration?.codeRevision;
+      assertVerificationDidNotChangeImplementation(report, 'candidate', testedRevision, revision);
+      setNodeEvidence(version, stage, {
+        artifact,
+        summary: `候选构建及浏览器体验通过；证据：${manifest}、${candidate.browser.evidence.join('、')}。`,
+      });
+    } catch (error) {
+      if (error instanceof CandidateEnvironmentBlockedError) throw error;
+      throw new CandidateEnvironmentBlockedError(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 
   advanceVersion(version, target);
@@ -4869,19 +4926,7 @@ async function driveFormalVersion(): Promise<boolean> {
   for (let guard = 0; guard < version.nodes.length; guard += 1) {
     if (version.status === 'waiting-producer' || PRODUCER_STAGES.has(version.currentStage)) break;
     const stage = version.currentStage;
-    if (
-      state.items.some(
-        (item) =>
-          item.status === 'failed' &&
-          item.summary.startsWith('版本测试环境阻断：') &&
-          item.orchestration?.formalVersionId === version!.id &&
-          item.orchestration.formalStage === stage &&
-          item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
-          item.createdAt >= (version!.nodes.find((node) => node.id === stage)?.startedAt ?? '') &&
-          item.createdAt >= (version!.nodes.find((node) => node.id === stage)?.startedAt ?? ''),
-      )
-    )
-      break;
+    if (formalStageBlockedByEnvironment(version, state.items)) break;
     if (applyAutomaticStagePolicy(version, stage)) {
       if (!(await writeDrivenFormalVersion(version))) {
         const refreshed = await readFormalVersion(root);
@@ -4977,6 +5022,17 @@ async function driveFormalVersion(): Promise<boolean> {
           await emitNotice(
             'version-stage-blocked',
             `【版本节点·版本测试】暂停：${reason} 原始失败证据已保留，主 Agent 将在可运行宿主补验；无需你操作。`,
+            delivered,
+          );
+          changed = true;
+          break;
+        }
+        if (error instanceof CandidateEnvironmentBlockedError) {
+          delivered.status = 'failed';
+          delivered.summary = `候选环境阻断：${reason}`;
+          await emitNotice(
+            'version-stage-blocked',
+            `【版本节点·候选构建】暂停：${reason} 已停止自动重派；主 Agent 将在可运行宿主补验，无需你操作。`,
             delivered,
           );
           changed = true;

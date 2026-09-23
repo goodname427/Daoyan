@@ -44,6 +44,7 @@ import {
   type TaskPlan,
   type WorkspaceChangeBaseline,
 } from './agent-routing';
+import { candidateManifestPath, parseCandidateEvidence } from './candidate-evidence';
 import { endChildInput } from './child-process-input';
 import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
@@ -2261,6 +2262,25 @@ try {
         activePlannerTokens,
       );
       throw new Error(`任务 ${task.id} 在自动升级后仍然失败`);
+    }
+  }
+
+  const candidateTask = plan.tasks.find((task) => task.id === 'formal-candidate');
+  if (candidateTask) {
+    const manifest = candidateManifestPath(candidateTask.objective);
+    if (!manifest) throw new Error('候选环境阻断：任务未声明结构化候选证据路径');
+    let candidate: ReturnType<typeof parseCandidateEvidence>;
+    try {
+      candidate = parseCandidateEvidence(
+        JSON.parse(await readFile(resolve(root, manifest), 'utf8')),
+      );
+    } catch (error) {
+      throw new Error(
+        `候选环境阻断：缺少有效候选证据 ${manifest}：${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (candidate.status === 'blocked') {
+      throw new Error(`候选环境阻断：${candidate.blocker}`);
     }
   }
 

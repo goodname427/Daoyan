@@ -27,6 +27,7 @@ import {
   localQuestionResponse,
   ensureVersionStageItem,
   formalVersionBlocksDispatch,
+  formalStageBlockedByEnvironment,
   isFormalVersionWriteConflict,
   parseBugfixResult,
   parseDesignReviewResult,
@@ -759,6 +760,27 @@ describe('formal version stage dispatch', () => {
     expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2099-01-01T00:01:00.000Z')).toBe(
       true,
     );
+  });
+
+  it('holds a candidate environment failure without scheduling another PM round', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'candidate-environment',
+      title: '候选环境阻断',
+      direction: '构建候选',
+      documentRoot: 'docs/versions/candidate-environment',
+      currentStage: 'candidate',
+    });
+    expect(versionStageDirection(version, 'candidate')).toContain('candidate.json');
+    const item = ensureVersionStageItem(state, version)!;
+    item.status = 'failed';
+    item.summary = '技术阻断：候选环境阻断：esbuild spawn EPERM';
+    expect(formalStageBlockedByEnvironment(version, state.items)).toBe(true);
+    expect(ensureVersionStageItem(state, version)).toBeNull();
+    item.summary = '候选环境阻断：无法打开候选页面';
+    expect(formalStageBlockedByEnvironment(version, state.items)).toBe(true);
+    item.status = 'delivered';
+    expect(formalStageBlockedByEnvironment(version, state.items)).toBe(false);
   });
 
   it('retires a dead prior-stage writer after a version rollback', () => {
