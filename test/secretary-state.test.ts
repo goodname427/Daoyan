@@ -698,6 +698,7 @@ describe('persistent secretary state', () => {
 
   it('infers natural conversation intent without producer flags', () => {
     expect(inferMessageIntent('现在做到哪一步了？', false)).toBe('question');
+    expect(inferMessageIntent('秘书为啥一直在审查', false)).toBe('question');
     expect(inferMessageIntent('继续按当前计划推进', false)).toBe('continue');
     expect(inferMessageIntent('采用兼容旧存档的方案', true)).toBe('reply');
     expect(inferMessageIntent('现在可以继续了', true)).toBe('continue');

@@ -331,6 +331,32 @@ const FORMAL_STAGE_MARKER = /^\[formal-stage:([a-z-]+)\]\s*/;
 const FORMAL_WORK_ITEMS_PATTERN = /\n<formal-work-items>([\s\S]*?)<\/formal-work-items>\n?/u;
 const FORMAL_VERSION_TASK_LIMIT = 24;
 
+const FORMAL_STAGE_COMMIT_SUBJECTS: Record<string, string> = {
+  'charter-draft': 'docs(version): draft the product charter',
+  'module-design': 'docs(version): detail the module design',
+  'design-review': 'docs(version): review the module design',
+  'task-breakdown': 'docs(version): break down the approved work',
+  'version-planning': 'docs(version): sequence the planned work',
+  qa: 'test(version): record independent regression results',
+  bugfix: 'fix(game): resolve version QA findings',
+  candidate: 'build(version): prepare a playable candidate',
+  archived: 'docs(version): archive the accepted version',
+};
+
+export function commitBodyForPlan(plan: TaskPlan, changedFiles: string[]): string {
+  const tasks = plan.tasks.map((task) => `- ${task.title}`);
+  const files = changedFiles.slice(0, 20).map((path) => `- ${path}`);
+  if (changedFiles.length > files.length)
+    files.push(`- ... and ${changedFiles.length - files.length} more`);
+  return [
+    `Work items (${tasks.length}):`,
+    ...tasks,
+    '',
+    `Changed files (${changedFiles.length}):`,
+    ...files,
+  ].join('\n');
+}
+
 interface FormalWorkItemInput {
   id: string;
   title: string;
@@ -565,7 +591,12 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
             : 'light',
       },
     ],
-    commitMessage: `chore: advance formal version ${stage}`,
+    commitMessage:
+      stage === 'development'
+        ? items?.length
+          ? `feat(game): deliver ${items.length} version work items`
+          : 'feat(game): implement planned version work'
+        : (FORMAL_STAGE_COMMIT_SUBJECTS[stage] ?? `chore(version): complete ${stage}`),
   };
 }
 

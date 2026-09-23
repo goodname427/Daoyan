@@ -8,6 +8,7 @@ import {
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
   changedPathsSinceWorkspaceBaseline,
+  commitBodyForPlan,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   buildLocalPlan,
@@ -1773,10 +1774,14 @@ async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string):
     const add = await git(['add', '-A'], true);
     if (add.code !== 0) throw new Error('git add 失败');
     const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
+    const staged = await git(['diff', '--cached', '--name-only', '-z']);
+    if (staged.code !== 0) throw new Error('Git 暂存文件检查失败');
+    const changedFiles = staged.stdout.split('\0').filter(Boolean);
+    const body = commitBodyForPlan(plan, changedFiles);
     // The final tree already has matching fast/full gate evidence. Avoid the
     // repository hook replaying npm run verify on the same tree; the message is
     // normalized locally before this non-interactive commit.
-    const commit = await git(['commit', '--no-verify', '-m', message], true);
+    const commit = await git(['commit', '--no-verify', '-m', message, '-m', body], true);
     if (commit.code !== 0) throw new Error('Git 提交失败');
     createdCommit = true;
   }

@@ -1257,6 +1257,50 @@ describe('formal version lifecycle', () => {
     expect(() => advanceVersion(version, 'qa')).not.toThrow();
   });
 
+  it('accepts a documentation task without Task typecheck only with matching Feature gate evidence', () => {
+    const version = createFormalVersion({
+      id: 'documented-feature',
+      title: '架构合同',
+      direction: '更新合同',
+      documentRoot: 'docs/versions/documented-feature',
+      currentStage: 'development',
+    });
+    version.workItems.push({
+      id: 'adr',
+      title: 'ADR',
+      owner: 'architecture-agent',
+      status: 'completed',
+      dependsOn: [],
+      summary: '记录决策',
+      evidence: 'development.json',
+    });
+    recordFeatureVerification(version, {
+      workItemId: 'adr',
+      agentId: 'architecture-agent',
+      codeRevision: 'rev-a',
+      typecheck: 'covered-by-feature-gate',
+      targetedTests: 'passed',
+      evidence: ['docs-check.log'],
+    });
+    expect(() => advanceVersion(version, 'qa')).toThrow('类型检查与定向测试');
+    recordValidationEvidence(version, {
+      scope: 'feature',
+      ownerId: 'feature-run',
+      status: 'passed',
+      gitTree: 'tree-a',
+      codeRevision: 'rev-a',
+      commandFingerprint: 'command-a',
+      configFingerprint: 'config-a',
+      affectedPaths: ['docs/adr/0018.md'],
+      inputEvidenceIds: [],
+      outputFingerprint: 'output-a',
+      executionRound: 1,
+      commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+      evidence: ['full-gate-evidence.json'],
+    });
+    expect(() => advanceVersion(version, 'qa')).not.toThrow();
+  });
+
   it.each(['execute', 'reduced', 'skip'] as const)(
     'blocks failed regression before candidate even with %s bugfix policy and no open bugs',
     (mode) => {

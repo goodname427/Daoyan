@@ -1582,7 +1582,11 @@ async function projectFacts(): Promise<{ facts: ProjectFact[]; runs: RunSnapshot
             isOwnedProcessAlive(run.processPid, run.processIdentity),
           )),
     )
-    .map<ProjectFact>((run) => ({ kind: 'active', text: run.objective, reference: run.directory }));
+    .map<ProjectFact>((run) => ({
+      kind: 'active',
+      text: `${run.objective}；当前动作：${run.phase}；已运行约 ${Math.floor(run.elapsedSeconds / 60)} 分钟`,
+      reference: run.directory,
+    }));
   const queueFacts = projectFactsFromItems(state.items);
   return { facts: [...activeFacts, ...queueFacts, ...projectFactsFromStatus(markdown)], runs };
 }
@@ -1625,6 +1629,98 @@ export function localQuestionResponse(message: string, facts: ProjectFact[]): st
       : '项目状态中没有未承接的后续排期',
   ];
   return `根据当前项目记录，${parts.join('。')}。`;
+}
+
+export function formatActiveRunStatus(input: {
+  stage: string;
+  phase: string;
+  elapsedSeconds: number;
+  live: boolean;
+  completedTasks: number;
+  totalTasks: number;
+  fastGateAttempts: number;
+  fastGatePassed: boolean;
+  reviewAttempts: number;
+  reviewPassed: boolean;
+  reviewSummary: string;
+  error: string;
+  previousStageResult?: string;
+}): string {
+  const parts = [
+    `当前“${input.stage}”正在“${input.phase}”，此动作已运行约 ${Math.floor(input.elapsedSeconds / 60)} 分钟。`,
+    input.live ? '执行进程仍在运行。' : '执行进程当前不在运行，秘书正在核对恢复点。',
+  ];
+  if (input.totalTasks > 0)
+    parts.push(`本节点工作项已完成 ${input.completedTasks}/${input.totalTasks}。`);
+  if (input.fastGateAttempts > 0)
+    parts.push(
+      `快速门禁已运行 ${input.fastGateAttempts} 轮，最近${input.fastGatePassed ? '通过' : '未通过'}。`,
+    );
+  if (input.reviewAttempts > 0)
+    parts.push(
+      `独立审查已运行 ${input.reviewAttempts} 轮，最近${input.reviewPassed ? '通过' : '未通过'}。`,
+    );
+  if (input.reviewSummary)
+    parts.push(`公开审查结论：${input.reviewSummary.replace(/\s+/g, ' ').slice(0, 180)}。`);
+  if (input.error) parts.push(`最近错误：${input.error.replace(/\s+/g, ' ').slice(0, 180)}。`);
+  if (input.previousStageResult)
+    parts.push(`上一轮阶段对账：${input.previousStageResult.replace(/\s+/g, ' ').slice(0, 180)}。`);
+  return parts.join('');
+}
+
+async function localActiveRunQuestionResponse(message: string): Promise<string | null> {
+  if (!/(审查|门禁|agent|任务节点|子任务|工作项|卡住|卡在哪|为什么.*(?:久|慢))/i.test(message))
+    return null;
+  const item = state.items.find((candidate) => candidate.id === state.activeItemId);
+  if (!item?.runDirectory) return '当前没有关联到正在执行的 Agent 运行；秘书会继续核对队列。';
+  const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
+  const recovery = await readJson(resolve(item.runDirectory, 'recovery.json'));
+  const validation = isRecord(recovery?.validationProgress) ? recovery.validationProgress : null;
+  const plannedTasks =
+    isRecord(recovery?.plan) && Array.isArray(recovery.plan.tasks) ? recovery.plan.tasks : [];
+  const completedTasks = Array.isArray(recovery?.taskRuns)
+    ? new Set(
+        recovery.taskRuns
+          .filter((run) => isRecord(run) && run.result === 'passed' && isRecord(run.task))
+          .map((run) => String(run.task.id)),
+      ).size
+    : 0;
+  const fastGate = isRecord(validation?.fastGate) ? validation.fastGate : null;
+  const review = isRecord(validation?.independentReview) ? validation.independentReview : null;
+  const reviewResult = isRecord(review?.result) ? review.result : null;
+  const version = await readFormalVersion(root);
+  const previousStageResult = [...state.items]
+    .reverse()
+    .find(
+      (candidate) =>
+        candidate.id !== item.id &&
+        candidate.orchestration?.formalVersionId === item.orchestration?.formalVersionId &&
+        candidate.orchestration?.formalStage === item.orchestration?.formalStage &&
+        candidate.summary.startsWith('阶段交付未能写入正式版本'),
+    )?.summary;
+  const stage =
+    version?.nodes.find((node) => node.id === item.orchestration?.formalStage)?.title ??
+    item.orchestration?.formalStage ??
+    '当前任务';
+  const workerPid = Number(progress?.workerPid ?? 0);
+  const workerIdentity = String(progress?.workerProcessIdentity ?? '');
+  return formatActiveRunStatus({
+    stage,
+    phase: String(progress?.phase ?? recovery?.phase ?? '等待阶段快照'),
+    elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
+    live:
+      isOwnedProcessAlive(workerPid, workerIdentity) ||
+      isOwnedProcessAlive(item.processPid, item.processIdentity),
+    completedTasks,
+    totalTasks: plannedTasks.length,
+    fastGateAttempts: Number(fastGate?.attempts ?? 0),
+    fastGatePassed: fastGate?.passed === true,
+    reviewAttempts: Number(review?.attempts ?? 0),
+    reviewPassed: review?.passed === true,
+    reviewSummary: String(reviewResult?.summary ?? ''),
+    error: String(recovery?.error ?? ''),
+    previousStageResult,
+  });
 }
 
 async function localVersionQuestionResponse(message: string): Promise<string | null> {
@@ -1942,7 +2038,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
       : stage === 'design-review'
         ? `同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
         : stage === 'development'
-          ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。不得用计划命令或一份聚合结论代替逐项执行证据；npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
+          ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
           : stage === 'qa'
             ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}]}。任务交付成功不等于产品测试通过；发现缺陷时 status 必须为 failed 并完整登记。只运行和记录测试，不修改产品实现。`
             : stage === 'bugfix' && bugfixStep === 'primary'
@@ -2434,7 +2530,10 @@ async function processInbox(): Promise<void> {
           ) ?? null;
         const fallbackIntent = inferMessageIntent(request.idea, Boolean(waiting));
         const versionAnswer =
-          fallbackIntent === 'question' ? await localVersionQuestionResponse(request.idea) : null;
+          fallbackIntent === 'question'
+            ? ((await localActiveRunQuestionResponse(request.idea)) ??
+              (await localVersionQuestionResponse(request.idea)))
+            : null;
         if (versionAnswer) {
           const local = itemFromIntake(request, []);
           local.item.status = 'answered';
@@ -2836,6 +2935,17 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
   );
 }
 
+export function deliveryCompletionMessage(
+  item: Pick<SecretaryItem, 'scope' | 'idea' | 'orchestration'>,
+  awaitingReview: boolean,
+  processOccupied: boolean,
+  queued: boolean,
+): string | null {
+  // Formal stages notify the producer only after their evidence is accepted.
+  if (item.orchestration?.formalVersionId) return null;
+  return `${item.scope === 'version' ? '版本' : 'Feature'} ${awaitingReview ? '已进入待审' : '已完成交付'}：${item.idea}。${processOccupied ? '仍等待所属写进程退出，不会启动第二个写进程。' : queued ? '队列中的下一项将自动开始。' : '没有已批准待办时进入休眠。'}`;
+}
+
 async function reconcileItem(
   item: SecretaryItem,
   supplied?: RunSnapshot,
@@ -3007,12 +3117,14 @@ async function reconcileItem(
     );
     const queued = state.items.some((candidate) => candidate.status === 'queued');
     clearOrphanRecovery(item.id);
-    if (firstDelivery)
-      await emitNotice(
-        'delivery-complete',
-        `${item.scope === 'version' ? '版本' : 'Feature'} ${awaitingReview ? '已进入待审' : '已完成交付'}：${item.idea}。${processOccupied ? '仍等待所属写进程退出，不会启动第二个写进程。' : queued ? '队列中的下一项将自动开始。' : '没有已批准待办时进入休眠。'}`,
-        item,
-      );
+    const deliveryMessage = deliveryCompletionMessage(
+      item,
+      awaitingReview,
+      processOccupied,
+      queued,
+    );
+    if (firstDelivery && deliveryMessage)
+      await emitNotice('delivery-complete', deliveryMessage, item);
     return true;
   }
   const waitingSnapshot = JSON.stringify([
@@ -3531,10 +3643,17 @@ export function taskFailureCoveredByFeatureGate(commands: StageCommand[]): boole
   return (
     failed.length > 0 &&
     failed.every((command) =>
-      /^npm(?:\.cmd)? (?:test(?: -- .+)?|run docs:(?:check|generate))$/i.test(
+      /^(?:npm(?:\.cmd)? (?:test(?: -- .+)?|run docs:(?:check|generate))|npx(?:\.cmd)? vitest run .+)$/i.test(
         command.command.trim().replace(/\s+/g, ' '),
       ),
     )
+  );
+}
+
+function documentationOnlyWorkItem(workItem: VersionWorkItem | undefined): boolean {
+  return Boolean(
+    workItem?.affectedPaths?.length &&
+    workItem.affectedPaths.every((path) => path.replace(/\\/g, '/').startsWith('docs/')),
   );
 }
 
@@ -3593,7 +3712,7 @@ export function parseDevelopmentResult(
 ): Array<{
   id: string;
   status: 'completed' | 'skipped';
-  typecheck: 'passed' | 'failed';
+  typecheck: 'passed' | 'failed' | 'not-run';
   targetedTests: 'passed' | 'failed';
   commands: StageCommand[];
   evidence: string[];
@@ -3607,12 +3726,18 @@ export function parseDevelopmentResult(
       !isRecord(entry) ||
       typeof entry.id !== 'string' ||
       !['completed', 'skipped'].includes(String(entry.status)) ||
-      !['passed', 'failed'].includes(String(entry.typecheck)) ||
+      !['passed', 'failed', 'not-run'].includes(String(entry.typecheck)) ||
       !['passed', 'failed'].includes(String(entry.targetedTests))
     ) {
       throw new Error('开发工作项结果格式无效');
     }
     const status = entry.status as 'completed' | 'skipped';
+    if (
+      entry.typecheck === 'not-run' &&
+      !documentationOnlyWorkItem(workItems.find((item) => item.id === entry.id))
+    ) {
+      throw new Error('只有纯文档工作项可以省略 Task 类型检查');
+    }
     const commands =
       status === 'skipped' && entry.commands === undefined
         ? []
@@ -3636,7 +3761,7 @@ export function parseDevelopmentResult(
     return {
       id: entry.id,
       status,
-      typecheck: entry.typecheck as 'passed' | 'failed',
+      typecheck: entry.typecheck as 'passed' | 'failed' | 'not-run',
       targetedTests: entry.targetedTests as 'passed' | 'failed',
       commands,
       evidence: parseStringEvidence(entry.evidence),
@@ -4110,16 +4235,17 @@ async function finalizeDeliveredVersionStage(
     const gate = await readFeatureGateArtifact(item.runDirectory!);
     const taskEvidenceIds: string[] = [];
     for (const result of results) {
+      const workItem = version.workItems.find((candidate) => candidate.id === result.id)!;
       const coveredByFeatureGate =
         result.targetedTests === 'failed' && taskFailureCoveredByFeatureGate(result.commands);
       if (
         result.status === 'completed' &&
-        (result.typecheck !== 'passed' ||
+        ((result.typecheck !== 'passed' &&
+          !(result.typecheck === 'not-run' && documentationOnlyWorkItem(workItem))) ||
           (result.targetedTests !== 'passed' && !coveredByFeatureGate))
       ) {
         throw new Error(`工作项 ${result.id} 尚未形成通过的实现与自测证据`);
       }
-      const workItem = version.workItems.find((candidate) => candidate.id === result.id)!;
       workItem.status = result.status;
       workItem.evidence = manifest;
       if (result.status === 'completed') {
@@ -4127,7 +4253,7 @@ async function finalizeDeliveredVersionStage(
           workItemId: result.id,
           agentId: `feature:${item.id}`,
           codeRevision: revision,
-          typecheck: result.typecheck,
+          typecheck: result.typecheck === 'not-run' ? 'covered-by-feature-gate' : result.typecheck,
           targetedTests: coveredByFeatureGate ? 'covered-by-feature-gate' : result.targetedTests,
           evidence: [
             evidence,
@@ -4425,7 +4551,7 @@ async function finalizeDeliveredVersionStage(
   item.orchestration!.formalStageConsumedAt = new Date().toISOString();
   await emitNotice(
     'version-stage-complete',
-    `版本“${version.title}”的“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”已完成，秘书继续推进“${version.nodes.find((node) => node.id === target)?.title ?? target}”。`,
+    `版本节点“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”已完成；接下来“${version.nodes.find((node) => node.id === target)?.title ?? target}”。详情见项目中枢。`,
     item,
   );
   return true;

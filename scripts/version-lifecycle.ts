@@ -258,7 +258,7 @@ export interface FeatureVerification {
   agentId: string;
   codeRevision: string;
   scopeRevision: number;
-  typecheck: 'passed' | 'failed';
+  typecheck: 'passed' | 'failed' | 'covered-by-feature-gate';
   targetedTests: 'passed' | 'failed' | 'covered-by-feature-gate';
   evidence: string[];
   createdAt: string;
@@ -620,7 +620,7 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
     (entry) =>
       !isRecord(entry) ||
       !isPositiveInteger(entry.scopeRevision) ||
-      !['passed', 'failed'].includes(String(entry.typecheck)) ||
+      !['passed', 'failed', 'covered-by-feature-gate'].includes(String(entry.typecheck)) ||
       !['passed', 'failed', 'covered-by-feature-gate'].includes(String(entry.targetedTests)) ||
       !isStringArray(entry.evidence) ||
       [entry.id, entry.workItemId, entry.agentId, entry.codeRevision, entry.createdAt].some(
@@ -933,23 +933,23 @@ function featureVerificationHasTrustedPass(
   verification: FeatureVerification,
   orchestration: FormalVersionOrchestration,
 ): boolean {
-  const coveredByFeatureGate =
-    verification.targetedTests === 'covered-by-feature-gate' &&
-    (orchestration.validationEvidence ?? []).some(
-      (evidence) =>
-        evidence.scope === 'feature' &&
-        evidence.status === 'passed' &&
-        !evidence.invalidatedAt &&
-        evidence.codeRevision === verification.codeRevision &&
-        evidence.commands.some(
-          (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
-        ),
-    );
+  const matchingFeatureGate = (orchestration.validationEvidence ?? []).some(
+    (evidence) =>
+      evidence.scope === 'feature' &&
+      evidence.status === 'passed' &&
+      !evidence.invalidatedAt &&
+      evidence.codeRevision === verification.codeRevision &&
+      evidence.commands.some(
+        (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
+      ),
+  );
   return (
     verification.agentId.trim().length > 0 &&
     verification.codeRevision.trim().length > 0 &&
-    verification.typecheck === 'passed' &&
-    (verification.targetedTests === 'passed' || coveredByFeatureGate) &&
+    (verification.typecheck === 'passed' ||
+      (verification.typecheck === 'covered-by-feature-gate' && matchingFeatureGate)) &&
+    (verification.targetedTests === 'passed' ||
+      (verification.targetedTests === 'covered-by-feature-gate' && matchingFeatureGate)) &&
     verification.evidence.length > 0
   );
 }

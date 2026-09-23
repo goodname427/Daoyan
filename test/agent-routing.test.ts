@@ -7,6 +7,7 @@ import {
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
   changedPathsSinceWorkspaceBaseline,
+  commitBodyForPlan,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
   canRefreshVersionRecoveryFingerprint,
@@ -645,6 +646,15 @@ describe('agent routing', () => {
     expect(qa.tasks).toHaveLength(1);
     expect(qa.tasks[0]).toEqual(
       expect.objectContaining({ id: 'formal-qa', type: 'test', title: '执行独立版本测试' }),
+    );
+    expect(qa.commitMessage).toBe('test(version): record independent regression results');
+    const development = buildLocalPlan('[formal-stage:development]\n\n执行正式版本开发。');
+    expect(development.commitMessage).toBe('feat(game): implement planned version work');
+    expect(commitBodyForPlan(qa, ['docs/versions/example/qa.md', 'docs/status.md'])).toContain(
+      '执行独立版本测试',
+    );
+    expect(commitBodyForPlan(qa, ['docs/versions/example/qa.md', 'docs/status.md'])).toContain(
+      'docs/versions/example/qa.md',
     );
   });
 

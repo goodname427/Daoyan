@@ -16,6 +16,8 @@ import {
   runArgs,
   snapshotPredatesLaunch,
   taskFailureCoveredByFeatureGate,
+  formatActiveRunStatus,
+  deliveryCompletionMessage,
   isBootstrapGraceActive,
   localQuestionResponse,
   ensureVersionStageItem,
@@ -518,6 +520,24 @@ describe('formal version producer decisions', () => {
 });
 
 describe('formal version stage dispatch', () => {
+  it('does not send a raw Feature delivery notice before a formal stage is accepted', () => {
+    const item = itemFromIntake(
+      {
+        id: 'stage-run',
+        idea: '[formal-stage:development]\n很长的内部任务原文',
+        createdAt: '2026-09-23T00:00:00.000Z',
+      },
+      [],
+    ).item;
+    item.orchestration = {
+      ...item.orchestration,
+      formalVersionId: 'formal-version',
+      formalStage: 'development',
+    } as typeof item.orchestration;
+    expect(deliveryCompletionMessage(item, false, false, false)).toBeNull();
+    item.orchestration = undefined;
+    expect(deliveryCompletionMessage(item, false, false, false)).toContain('Feature 已完成交付');
+  });
   it('advances a newly recorded direction without requiring a direction document', () => {
     const version = createFormalVersion({
       id: 'new-version',
@@ -999,6 +1019,104 @@ describe('formal version stage dispatch', () => {
         ['bug-1'],
       ),
     ).toThrow('逐项覆盖');
+  });
+
+  it('accepts truthful documentation checks and records sandboxed Vitest failures for Feature coverage', () => {
+    const documentation = parseVersionWorkItems(
+      {
+        workItems: [
+          {
+            id: 'adr',
+            title: '架构合同',
+            owner: '架构策划',
+            dependsOn: [],
+            summary: '记录决策',
+            affectedPaths: ['docs/adr/0018.md'],
+            acceptanceCommands: ['node scripts/check-docs.mjs'],
+          },
+        ],
+      },
+      'task-breakdown.json',
+    );
+    const result = parseDevelopmentResult(
+      {
+        workItems: [
+          {
+            id: 'adr',
+            status: 'completed',
+            typecheck: 'not-run',
+            targetedTests: 'passed',
+            commands: [{ command: 'node scripts/check-docs.mjs', exitCode: 0 }],
+            evidence: ['文档检查通过'],
+          },
+        ],
+      },
+      documentation,
+    );
+    expect(result[0].typecheck).toBe('not-run');
+    const implementation = [{ ...documentation[0], affectedPaths: ['src/core/world.ts'] }];
+    expect(() =>
+      parseDevelopmentResult(
+        {
+          workItems: [
+            {
+              id: 'adr',
+              status: 'completed',
+              typecheck: 'not-run',
+              targetedTests: 'passed',
+              commands: [{ command: 'node scripts/check-docs.mjs', exitCode: 0 }],
+              evidence: ['不能跳过代码类型检查'],
+            },
+          ],
+        },
+        implementation,
+      ),
+    ).toThrow('只有纯文档');
+    expect(
+      taskFailureCoveredByFeatureGate([
+        { command: 'npx vitest run test/entity-vnext.test.ts', exitCode: 1 },
+      ]),
+    ).toBe(true);
+    expect(taskFailureCoveredByFeatureGate([{ command: 'npm run build', exitCode: 1 }])).toBe(
+      false,
+    );
+  });
+
+  it('answers live run questions from public progress and review evidence', () => {
+    expect(
+      formatActiveRunStatus({
+        stage: '开发执行',
+        phase: '完整门禁 / 第 3 轮',
+        elapsedSeconds: 160,
+        live: true,
+        completedTasks: 15,
+        totalTasks: 17,
+        fastGateAttempts: 2,
+        fastGatePassed: true,
+        reviewAttempts: 4,
+        reviewPassed: true,
+        reviewSummary: '三项问题已复核',
+        error: '',
+        previousStageResult: '阶段交付未能写入正式版本：开发工作项结果格式无效',
+      }),
+    ).toContain('独立审查已运行 4 轮，最近通过');
+    expect(
+      formatActiveRunStatus({
+        stage: '开发执行',
+        phase: '等待恢复',
+        elapsedSeconds: 160,
+        live: false,
+        completedTasks: 0,
+        totalTasks: 17,
+        fastGateAttempts: 0,
+        fastGatePassed: false,
+        reviewAttempts: 0,
+        reviewPassed: false,
+        reviewSummary: '',
+        error: '',
+        previousStageResult: '阶段交付未能写入正式版本：开发工作项结果格式无效',
+      }),
+    ).toContain('上一轮阶段对账：阶段交付未能写入正式版本');
   });
 
   it('topologically orders development results before Task evidence is linked', () => {

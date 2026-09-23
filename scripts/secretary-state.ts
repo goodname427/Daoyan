@@ -459,7 +459,7 @@ export function inferMessageIntent(
   if (hasWaitingItem) {
     if (
       /[?？]$/.test(normalized) ||
-      /(进度|状态|做到|为什么|为何|怎么|如何|是否|有没有|哪些)/.test(normalized)
+      /(进度|状态|做到|为什么|为何|为啥|怎么|如何|是否|有没有|哪些)/.test(normalized)
     )
       return 'question';
     if (messageIsNewDirection(normalized)) return 'direction';
@@ -468,7 +468,8 @@ export function inferMessageIntent(
   }
   if (
     /[?？]$/.test(normalized) ||
-    /^(为什么|为何|怎么|如何|是否|有没有|进度|状态|哪些)/.test(normalized) ||
+    /^(为什么|为何|为啥|怎么|如何|是否|有没有|进度|状态|哪些)/.test(normalized) ||
+    /(为什么|为何|为啥|怎么).{0,32}(审查|门禁|卡住|进度|阶段)/.test(normalized) ||
     /^(?:现在|目前).{0,16}(?:进度|状态|做到|情况)/.test(normalized)
   )
     return 'question';
