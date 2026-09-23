@@ -184,6 +184,7 @@ export interface VersionWorkItem {
 
 export interface VersionBug {
   id: string;
+  origin?: 'qa' | 'producer-acceptance';
   title: string;
   severity: 'blocker' | 'high' | 'medium' | 'low';
   status: 'open' | 'fixing' | 'verify' | 'closed' | 'deferred';
@@ -1678,6 +1679,19 @@ export function recordApproval(
     createdAt,
   };
   version.approvals.push(approval);
+  if (input.stage === 'producer-acceptance' && input.decision === 'changes-requested') {
+    version.bugs.push({
+      id: `producer-feedback-${approval.id}`,
+      origin: 'producer-acceptance',
+      title: '制作人候选验收反馈',
+      severity: 'high',
+      status: 'open',
+      expected: '候选版本满足制作人反馈后重新提交体验',
+      actual: input.comment,
+      evidence: input.sourceRequestId ? `制作人消息 ${input.sourceRequestId}` : approval.id,
+      linkedWorkItemId: '',
+    });
+  }
   const openTodo = version.todos.find(
     (todo) =>
       !todo.decisionGateId &&

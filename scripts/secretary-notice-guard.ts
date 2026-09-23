@@ -116,6 +116,7 @@ import {
   type VersionStage,
   type VersionTodo,
 } from './version-lifecycle';
+import { parseInvocationTokens, versionStageUsage } from './version-usage';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const agentRoot = resolve(root, '.daoyan-agent');
@@ -685,13 +686,14 @@ async function modelTriage(
   const invocation = codexInvocation(args);
   if (!invocation) return null;
   const startedAt = Date.now();
+  let terminalTail = '';
   const code = await new Promise<number>((resolveCode) => {
     let child: ChildProcess;
     try {
       child = spawn(invocation.command, invocation.args, {
         cwd: root,
         env: workerEnvironment(),
-        stdio: ['pipe', 'ignore', 'ignore'],
+        stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
       });
     } catch {
@@ -710,6 +712,11 @@ async function modelTriage(
       resolveCode(result);
     };
     timeout.unref();
+    const captureTail = (chunk: Buffer): void => {
+      terminalTail = `${terminalTail}${chunk.toString('utf8')}`.slice(-16_384);
+    };
+    child.stdout?.on('data', captureTail);
+    child.stderr?.on('data', captureTail);
     child.on('error', () => finish(1));
     child.on('close', (result) => finish(result ?? 1));
     child.stdin?.on('error', () => finish(1));
@@ -732,6 +739,18 @@ async function modelTriage(
     },
     createdAt: new Date(startedAt).toISOString(),
     durationMs: Date.now() - startedAt,
+  });
+  await appendPublicWorkEvent(publicEventsFile, {
+    eventId: `triage-usage-${request.id}`,
+    sequence: 0,
+    requestId: request.id,
+    itemId: waiting?.id ?? request.id,
+    runId: `triage:${request.id}`,
+    agentId: config.triage.model,
+    ...publicEventContext(waiting ?? undefined),
+    kind: 'usage',
+    payload: { source: 'codex-cli-footer' },
+    tokenUsage: { total: parseInvocationTokens(terminalTail), source: 'codex-cli-footer' },
   });
   if (code !== 0) return null;
   try {
@@ -825,11 +844,15 @@ async function versionDocuments(version: FormalVersion): Promise<DashboardDocume
 async function dashboardVersion(version: FormalVersion): Promise<object> {
   const documents = await versionDocuments(version);
   const base = publicVersionState(version) as FormalVersion & Record<string, unknown>;
+  const usages = await Promise.all(
+    base.nodes.map((node) => versionStageUsage(version.id, node.id, state.items)),
+  );
   return {
     ...base,
     documents,
-    nodes: base.nodes.map((node) => ({
+    nodes: base.nodes.map((node, index) => ({
       ...node,
+      usage: usages[index],
       documents: documents.filter((document) => document.stages.includes(node.id)),
     })),
   };
@@ -1820,8 +1843,17 @@ async function continueScheduledWork(request: IntakeRequest): Promise<void> {
 }
 
 export function versionProducerDecision(message: string): 'approved' | 'changes-requested' | null {
-  if (versionMessageIsNewDirection(message)) return null;
   const normalized = message.replace(/\s/g, '');
+  if (/^(?:新的?产品方向|新的?方向|下(?:一|个)版本)/.test(normalized)) return null;
+  if (
+    /^(?:候选)?(?:版本)?(?:体验)?(?:不通过|不能通过)/.test(normalized) ||
+    /(?:候选|本版|这个版本|当前版本|版本体验).{0,40}(?:不通过|不能通过|不接受|不满意|未批准|没有批准|需要修改|需要调整|有问题|不行|不要|先别)/.test(
+      normalized,
+    )
+  ) {
+    return 'changes-requested';
+  }
+  if (versionMessageIsNewDirection(message)) return null;
   if (/(不通过|不能通过|先别|不要继续|需要修改|需要调整|有问题|不行)/.test(normalized)) {
     return 'changes-requested';
   }
@@ -2226,9 +2258,9 @@ async function handleVersionProducerReply(
   intent: SecretaryMessageIntent,
 ): Promise<boolean> {
   if (intent === 'question') return false;
-  if (versionMessageIsNewDirection(request.idea)) return false;
   const current = await readFormalVersion(root);
   const decision = versionProducerDecision(request.idea);
+  if (!decision && versionMessageIsNewDirection(request.idea)) return false;
   const decisionGate =
     current?.orchestration?.decisionGates.find((candidate) => candidate.status === 'open') ??
     (decision === 'approved'
@@ -2400,12 +2432,11 @@ async function processInbox(): Promise<void> {
           state.items.find(
             (item) => item.id === state.activeItemId && item.status === 'waiting-producer',
           ) ?? null;
-        const known = await projectFacts();
         const fallbackIntent = inferMessageIntent(request.idea, Boolean(waiting));
-        const local = itemFromIntake(request, known.facts);
         const versionAnswer =
           fallbackIntent === 'question' ? await localVersionQuestionResponse(request.idea) : null;
         if (versionAnswer) {
+          const local = itemFromIntake(request, []);
           local.item.status = 'answered';
           local.item.plannedTasks = [];
           local.item.completedAt = request.createdAt;
@@ -2416,6 +2447,8 @@ async function processInbox(): Promise<void> {
           await rm(path, { force: true });
           continue;
         }
+        const known = await projectFacts();
+        const local = itemFromIntake(request, known.facts);
         if (await handleVersionProducerReply(request, fallbackIntent)) {
           await rm(path, { force: true });
           continue;

@@ -467,6 +467,13 @@ describe('formal version producer decisions', () => {
   it('requires explicit approval or explicit requested changes', () => {
     expect(versionProducerDecision('通过，可以继续推进')).toBe('approved');
     expect(versionProducerDecision('这里有问题，需要调整范围')).toBe('changes-requested');
+    expect(versionProducerDecision('不通过，不要把伤害上限锁死')).toBe('changes-requested');
+    expect(
+      versionProducerDecision('当前候选版本的体验反馈：不要只改首次安装文本，请重新交付候选'),
+    ).toBe('changes-requested');
+    expect(versionProducerDecision('这个版本我不通过，不要锁死伤害上限')).toBe('changes-requested');
+    expect(versionProducerDecision('当前候选体验反馈：画面不错，我再看看')).toBeNull();
+    expect(versionProducerDecision('新的产品方向：不要视作已发布版本')).toBeNull();
     expect(versionProducerDecision('我再看看，晚点回复')).toBeNull();
     expect(versionProducerDecision('另外我有一个新方向')).toBeNull();
     expect(versionProducerDecision('新增审批确认功能')).toBeNull();

@@ -229,6 +229,30 @@ function showNode(node, version) {
   appendDefinition(meta, '状态', statusLabels[node.status] ?? node.status);
   appendDefinition(meta, '开始', formatTime(node.startedAt));
   appendDefinition(meta, '完成', formatTime(node.completedAt));
+  if (node.usage) {
+    appendDefinition(meta, 'Agent 调用', String(node.usage.observedCalls));
+    appendDefinition(
+      meta,
+      '已知 Token',
+      node.usage.knownTokens === null ? '暂无记录' : node.usage.knownTokens.toLocaleString(),
+    );
+    appendDefinition(meta, '用量缺失', `${node.usage.missingUsageCalls} 次调用`);
+    if (node.usage.unavailableRunDirectories > 0) {
+      appendDefinition(meta, '日志不可读', `${node.usage.unavailableRunDirectories} 个运行目录`);
+    }
+    appendDefinition(meta, '参考量', node.usage.referenceTokens.toLocaleString());
+    appendDefinition(
+      meta,
+      '消耗状态',
+      node.usage.overReference
+        ? '已超过参考量'
+        : node.usage.missingUsageCalls > 0 || node.usage.unavailableRunDirectories > 0
+          ? '数据不完整，暂未确认超量'
+          : node.usage.observedCalls === 0
+            ? '暂无调用记录'
+            : '未超过参考量',
+    );
+  }
   text($('#detail-summary'), node.summary || node.description);
   $('.document-workspace').hidden = false;
   $('#agent-workflow').hidden = true;

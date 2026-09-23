@@ -144,6 +144,40 @@ afterEach(async () => {
 });
 
 describe('secretary dashboard server', () => {
+  it('routes rejected candidate feedback into repair instead of the next-version backlog', async () => {
+    temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-candidate-feedback-'));
+    const secretaryState = resolve(temporary, 'secretary');
+    const releaseState = resolve(temporary, 'releases');
+    await mkdir(secretaryState, { recursive: true });
+    await mkdir(releaseState, { recursive: true });
+    const version = createFormalVersion({
+      id: 'candidate-feedback-test',
+      title: '候选反馈测试',
+      direction: '验证反馈路由',
+      documentRoot: 'docs/versions/candidate-feedback-test',
+      currentStage: 'producer-acceptance',
+    });
+    await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version), 'utf8');
+    const url = await startReviewGuard(secretaryState, releaseState);
+    const reply = await reviewIntake(
+      url,
+      secretaryState,
+      '这个版本我不通过，不要把控制法术减少，请修正后重新交付候选。',
+    );
+    expect(reply.response).toContain('已退回');
+    const saved = JSON.parse(
+      await readFile(resolve(releaseState, 'current.json'), 'utf8'),
+    ) as FormalVersion;
+    expect(saved.currentStage).toBe('bugfix');
+    expect(saved.bugs).toEqual([
+      expect.objectContaining({ origin: 'producer-acceptance', status: 'open' }),
+    ]);
+    const state = JSON.parse(
+      await readFile(resolve(secretaryState, 'state.json'), 'utf8'),
+    ) as SecretaryState;
+    expect(state.orchestration?.nextVersionCandidates).toEqual([]);
+  }, 20_000);
+
   it('retains ambiguous local input and punctuated replies without creating a version', async () => {
     temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-intake-'));
     const secretaryState = resolve(temporary, 'secretary');
@@ -451,7 +485,9 @@ describe('secretary dashboard server', () => {
             const current = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
             return current.items[0].orchestration?.reconciliationOutcome;
           },
-          { timeout: 10_000 },
+          // The response commits before the separate reconciliation event.
+          // Coverage instrumentation can delay that event without changing its result.
+          { timeout: 20_000 },
         )
         .toBe('delivered');
       const reconciled = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
@@ -465,7 +501,7 @@ describe('secretary dashboard server', () => {
         },
       });
     },
-    20_000,
+    50_000,
   );
 
   it.each(['waiting-producer', 'tracking'] as const)(
@@ -1417,7 +1453,7 @@ describe('secretary dashboard server', () => {
     const producerComment = await fetch(`${url}/api/intake`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ idea: '我再看看，晚点回复' }),
+      body: JSON.stringify({ idea: '当前候选体验反馈：画面不错，我再看看' }),
     });
     expect(producerComment.status).toBe(202);
     const producerCommentReceipt = (await producerComment.json()) as { id: string };

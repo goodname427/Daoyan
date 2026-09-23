@@ -147,6 +147,8 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
 
     await page.locator('[data-stage="charter-review"]').click();
     await expect(page.locator('#detail-title')).toHaveText('立项评审');
+    await expect(page.locator('#detail-meta')).toContainText('Agent 调用');
+    await expect(page.locator('#detail-meta')).toContainText('暂无调用记录');
     await page.getByRole('button', { name: '版本策划案' }).click();
     await expect(page.locator('#artifact-content')).toContainText('版本策划案');
 

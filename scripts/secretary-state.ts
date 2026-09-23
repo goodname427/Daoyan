@@ -841,6 +841,59 @@ export function reconcileSecretaryBacklog(state: SecretaryState): boolean {
   return changed;
 }
 
+/** Explicitly associate known queued requests with a newly drafted version. */
+export function mergeBacklogCandidatesIntoVersion(
+  state: SecretaryState,
+  versionId: string,
+  requestIds: string[],
+): number {
+  if (
+    !versionId.trim() ||
+    requestIds.length === 0 ||
+    new Set(requestIds).size !== requestIds.length
+  ) {
+    throw new Error('版本和来源请求必须明确且不能重复');
+  }
+  normalizeSecretaryState(state);
+  const candidates = requestIds.map((requestId) => {
+    const candidate = state.orchestration!.nextVersionCandidates.find(
+      (entry) => entry.requestId === requestId,
+    );
+    const item = state.items.find((entry) => entry.id === requestId);
+    if (!candidate || !item || !['backlog', 'merged'].includes(item.status)) {
+      throw new Error(`找不到可合并的候选请求：${requestId}`);
+    }
+    const prior = state.orchestration!.itemResolutions!.find(
+      (resolution) => resolution.itemId === item.id && resolution.status === 'merged',
+    );
+    if (prior && prior.reference !== `version:${versionId}`) {
+      throw new Error(`候选请求 ${requestId} 已并入其他版本：${prior.reference}`);
+    }
+    if (item.status === 'merged' && !prior) {
+      throw new Error(`候选请求 ${requestId} 已标记合并但缺少目标版本证据`);
+    }
+    return item;
+  });
+  let changed = 0;
+  for (const item of candidates) {
+    if (item.status === 'merged') continue;
+    item.status = 'merged';
+    item.summary = `已明确并入正式版本 ${versionId} 的策划范围；不再单独排期。`;
+    item.completedAt = state.updatedAt || new Date().toISOString();
+    if (
+      addItemResolution(state, item, {
+        status: 'merged',
+        reason: item.summary,
+        reference: `version:${versionId}`,
+        relatedItemIds: [],
+        correctionNoticeId: `schedule-correction-${item.id}-merged`,
+      })
+    )
+      changed += 1;
+  }
+  return changed;
+}
+
 export function pendingScheduleCorrections(state: SecretaryState): SecretaryItemResolution[] {
   return (state.orchestration?.itemResolutions ?? []).filter(
     (resolution) => resolution.correctionNoticeId && !resolution.correctionSentAt,

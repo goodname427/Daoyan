@@ -13,6 +13,7 @@ import {
   isWorkflowControlPlaneRequest,
   itemFromIntake,
   messageIsNewDirection,
+  mergeBacklogCandidatesIntoVersion,
   nextRunnableItem,
   normalizeSecretaryState,
   pendingScheduleCorrections,
@@ -47,6 +48,44 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('merges only explicitly named backlog candidates and records correction evidence', () => {
+    const state = createSecretaryState('2026-09-23T00:00:00.000Z');
+    for (const id of ['old-a', 'old-b']) {
+      const item = itemFromIntake(
+        { id, idea: `需求 ${id}`, createdAt: state.initializedAt },
+        [],
+      ).item;
+      item.status = 'backlog';
+      state.items.push(item);
+      state.orchestration!.nextVersionCandidates.push({
+        id: `candidate-${id}`,
+        requestId: id,
+        direction: item.idea,
+        reason: '旧版本范围已冻结',
+        sourceVersionId: 'old-version',
+        createdAt: state.initializedAt,
+      });
+    }
+    expect(() =>
+      mergeBacklogCandidatesIntoVersion(state, 'new-version', ['old-a', 'missing']),
+    ).toThrow('找不到可合并的候选请求');
+    expect(state.items.map((item) => item.status)).toEqual(['backlog', 'backlog']);
+    expect(mergeBacklogCandidatesIntoVersion(state, 'new-version', ['old-a'])).toBe(1);
+    expect(mergeBacklogCandidatesIntoVersion(state, 'new-version', ['old-a'])).toBe(0);
+    expect(() => mergeBacklogCandidatesIntoVersion(state, 'other-version', ['old-a'])).toThrow(
+      '已并入其他版本',
+    );
+    expect(state.items.map((item) => item.status)).toEqual(['merged', 'backlog']);
+    expect(state.orchestration!.itemResolutions).toEqual([
+      expect.objectContaining({
+        itemId: 'old-a',
+        status: 'merged',
+        reference: 'version:new-version',
+      }),
+    ]);
+    expect(pendingScheduleCorrections(state)).toHaveLength(1);
+  });
+
   it('reopens a verified development delivery only after its same-scope empty retry stops', () => {
     const state = createSecretaryState('2026-09-21T00:00:00.000Z');
     const delivered = itemFromIntake(

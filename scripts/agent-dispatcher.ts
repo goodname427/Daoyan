@@ -46,6 +46,8 @@ import { endChildInput } from './child-process-input';
 import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
+import { taskDependencyContext } from './task-context';
+import { runInvocationUsage } from './version-usage';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const policyPath = resolve(root, 'agents/policy.json');
@@ -942,6 +944,7 @@ function workerPrompt(
   task: PlannedTask,
   failureContext: string,
   priorTaskRuns: TaskRun[] = [],
+  sharedContext = '',
 ): string {
   const takeoverInstruction = activeTakeover
     ? '\n这是秘书强制接管现场：工作区中可能已有执行 Agent 的部分改动。先区分与本目标相关的改动和无关改动，保留相关改动并审查其正确性；禁止为了恢复而清空或覆盖无关现场。\n'
@@ -974,6 +977,7 @@ ${task.verification.map((item) => `- ${item}`).join('\n') || '- 运行与风险�
 ${failureContext}
 ${takeoverInstruction}
 ${priorEvidence}
+${sharedContext}
 
 完成实现后只运行改动直接相关的类型检查、定向测试或文档校验；不要运行统一 npm run verify 或 npm run verify:full，它们由 Feature PM 在汇总后的最终代码树负责。简洁报告修改、验证与剩余风险。`;
 }
@@ -986,6 +990,10 @@ async function runTask(
   priorTaskRuns: TaskRun[] = [],
 ): Promise<TaskRun> {
   const taskStartFiles = await workspaceFileSnapshot();
+  const sharedContext =
+    task.id === 'formal-development-summary'
+      ? ''
+      : await taskDependencyContext(task, priorTaskRuns);
   let tier = task.tier;
   let route = initialRoute;
   let failureContext = '';
@@ -1007,7 +1015,7 @@ async function runTask(
         'codex',
         [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
         {
-          input: workerPrompt(plan, task, failureContext, priorTaskRuns),
+          input: workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext),
           logFile,
           stream: true,
           heartbeatLabel: `执行 ${task.id} / ${route.model}`,
@@ -1513,6 +1521,16 @@ async function writeReport(
     repairerTokens,
     ...taskRuns.map((run) => run.tokensUsed),
   ].filter((tokens): tokens is number => tokens !== null);
+  const invocationUsage = await runInvocationUsage(runDirectory);
+  const aggregatedKnownTotal =
+    knownTokens.length > 0 ? knownTokens.reduce((sum, tokens) => sum + tokens, 0) : null;
+  const observedKnownTotal = invocationUsage.knownTokens;
+  const knownTotal =
+    aggregatedKnownTotal === null
+      ? observedKnownTotal
+      : observedKnownTotal === null
+        ? aggregatedKnownTotal
+        : Math.max(aggregatedKnownTotal, observedKnownTotal);
   const report = {
     status,
     finishedAt: new Date().toISOString(),
@@ -1529,8 +1547,10 @@ async function writeReport(
       workers: taskRuns.map((run) => ({ id: run.task.id, tokens: run.tokensUsed })),
       reviewer: reviewerTokens,
       repairs: repairerTokens,
-      knownTotal:
-        knownTokens.length > 0 ? knownTokens.reduce((sum, tokens) => sum + tokens, 0) : null,
+      knownTotal,
+      observedCalls: invocationUsage.observedCalls,
+      missingUsageCalls: invocationUsage.missingUsageCalls,
+      source: 'invocation-logs-and-dispatcher-aggregate',
     },
     extra,
   };

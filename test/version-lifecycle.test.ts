@@ -493,6 +493,37 @@ describe('formal version lifecycle', () => {
     expect(version.approvals).toHaveLength(1);
   });
 
+  it('keeps rejected candidate feedback in the current version repair loop', () => {
+    const version = createFormalVersion({
+      id: 'candidate-rejected',
+      title: '候选反馈',
+      direction: '修正体验问题',
+      documentRoot: 'docs/versions/candidate-rejected',
+      currentStage: 'producer-acceptance',
+      now: '2026-09-20T00:00:00.000Z',
+    });
+    const input = {
+      stage: 'producer-acceptance' as const,
+      reviewer: 'producer' as const,
+      decision: 'changes-requested' as const,
+      documentRevision: '1',
+      comment: '不通过，不要锁死伤害上限',
+      sourceRequestId: 'producer-feedback-1',
+      now: '2026-09-20T00:05:00.000Z',
+    };
+    recordApproval(version, input);
+    recordApproval(version, input);
+    expect(version.currentStage).toBe('bugfix');
+    expect(version.bugs).toEqual([
+      expect.objectContaining({
+        origin: 'producer-acceptance',
+        status: 'open',
+        actual: input.comment,
+        evidence: '制作人消息 producer-feedback-1',
+      }),
+    ]);
+  });
+
   it('tracks producer work and release health without hiding blocking bugs', () => {
     const version = createFormalVersion({
       id: 'quality',
