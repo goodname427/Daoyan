@@ -4377,6 +4377,9 @@ export function supersedeObsoleteFormalItems(
     item.processPid = 0;
     item.processIdentity = '';
     item.orchestration.processOccupied = false;
+    item.orchestration.reconciliationOutcome = '';
+    item.orchestration.awaitingReview = false;
+    item.retryAt = '';
     item.updatedAt = now;
     if (secretary.activeItemId === item.id) secretary.activeItemId = '';
     count += 1;

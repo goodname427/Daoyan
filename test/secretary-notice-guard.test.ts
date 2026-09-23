@@ -59,6 +59,7 @@ import {
   createSecretaryState,
   itemFromIntake,
   normalizeSecretaryState,
+  nextRunnableItem,
   pendingScheduleCorrections,
 } from '../scripts/secretary-state';
 import {
@@ -768,6 +769,7 @@ describe('formal version stage dispatch', () => {
     item.status = 'tracking';
     item.processPid = 1234;
     item.processIdentity = 'old-run';
+    item.orchestration!.reconciliationOutcome = 'missing';
     secretary.activeItemId = item.id;
     version.currentStage = 'qa';
     version.nodes.find((node) => node.id === 'qa')!.startedAt = '2026-09-23T00:02:00.000Z';
@@ -779,6 +781,8 @@ describe('formal version stage dispatch', () => {
     expect(ensureVersionStageItem(secretary, version, '2026-09-23T00:03:00.000Z')).toMatchObject({
       status: 'queued',
     });
+    expect(item.orchestration?.reconciliationOutcome).toBe('');
+    expect(nextRunnableItem(secretary, '2026-09-23T00:03:00.000Z')?.status).toBe('queued');
   });
 
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {
