@@ -12,6 +12,7 @@ import {
   currentValidationConfigFingerprint,
   currentValidationTreeFingerprint,
 } from './secretary-notice-guard';
+import { isOwnedProcessAlive } from './process-identity';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const [versionId, bugId, evidence] = process.argv.slice(2);
@@ -28,8 +29,11 @@ async function main(): Promise<void> {
     throw new Error('必须引用当前版本已有的候选报告');
   }
   const guardStatePath = resolve(root, '.daoyan-agent/secretary/state.json');
-  const guardState = JSON.parse(readFileSync(guardStatePath, 'utf8')) as { status?: string };
-  if (guardState.status !== 'stopped') {
+  const guardState = JSON.parse(readFileSync(guardStatePath, 'utf8')) as {
+    pid?: number;
+    processIdentity?: string;
+  };
+  if (isOwnedProcessAlive(guardState.pid ?? 0, guardState.processIdentity ?? '')) {
     throw new Error('请先使用 secretary:stop 暂停 notice guard，再执行候选恢复');
   }
   const dirtyProduct = execFileSync('git', ['status', '--porcelain', '--', 'src', 'test', 'e2e'], {
