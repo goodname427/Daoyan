@@ -1,0 +1,285 @@
+{
+  "workItems": [
+    {
+      "id": "adr-motion-energy",
+      "title": "确定运动、供能和命中守恒 ADR",
+      "owner": "架构策划",
+      "dependsOn": [],
+      "summary": "论证并采纳覆盖 ADR 0006/0009/0017 的运动、惯性、基础移动功率、弹道储能、碰撞转伤害、传送及旧弹道兼容决策；列明备选、迁移和回退，未采纳前不改运行语义。",
+      "affectedPaths": ["docs/adr/", "docs/architecture/invariants.md"],
+      "acceptanceCommands": [
+        "node scripts/check-docs.mjs",
+        "npx prettier --check docs/adr/*.md docs/architecture/invariants.md"
+      ]
+    },
+    {
+      "id": "adr-attributes-ledger",
+      "title": "确定属性、探查和资源账本 ADR",
+      "owner": "架构策划",
+      "dependsOn": ["adr-motion-energy"],
+      "summary": "论证并采纳覆盖 ADR 0011/0017 的六属性安全域、读取矩阵、不可折扣与防套利、法力/tick/神识静动态预算、账本单位及旧 AST 兼容；精确定义失败和退款。",
+      "affectedPaths": ["docs/adr/", "docs/architecture/invariants.md"],
+      "acceptanceCommands": [
+        "node scripts/check-docs.mjs",
+        "npx prettier --check docs/adr/*.md docs/architecture/invariants.md"
+      ]
+    },
+    {
+      "id": "adr-events-context",
+      "title": "确定事件、执行上下文和生命周期 ADR",
+      "owner": "架构策划",
+      "dependsOn": ["adr-motion-energy", "adr-attributes-ledger"],
+      "summary": "论证并采纳覆盖 ADR 0007/0009/0017 的多订阅排序、重入上限、法球账户授权、控制者死亡、两种蓄力、旧槽位和五参即激活语义；给出迁移与回退。",
+      "affectedPaths": ["docs/adr/", "docs/architecture/invariants.md"],
+      "acceptanceCommands": [
+        "node scripts/check-docs.mjs",
+        "npx prettier --check docs/adr/*.md docs/architecture/invariants.md"
+      ]
+    },
+    {
+      "id": "entity-state",
+      "title": "统一实体审计状态和能力合同",
+      "owner": "核心执行 Agent",
+      "dependsOn": ["adr-motion-energy", "adr-attributes-ledger"],
+      "summary": "Actor、Projectile 和组合能力实体按 binding 暴露有界内部状态：位置/朝向、实际 velocity、speedMax、运动来源、当前/上限资源、神识占用、抗性、归属、会话与事件摘要；缺能力明确拒绝，历史容量有界且核心可无头运行。",
+      "affectedPaths": [
+        "src/core/world.ts",
+        "src/core/attributes.ts",
+        "src/core/types.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "acceptanceCommands": ["npx vitest run test/entity-vnext.test.ts", "npm run typecheck"]
+    },
+    {
+      "id": "motion-effects",
+      "title": "有源运动、速度上限与独立传送效果",
+      "owner": "核心与战斗执行 Agent",
+      "dependsOn": ["entity-state", "adr-motion-energy"],
+      "summary": "角色及法球的主动移动经有来源、有价格的力/冲量；基础移动使用不可转账的有界功率；speedMax 限制新驱动而不抹去惯性，碰撞和阻力积分不逐帧执行 DSL；位置直设改为独立高价传送并检查落点、权限及失败原子性。",
+      "affectedPaths": [
+        "src/core/world.ts",
+        "src/core/metas/entity.ts",
+        "src/game/battle.ts",
+        "test/entity-vnext.test.ts",
+        "test/combat.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/entity-vnext.test.ts test/combat.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "sense-permissions",
+      "title": "逐属性读取权限和付费感知",
+      "owner": "核心执行 Agent",
+      "dependsOn": ["entity-state", "adr-attributes-ledger"],
+      "summary": "为允许探查的旧/新属性实现能力、归属、可见性、距离、双方神识和抗性定价；自身私有读取仍正价，拒绝不泄漏值或抗性；旧探查、生命、自身法力率和快照无旁路，非法旧具型调用进入可定位迁移诊断。",
+      "affectedPaths": [
+        "src/core/metas/sense.ts",
+        "src/core/pricing.ts",
+        "src/core/migration.ts",
+        "test/entity-vnext.test.ts",
+        "test/dsl-migration.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/entity-vnext.test.ts test/dsl-migration.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "slice-one-experience",
+      "title": "首期推演、实战和权限面板闭环",
+      "owner": "界面与战斗执行 Agent",
+      "dependsOn": ["motion-effects", "sense-permissions"],
+      "summary": "推演台展示运动/探查价格及失败，演武场实测一次冲量惯性、speedMax 减速和越权拒绝；属性面板只呈获准带时刻快照和必要事件摘要，空目标、过期快照及两页往返可观察，首期旧入口兼容可核对。",
+      "affectedPaths": [
+        "src/app/LabView.tsx",
+        "src/app/CombatView.tsx",
+        "src/app/Panels.tsx",
+        "test/render.test.tsx",
+        "test/combat.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/render.test.tsx test/combat.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "resource-ledger",
+      "title": "共享账户、实体储能与三资源一致结算",
+      "owner": "核心执行 Agent",
+      "dependsOn": ["entity-state", "adr-attributes-ledger", "adr-motion-energy"],
+      "summary": "原子记录施法者付款、实体 motion/damage/scan 分池注能、损耗、已做功、已扫描、命中、可退余额及幂等退款；法力与能量分单位对账，tick 债务和神识峰值按同一定价函数分析与实扣，未知次数标动态/无界。",
+      "affectedPaths": [
+        "src/core/vm.ts",
+        "src/core/world.ts",
+        "src/core/pricing.ts",
+        "src/core/analyzer.ts",
+        "test/core.test.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/core.test.ts test/entity-vnext.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "projectile-energy",
+      "title": "三种供能法球与守恒命中",
+      "owner": "核心与战斗执行 Agent",
+      "dependsOn": ["motion-effects", "resource-ledger"],
+      "summary": "实现冲量滑行、周期推进和付费扫描追踪；耗尽停止主动行为而保留惯性。命中伤害以可用伤害池为界，动能转伤害同时扣动能；法球行为仅花注入余额或有限授权，不自动回蓝或获免费意识。",
+      "affectedPaths": [
+        "src/core/metas/entity.ts",
+        "src/core/world.ts",
+        "src/game/battle.ts",
+        "test/entity-vnext.test.ts",
+        "test/combat.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/entity-vnext.test.ts test/combat.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "six-attributes",
+      "title": "六项属性控制与防套利资源语义",
+      "owner": "核心执行 Agent",
+      "dependsOn": ["resource-ledger", "sense-permissions"],
+      "summary": "以能力 binding 实现 hpMax、manaMax、manaRegen、shenshiMax、castSpeed、manaCostMul 的读改、期限、抗性、关系价和失败；当前生命仅伤害/治疗，当前法力仅账本交易/世界回复；上限不赠余额，超额神识不删活跃状态，自回蓝、降耗、提速和并发叠加不能免成本。",
+      "affectedPaths": [
+        "src/core/attributes.ts",
+        "src/core/metas/control.ts",
+        "src/core/pricing.ts",
+        "src/core/vm.ts",
+        "test/entity-vnext.test.ts",
+        "test/core.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/entity-vnext.test.ts test/core.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "legacy-migration",
+      "title": "旧法术与旧存档隔离迁移",
+      "owner": "核心与持久化执行 Agent",
+      "dependsOn": ["projectile-energy", "six-attributes", "adr-events-context"],
+      "summary": "旧 speed、位置、五参创建、固定伤害、按键及探查经 AST 到 AST 可证明等价迁移；否则定位诊断并保留 DSL 与最后可运行 AST。隔离校验旧存档与导入导出，未来/损坏格式拒绝且不覆盖原件；运行中会话/余额不猜造，回退保留新版增量。",
+      "affectedPaths": [
+        "src/core/migration.ts",
+        "src/app/persistence.ts",
+        "test/dsl-migration.test.ts",
+        "test/persistence.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/dsl-migration.test.ts test/persistence.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "slice-two-experience",
+      "title": "第二期预算说明、预设与法术书往返",
+      "owner": "界面与战斗执行 Agent",
+      "dependsOn": [
+        "projectile-energy",
+        "six-attributes",
+        "legacy-migration",
+        "slice-one-experience"
+      ],
+      "summary": "元法术目录可按旧名、新属性、控制与供能找到能力、权限、起手/周期价和拒绝原因；对手减速与破防为可预览、选择性导入的用户法术，同名与重复导入不覆写。现有法术书可编译、推演、绑定、实战并两页往返；三种法球、耗尽与六属性在界面可核对。",
+      "affectedPaths": [
+        "src/app/MetaTable.tsx",
+        "src/app/LabView.tsx",
+        "src/app/CombatView.tsx",
+        "src/app/persistence.ts",
+        "src/game/spells.dy",
+        "test/render.test.tsx",
+        "test/persistence.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/render.test.tsx test/persistence.test.ts test/combat.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "passive-events",
+      "title": "离散事件、多订阅和有界重入",
+      "owner": "核心与战斗执行 Agent",
+      "dependsOn": ["adr-events-context", "resource-ledger", "entity-state"],
+      "summary": "受击、碰撞、法力耗尽、实体消失按权威世界序与订阅序派发；单事件多法术顺序共享账户、失败隔离、耗尽跨越去抖、重入/周期上限及归属明确；消失后仅只读摘要，订阅和响应照常占神识与工作费。",
+      "affectedPaths": [
+        "src/core/world.ts",
+        "src/core/vm.ts",
+        "src/game/battle.ts",
+        "test/core.test.ts",
+        "test/combat.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/core.test.ts test/combat.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "active-monitor",
+      "title": "显式付费主动监控",
+      "owner": "核心执行 Agent",
+      "dependsOn": ["passive-events", "sense-permissions", "resource-ledger"],
+      "summary": "监控显式声明范围、频率、读取权限和账户授权；每周期先付法力/tick 并占神识，关闭、耗尽、死亡、目标失效或越权即停，停止后无扫描；被动离散事件不可冒充免费逐帧监听。",
+      "affectedPaths": [
+        "src/core/metas/sense.ts",
+        "src/core/world.ts",
+        "src/core/vm.ts",
+        "test/entity-vnext.test.ts",
+        "test/core.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/entity-vnext.test.ts test/core.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "charge-sessions",
+      "title": "两种蓄力会话与输入解耦",
+      "owner": "核心与战斗执行 Agent",
+      "dependsOn": ["passive-events", "projectile-energy", "resource-ledger"],
+      "summary": "按键仅发意图；蓄时松开瞬发及按下创建、持有周期注能、松开发射分别覆盖按下/持有/松开、提前松开、打断、取消、死亡、耗尽、目标消失、暂停/继续。首个终止原因唯一，重复输入及退款幂等，暂停后先处理到期会话。",
+      "affectedPaths": [
+        "src/core/input.ts",
+        "src/core/world.ts",
+        "src/game/battle.ts",
+        "test/core.test.ts",
+        "test/combat.test.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/core.test.ts test/combat.test.ts",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "slice-three-experience",
+      "title": "第三期事件、蓄力与跨期体验闭环",
+      "owner": "界面与战斗执行 Agent",
+      "dependsOn": [
+        "active-monitor",
+        "charge-sessions",
+        "slice-two-experience",
+        "legacy-migration"
+      ],
+      "summary": "推演台与演武场复现四类被动事件、单事件双法术、显式监控费用、两种蓄力及全部终止/暂停路径；显示获准事件和账户摘要；完成旧书、旧存档、窄屏、空状态、失败和页签往返的全版定向回归，并把实测缺陷交版本测试/修复阶段。",
+      "affectedPaths": [
+        "src/app/LabView.tsx",
+        "src/app/CombatView.tsx",
+        "src/app/Panels.tsx",
+        "test/render.test.tsx",
+        "test/combat.test.ts",
+        "test/persistence.test.ts",
+        "e2e/smoke.spec.ts"
+      ],
+      "acceptanceCommands": [
+        "npx vitest run test/render.test.tsx test/combat.test.ts test/persistence.test.ts",
+        "npm run typecheck"
+      ]
+    }
+  ]
+}
