@@ -1056,6 +1056,40 @@ export function supersedeDevelopmentMigrationBootstrapFailures(
   return changed;
 }
 
+/** Retire only a verified empty formal-stage launch; its prior missing-snapshot audit remains. */
+export function supersedeEmptyFormalBootstrapFailures(
+  state: SecretaryState,
+  versionId: string,
+  stage: string,
+  now: string,
+  eligibleItemIds: ReadonlySet<string>,
+): boolean {
+  let changed = false;
+  for (const item of state.items) {
+    if (
+      item.orchestration?.formalVersionId !== versionId ||
+      item.orchestration.formalStage !== stage ||
+      !eligibleItemIds.has(item.id) ||
+      item.status !== 'tracking' ||
+      item.orchestration.reconciliationOutcome !== 'missing'
+    ) {
+      continue;
+    }
+    item.status = 'superseded';
+    item.summary = '启动前因未提交的文档退出，未产生恢复快照；现场已清理，原尝试留档并重新派发。';
+    item.completedAt ||= now;
+    item.updatedAt = now;
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration.processOccupied = false;
+    item.orchestration.reconciliationOutcome = '';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+    changed = true;
+  }
+  return changed;
+}
+
 /** Reuse an already delivered batch when its rejected replacement did no work. */
 export function reopenVerifiedDevelopmentDelivery(
   state: SecretaryState,

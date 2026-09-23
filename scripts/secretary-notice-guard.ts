@@ -75,6 +75,7 @@ import {
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
+  supersedeEmptyFormalBootstrapFailures,
   supersedeRedundantDevelopmentItems,
   unrecordedTaskCompletions,
   reconciliationTargets,
@@ -4987,6 +4988,42 @@ async function coordinateOnce(): Promise<void> {
   const normalized = normalizeSecretaryState(state);
   const activeFormalVersion = await readFormalVersion(root);
   const supersededObsolete = supersedeObsoleteFormalItems(state, activeFormalVersion);
+  const cleanWorktree = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  const emptyBootstrapFailures = new Set<string>();
+  if (activeFormalVersion && cleanWorktree.status === 0 && !cleanWorktree.stdout.trim()) {
+    for (const item of state.items) {
+      if (
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        item.orchestration.formalStage !== activeFormalVersion.currentStage ||
+        item.status !== 'tracking' ||
+        item.orchestration.reconciliationOutcome !== 'missing' ||
+        !item.runDirectory ||
+        isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+        item.orchestration.processOccupied
+      ) {
+        continue;
+      }
+      const runFiles = await readdir(item.runDirectory).catch(() => null);
+      if (!runFiles || runFiles.length > 0 || (await activeWorkerProcess(item, true))) continue;
+      const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
+        () => '',
+      );
+      if (launchLog.includes('完整执行要求 Git 工作区干净')) emptyBootstrapFailures.add(item.id);
+    }
+  }
+  const retiredEmptyBootstrap = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        emptyBootstrapFailures,
+      )
+    : false;
   const stoppedCollapsedItems = new Set(
     state.items
       .filter(
@@ -5214,6 +5251,7 @@ async function coordinateOnce(): Promise<void> {
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
     supersededObsolete > 0 ||
+    retiredEmptyBootstrap ||
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||

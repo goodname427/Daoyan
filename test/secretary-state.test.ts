@@ -28,6 +28,7 @@ import {
   reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
+  supersedeEmptyFormalBootstrapFailures,
   supersedeRedundantDevelopmentItems,
   type IntakeRequest,
   type SecretaryTaskCompletion,
@@ -711,6 +712,40 @@ describe('persistent secretary state', () => {
 
     expect(nextRunnableItem(state, state.initializedAt)?.id).toBe('new');
     retired.status = 'tracking';
+    expect(nextRunnableItem(state, state.initializedAt)).toBeNull();
+  });
+
+  it('retires only an eligible empty formal bootstrap and preserves unrelated missing runs', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const queued = itemFromIntake(
+      { id: 'new-qa', idea: '执行新 QA', createdAt: state.initializedAt },
+      [],
+    ).item;
+    const empty = structuredClone(queued);
+    empty.id = 'empty-qa';
+    empty.status = 'tracking';
+    empty.orchestration!.formalVersionId = 'version-1';
+    empty.orchestration!.formalStage = 'qa';
+    empty.orchestration!.reconciliationOutcome = 'missing';
+    const unrelated = structuredClone(empty);
+    unrelated.id = 'other-version';
+    unrelated.orchestration!.formalVersionId = 'version-2';
+    state.items.push(empty, unrelated, queued);
+    state.activeItemId = empty.id;
+
+    expect(
+      supersedeEmptyFormalBootstrapFailures(
+        state,
+        'version-1',
+        'qa',
+        '2026-09-21T01:00:00.000Z',
+        new Set([empty.id, unrelated.id]),
+      ),
+    ).toBe(true);
+    expect(empty.status).toBe('superseded');
+    expect(empty.orchestration!.reconciliationOutcome).toBe('');
+    expect(unrelated.status).toBe('tracking');
+    expect(state.activeItemId).toBe('');
     expect(nextRunnableItem(state, state.initializedAt)).toBeNull();
   });
 
