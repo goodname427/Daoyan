@@ -22,6 +22,17 @@ export default function register(): void {
   const V = T.vec2;
   const E = T.entity;
 
+  defMeta({
+    name: '自身实体',
+    group: '状态探查',
+    params: [],
+    ret: E,
+    mana: 0,
+    ticks: 0,
+    desc: '返回当前施法者的统一实体句柄。',
+    impl: (c) => c.caster.id,
+  });
+
   function distanceCost(
     ctx: Ctx | null,
     args: readonly CostArg[],

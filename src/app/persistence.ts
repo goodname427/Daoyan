@@ -1,4 +1,4 @@
-import { parseSpellbook, serializeBook } from '../core/index';
+import { migrateSpellSource } from '../core/index';
 import type { Attributes } from '../core/index';
 import { ARENA_ATTR_CONSTRAINT_BY_KEY } from './arenaConfig';
 
@@ -16,7 +16,8 @@ interface VersionedSave extends PlayerState {
 }
 
 export type LoadResult =
-  { ok: true; state: PlayerState; migrated: boolean } | { ok: false; message: string };
+  | { ok: true; state: PlayerState; migrated: boolean; diagnostics?: string[] }
+  | { ok: false; message: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -26,13 +27,16 @@ function normalizeState(value: unknown, defaults: PlayerState): LoadResult {
   if (!isRecord(value) || typeof value.spellSource !== 'string') {
     return { ok: false, message: '存档缺少法术书内容。' };
   }
-  let spellSource: string;
-  try {
-    // 存档是可交换的数据，不是编辑器草稿：只保留 AST 可表达的规范 DSL。
-    spellSource = serializeBook(parseSpellbook(value.spellSource));
-  } catch {
-    return { ok: false, message: '存档中的法术书无法解析。' };
+  const migratedBook = migrateSpellSource(value.spellSource);
+  if (!migratedBook.ok) {
+    const first = migratedBook.diagnostics[0];
+    const location = first.line > 0 ? `第 ${first.line} 行` : '法术书';
+    return {
+      ok: false,
+      message: `存档中的法术书无法解析或安全迁移：${location}，${first.message}`,
+    };
   }
+  const spellSource = migratedBook.source;
 
   const attrs = { ...defaults.arenaAttrs };
   if (value.arenaAttrs !== undefined && !isRecord(value.arenaAttrs)) {
@@ -61,10 +65,20 @@ function normalizeState(value: unknown, defaults: PlayerState): LoadResult {
       if (typeof spell === 'string') bindings[slot] = spell;
     }
   }
+  // 法术书存档没有世界或活动会话。兼容读取历史运行态字段，但绝不将
+  // Modifier 的旧时长解释为无限 maintain，也不恢复未经结算验证的租约。
+  const diagnostics: string[] = [];
+  if (value.mods !== undefined) {
+    diagnostics.push('旧增益运行态未导入；其时长不会转换为新的控制记录。');
+  }
+  if (value.controlRecords !== undefined) {
+    diagnostics.push('控制记录运行态未导入；无法验证控制者、会话及结算状态。');
+  }
   return {
     ok: true,
     state: { spellSource, arenaAttrs: attrs, arenaBindings: bindings },
     migrated: false,
+    ...(diagnostics.length ? { diagnostics } : {}),
   };
 }
 
@@ -91,7 +105,9 @@ export function decodePlayerState(text: string, defaults: PlayerState): LoadResu
 }
 
 export function encodePlayerState(state: PlayerState): string {
-  const save: VersionedSave = { version: SAVE_SCHEMA_VERSION, ...state };
+  const normalized = normalizeState(state, state);
+  if (!normalized.ok) throw new Error(normalized.message);
+  const save: VersionedSave = { version: SAVE_SCHEMA_VERSION, ...normalized.state };
   return JSON.stringify(save, null, 2);
 }
 
@@ -106,11 +122,11 @@ export function loadPlayerState(defaults: PlayerState): LoadResult {
   }
 }
 
-/** 只保存可解析法术书，避免把编辑中的语法错误变成下次启动时的坏存档。 */
+/** 只保存可全量规范化的法术书，避免把编辑草稿或迁移诊断写成坏存档。 */
 export function savePlayerState(state: PlayerState): LoadResult {
   const normalized = normalizeState(state, state);
   if (!normalized.ok) {
-    return { ok: false, message: '当前法术书尚不能保存：请先修正语法错误。' };
+    return { ok: false, message: `当前法术书尚不能保存：${normalized.message}` };
   }
   try {
     window.localStorage.setItem(SAVE_STORAGE_KEY, encodePlayerState(normalized.state));

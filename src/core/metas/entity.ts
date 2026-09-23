@@ -40,6 +40,7 @@ export default function register(): void {
 
   defMeta({
     name: '设置弹道方向',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '目标', t: E },
@@ -62,6 +63,7 @@ export default function register(): void {
 
   defMeta({
     name: '设置弹道速度',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '目标', t: E },
@@ -83,6 +85,7 @@ export default function register(): void {
 
   defMeta({
     name: '设置弹道威力',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '目标', t: E },
@@ -104,6 +107,7 @@ export default function register(): void {
 
   defMeta({
     name: '激活弹道',
+    legacyOnly: true,
     group: '实体控制',
     params: [{ name: '目标', t: E }],
     ret: B,

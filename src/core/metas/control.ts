@@ -43,6 +43,7 @@ export default function register(): void {
 
   defMeta({
     name: '发射',
+    legacyOnly: true,
     group: '实体创建',
     params: [
       { name: '起点', t: V },

@@ -28,19 +28,45 @@ const DEFAULT_PLAYER_STATE: PlayerState = {
 };
 
 export function App() {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    // 注册表就绪后才读取、校验存档和挂载自动保存，避免默认书覆盖扩展存档。
+    loadExternalMetas().then(
+      (names) => {
+        if (cancelled) return;
+        if (names.length > 0) console.log(`[元法术] 已加载外部扩展: ${names.join(', ')}`);
+        setReady(true);
+      },
+      () => {
+        if (!cancelled) setError('扩展元法术加载失败，请重启重试。本地存档已保留。');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!ready) return <p role="status">{error || '正在加载元法术与本地存档…'}</p>;
+  return <ReadyApp />;
+}
+
+function ReadyApp() {
   const [tab, setTab] = useState<Tab>('lab');
   const [initial] = useState(() => {
     const loaded = loadPlayerState(DEFAULT_PLAYER_STATE);
     return loaded.ok
       ? {
           state: loaded.state,
-          notice: loaded.migrated ? '已迁移本地旧存档。' : '',
-          loaded: true,
+          notice: [loaded.migrated ? '已迁移本地旧存档。' : '', ...(loaded.diagnostics ?? [])]
+            .filter(Boolean)
+            .join(' '),
+          skipInitialAutoSave: Boolean(loaded.diagnostics?.length),
         }
       : {
           state: DEFAULT_PLAYER_STATE,
           notice: `${loaded.message} 已使用默认配置。`,
-          loaded: false,
+          skipInitialAutoSave: true,
         };
   });
   const [spellSource, setSpellSource] = useState(initial.state.spellSource);
@@ -51,7 +77,7 @@ export function App() {
   const [saveNotice, setSaveNotice] = useState(initial.notice);
   const importRef = useRef<HTMLInputElement>(null);
   // 拒绝的本地存档必须留在原处，不能被本次启动的默认状态立即覆盖。
-  const skipInitialAutoSave = useRef(!initial.loaded);
+  const skipInitialAutoSave = useRef(initial.skipInitialAutoSave);
 
   const playerState = (): PlayerState => ({ spellSource, arenaAttrs, arenaBindings });
 
@@ -64,13 +90,6 @@ export function App() {
     }
     savePlayerState(playerState());
   }, [spellSource, arenaAttrs, arenaBindings]);
-
-  useEffect(() => {
-    // 外部元法术：打包后从 exe 旁的 metas/ 目录加载（见 docs/reference/扩展元法术.md）
-    loadExternalMetas().then((names) => {
-      if (names.length > 0) console.log(`[元法术] 已加载外部扩展: ${names.join(', ')}`);
-    });
-  }, []);
 
   const exportSave = (): void => {
     const saved = savePlayerState(playerState());
@@ -105,7 +124,12 @@ export function App() {
     setSpellSource(loaded.state.spellSource);
     setArenaAttrs(loaded.state.arenaAttrs);
     setArenaBindings(loaded.state.arenaBindings);
-    setSaveNotice(loaded.migrated ? '已导入并迁移旧版本存档。' : '已导入存档。');
+    setSaveNotice(
+      [
+        loaded.migrated ? '已导入并迁移旧版本存档。' : '已导入存档。',
+        ...(loaded.diagnostics ?? []),
+      ].join(' '),
+    );
   };
 
   return (

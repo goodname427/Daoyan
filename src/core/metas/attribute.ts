@@ -57,6 +57,7 @@ export default function register(): void {
   for (const [name, key, desc] of selfMul) {
     defMeta({
       name,
+      legacyOnly: true,
       group: '实体控制',
       params: [
         { name: '倍率', t: N },
@@ -84,6 +85,7 @@ export default function register(): void {
 
   defMeta({
     name: '护体',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '减伤', t: N },
@@ -117,6 +119,7 @@ export default function register(): void {
   for (const [name, key, desc] of foeMul) {
     defMeta({
       name,
+      legacyOnly: true,
       group: '实体控制',
       params: [
         { name: '目标', t: E },
@@ -148,6 +151,7 @@ export default function register(): void {
 
   defMeta({
     name: '破防',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '目标', t: E },

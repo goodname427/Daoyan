@@ -402,7 +402,7 @@ class Parser {
     let e = this.parsePrimary();
     for (;;) {
       if (this.at('(')) {
-        this.next();
+        const callLine = this.next().line;
         const args: Expr[] = [];
         if (!this.at(')')) {
           do {
@@ -411,7 +411,7 @@ class Parser {
         }
         this.expect(')');
         if (e.k !== 'var') throw new ParseError('只有具名函数可以被调用');
-        e = { k: 'call', name: e.name, args };
+        e = { k: 'call', name: e.name, args, line: callLine };
       } else if (this.at('[')) {
         this.next();
         const idx = this.parseExpr();

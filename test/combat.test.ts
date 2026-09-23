@@ -28,6 +28,48 @@ describe('战斗初始化', () => {
 });
 
 describe('玩家操作', () => {
+  it('鼠标更新基础朝向，覆写到期依次恢复有效下层与最新瞄准', () => {
+    const b = makeBattle();
+    const actor = b.player;
+    expect(b.world.applyEntityControl(actor.id, 'rotation', { x: 0, y: 1 }, 2)).toBe(true);
+    expect(
+      b.world.applyEntityControl(actor.id, 'rotation', { x: -1, y: 0 }, 1, {
+        controllerId: actor.id,
+      }),
+    ).toBe(true);
+    b.aimAt(actor.x, actor.y - 100);
+    b.world.recompute(actor);
+    expect(actor.baseAim).toEqual({ x: 0, y: -1 });
+    expect(actor.aim).toEqual({ x: -1, y: 0 });
+    b.world.advanceControlTime(1);
+    expect(actor.aim).toEqual({ x: 0, y: 1 });
+    b.world.advanceControlTime(1);
+    expect(actor.aim).toEqual({ x: 0, y: -1 });
+    b.aimAt(actor.x + 100, actor.y);
+    expect(actor.aim).toEqual({ x: 1, y: 0 });
+  });
+
+  it('妖兽每帧追踪不会覆盖控制朝向，到期使用最新追踪方向', () => {
+    const b = makeBattle();
+    const foe = b.world.actors.find((actor) => actor.faction === 'foe')!;
+    foe.base.speed = 0;
+    foe.attackTimer = 100;
+    b.world.recompute(foe);
+    expect(b.world.applyEntityControl(foe.id, 'rotation', { x: 0, y: 1 }, 1)).toBe(true);
+    b.player.x = foe.x - 100;
+    b.player.y = foe.y;
+    b.update(0.1);
+    expect(foe.baseAim).toEqual({ x: -1, y: 0 });
+    expect(foe.aim).toEqual({ x: 0, y: 1 });
+    b.player.x = foe.x;
+    b.player.y = foe.y - 100;
+    b.update(0.1);
+    expect(foe.baseAim).toEqual({ x: 0, y: -1 });
+    expect(foe.aim).toEqual({ x: 0, y: 1 });
+    b.world.advanceControlTime(1);
+    expect(foe.aim).toEqual({ x: 0, y: -1 });
+  });
+
   it('WASD 能驱动移动', () => {
     const b = makeBattle();
     const x0 = b.player.x;
@@ -104,7 +146,12 @@ describe('玩家操作', () => {
 
     run(b, 5);
     // 6 秒内按 1.5 秒周期应触发多次
-    expect(b.player.mods.length).toBeGreaterThan(0);
+    expect(b.activeCasts(b.player.id)[0].fired).toBeGreaterThan(1);
+    expect(b.world.controlRecordSnapshot()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ targetId: b.player.id, propertyKey: 'armor', mode: 'maintain' }),
+      ]),
+    );
     expect(b.player.attr.armor).toBeGreaterThan(0);
   });
 
@@ -258,6 +305,137 @@ describe('玩家操作', () => {
   });
 });
 
+describe('控制会话与战斗施法生命周期', () => {
+  const spell = 'spell 维持 @kind=duration @period=10 @duration=3 { 调整护体(自身实体(), 3, 0) }';
+
+  function controlledBattle(source = spell, manaMax = 100): Battle {
+    const battle = new Battle(parseSpellbook(source), {
+      playerAttrs: { manaMax, manaRegen: 0 },
+      playerBindings: { '1': '维持' },
+    });
+    for (const foe of battle.world.actors.filter((actor) => actor.faction === 'foe')) {
+      foe.base.speed = 0;
+      foe.bindings = {};
+      battle.world.recompute(foe);
+    }
+    return battle;
+  }
+
+  function startMaintaining(battle: Battle, slot = '1'): void {
+    expect(battle.castPlayer(slot)).toBe(true);
+    for (let i = 0; i < 50 && battle.world.controlRecordSnapshot().length === 0; i++) {
+      battle.update(0.01);
+    }
+    expect(battle.world.controlRecordSnapshot().length).toBeGreaterThan(0);
+  }
+
+  function advanceToNextPayment(battle: Battle): void {
+    const next = Math.min(
+      ...battle.world.controlRecordSnapshot().map((record) => record.nextPaymentAt!),
+    );
+    battle.update(next - battle.world.controlTimeNow);
+  }
+
+  it('无限维持按模拟时间持续扣费，耗尽时清理租约并结束施法', () => {
+    const battle = controlledBattle(spell, 16);
+    startMaintaining(battle);
+    const afterStart = battle.player.mana;
+    const cast = battle.activeCasts(battle.player.id)[0];
+    const paidMana = cast.controlCharge.mana;
+    expect(paidMana).toBeGreaterThan(0);
+    expect(cast.controlCharge.ticks).toBeGreaterThan(0);
+    advanceToNextPayment(battle);
+    expect(battle.player.mana).toBeLessThan(afterStart);
+    expect(cast.controlCharge.mana).toBeGreaterThan(paidMana);
+    expect(battle.world.controlRecordSnapshot()[0].paidPeriods).toBe(2);
+    advanceToNextPayment(battle);
+    expect(battle.world.controlRecordSnapshot()).toHaveLength(0);
+    expect(battle.log.join(' ')).toContain('维持结束');
+    expect(battle.log.join(' ')).toContain('法力不足');
+    expect(battle.player.attr.armor).toBe(battle.player.base.armor);
+    battle.update(0.01);
+    expect(battle.activeCasts(battle.player.id)).toHaveLength(0);
+    expect(battle.stats.backfires).toBe(1);
+  });
+
+  it('暂停不续费，大步长跨过多个周期仍逐次结算', () => {
+    const battle = controlledBattle();
+    startMaintaining(battle);
+    const mana = battle.player.mana;
+    battle.setPaused(true);
+    battle.update(1);
+    expect(battle.player.mana).toBe(mana);
+    battle.setPaused(false);
+    battle.update(0.75);
+    expect(battle.world.controlRecordSnapshot()[0].paidPeriods).toBe(4);
+    expect(battle.player.mana).toBeLessThan(mana);
+  });
+
+  it('duration 重启 VM 后仍持有同一个控制会话', () => {
+    const battle = controlledBattle(
+      'spell 维持 @kind=duration @period=0.3 @duration=2 { 调整护体(自身实体(), 3, 0) }',
+      300,
+    );
+    startMaintaining(battle);
+    const sessionId = battle.world.controlRecordSnapshot()[0].controllerSessionId;
+    battle.update(0.8);
+    expect(battle.activeCasts(battle.player.id)[0].fired).toBeGreaterThan(1);
+    expect(battle.world.controlRecordSnapshot()[0].controllerSessionId).toBe(sessionId);
+    battle.update(1.3);
+    expect(battle.activeCasts(battle.player.id)).toHaveLength(0);
+    expect(battle.world.controlRecordSnapshot()).toHaveLength(0);
+  });
+
+  it('瞬发施法完成时立即释放维持租约', () => {
+    const battle = controlledBattle('spell 维持 { 调整护体(自身实体(), 3, 0) }');
+    battle.castPlayer('1');
+    battle.update(0.25);
+    battle.update(0.1);
+    expect(battle.activeCasts(battle.player.id)).toHaveLength(0);
+    expect(battle.world.controlRecordSnapshot()).toHaveLength(0);
+  });
+
+  it('主动结束、受击打断和目标死亡立即释放维持', () => {
+    const ending = controlledBattle(
+      'spell 维持 @kind=duration @period=10 @duration=3 { 调整护体(自身实体(), 3, 0) 结束施法() }',
+    );
+    ending.castPlayer('1');
+    ending.update(0.25);
+    ending.update(0.1);
+    expect(ending.world.controlRecordSnapshot()).toHaveLength(0);
+    expect(ending.activeCasts(ending.player.id)).toHaveLength(0);
+
+    const interrupted = controlledBattle();
+    startMaintaining(interrupted);
+    interrupted.world.damage(interrupted.player.id, 1);
+    expect(interrupted.world.controlRecordSnapshot()).toHaveLength(0);
+    expect(interrupted.activeCasts(interrupted.player.id)).toHaveLength(0);
+
+    const dead = controlledBattle();
+    startMaintaining(dead);
+    dead.world.damage(dead.player.id, 9999);
+    expect(dead.world.controlRecordSnapshot()).toHaveLength(0);
+  });
+
+  it('并发会话共用当前法力，周期结算不复制余额', () => {
+    const battle = controlledBattle(
+      `spell 维持 @kind=duration @period=10 @duration=3 { 调整护体(自身实体(), 3, 0) }
+       spell 并行 @kind=duration @period=10 @duration=3 { 调整护体(自身实体(), 3, 0) }`,
+      23,
+    );
+    battle.setBinding('2', '并行');
+    expect(battle.castPlayer('1')).toBe(true);
+    expect(battle.castPlayer('2')).toBe(true);
+    for (let i = 0; i < 50 && battle.world.controlRecordSnapshot().length < 2; i++) {
+      battle.update(0.01);
+    }
+    expect(battle.world.controlRecordSnapshot()).toHaveLength(2);
+    advanceToNextPayment(battle);
+    expect(battle.world.controlRecordSnapshot()).toHaveLength(1);
+    expect(battle.player.mana).toBeGreaterThanOrEqual(0);
+  });
+});
+
 describe('弹道与命中', () => {
   it('飞剑能命中正前方的妖兽', () => {
     const b = makeBattle();
@@ -295,7 +473,7 @@ describe('按键状态接入法术', () => {
       a.bindings = {};
       b.world.recompute(a);
     }
-    b.player.aim = { x: 1, y: 0 };
+    b.world.setActorAim(b.player, { x: 1, y: 0 });
   }
 
   it('蓄力火球：按住蓄力、蓄满后松开则发射', () => {

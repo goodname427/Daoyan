@@ -104,6 +104,7 @@ export interface SecretaryItemOrchestration {
   lastProgressPhase?: string;
   lastProgressNoticeAt?: string;
   takeoverReason?: string;
+  takeoverOnResume?: boolean;
 }
 
 export interface ProjectFact {
@@ -310,7 +311,9 @@ function validateItemOrchestration(item: SecretaryItem): void {
     (Object.hasOwn(value, 'formalStageStep') &&
       !['primary', 'reverification'].includes(String(value.formalStageStep))) ||
     (Object.hasOwn(value, 'formalScopeRevision') &&
-      (!Number.isSafeInteger(value.formalScopeRevision) || Number(value.formalScopeRevision) <= 0))
+      (!Number.isSafeInteger(value.formalScopeRevision) ||
+        Number(value.formalScopeRevision) <= 0)) ||
+    (Object.hasOwn(value, 'takeoverOnResume') && typeof value.takeoverOnResume !== 'boolean')
   ) {
     throw new Error(`秘书事项 ${item.id} 的编排扩展损坏；已停止自动写入和派发`);
   }

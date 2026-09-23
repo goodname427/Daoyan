@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import {
   VM,
   World,
-  allMetas,
+  publicMetas,
   analyzeBook,
   compileProgram,
   emptySpell,
@@ -20,10 +20,12 @@ import { NodeEditor } from './NodeEditor';
 import { NodeGraph } from './NodeGraph';
 import { CostCard, Slider, Stat } from './Panels';
 import { SpellEditor } from './SpellEditor';
+import { controlHelp } from './controlHelp';
 
 interface Outcome {
   result: CastResult;
   entities: BattleEntity[];
+  controlFeedback: string[];
   /** 法术瞄向了谁 */
   aim: string;
 }
@@ -88,7 +90,7 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
 
   const names = parsed.book ? Object.keys(parsed.book) : [];
   const metas = useMemo(
-    () => [...allMetas()].sort((a, b) => a.group.localeCompare(b.group, 'zh-CN')),
+    () => [...publicMetas()].sort((a, b) => a.group.localeCompare(b.group, 'zh-CN')),
     [],
   );
   const requestedSpell = selected.startsWith('spell:') ? selected.slice(6) : '';
@@ -137,6 +139,7 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
       const result = new VM(program, world, caster).run(activeSpell);
       setOutcome({
         result,
+        controlFeedback: world.events.filter((event) => event.startsWith('控制失败：')),
         aim: aimedAt(world),
         entities: world.actors.map((a) => ({
           id: a.id,
@@ -316,7 +319,9 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                           <span>{n}</span>
                           {c && (
                             <small>
-                              法{c.manaWorst} · 神{c.shenshiPeak} · {c.tickWorst}t
+                              法{c.manaBudget.dynamic ? `${c.manaBudget.value}+动态` : c.manaWorst}{' '}
+                              · 神{c.shenshiPeak} ·{' '}
+                              {c.tickBudget.dynamic ? `${c.tickBudget.value}+动态` : c.tickWorst}t
                             </small>
                           )}
                         </button>
@@ -351,7 +356,7 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                       <small>
                         {meta.group} · 法
                         {meta.cost || meta.manaCost ? `${meta.mana}+动态` : meta.mana} ·{' '}
-                        {meta.ticks}t
+                        {meta.cost ? `${meta.ticks}+动态` : meta.ticks}t
                       </small>
                     </button>
                   </li>
@@ -477,6 +482,13 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
                   ? `施法成功 · 瞄向 ${outcome.aim}`
                   : `走火入魔：${outcome.result.error}`}
               </div>
+              {outcome.controlFeedback.length > 0 && (
+                <ul className="errors" aria-label="控制失败原因">
+                  {outcome.controlFeedback.map((feedback, index) => (
+                    <li key={index}>{feedback}</li>
+                  ))}
+                </ul>
+              )}
               <p className="muted small">
                 静态上界按「列表容量」算，实测按真实敌人数算 —— 两者的差距正是可优化的空间
               </p>
@@ -556,6 +568,7 @@ function formatValue(value: unknown): string {
 }
 
 function MetaInspector({ meta }: { meta: MetaDef }) {
+  const control = controlHelp(meta.name);
   return (
     <div className="meta-inspector">
       <header>
@@ -569,6 +582,24 @@ function MetaInspector({ meta }: { meta: MetaDef }) {
         </code>
       </header>
       <p>{meta.desc}</p>
+      {control && (
+        <section className="control-help" aria-label="属性控制说明">
+          <h4>属性与 binding</h4>
+          <p>
+            属性 {control.key} · 效果域：{control.effect} · 合并：{control.merge}
+          </p>
+          <p>
+            所需能力：目标须提供 {control.capability}。实际模式由目标 binding
+            决定；写入覆写一次付费，维持绑定到当前施法实例。
+          </p>
+          <p>
+            时间为秒；时间 0
+            表示无限。无限写入只收起手，维持仍按周期付费；瞬发法术结束时会释放维持效果。
+          </p>
+          <p>{control.period}</p>
+          <p>{control.failure}</p>
+        </section>
+      )}
       <div className="meta-costs">
         <Stat
           label={meta.cost || meta.manaCost ? '法力基础' : '法力'}
@@ -584,6 +615,9 @@ function MetaInspector({ meta }: { meta: MetaDef }) {
           value={`${meta.ticks}${meta.cost ? ' + 动态' : ''}t`}
           hint={meta.cost ? '实际耗时会根据本次请求的效果继续计算' : undefined}
         />
+        {control && (
+          <Stat label="维持周期" value="0.25 秒" hint="建立时支付首周期，之后每周期先付费再生效" />
+        )}
         <Stat label="返回" value={typeName(meta.ret)} />
       </div>
       <section>

@@ -1,11 +1,13 @@
 import type { Type, Value } from './types';
-import type { Actor, World } from './world';
+import type { Actor, ControlSession, World } from './world';
 import type { KeyState } from './input';
 
 /** 元函数执行上下文：只有元函数能接触「外界」 */
 export interface Ctx {
   world: World;
   caster: Actor;
+  /** 当前核心施法实例的控制会话，由 VM 或 Battle 提供。 */
+  controlSession?: ControlSession;
   log: string[];
   /** 当前施法的按键状态（duration/键位法术用），无键法术为 null */
   keys: KeyState[] | null;
@@ -30,9 +32,18 @@ export interface CostAmount {
   dynamic: boolean;
 }
 
+export interface PeriodicBudget {
+  intervalSeconds: 0.25;
+  mana: CostAmount;
+  ticks: CostAmount;
+  count: { kind: 'finite'; max: number } | { kind: 'unbounded' } | { kind: 'dynamic' };
+}
+
 export interface MetaCost {
   mana: CostAmount;
   ticks: CostAmount;
+  /** 起手之外的周期价；有限次数包含建立时付的首周期。 */
+  periodic?: PeriodicBudget;
 }
 
 export const knownCostArg = (value: Value): CostArg => ({ known: true, value });
@@ -71,6 +82,12 @@ export interface MetaDef {
    * 与旧 `manaCost` 同时存在时以本字段为准。
    */
   cost?: (ctx: Ctx | null, args: readonly CostArg[]) => MetaCost;
+  /** 控制价由 World 在效果生效前原子扣除，VM 不重复收取起手。 */
+  worldCharged?: boolean | ((args: Value[]) => boolean);
+  /** 仅供未迁移的最后可运行 AST 使用的旧实参形状。 */
+  legacyParams?: MetaParam[][];
+  /** 旧 AST 可运行，但不再显示为玩家可新建的元函数。 */
+  legacyOnly?: boolean;
   desc: string;
   impl: (ctx: Ctx, args: Value[]) => Value;
 }
@@ -121,6 +138,10 @@ export function clearMetas(): void {
 
 export function allMetas(): readonly MetaDef[] {
   return registry;
+}
+
+export function publicMetas(): readonly MetaDef[] {
+  return registry.filter((meta) => !meta.legacyOnly);
 }
 
 export function getMeta(name: string): MetaDef | null {

@@ -6,12 +6,18 @@ import {
   compileProgram,
   parseSpellbook,
   getMeta,
+  publicMetas,
   defMeta,
   fixedCost,
   knownCostArg,
   type Ctx,
   type Value,
+  CONTROL_PROPERTY_KEYS,
+  getControlPropertyDescriptor,
+  controlPrice,
+  controlRecordPrice,
 } from '../src/core/index';
+import { T } from '../src/core/types';
 import { Battle } from '../src/game/battle';
 
 function setup() {
@@ -22,7 +28,719 @@ function setup() {
   return { world, caster, ctx, call };
 }
 
+describe('公开统一创建与具名属性入口', () => {
+  it.each([1, 2])('旧两参位置经 VM 只按旧价格扣费一次（倍率 %s）', (multiplier) => {
+    const { world, caster } = setup();
+    caster.base.manaCostMul = multiplier;
+    world.recompute(caster);
+    const book = parseSpellbook(`spell 旧位置 -> bool {
+      return 设置位置(自身实体(), 向量(100, 100))
+    }`);
+    caster.mana = 5 * multiplier;
+    const result = new VM(compileProgram(book), world, caster).run('旧位置');
+    expect(result.ok).toBe(true);
+    expect(result.returnValue).toBe(true);
+    expect(result.mana).toBe(5 * multiplier);
+    expect(world.positionOf(caster.id)).toEqual({ x: 100, y: 100 });
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('旧位置移动只扣旧距离价，余额不足不移动或部分扣款', () => {
+    const { world, caster } = setup();
+    const book = parseSpellbook(`spell 旧位置 -> bool {
+      return 设置位置(自身实体(), 向量(200, 100))
+    }`);
+    const program = compileProgram(book);
+    caster.mana = 9;
+    const failed = new VM(program, world, caster).run('旧位置');
+    expect(failed.ok).toBe(false);
+    expect(failed.mana).toBe(0);
+    expect(world.positionOf(caster.id)).toEqual({ x: 100, y: 100 });
+    caster.mana = 10;
+    const result = new VM(program, world, caster).run('旧位置');
+    expect(result.ok).toBe(true);
+    expect(result.returnValue).toBe(true);
+    expect(result.mana).toBe(10);
+    expect(world.positionOf(caster.id)).toEqual({ x: 200, y: 100 });
+  });
+
+  it('同一 AST 控制调用经 VM 作用于不同实体，缺少 binding 时明确拒绝', () => {
+    const { world, caster } = setup();
+    const foe = world.spawnActor({ faction: 'foe', x: 180, y: 100 });
+    const source = `spell 跨实体 -> bool {
+      var p: entity = 创建弹道(自身位置(), 向量(1, 0), 100, 2, 3)
+      var foes: list<entity, 1> = 感知敌人(自身位置(), 300)
+      设置位置(foes[0], 向量(240, 180), 0)
+      设置位置(p, 向量(240, 180), 0)
+      return 调整感知(p, 2, 0)
+    }`;
+    const book = parseSpellbook(source);
+    expect(analyzeBook(book).跨实体.errors).toEqual([]);
+    const result = new VM(compileProgram(book), world, caster).run('跨实体');
+    expect(result.ok).toBe(true);
+    expect(result.returnValue).toBe(false);
+    const created = world.projectiles[0];
+    expect(created.active).toBe(true);
+    for (const id of [foe.id, created.id]) {
+      expect(world.positionOf(id)).toEqual({ x: 240, y: 180 });
+    }
+    expect(world.events.join(' ')).toMatch(/控制失败.*(?:binding|能力)/);
+  });
+
+  it('只展示立即激活的五参创建和七个三参属性节点', () => {
+    const visible = publicMetas();
+    const create = getMeta('创建弹道')!;
+    expect(visible).toContain(create);
+    expect(create.params.map((param) => param.name)).toEqual([
+      '起点',
+      '方向',
+      '速度',
+      '基础伤害',
+      '存活时间',
+    ]);
+    for (const name of [
+      '发射',
+      '设置弹道方向',
+      '设置弹道速度',
+      '设置弹道威力',
+      '激活弹道',
+      '疾行',
+      '迟滞',
+      '增威',
+      '虚弱',
+      '洞察',
+      '蔽识',
+      '护体',
+      '破防',
+    ])
+      expect(visible.some((meta) => meta.name === name)).toBe(false);
+    for (const name of [
+      '设置位置',
+      '设置朝向',
+      '调整速度',
+      '强化伤害',
+      '设置存活时间',
+      '调整感知',
+      '调整护体',
+    ]) {
+      expect(visible.find((meta) => meta.name === name)?.params.map((param) => param.name)).toEqual(
+        ['目标', '效果', '时间'],
+      );
+    }
+  });
+
+  it('创建成功立即激活并返回句柄，非法输入和名额不足不写入实体或特效', () => {
+    const { world, caster, call } = setup();
+    const create = (...args: Value[]) => call('创建弹道', ...args);
+    const origin = { x: 100, y: 100 };
+    const direction = { x: 1e-100, y: 0 };
+    const before = { projectiles: world.projectiles.length, fx: world.fx.length };
+    for (const args of [
+      [null, direction, 380, 2, 2.4],
+      [origin, { x: 0, y: 0 }, 380, 2, 2.4],
+      [origin, { x: Infinity, y: 0 }, 380, 2, 2.4],
+      [origin, direction, 0, 2, 2.4],
+      [origin, direction, 380, Infinity, 2.4],
+      [origin, direction, 380, 2, -1],
+      [origin, direction, 380, 2, 2.4, 9],
+    ])
+      expect(create(...(args as Value[]))).toBeNull();
+    expect({ projectiles: world.projectiles.length, fx: world.fx.length }).toEqual(before);
+    const id = create(origin, direction, 380, 2, 2.4) as number;
+    const projectile = world.projectiles.find((item) => item.id === id)!;
+    expect(projectile).toMatchObject({ active: true, ownerId: caster.id, speed: 380 });
+    expect(world.positionOf(id)!.x).toBeGreaterThan(origin.x);
+    expect(world.fx).toHaveLength(1);
+    for (let index = 1; index < 16; index++) create(origin, direction, 380, 2, 2.4);
+    expect(create(origin, direction, 380, 2, 2.4)).toBeNull();
+    expect(world.projectiles).toHaveLength(16);
+    expect(world.fx).toHaveLength(16);
+  });
+
+  it('七个具名节点通过目标 binding 生效，失败返回 false 且不留下局部写入', () => {
+    const { world, caster, ctx, call } = setup();
+    const id = call('创建弹道', { x: 100, y: 100 }, { x: 1, y: 0 }, 100, 2, 3) as number;
+    const projectile = world.projectiles.find((item) => item.id === id)!;
+    const session = world.createControlSession(caster.id, () => true)!;
+    ctx.controlSession = session;
+    expect(call('设置位置', caster.id, { x: 130, y: 140 }, 0)).toBe(true);
+    expect(call('设置朝向', caster.id, { x: 0, y: 2 }, 0)).toBe(true);
+    expect(call('设置朝向', id, { x: 0, y: 2 }, 0)).toBe(true);
+    expect(call('调整速度', caster.id, 2, 0)).toBe(true);
+    expect(call('调整速度', id, 2, 0)).toBe(true);
+    expect(call('强化伤害', caster.id, 2, 0)).toBe(true);
+    expect(call('强化伤害', id, 2, 0)).toBe(true);
+    expect(call('设置存活时间', id, 4, 0)).toBe(true);
+    expect(call('调整感知', caster.id, 2, 0)).toBe(true);
+    expect(call('调整护体', caster.id, 3, 0)).toBe(true);
+    expect(caster.attr.speed).toBe(caster.base.speed * 2);
+    expect(projectile.speed).toBe(200);
+    expect(caster.attr.power).toBe(caster.base.power * 2);
+    expect(projectile.damage).toBe(4);
+    expect(projectile.life).toBe(4);
+    expect(caster.attr.perception).toBe(caster.base.perception * 2);
+    expect(caster.attr.armor).toBe(caster.base.armor + 3);
+
+    const before = {
+      caster: structuredClone(caster),
+      projectile: structuredClone(projectile),
+      records: world.controlRecordSnapshot(),
+      fx: world.fx.length,
+    };
+    for (const [name, args] of [
+      ['设置位置', [id, { x: 200, y: 200 }, 1]],
+      ['设置朝向', [id, { x: 0, y: 0 }, 0]],
+      ['调整速度', [id, 0, 0]],
+      ['强化伤害', [999999, 2, 0]],
+      ['设置存活时间', [caster.id, 4, 0]],
+      ['调整感知', [id, 2, 0]],
+      ['调整护体', [id, 2, 0]],
+      ['调整速度', [id, 2]],
+      ['调整速度', [id, 2, 'invalid']],
+    ] as Array<[string, Value[]]>)
+      expect(call(name, ...args)).toBe(false);
+    expect(caster).toEqual(before.caster);
+    expect(projectile).toEqual(before.projectile);
+    expect(world.controlRecordSnapshot()).toEqual(before.records);
+    expect(world.fx).toHaveLength(before.fx);
+  });
+});
+
+describe('控制定价与周期预算', () => {
+  const price = (
+    relation: number,
+    resistance: number,
+    duration: number,
+    mode: 'write' | 'maintain' = 'write',
+  ) =>
+    controlPrice({
+      relation,
+      resistance,
+      strength: 1,
+      duration,
+      mode,
+      writePolicy: mode === 'write' ? 'overlay' : null,
+    });
+
+  it('双资源保留己方正价、敌方固定门槛与抗性单调加价', () => {
+    const self = price(1, 0, 1);
+    const ally = price(2, 0, 1);
+    const enemy = price(8, 0, 1);
+    const resistant = price(8, 1, 1);
+    expect(self.mana.value).toBeGreaterThan(0);
+    expect(self.ticks.value).toBeGreaterThan(0);
+    expect(ally.mana.value).toBeGreaterThan(self.mana.value);
+    expect(enemy.mana.value).toBeGreaterThan(8 * self.mana.value);
+    expect(enemy.ticks.value).toBeGreaterThan(Math.ceil(8 * 1.35));
+    expect(resistant.mana.value).toBeGreaterThan(enemy.mana.value);
+    expect(resistant.ticks.value).toBeGreaterThan(enemy.ticks.value);
+    expect(() => price(1, -1, 1)).toThrow();
+  });
+
+  it('有限维持列出最多周期，无限及未知维持显式标记', () => {
+    expect(price(1, 0, 0.1, 'maintain').periodic?.count).toEqual({ kind: 'finite', max: 1 });
+    expect(price(1, 0, 0.5, 'maintain').periodic?.count).toEqual({ kind: 'finite', max: 2 });
+    expect(price(1, 0, 0, 'maintain').periodic?.count).toEqual({ kind: 'unbounded' });
+    expect(price(1, 0, 0.5, 'maintain').periodic?.mana.dynamic).toBe(true);
+    expect(
+      controlPrice({
+        relation: null,
+        resistance: null,
+        strength: null,
+        duration: null,
+        mode: null,
+        writePolicy: null,
+      }).periodic?.count,
+    ).toEqual({ kind: 'dynamic' });
+  });
+
+  it('分析器跨重复与函数调用传播周期明细和无界标记', () => {
+    defMeta({
+      name: '周期预算测试',
+      group: '测试',
+      params: [],
+      ret: T.bool,
+      mana: 2,
+      ticks: 1,
+      cost: () => ({
+        mana: fixedCost(2),
+        ticks: fixedCost(1),
+        periodic: {
+          intervalSeconds: 0.25,
+          mana: fixedCost(3),
+          ticks: fixedCost(2),
+          count: { kind: 'finite', max: 2 },
+        },
+      }),
+      desc: '测试',
+      impl: () => true,
+    });
+    const finite = analyzeBook(
+      parseSpellbook(`spell 子 { 周期预算测试() }
+      spell 主 { repeat 2 { 子() } }`),
+    )['主'];
+    expect(finite.periodic).toHaveLength(1);
+    expect(finite.periodic[0].count).toEqual({ kind: 'finite', max: 4 });
+    expect(finite.manaBudget.dynamic).toBe(false);
+    expect(finite.manaWorst).toBe(finite.startMana + 12);
+    defMeta({
+      name: '实时控制预算测试',
+      group: '测试',
+      params: [],
+      ret: T.bool,
+      mana: 2,
+      ticks: 1,
+      cost: () => price(1, 0, 0.5, 'maintain'),
+      desc: '测试',
+      impl: () => true,
+    });
+    const repriced = analyzeBook(parseSpellbook('spell 实时 { 实时控制预算测试() }'))['实时'];
+    expect(repriced.periodic[0].count).toEqual({ kind: 'finite', max: 2 });
+    expect(repriced.manaBudget.dynamic).toBe(true);
+    expect(repriced.tickBudget.dynamic).toBe(true);
+    defMeta({
+      name: '无界预算测试',
+      group: '测试',
+      params: [],
+      ret: T.bool,
+      mana: 1,
+      ticks: 1,
+      cost: () => ({
+        mana: fixedCost(1),
+        ticks: fixedCost(1),
+        periodic: {
+          intervalSeconds: 0.25,
+          mana: fixedCost(1),
+          ticks: fixedCost(1),
+          count: { kind: 'unbounded' },
+        },
+      }),
+      desc: '测试',
+      impl: () => true,
+    });
+    const unlimited = analyzeBook(parseSpellbook('spell 无界 { 无界预算测试() }'))['无界'];
+    expect(unlimited.periodicUnbounded).toBe(true);
+    expect(unlimited.manaBudget.dynamic).toBe(true);
+    expect(unlimited.tickBudget.dynamic).toBe(true);
+  });
+
+  it('VM 每次成功周期重算价格、原子扣法力并登记 tick 债务', () => {
+    const { world, caster } = setup();
+    const program = compileProgram(parseSpellbook('spell 测试 { return 1 }'), '测试');
+    const vm = new VM(program, world, caster, { retainControlSessionOnCompletion: true });
+    vm.start('测试');
+    const session = vm.controlSession!;
+    const binding = world.controlPropertyBinding(caster, 'speed')!;
+    let resistance = 0;
+    Object.defineProperty(binding, 'resistance', { value: () => resistance });
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0.5, { session })).toBe(true);
+    const record = world.controlRecordSnapshot()[0];
+    const first = controlRecordPrice(world, caster, record);
+    expect(vm.spentMana).toBeCloseTo(first.mana.value + first.periodic!.mana.value);
+    const debt = vm.pendingTickDebt;
+    const steps = vm.result().steps;
+    vm.advance(1);
+    expect(vm.result().steps).toBe(steps);
+    expect(vm.pendingTickDebt).toBe(debt - 1);
+    vm.advance(1000);
+    expect(vm.isDone).toBe(true);
+    expect(session.active).toBe(true);
+    resistance = 1;
+    const before = vm.spentMana;
+    world.advanceControlTime(0.25);
+    const renewed = controlRecordPrice(world, caster, world.controlRecordSnapshot()[0]);
+    expect(vm.spentMana - before).toBeCloseTo(renewed.periodic!.mana.value);
+    expect(vm.pendingTickDebt).toBeGreaterThan(0);
+    expect(vm.advance(1)).toBe(1);
+    world.advanceControlTime(0.25);
+    expect(world.controlRecordSnapshot()).toEqual([]);
+    session.end();
+  });
+
+  it('法力或 tick 上限不足时不发布周期效果', () => {
+    const { world, caster } = setup();
+    const program = compileProgram(parseSpellbook('spell 测试 { return 1 }'), '测试');
+    const vm = new VM(program, world, caster, { maxTicks: 1 });
+    vm.start('测试');
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0, { session: vm.controlSession })).toBe(
+      false,
+    );
+    expect(world.controlRecordSnapshot()).toEqual([]);
+    expect(caster.attr.speed).toBe(caster.base.speed);
+    expect(vm.spentMana).toBe(0);
+    const { world: lowWorld, caster: lowCaster } = setup();
+    lowCaster.mana = 0;
+    const lowVm = new VM(program, lowWorld, lowCaster);
+    lowVm.start('测试');
+    expect(
+      lowWorld.applyEntityControl(lowCaster.id, 'speed', 2, 0, { session: lowVm.controlSession }),
+    ).toBe(false);
+    expect(lowVm.spentMana).toBe(0);
+    expect(lowWorld.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('一次写入也经同一会话结算，位置按裁剪后的实际距离计价', () => {
+    const { world, caster } = setup();
+    const program = compileProgram(parseSpellbook('spell 测试 { return 1 }'), '测试');
+    const vm = new VM(program, world, caster);
+    vm.start('测试');
+    const to = { x: 140, y: 100 };
+    expect(
+      world.applyEntityControl(caster.id, 'position', to, 0, { session: vm.controlSession }),
+    ).toBe(true);
+    const expected = controlPrice({
+      relation: 1,
+      resistance: 0,
+      strength: 40,
+      duration: 0,
+      mode: 'write',
+      writePolicy: 'commit',
+      currentPeriod: true,
+    });
+    expect(vm.spentMana).toBeCloseTo(expected.mana.value);
+    expect(vm.spentTicks).toBe(1 + expected.ticks.value);
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+});
+
 describe('实体句柄与控制失败边界', () => {
+  it('commit 只接受时间 0，且位置与寿命不回弹', () => {
+    const { world, caster } = setup();
+    const projectile = world.spawnProjectile({
+      faction: caster.faction,
+      ownerId: caster.id,
+      x: 100,
+      y: 100,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+    expect(world.applyEntityControl(projectile.id, 'position', { x: 200, y: 220 }, 1)).toBe(false);
+    expect(world.applyEntityControl(projectile.id, 'lifetime', 4, 1)).toBe(false);
+    expect(world.applyEntityControl(projectile.id, 'position', { x: 200, y: 220 }, 0)).toBe(true);
+    expect(world.applyEntityControl(projectile.id, 'lifetime', 4, 0)).toBe(true);
+    world.advanceControlTime(5);
+    expect(world.positionOf(projectile.id)).toEqual({ x: 200, y: 220 });
+    expect(projectile.life).toBe(4);
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('有限与无限 overlay 按稳定序号合并，同源替换，到期露出仍有效的下层', () => {
+    const { world, caster } = setup();
+    const projectile = world.spawnProjectile({
+      faction: caster.faction,
+      ownerId: caster.id,
+      x: 100,
+      y: 100,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+    expect(
+      world.applyEntityControl(projectile.id, 'speed', 2, 0, { controllerId: caster.id }),
+    ).toBe(true);
+    expect(world.applyEntityControl(projectile.id, 'speed', 3, 1, { controllerId: 0 })).toBe(true);
+    expect(projectile.speed).toBe(600);
+    expect(
+      world.applyEntityControl(projectile.id, 'speed', 4, 0, { controllerId: caster.id }),
+    ).toBe(true);
+    expect(projectile.speed).toBe(1200);
+    expect(world.controlRecordSnapshot()).toHaveLength(2);
+    expect(world.controlRecordSnapshot().map((r) => r.sequence)).toEqual([2, 3]);
+    world.advanceControlTime(1);
+    expect(projectile.speed).toBe(400);
+    expect(world.controlRecordSnapshot()).toHaveLength(1);
+    expect(
+      world.applyEntityControl(projectile.id, 'rotation', { x: 0, y: 1 }, 0, {
+        controllerId: caster.id,
+      }),
+    ).toBe(true);
+    expect(
+      world.applyEntityControl(projectile.id, 'rotation', { x: -1, y: 0 }, 0, { controllerId: 0 }),
+    ).toBe(true);
+    expect({ x: projectile.dx, y: projectile.dy }).toEqual({ x: -1, y: 0 });
+    world.projectiles = [];
+    world.pruneControlRecords();
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('write 层不随施法结束撤销，权限失效只清理对应层', () => {
+    const { world, caster } = setup();
+    const projectile = world.spawnProjectile({
+      faction: caster.faction,
+      ownerId: caster.id,
+      x: 100,
+      y: 100,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+    let allowed = true;
+    const session = world.createControlSession(
+      caster.id,
+      () => true,
+      () => allowed,
+    )!;
+    expect(world.applyEntityControl(projectile.id, 'speed', 2, 0, { session })).toBe(true);
+    session.end();
+    expect(projectile.speed).toBe(200);
+    expect(world.controlRecordSnapshot()).toHaveLength(1);
+    expect(
+      world.applyEntityControl(projectile.id, 'speed', 0, 0, { controllerId: caster.id }),
+    ).toBe(false);
+    expect(projectile.speed).toBe(200);
+    allowed = false;
+    world.pruneControlRecords();
+    expect(projectile.speed).toBe(100);
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('maintain 首周期与更新收费，余额不足、取消、权限及目标失效都释放租约', () => {
+    const { world, caster } = setup();
+    let balance = 3;
+    let permitted = true;
+    const charged: string[] = [];
+    const session = world.createControlSession(
+      caster.id,
+      (_record, phase) => {
+        if (balance < 1) return false;
+        balance--;
+        charged.push(phase);
+        return true;
+      },
+      () => permitted,
+    )!;
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0, { session })).toBe(true);
+    expect(world.applyEntityControl(caster.id, 'speed', 3, 0, { session })).toBe(true);
+    expect(caster.attr.speed).toBe(caster.base.speed * 3);
+    expect(world.controlRecordSnapshot()).toHaveLength(1);
+    world.advanceControlTime(0.25);
+    expect(charged).toEqual(['start', 'start', 'period']);
+    world.advanceControlTime(0.25);
+    expect(world.controlRecordSnapshot()).toEqual([]);
+    expect(caster.attr.speed).toBe(caster.base.speed);
+    balance = 1;
+    expect(world.applyEntityControl(caster.id, 'armor', 4, 0, { session })).toBe(true);
+    permitted = false;
+    world.pruneControlRecords();
+    expect(caster.attr.armor).toBe(caster.base.armor);
+    permitted = true;
+    balance = 1;
+    expect(world.applyEntityControl(caster.id, 'armor', 4, 0, { session })).toBe(true);
+    session.end();
+    session.end();
+    expect(world.controlRecordSnapshot()).toEqual([]);
+    expect(caster.attr.armor).toBe(caster.base.armor);
+    const interrupted = world.createControlSession(caster.id, () => true)!;
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0, { session: interrupted })).toBe(true);
+    caster.alive = false;
+    world.pruneControlRecords();
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('施法实例取消与完成释放维持层，领域拒绝保留旧层', () => {
+    const { world, caster } = setup();
+    const program = compileProgram(parseSpellbook('spell 测试 { return 1 }'), '测试');
+    const session = world.createControlSession(caster.id, () => true)!;
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0, { session })).toBe(true);
+    expect(world.applyEntityControl(caster.id, 'speed', 0, 0, { session })).toBe(false);
+    expect(caster.attr.speed).toBe(caster.base.speed * 2);
+    const vm = new VM(program, world, caster, { controlSession: session });
+    vm.start('测试');
+    vm.cancel();
+    expect(session.active).toBe(false);
+    expect(caster.attr.speed).toBe(caster.base.speed);
+    const completed = world.createControlSession(caster.id, () => true)!;
+    expect(world.applyEntityControl(caster.id, 'speed', 3, 0, { session: completed })).toBe(true);
+    expect(new VM(program, world, caster, { controlSession: completed }).run('测试').ok).toBe(true);
+    expect(completed.active).toBe(false);
+    expect(caster.attr.speed).toBe(caster.base.speed);
+  });
+
+  it('有限维持到期边界先清理，不额外续费', () => {
+    const { world, caster } = setup();
+    const phases: string[] = [];
+    const session = world.createControlSession(caster.id, (_record, phase) => {
+      phases.push(phase);
+      return true;
+    })!;
+    expect(world.applyEntityControl(caster.id, 'armor', 3, 0.25, { session })).toBe(true);
+    world.advanceControlTime(0.25);
+    expect(phases).toEqual(['start']);
+    expect(caster.attr.armor).toBe(caster.base.armor);
+    expect(world.controlRecordSnapshot()).toEqual([]);
+  });
+
+  it('稳定属性描述符统一校验并规范化首批效果域', () => {
+    expect(CONTROL_PROPERTY_KEYS).toEqual([
+      'position',
+      'rotation',
+      'speed',
+      'damage',
+      'lifetime',
+      'perception',
+      'armor',
+    ]);
+    expect(getControlPropertyDescriptor('missing')).toBeNull();
+    expect(getControlPropertyDescriptor('position')!.normalize({ x: 1, y: 2 })).toEqual({
+      x: 1,
+      y: 2,
+    });
+    expect(getControlPropertyDescriptor('position')!.normalize({ x: Infinity, y: 2 })).toBeNull();
+    expect(getControlPropertyDescriptor('rotation')!.normalize({ x: 0, y: 2 })).toEqual({
+      x: 0,
+      y: 1,
+    });
+    expect(getControlPropertyDescriptor('rotation')!.normalize({ x: 0, y: 0 })).toBeNull();
+    expect(getControlPropertyDescriptor('rotation')!.normalize({ x: 1e-100, y: 0 })).toEqual({
+      x: 1,
+      y: 0,
+    });
+    const hugeDirection = getControlPropertyDescriptor('rotation')!.normalize({
+      x: Number.MAX_VALUE,
+      y: Number.MAX_VALUE,
+    });
+    expect(hugeDirection).not.toBeNull();
+    if (hugeDirection && typeof hugeDirection === 'object') {
+      expect(hugeDirection.x).toBeCloseTo(Math.SQRT1_2);
+      expect(hugeDirection.y).toBeCloseTo(Math.SQRT1_2);
+    }
+    for (const key of ['speed', 'damage', 'lifetime', 'perception'] as const) {
+      expect(getControlPropertyDescriptor(key)!.normalize(0)).toBeNull();
+      expect(getControlPropertyDescriptor(key)!.normalize(2)).toBe(2);
+    }
+    expect(getControlPropertyDescriptor('armor')!.normalize(-2)).toBe(-2);
+  });
+
+  it('Actor 与 Projectile 通过 binding 查询并复用同一 speed/damage 入口', () => {
+    const { world, caster } = setup();
+    const projectile = world.spawnProjectile({
+      faction: caster.faction,
+      ownerId: caster.id,
+      x: caster.x,
+      y: caster.y,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+
+    expect(world.controlPropertyBinding(caster, 'speed')).toMatchObject({
+      propertyKey: 'speed',
+      mode: 'maintain',
+      writePolicy: null,
+    });
+    expect(world.controlPropertyBinding(projectile, 'speed')).toMatchObject({
+      propertyKey: 'speed',
+      mode: 'write',
+      writePolicy: 'overlay',
+    });
+    for (const key of ['position', 'rotation', 'speed', 'damage'] as const) {
+      expect(world.controlPropertyBinding(caster, key)?.propertyKey).toBe(key);
+      expect(world.controlPropertyBinding(projectile, key)?.propertyKey).toBe(key);
+    }
+    expect(world.controlPropertyBinding(projectile, 'lifetime')?.writePolicy).toBe('commit');
+    expect(world.controlPropertyBinding(caster, 'perception')?.mode).toBe('maintain');
+    expect(world.controlPropertyBinding(caster, 'armor')?.mode).toBe('maintain');
+    expect(world.controlPropertyBinding(caster, 'lifetime')).toBeNull();
+    expect(world.controlPropertyBinding(projectile, 'perception')).toBeNull();
+    expect(world.controlPropertyBinding(projectile, 'armor')).toBeNull();
+    const session = world.createControlSession(caster.id, () => true)!;
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0, { session })).toBe(true);
+    expect(world.applyEntityControl(projectile.id, 'speed', 2, 0)).toBe(true);
+    expect(caster.attr.speed).toBe(caster.base.speed * 2);
+    expect(projectile.speed).toBe(200);
+
+    expect(world.applyEntityControl(caster.id, 'damage', 3, 0, { session })).toBe(true);
+    expect(world.applyEntityControl(projectile.id, 'damage', 3, 0)).toBe(true);
+    expect(caster.attr.power).toBe(caster.base.power * 3);
+    expect(projectile.damage).toBe(30);
+  });
+
+  it('缺 descriptor、缺 binding、非法效果与不支持时间均拒绝且不改状态', () => {
+    const { world, caster } = setup();
+    const projectile = world.spawnProjectile({
+      faction: caster.faction,
+      ownerId: caster.id,
+      x: 100,
+      y: 100,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+    const before = structuredClone(projectile);
+
+    expect(world.controlPropertyBinding(projectile, 'perception')).toBeNull();
+    expect(world.applyEntityControl(projectile.id, 'perception', 2, 1)).toBe(false);
+    expect(world.applyEntityControl(projectile.id, 'missing', 2, 0)).toBe(false);
+    expect(world.applyEntityControl(projectile.id, 'speed', 0, 0)).toBe(false);
+    expect(world.applyEntityControl(projectile.id, 'position', { x: 200, y: 200 }, 1)).toBe(false);
+    expect(world.applyEntityControl(projectile.id, 'speed', 2, -1)).toBe(false);
+    expect(world.events.join(' ')).toContain('缺少 perception 属性 binding');
+    expect(world.events.join(' ')).toContain('缺少属性能力：missing');
+    expect(world.events.join(' ')).toContain('非法效果参数');
+    expect(world.events.join(' ')).toContain('非法时间');
+    expect(projectile).toEqual(before);
+    expect(
+      world.applyEntityControl(
+        projectile.id,
+        'position',
+        { x: Number.MAX_VALUE, y: Number.MAX_VALUE },
+        0,
+      ),
+    ).toBe(true);
+    expect(world.positionOf(projectile.id)).toEqual({
+      x: world.bounds.w - projectile.radius,
+      y: world.bounds.h - projectile.radius,
+    });
+  });
+
+  it('移除、重置和死亡后的旧对象引用不能重新取得 binding 或修改状态', () => {
+    const { world, caster } = setup();
+    const projectile = world.spawnProjectile({
+      faction: caster.faction,
+      ownerId: caster.id,
+      x: 100,
+      y: 100,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+    })!;
+    const before = structuredClone(projectile);
+    world.projectiles = [];
+    expect(world.controlPropertyBinding(projectile, 'speed')).toBeNull();
+    expect(world.applyEntityControl(projectile.id, 'speed', 2, 0)).toBe(false);
+    expect(projectile).toEqual(before);
+
+    caster.alive = false;
+    const dead = structuredClone(caster);
+    expect(world.controlPropertyBinding(caster, 'position')).toBeNull();
+    expect(world.applyEntityControl(caster.id, 'position', { x: 200, y: 200 }, 0)).toBe(false);
+    expect(caster).toEqual(dead);
+
+    world.reset();
+    expect(world.controlPropertyBinding(caster, 'speed')).toBeNull();
+  });
+
+  it('会使属性溢出的控制请求返回 false 且不留下修正', () => {
+    const { world, caster } = setup();
+    caster.base.speed = Number.MAX_VALUE;
+    caster.base.armor = Number.MAX_VALUE;
+    world.recompute(caster);
+    const before = structuredClone(caster);
+    const session = world.createControlSession(caster.id, () => true)!;
+    expect(world.applyEntityControl(caster.id, 'speed', 2, 0, { session })).toBe(false);
+    expect(world.applyEntityControl(caster.id, 'armor', Number.MAX_VALUE, 0, { session })).toBe(
+      false,
+    );
+    expect(caster).toEqual(before);
+  });
+
   it('跨种类、移除及重置后不复用旧句柄', () => {
     const { world, caster, call } = setup();
     const id = call('创建弹道', 5) as number;

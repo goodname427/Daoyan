@@ -137,6 +137,9 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: Arena
 
   const player = battle.player;
   const activeCasts = battle.activeCasts(player.id);
+  const maintained = battle.world
+    .controlRecordSnapshot()
+    .filter((record) => record.mode === 'maintain');
   const shenshiInUse = battle.shenshiInUse(player.id);
   const showOverlay = !battle.started || battle.paused || battle.state !== 'fighting';
 
@@ -323,6 +326,20 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: Arena
                       <div className="muted small">
                         已用 {cast.vm.spentTicks} tick · 预算 {tickBudget} tick · 第 {cast.fired} 次
                       </div>
+                      {maintained
+                        .filter((record) => record.controllerSessionId === cast.controlSession.id)
+                        .map((record) => (
+                          <div className="muted small" key={record.sequence}>
+                            维持实例：{record.propertyKey} · 目标 #{record.targetId} ·{' '}
+                            {record.expiresAt === null
+                              ? '无限'
+                              : `剩余 ${Math.max(0, record.expiresAt - battle.world.controlTimeNow).toFixed(2)} 秒`}
+                            {' · '}已付 {record.paidPeriods} 周期（每 0.25 秒）
+                            {' · '}控制累计法力 {cast.controlCharge.mana.toFixed(1)} / tick{' '}
+                            {cast.controlCharge.ticks}
+                            {' · '}下周期成本随关系、抗性和效果动态计算
+                          </div>
+                        ))}
                     </div>
                   );
                 })}

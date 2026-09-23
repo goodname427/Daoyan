@@ -12,6 +12,7 @@ import type {
   Actor,
   AttrKey,
   Attributes,
+  ControlSession,
   KeyState,
   Program,
   SpellBook,
@@ -61,6 +62,9 @@ export interface CastInstance {
   spell: string;
   meta: SpellMeta;
   vm: VM;
+  /** 整次施法共享的核心控制会话，duration 重启 VM 不重建。 */
+  controlSession: ControlSession;
+  controlCharge: { vm: VM | null; mana: number; ticks: number };
   /** 已持续秒数 */
   elapsed: number;
   /** 跨帧 tick 信用；元法术整步执行造成的超支会在后续帧偿还 */
@@ -235,6 +239,30 @@ export class Battle {
   update(dt: number): void {
     if (!this.started || this.paused) return;
     if (this.state !== 'fighting') return;
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    let remaining = dt;
+    while (remaining > 0 && this.state === 'fighting') {
+      // 世界在边界前使用已付费效果；核心在边界上先清理再续费。
+      const slice = this.world.nextControlBoundaryIn(remaining);
+      if (slice <= 0) {
+        this.world.advanceControlTime(0);
+        continue;
+      }
+      this.updateSlice(slice);
+      const maintained = this.world
+        .controlRecordSnapshot()
+        .filter((record) => record.mode === 'maintain');
+      this.world.advanceControlTime(slice);
+      this.world.pruneControlRecords();
+      this.reportEndedMaintains(maintained);
+      remaining = Math.max(0, remaining - slice);
+    }
+  }
+
+  private updateSlice(dt: number): void {
+    const maintained = this.world
+      .controlRecordSnapshot()
+      .filter((record) => record.mode === 'maintain');
     this.time += dt;
 
     for (const a of this.world.actors) {
@@ -251,8 +279,41 @@ export class Battle {
     }
     this.advanceCasts(dt);
     this.updateProjectiles(dt);
+    this.world.pruneControlRecords();
+    this.reportEndedMaintains(maintained);
     this.separate();
     this.checkEnd();
+  }
+
+  private reportEndedMaintains(maintained: ReturnType<World['controlRecordSnapshot']>): void {
+    const current = this.world.controlRecordSnapshot();
+    for (const record of maintained) {
+      if (
+        current.some(
+          (item) =>
+            item.sequence === record.sequence ||
+            (item.controllerSessionId === record.controllerSessionId &&
+              item.targetId === record.targetId &&
+              item.propertyKey === record.propertyKey),
+        )
+      )
+        continue;
+      const cast = [...this.casts.values()]
+        .flatMap((slots) => [...slots.values()])
+        .find((item) => item.controlSession.id === record.controllerSessionId);
+      if (!cast) continue;
+      const target = this.world.entityById(record.targetId);
+      const reason = !target
+        ? '目标死亡或移除'
+        : !this.world.controlPropertyBinding(target, record.propertyKey)
+          ? '目标缺少属性能力'
+          : !cast.controlSession.canControl(target, record.propertyKey)
+            ? '控制权限失效'
+            : record.expiresAt !== null && record.expiresAt <= this.world.controlTimeNow
+              ? '持续时间到期'
+              : (cast.vm.failure ?? '维持续费失败（请检查法力余额）');
+      this.pushLog(`「${cast.spell}」的 ${record.propertyKey} 维持结束：${reason}`);
+    }
   }
 
   private movePlayer(dt: number): void {
@@ -284,7 +345,7 @@ export class Battle {
     const d = Math.hypot(dx, dy) || 1;
     const ux = dx / d;
     const uy = dy / d;
-    a.aim = { x: ux, y: uy };
+    this.world.setActorAim(a, { x: ux, y: uy });
 
     const casting = this.isCasting(a.id);
     let mx = 0;
@@ -345,7 +406,7 @@ export class Battle {
 
         // 每个实例都按完整施法速度独立推进；共享资源在 VM 钩子中实时结算。
         cast.tickCredit += ((dt * 1000) / TICK_MS) * a.attr.castSpeed;
-        if (cast.vm.isRunning && cast.tickCredit > 0) {
+        if ((cast.vm.isRunning || cast.vm.pendingTickDebt > 0) && cast.tickCredit > 0) {
           cast.tickCredit -= cast.vm.advance(cast.tickCredit);
         }
         cast.elapsed += dt;
@@ -376,6 +437,9 @@ export class Battle {
           this.removeCast(id, slot);
           continue;
         }
+
+        // 维持续费产生的工作必须在下一次 duration VM 片段前偿还。
+        if (cast.vm.pendingTickDebt > 0) continue;
 
         // 本次执行完毕
         if (cast.meta.kind === 'duration' && cast.elapsed < cast.meta.duration) {
@@ -416,7 +480,8 @@ export class Battle {
     cast.fired += 1;
     cast.periodTimer = Math.max(0.05, cast.meta.period);
     cast.ended = false;
-    const vm = this.createBattleVm(a);
+    const vm = this.createBattleVm(a, cast.controlSession, true);
+    cast.controlCharge.vm = vm;
     vm.start(cast.spell);
     vm.setKeyState(cast.keys.length > 0 ? cast.keys : null);
     cast.vm = vm;
@@ -493,6 +558,7 @@ export class Battle {
   private checkEnd(): void {
     if (!this.player.alive) {
       this.state = 'defeat';
+      for (const actorId of [...this.casts.keys()]) this.cancelCasts(actorId);
       this.pushLog('道消身陨……');
       return;
     }
@@ -500,6 +566,7 @@ export class Battle {
     if (foesLeft > 0) return;
     if (this.waveIndex >= WAVES.length - 1) {
       this.state = 'victory';
+      for (const actorId of [...this.casts.keys()]) this.cancelCasts(actorId);
       this.pushLog('尽数伏诛，此局功成');
     } else {
       this.startWave(this.waveIndex + 1);
@@ -555,7 +622,26 @@ export class Battle {
     if (this.casts.get(actorId)?.has(slot)) return false;
 
     const meta = this.metas[spell] ?? normalizeMeta(null);
-    const vm = this.createBattleVm(a);
+    const controlCharge: { vm: VM | null; mana: number; ticks: number } = {
+      vm: null,
+      mana: 0,
+      ticks: 0,
+    };
+    const controlSession = this.world.createControlSession(a.id, (record, phase) => {
+      const activeVm = controlCharge.vm;
+      if (!activeVm) return false;
+      const manaBefore = activeVm.spentMana;
+      const ticksBefore = activeVm.spentTicks;
+      const paid = activeVm.chargeControl(record, phase);
+      if (paid) {
+        controlCharge.mana += activeVm.spentMana - manaBefore;
+        controlCharge.ticks += activeVm.spentTicks - ticksBefore;
+      }
+      return paid;
+    });
+    if (!controlSession) return false;
+    const vm = this.createBattleVm(a, controlSession, meta.kind !== 'instant');
+    controlCharge.vm = vm;
     vm.start(spell);
 
     // 准备虚拟按键状态（玩家：按下瞬间给 keys[0] 一个 pressEdge）
@@ -573,6 +659,8 @@ export class Battle {
       spell,
       meta,
       vm,
+      controlSession,
+      controlCharge,
       elapsed: 0,
       tickCredit: -vm.spentTicks,
       periodTimer: Math.max(0.05, meta.period),
@@ -611,7 +699,7 @@ export class Battle {
     const dx = x - this.player.x;
     const dy = y - this.player.y;
     const l = Math.hypot(dx, dy);
-    if (l > 1e-6) this.player.aim = { x: dx / l, y: dy / l };
+    if (l > 1e-6) this.world.setActorAim(this.player, { x: dx / l, y: dy / l });
   }
 
   setBinding(slot: string, spell: string): void {
@@ -665,8 +753,10 @@ export class Battle {
     this.startWave(0);
   }
 
-  private createBattleVm(a: Actor): VM {
+  private createBattleVm(a: Actor, controlSession: ControlSession, retain: boolean): VM {
     return new VM(this.program, this.world, a, {
+      controlSession,
+      retainControlSessionOnCompletion: retain,
       resources: {
         trySpendMana: (amount) => {
           if (amount > a.mana) return false;
@@ -692,7 +782,18 @@ export class Battle {
     const actorCasts = this.casts.get(actorId);
     const cast = actorCasts?.get(slot);
     if (!actorCasts || !cast) return;
+    const maintained = this.world
+      .controlRecordSnapshot()
+      .filter(
+        (record) =>
+          record.mode === 'maintain' && record.controllerSessionId === cast.controlSession.id,
+      );
+    if (maintained.length > 0)
+      this.pushLog(
+        `「${cast.spell}」维持结束：${cast.vm.failure ?? (cancel ? '施法取消或受击打断' : cast.ended ? '主动结束施法' : '施法实例完成')}`,
+      );
     if (cancel) cast.vm.cancel();
+    cast.controlSession.end();
     actorCasts.delete(slot);
     if (actorCasts.size === 0) this.casts.delete(actorId);
   }

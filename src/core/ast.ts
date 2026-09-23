@@ -16,7 +16,7 @@ export type Expr =
   | { k: 'lit'; v: LitValue; t: Type }
   | { k: 'var'; name: string }
   | { k: 'index'; arr: Expr; i: Expr }
-  | { k: 'call'; name: string; args: Expr[] };
+  | { k: 'call'; name: string; args: Expr[]; line?: number };
 
 export type AssignTarget = { k: 'var'; name: string } | { k: 'index'; arr: Expr; i: Expr };
 

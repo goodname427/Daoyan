@@ -336,10 +336,10 @@ test.describe('lab functionality', () => {
     const sink = captureErrors(page);
     await page.goto('/');
     const create = page.locator('.meta-spell').filter({ hasText: '创建弹道' });
-    await expect(create).toContainText('实体创建 · 法8+动态');
+    await expect(create).toContainText('实体创建 · 法10+动态');
     await create.click();
     await expect(page.locator('.meta-inspector')).toContainText('法力基础');
-    await expect(page.locator('.meta-inspector')).toContainText('8 + 动态');
+    await expect(page.locator('.meta-inspector')).toContainText('10 + 动态');
     await page.locator('button.spell').filter({ hasText: '御剑·手动' }).click();
     await expect(page.locator('.code-input').first()).toHaveValue(/创建弹道/);
     await page.getByRole('button', { name: /推演一次/ }).click();
@@ -348,10 +348,12 @@ test.describe('lab functionality', () => {
     await expect(page.locator('.synced-spells')).toContainText('御剑·手动');
     await page.locator('.tabs .tab').first().click();
     await page.locator('button.spell').filter({ hasText: '御剑·手动' }).click();
-    await expect(page.locator('.code-input').first()).toHaveValue(/激活弹道/);
+    await expect(page.locator('.code-input').first()).toHaveValue(
+      /创建弹道\([^\n]*, 380, 22, 2\.4\)/,
+    );
     await page.setViewportSize({ width: 760, height: 800 });
     await create.click();
-    await expect(page.locator('.meta-inspector')).toContainText('8 + 动态');
+    await expect(page.locator('.meta-inspector')).toContainText('10 + 动态');
     sink.assert();
   });
 
@@ -414,7 +416,7 @@ test.describe('lab functionality', () => {
     await expect(page.locator('.blueprint-callout .errors')).not.toContainText(/声明为 num/);
     await page.getByTestId('lab-code-mode').click();
     await expect(page.locator('.code-input')).toHaveValue(/list<entity, 8>/);
-    await expect(page.locator('.code-input')).toHaveValue(/发射\(/);
+    await expect(page.locator('.code-input')).toHaveValue(/创建弹道\(/);
     sink.assert();
   });
 

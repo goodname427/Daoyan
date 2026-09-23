@@ -1713,6 +1713,9 @@ async function resumeWaitingItem(
     pending && externalBlocker(pending.summary) ? 'waiting-quota' : 'waiting-producer';
   const waiting = applyWaitingReply(state, request, intent);
   if (!waiting) throw new Error('等待事项已变化，无法应用当前回复');
+  if (waiting.runDirectory && /强制接管/.test(request.idea)) {
+    waiting.orchestration!.takeoverOnResume = true;
+  }
   await appendSecretaryTiming(
     `wait-${waiting.id}-${waitingStartedAt}`,
     waitingCategory,
@@ -1727,7 +1730,20 @@ async function resumeWaitingItem(
   await emitNotice('reply-accepted', response, waiting, undefined, request.id);
 }
 
-type DispatchEvidence = 'worker-running' | 'pm-running' | 'blocked' | 'recovering' | 'stopped';
+type DispatchEvidence =
+  'worker-running' | 'pm-running' | 'pm-bootstrapping' | 'blocked' | 'recovering' | 'stopped';
+
+export function pmSnapshotConfirmsLaunch(
+  status: unknown,
+  updatedAt: unknown,
+  launchedAt: string,
+): boolean {
+  return (
+    status === 'active' &&
+    typeof updatedAt === 'string' &&
+    !snapshotPredatesLaunch(updatedAt, launchedAt)
+  );
+}
 
 async function confirmDispatchEvidence(
   item: SecretaryItem,
@@ -1742,7 +1758,18 @@ async function confirmDispatchEvidence(
 
   await coordinate();
   if (await activeWorkerProcess(item, true)) return 'worker-running';
-  if (isOwnedProcessAlive(item.processPid, item.processIdentity, 0)) return 'pm-running';
+  if (isOwnedProcessAlive(item.processPid, item.processIdentity, 0)) {
+    const snapshot = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'recovery.json'))
+      : null;
+    return pmSnapshotConfirmsLaunch(
+      snapshot?.status,
+      snapshot?.updatedAt,
+      activeLaunchStartedAt.get(item.id) ?? item.updatedAt,
+    )
+      ? 'pm-running'
+      : 'pm-bootstrapping';
+  }
   const reconciledStatus: string = item.status;
   if (reconciledStatus === 'waiting-producer') return 'blocked';
   if (reconciledStatus === 'retry-wait') return 'recovering';
@@ -1755,6 +1782,9 @@ export function continueDispatchResponse(item: SecretaryItem, evidence: Dispatch
   }
   if (evidence === 'pm-running') {
     return `已恢复“${item.idea}”，Feature PM 已确认运行，正在准备或调度执行 Agent。`;
+  }
+  if (evidence === 'pm-bootstrapping') {
+    return `Feature PM 进程已启动，正在核实“${item.idea}”的新恢复快照；尚未确认执行 Agent 已运行。`;
   }
   if (evidence === 'blocked') {
     return `尝试恢复“${item.idea}”后确认仍被阻塞：${item.summary}`;
@@ -2876,6 +2906,13 @@ async function reconcileItem(
   ) {
     return false;
   }
+  if (
+    run.status === 'active' &&
+    launchStartedAt &&
+    !snapshotPredatesLaunch(run.updatedAt, launchStartedAt)
+  ) {
+    delete itemOrchestration.takeoverOnResume;
+  }
   // A tracked child outlives its PM, so the item may already have cleared the
   // PM reference. Keep using the owned snapshot to recognize that PM's exit.
   processEnded ||= Boolean(
@@ -3133,6 +3170,7 @@ export function runArgs(
           tsxCliPath,
           agentDispatcherPath,
           '--resume',
+          ...(item.orchestration?.takeoverOnResume ? ['--takeover'] : []),
           ...(item.producerGuidance ? ['--decision-confirmed'] : []),
           ...(item.producerGuidance ? ['--producer-guidance', item.producerGuidance] : []),
           relative(root, item.runDirectory),

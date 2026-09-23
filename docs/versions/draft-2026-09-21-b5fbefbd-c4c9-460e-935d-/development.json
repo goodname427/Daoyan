@@ -1,0 +1,225 @@
+{
+  "workItems": [
+    {
+      "id": "adr-control-model",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npx prettier --check docs/adr/0017-统一实体控制属性模型.md docs/architecture/invariants.md docs/versions/draft-2026-09-21-b5fbefbd-c4c9-460e-935d-/module-design.md",
+          "exitCode": 0
+        },
+        {
+          "command": "node scripts/check-docs.mjs",
+          "exitCode": 0
+        }
+      ],
+      "evidence": [
+        "ADR 0017 adopted binding, time, session, pricing and migration contracts. Direct document checks passed."
+      ]
+    },
+    {
+      "id": "core-property-bindings",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/entity-vnext.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Seven property descriptors and Actor/Projectile bindings were implemented; headless assertions passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "core-control-records",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/entity-vnext.test.ts test/core.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "World and VM gained overlay and maintain sessions; headless smoke passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "core-period-budget",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/entity-vnext.test.ts test/core.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Shared pricing, periodic budgets and VM charges were implemented; headless core check passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "dsl-compat-migration",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/entity-vnext.test.ts test/persistence.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Unified AST migration and diagnostics were implemented; Node checks passed. Safe four-step projectile chain folding remains unaccepted because resource-failure equivalence is unresolved. Vitest stopped at spawn EPERM."
+      ]
+    },
+    {
+      "id": "meta-unified-controls",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/entity-vnext.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Immediate projectile creation and seven three-argument controls were implemented; headless assertions passed. Vitest stopped at spawn EPERM."
+      ]
+    },
+    {
+      "id": "battle-control-bridge",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/combat.test.ts test/entity-vnext.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Battle connects shared mana, clock and cast lifetime to core sessions; headless assertions passed. Vitest stopped at spawn EPERM."
+      ]
+    },
+    {
+      "id": "spellbook-persistence",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/persistence.test.ts test/entity-vnext.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Default/demo spells and persistence boundaries were updated; temporary headless checks passed. Vitest stopped at spawn EPERM."
+      ]
+    },
+    {
+      "id": "ui-control-feedback",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/render.test.tsx",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Lab and combat feedback was updated. Render tests and temporary-config retry stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "reference-update",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "node scripts/check-docs.mjs",
+          "exitCode": 0
+        },
+        {
+          "command": "npm run docs:generate",
+          "exitCode": 1
+        },
+        {
+          "command": "npm run docs:check",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Player references and generator source were updated; direct Markdown/link/version checks passed. Generator execution and parity remain unverified due to spawn EPERM."
+      ]
+    },
+    {
+      "id": "entity-model-integration",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0
+        },
+        {
+          "command": "npm test -- test/entity-vnext.test.ts test/core.test.ts test/combat.test.ts test/persistence.test.ts test/render.test.tsx",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Cross-layer regressions were added. Vitest and Playwright stopped at spawn EPERM before assertions; E2E is not Task-scope evidence."
+      ]
+    }
+  ]
+}

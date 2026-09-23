@@ -27,6 +27,7 @@ import {
   parseQaResult,
   parseReverificationResult,
   parseVersionWorkItems,
+  pmSnapshotConfirmsLaunch,
   persistScheduleCorrections,
   publicCodeRevision,
   progressNoticeDecision,
@@ -261,6 +262,7 @@ describe('secretary dispatch feedback', () => {
   it('reports a failed launch as recovery instead of a successful start', () => {
     expect(continueDispatchResponse(item, 'recovering')).toContain('未稳定启动');
     expect(continueDispatchResponse(item, 'recovering')).not.toContain('已确认运行');
+    expect(continueDispatchResponse(item, 'pm-bootstrapping')).toContain('尚未确认执行 Agent');
   });
 });
 
@@ -287,6 +289,28 @@ describe('secretary waiting-message intent', () => {
 });
 
 describe('secretary launch snapshot ordering', () => {
+  it('uses explicit takeover only for the requested recovery launch', () => {
+    const resumed = itemFromIntake(
+      { id: 'takeover', idea: '继续现有版本', createdAt: '' },
+      [],
+    ).item;
+    resumed.runDirectory = 'existing-run';
+    resumed.producerGuidance = '强制接管并继续';
+    resumed.orchestration!.takeoverOnResume = true;
+    expect(runArgs(resumed, true)).toContain('--takeover');
+    delete resumed.orchestration!.takeoverOnResume;
+    expect(runArgs(resumed, true)).not.toContain('--takeover');
+  });
+
+  it('does not treat a stale recovery snapshot as proof of a new PM launch', () => {
+    const launchedAt = '2026-09-23T01:37:23.000Z';
+    expect(pmSnapshotConfirmsLaunch('recoverable', '2026-09-21T16:09:59.000Z', launchedAt)).toBe(
+      false,
+    );
+    expect(pmSnapshotConfirmsLaunch('active', '2026-09-21T16:09:59.000Z', launchedAt)).toBe(false);
+    expect(pmSnapshotConfirmsLaunch('active', '2026-09-23T01:37:24.000Z', launchedAt)).toBe(true);
+  });
+
   it('refuses to restart an existing Feature without its recovery file', () => {
     const item = itemFromIntake({ id: 'old', idea: '新增功能', createdAt: '' }, []).item;
     item.runDirectory = 'old-run';

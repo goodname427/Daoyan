@@ -28,10 +28,11 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { controlHelp } from './controlHelp';
 
 import {
   T,
-  allMetas,
+  publicMetas,
   analyzeBook,
   assignable,
   compileProgram,
@@ -259,7 +260,7 @@ function SpellNode({ id, data }: NodeProps<Node>) {
   const d = data as unknown as Nd;
   const isStmt = isStmtKind(d.kind) || d.kind === 'entry';
   const outT = outTypeOf({ id, data } as Node);
-  const metas = allMetas();
+  const metas = publicMetas();
   const updateNodeData = useContext(NodeDataContext);
   const nodeTip = descriptionOf(d);
 
@@ -303,6 +304,15 @@ function SpellNode({ id, data }: NodeProps<Node>) {
       {(d.kind === 'callstmt' || d.kind === 'call') && (
         <>
           <div className="spell-node-title">{d.meta}</div>
+          {controlHelp(d.meta) && (
+            <div className="spell-node-sub control-node-help" title={controlHelp(d.meta)!.failure}>
+              {controlHelp(d.meta)!.key} · {controlHelp(d.meta)!.effect}
+              <br />
+              时间 0 = 无限 · {controlHelp(d.meta)!.capability}
+              <br />
+              起手基础 + 动态；维持每 0.25 秒另付周期法力 / tick
+            </div>
+          )}
           <select
             className="node-input"
             value={d.meta}
@@ -875,7 +885,7 @@ function makeNode(kind: NodeKind, position: { x: number; y: number }): Node {
   switch (kind) {
     case 'callstmt':
     case 'call':
-      return { ...base, data: { kind, meta: allMetas()[0]?.name ?? '加' } } as Node;
+      return { ...base, data: { kind, meta: publicMetas()[0]?.name ?? '加' } } as Node;
     case 'const':
       return { ...base, data: { kind: 'const', value: '0', ctype: 'num' } } as Node;
     case 'varref':

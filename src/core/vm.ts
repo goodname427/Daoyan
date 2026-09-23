@@ -4,7 +4,8 @@ import type { Value } from './types';
 import { asNum, knownCostArg } from './meta';
 import { allMetas } from './meta';
 import type { Ctx } from './meta';
-import type { Actor, World } from './world';
+import type { Actor, ControlRecord, ControlSession, World } from './world';
+import { controlRecordPrice } from './pricing';
 import type { KeyState } from './input';
 
 /** 一个 tick 代表多少毫秒的施法时间 */
@@ -21,6 +22,10 @@ export interface CastOptions {
   trace?: boolean;
   /** 战斗层可注入的共享资源账户；推演台不注入时使用本次 VM 的独立预算 */
   resources?: CastResourceHooks;
+  /** 当前施法实例拥有的控制租约；终止时统一释放。 */
+  controlSession?: ControlSession;
+  /** duration/channel 的外层实例仍存活时由外层负责结束会话。 */
+  retainControlSessionOnCompletion?: boolean;
 }
 
 export interface CastResourceHooks {
@@ -100,6 +105,7 @@ export class VM {
   private manaSpent = 0;
   private manaBudget = 0;
   private ticksUsed = 0;
+  private tickDebt = 0;
   private steps = 0;
   private status: CastStatus = 'idle';
   private error: string | null = null;
@@ -113,7 +119,14 @@ export class VM {
     private caster: Actor,
     options?: Partial<CastOptions>,
   ) {
-    this.ctx = { world, caster, log: [], keys: null, endRequested: false };
+    this.ctx = {
+      world,
+      caster,
+      controlSession: options?.controlSession,
+      log: [],
+      keys: null,
+      endRequested: false,
+    };
     this.opts = { ...DEFAULT_OPTIONS, ...options };
   }
 
@@ -137,6 +150,7 @@ export class VM {
       if (i === undefined) {
         this.status = 'failed';
         this.error = `未定义的法术: ${entryName}`;
+        this.ctx.controlSession?.end();
         return;
       }
       entryIdx = i;
@@ -152,12 +166,19 @@ export class VM {
     this.manaSpent = 0;
     this.manaBudget = this.caster.mana;
     this.ticksUsed = 0;
+    this.tickDebt = 0;
     this.steps = 0;
     this.error = null;
     this.returnValue = null;
     this.lastInstruction = null;
     this.ctx.log.length = 0;
     this.status = 'running';
+    if (!this.opts.controlSession) {
+      this.ctx.controlSession =
+        this.ctx.world.createControlSession(this.caster.id, (record, phase) =>
+          this.chargeControl(record, phase),
+        ) ?? undefined;
+    }
     this.pushFrame(entryIdx, 0);
   }
 
@@ -170,6 +191,10 @@ export class VM {
 
   /** 执行恰好一条指令，并返回可供推演台展示的观察点。 */
   step(): VMSnapshot {
+    if (this.tickDebt > 0) {
+      this.tickDebt--;
+      return this.snapshot();
+    }
     this.execOne();
     return this.snapshot();
   }
@@ -200,15 +225,21 @@ export class VM {
    * 每帧调用一次，即可把「耗时」映射成真实的施法时间。
    */
   advance(tickBudget: number, stepCap = 20_000): number {
-    if (this.status !== 'running') return 0;
+    if (this.status !== 'running' && this.tickDebt <= 0) return 0;
+    const debtPaid = Math.min(this.tickDebt, Math.max(0, tickBudget));
+    this.tickDebt -= debtPaid;
+    if (this.status !== 'running' || this.tickDebt > 0 || debtPaid >= tickBudget) return debtPaid;
     const startTicks = this.ticksUsed;
     const startSteps = this.steps;
     while (this.status === 'running') {
       this.execOne();
-      if (this.ticksUsed - startTicks >= tickBudget) break;
+      if (this.tickDebt > 0 || this.ticksUsed - startTicks >= tickBudget - debtPaid) break;
       if (this.steps - startSteps >= stepCap) break;
     }
-    return this.ticksUsed - startTicks;
+    const instructionTicks = this.ticksUsed - startTicks - this.tickDebt;
+    const paidNow = Math.min(this.tickDebt, Math.max(0, tickBudget - debtPaid - instructionTicks));
+    this.tickDebt -= paidNow;
+    return debtPaid + instructionTicks + paidNow;
   }
 
   result(): CastResult {
@@ -242,6 +273,12 @@ export class VM {
   get spentTicks(): number {
     return this.ticksUsed;
   }
+  get pendingTickDebt(): number {
+    return this.tickDebt;
+  }
+  get controlSession(): ControlSession | undefined {
+    return this.ctx.controlSession;
+  }
   get peakShenshi(): number {
     return this.shenshiPeak;
   }
@@ -252,6 +289,7 @@ export class VM {
   /** 战斗打断或重置时显式结束，并归还仍由本 VM 占用的共享神识。 */
   cancel(): void {
     if (this.status !== 'running') return;
+    this.ctx.controlSession?.end();
     this.releaseAllShenshi();
     this.frames = [];
     this.status = 'done';
@@ -260,10 +298,44 @@ export class VM {
   // ---------------- 内部 ----------------
 
   private fail(reason: string): void {
+    this.ctx.controlSession?.end();
     this.status = 'failed';
     this.error = reason;
     this.releaseAllShenshi();
     this.frames = [];
+  }
+
+  /** 供同一施法实例的外层生命周期把周期费用记入当前 VM。 */
+  chargeControl(record: ControlRecord, phase: 'start' | 'period'): boolean {
+    try {
+      const price = controlRecordPrice(this.ctx.world, this.caster, record);
+      const periodic = record.mode === 'maintain' ? price.periodic : undefined;
+      if (record.mode === 'maintain' && !periodic) throw new RangeError('缺少维持周期价格');
+      const baseMana = phase === 'start' ? price.mana.value : 0;
+      const baseTicks = phase === 'start' ? price.ticks.value : 0;
+      const mana = (baseMana + (periodic?.mana.value ?? 0)) * this.caster.attr.manaCostMul;
+      const ticks = baseTicks + (periodic?.ticks.value ?? 0);
+      if (!Number.isFinite(mana) || mana < 0 || !Number.isSafeInteger(ticks) || ticks < 0)
+        throw new RangeError('非法控制资源价格');
+      if (this.ticksUsed + ticks > this.opts.maxTicks) {
+        this.fail(`施法超时：超过 ${this.opts.maxTicks} tick`);
+        return false;
+      }
+      const paid = this.opts.resources
+        ? this.opts.resources.trySpendMana(mana)
+        : this.manaSpent + mana <= this.manaBudget;
+      if (!paid) {
+        this.fail(`法力不足：本次还需 ${Math.round(mana)}`);
+        return false;
+      }
+      this.manaSpent += mana;
+      this.ticksUsed += ticks;
+      this.tickDebt += ticks;
+      return true;
+    } catch (error) {
+      this.fail(`控制定价失败：${String(error)}`);
+      return false;
+    }
   }
 
   private releaseAllShenshi(): void {
@@ -293,6 +365,7 @@ export class VM {
   private execOne(): void {
     if (this.frames.length === 0) {
       this.status = 'done';
+      if (!this.opts.retainControlSessionOnCompletion) this.ctx.controlSession?.end();
       return;
     }
     const f = this.frames[this.frames.length - 1];
@@ -303,8 +376,10 @@ export class VM {
       f.live.clear();
       this.stack.length = f.base;
       this.frames.pop();
-      if (this.frames.length === 0) this.status = 'done';
-      else this.stack.push(null);
+      if (this.frames.length === 0) {
+        this.status = 'done';
+        if (!this.opts.retainControlSessionOnCompletion) this.ctx.controlSession?.end();
+      } else this.stack.push(null);
       return;
     }
 
@@ -440,6 +515,8 @@ export class VM {
         const argc = inst.b ?? 0;
         const args: Value[] = new Array(argc);
         for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
+        const worldCharged =
+          typeof m.worldCharged === 'function' ? m.worldCharged(args) : m.worldCharged;
         let baseCost = m.mana;
         let tickCost = m.ticks;
         if (m.cost) {
@@ -448,6 +525,24 @@ export class VM {
             if (dynamic.mana.dynamic || dynamic.ticks.dynamic) {
               this.fail(`元函数「${m.name}」运行时定价仍包含未知项`);
               return;
+            }
+            if (dynamic.periodic) {
+              const period = dynamic.periodic;
+              if (
+                !this.ctx.controlSession ||
+                period.intervalSeconds !== 0.25 ||
+                (!worldCharged && (period.mana.dynamic || period.ticks.dynamic)) ||
+                !Number.isFinite(period.mana.value) ||
+                period.mana.value < 0 ||
+                !Number.isSafeInteger(period.ticks.value) ||
+                period.ticks.value < 0 ||
+                period.count.kind === 'dynamic' ||
+                (period.count.kind === 'finite' &&
+                  (!Number.isSafeInteger(period.count.max) || period.count.max < 0))
+              ) {
+                this.fail(`元函数「${m.name}」返回未解析的周期消耗`);
+                return;
+              }
             }
             baseCost = dynamic.mana.value;
             tickCost = dynamic.ticks.value;
@@ -478,7 +573,7 @@ export class VM {
           }
         }
         // 法力受「法力消耗」属性影响；动态基础价也不得越过注册时声明的上界。
-        const cost = baseCost * this.caster.attr.manaCostMul;
+        const cost = (worldCharged ? 0 : baseCost) * this.caster.attr.manaCostMul;
         const paid = this.opts.resources
           ? this.opts.resources.trySpendMana(cost)
           : this.manaSpent + cost <= this.manaBudget;
@@ -487,7 +582,7 @@ export class VM {
           return;
         }
         this.manaSpent += cost;
-        this.ticksUsed += tickCost;
+        this.ticksUsed += worldCharged ? 0 : tickCost;
         if (this.ticksUsed > opts.maxTicks) {
           this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
           return;
@@ -496,6 +591,7 @@ export class VM {
         // 「结束施法」元函数会让当前施法立即结束
         if (this.ctx.endRequested) {
           this.status = 'done';
+          this.ctx.controlSession?.end();
           return;
         }
         break;
@@ -536,6 +632,7 @@ export class VM {
         if (this.frames.length === 0) {
           this.returnValue = val;
           this.status = 'done';
+          if (!this.opts.retainControlSessionOnCompletion) this.ctx.controlSession?.end();
           return;
         }
         stack.push(val);

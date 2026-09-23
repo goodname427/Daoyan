@@ -31,7 +31,7 @@ spell 御剑术·朴 {
   }
 
   if 不等(best, 空) {
-    发射(self, 朝向(self, 探查(best)), 30)
+    创建弹道(self, 朝向(self, 探查(best)), 380, 30, 2.4)
   }
 }
 
@@ -55,7 +55,7 @@ spell 御剑术·慧 {
   }
 
   if 大于等于(best, 0) {
-    发射(self, 朝向(self, pts[best]), 30)
+    创建弹道(self, 朝向(self, pts[best]), 380, 30, 2.4)
   }
 }
 
@@ -79,7 +79,7 @@ spell 御剑术·微 {
   }
 
   if 大于等于(best, 0) {
-    发射(self, 朝向(self, pts[best]), 30)
+    创建弹道(self, 朝向(self, pts[best]), 380, 30, 2.4)
   }
 }
 

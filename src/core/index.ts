@@ -4,6 +4,7 @@ import './metas';
 export * from './types';
 export * from './ast';
 export * from './meta';
+export * from './pricing';
 export * from './attributes';
 export * from './input';
 export * from './world';
@@ -11,6 +12,7 @@ export * from './analyzer';
 export * from './compiler';
 export * from './vm';
 export * from './dsl';
+export * from './migration';
 export * from './spellMeta';
 
 import type { SpellBook } from './ast';

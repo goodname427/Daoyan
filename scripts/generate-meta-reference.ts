@@ -2,7 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import prettier from 'prettier';
-import { allMetas, typeName } from '../src/core/index';
+import { publicMetas, typeName } from '../src/core/index';
+import packageJson from '../package.json';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = resolve(root, 'docs/reference/meta-spells.md');
@@ -10,7 +11,7 @@ const groupOrder = ['运算符', '按键状态', '状态探查', '实体创建',
 
 const escapeCell = (value: string): string => value.replaceAll('|', '\\|').replaceAll('\n', ' ');
 
-const metas = [...allMetas()].sort((a, b) => {
+const metas = [...publicMetas()].sort((a, b) => {
   return groupOrder.indexOf(a.group) - groupOrder.indexOf(b.group);
 });
 
@@ -18,6 +19,10 @@ const lines = [
   '# 元法术参考（当前实现）',
   '',
   '> 本页由 `scripts/generate-meta-reference.ts` 从 `src/core/metas/` 自动生成。不要手工修改表格；元法术变化后运行 `npm run docs:generate`。',
+  '',
+  `参考对应项目版本 **${packageJson.version}**；目录只包含玩家可新建法术时使用的公开元法术，旧语法兼容项不列入。`,
+  '',
+  '实体控制统一接受 `(目标, 效果, 时间)`。能力缺失、目标失效、权限不符或效果/时间非法时返回 `false`，不会应用部分效果；VM 资源不足或非法价格仍会终止施法。时间单位为秒，`0` 表示无限，不表示免费。`write` 是写入：`commit` 永久改基础状态，`overlay` 由世界持有至到期、替换或能力失效；两者都不因施法结束而撤销。`maintain` 由本次施法会话持有，按模拟时间每 `0.25` 秒先结算再维持效果，会话结束或控制失效时清理。',
   '',
   `当前共有 **${metas.length}** 个元法术、**${new Set(metas.map((meta) => meta.group)).size}** 个职责分组。`,
   '',
@@ -55,7 +60,8 @@ lines.push(
   '- `运算符` 合并数值、逻辑、向量和列表内计算；这些调用不读取世界且不消耗法力。',
   '- `按键状态` 只读取输入；`结束施法` 单列为跨领域的 `施法控制`。',
   '- `状态探查`、`实体创建` 与 `实体控制` 按世界 I/O 职责区分。',
-  '- vNext 的稳定分类、统一句柄、动态价格与能力迁移契约见 [`../adr/0009-统一实体句柄与能力判定.md`](../adr/0009-统一实体句柄与能力判定.md)、[`../adr/0010-动态元法术价格与静态上界.md`](../adr/0010-动态元法术价格与静态上界.md)、[`../adr/0011-无界效果与动态资源预算.md`](../adr/0011-无界效果与动态资源预算.md) 和 [`../adr/0015-统一实体能力迁移与移除法术冷却.md`](../adr/0015-统一实体能力迁移与移除法术冷却.md)。',
+  '- 统一控制的关系、抗性、效果强度、时间项及完整资源公式见[实体与属性](./entities-and-attributes.md)和[法术编写指南](./spell-authoring.md)。',
+  '- 已采纳的统一句柄、动态价格与统一实体控制合同见 [`../adr/0009-统一实体句柄与能力判定.md`](../adr/0009-统一实体句柄与能力判定.md)、[`../adr/0010-动态元法术价格与静态上界.md`](../adr/0010-动态元法术价格与静态上界.md)、[`../adr/0011-无界效果与动态资源预算.md`](../adr/0011-无界效果与动态资源预算.md)、[`../adr/0015-统一实体能力迁移与移除法术冷却.md`](../adr/0015-统一实体能力迁移与移除法术冷却.md) 和 [`../adr/0017-统一实体控制属性模型.md`](../adr/0017-统一实体控制属性模型.md)。这些决策记录设计合同；实现与版本验证状态以对应工作项证据为准。',
   '',
 );
 

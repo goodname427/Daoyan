@@ -9,6 +9,8 @@ import {
   unknownCostArg,
   type CostAmount,
   type CostArg,
+  type MetaCost,
+  type PeriodicBudget,
 } from './meta';
 
 /**
@@ -42,6 +44,11 @@ export interface SpellCost {
   /** 可计算部分与是否仍含运行时项；动态预算不会伪装成有限全局上界。 */
   manaBudget: CostAmount;
   tickBudget: CostAmount;
+  /** 起手明细和各次调用的周期明细；无界项不写入 Infinity。 */
+  startMana: number;
+  startTicks: number;
+  periodic: PeriodicBudget[];
+  periodicUnbounded: boolean;
   /** 神识峰值（含参数） */
   shenshiPeak: number;
   /** 参数本身常驻占用的神识 */
@@ -55,6 +62,7 @@ interface BlockCost {
   manaDynamic: boolean;
   tickDynamic: boolean;
   peak: number;
+  periodic: PeriodicBudget[];
 }
 
 interface ExprCost {
@@ -66,6 +74,7 @@ interface ExprCost {
   /** 求值过程中额外需要的神识（被调用函数的局部变量） */
   peak: number;
   value: CostArg;
+  periodic?: PeriodicBudget[];
 }
 
 interface Binding {
@@ -94,7 +103,41 @@ const ZERO: BlockCost = {
   manaDynamic: false,
   tickDynamic: false,
   peak: 0,
+  periodic: [],
 };
+
+function periodicTotal(items: readonly PeriodicBudget[], resource: 'mana' | 'ticks'): CostAmount {
+  let value = 0;
+  let dynamic = false;
+  for (const item of items) {
+    if (item.count.kind !== 'finite') {
+      dynamic = true;
+      continue;
+    }
+    const next = value + item[resource].value * item.count.max;
+    if (!Number.isFinite(next) || next > Number.MAX_SAFE_INTEGER) {
+      dynamic = true;
+      continue;
+    }
+    value = next;
+    dynamic ||= item[resource].dynamic;
+  }
+  return { value, dynamic };
+}
+
+function scalePeriodic(items: readonly PeriodicBudget[], times: number): PeriodicBudget[] {
+  if (times <= 0) return [];
+  return items.map((item) => {
+    if (item.count.kind !== 'finite') return item;
+    const max = item.count.max * times;
+    return {
+      ...item,
+      count: Number.isSafeInteger(max)
+        ? ({ kind: 'finite', max } as const)
+        : ({ kind: 'dynamic' } as const),
+    };
+  });
+}
 
 export class Analyzer {
   private errors: string[] = [];
@@ -117,6 +160,10 @@ export class Analyzer {
         tickWorst: 0,
         manaBudget: fixedCost(0),
         tickBudget: fixedCost(0),
+        startMana: 0,
+        startTicks: 0,
+        periodic: [],
+        periodicUnbounded: false,
         shenshiPeak: 0,
         shenshiParams: 0,
         errors: [`未定义的法术: ${name}`],
@@ -135,6 +182,10 @@ export class Analyzer {
         tickWorst: 0,
         manaBudget: fixedCost(0),
         tickBudget: fixedCost(0),
+        startMana: 0,
+        startTicks: 0,
+        periodic: [],
+        periodicUnbounded: false,
         shenshiPeak: 0,
         shenshiParams: 0,
         errors: [],
@@ -155,13 +206,25 @@ export class Analyzer {
     const paramsShenshi = cur;
 
     const body = this.block(spell.body, [scope], cur);
+    const periodMana = periodicTotal(body.periodic, 'mana');
+    const periodTicks = periodicTotal(body.periodic, 'ticks');
     const result: SpellCost = {
       name,
-      manaWorst: body.mana,
+      manaWorst: body.mana + periodMana.value,
       // +1 为「调用本函数」本身的开销，与虚拟机保持一致，保证静态上界 >= 实测
-      tickWorst: body.ticks + 1,
-      manaBudget: { value: body.mana, dynamic: body.manaDynamic },
-      tickBudget: { value: body.ticks + 1, dynamic: body.tickDynamic },
+      tickWorst: body.ticks + 1 + periodTicks.value,
+      manaBudget: {
+        value: body.mana + periodMana.value,
+        dynamic: body.manaDynamic || periodMana.dynamic,
+      },
+      tickBudget: {
+        value: body.ticks + 1 + periodTicks.value,
+        dynamic: body.tickDynamic || periodTicks.dynamic,
+      },
+      startMana: body.mana,
+      startTicks: body.ticks + 1,
+      periodic: body.periodic,
+      periodicUnbounded: body.periodic.some((item) => item.count.kind === 'unbounded'),
       shenshiPeak: Math.max(body.peak, cur),
       shenshiParams: paramsShenshi,
       errors: this.errors.slice(before),
@@ -179,6 +242,7 @@ export class Analyzer {
     let ticks = 0;
     let manaDynamic = false;
     let tickDynamic = false;
+    const periodic: PeriodicBudget[] = [];
     let peak = base;
     let cur = base;
 
@@ -196,6 +260,7 @@ export class Analyzer {
             ticks += r.ticks;
             manaDynamic ||= r.manaDynamic;
             tickDynamic ||= r.tickDynamic;
+            periodic.push(...(r.periodic ?? []));
             initPeak = r.peak;
             if (!t) {
               t = r.t;
@@ -231,6 +296,7 @@ export class Analyzer {
           ticks += r.ticks;
           manaDynamic ||= r.manaDynamic;
           tickDynamic ||= r.tickDynamic;
+          periodic.push(...(r.periodic ?? []));
           peak = Math.max(peak, cur + r.peak);
           const target = s.target;
           if (target.k === 'var') {
@@ -247,11 +313,13 @@ export class Analyzer {
             ticks += at.ticks;
             manaDynamic ||= at.manaDynamic;
             tickDynamic ||= at.tickDynamic;
+            periodic.push(...(at.periodic ?? []));
             const it = this.expr(target.i, env2);
             mana += it.mana;
             ticks += it.ticks;
             manaDynamic ||= it.manaDynamic;
             tickDynamic ||= it.tickDynamic;
+            periodic.push(...(it.periodic ?? []));
             if (at.t.k === 'list') {
               const et = elemTypeOf(at.t) ?? T.any;
               if (!assignable(r.t, et)) {
@@ -271,6 +339,7 @@ export class Analyzer {
           ticks += r.ticks;
           manaDynamic ||= r.manaDynamic;
           tickDynamic ||= r.tickDynamic;
+          periodic.push(...(r.periodic ?? []));
           peak = Math.max(peak, cur + r.peak);
           break;
         }
@@ -281,6 +350,7 @@ export class Analyzer {
           ticks += c.ticks;
           manaDynamic ||= c.manaDynamic;
           tickDynamic ||= c.tickDynamic;
+          periodic.push(...(c.periodic ?? []));
           peak = Math.max(peak, cur + c.peak);
           if (c.t.k !== 'bool' && c.t.k !== 'any') {
             this.errors.push(`条件必须是 bool，实际是 ${typeName(c.t)}`);
@@ -293,6 +363,7 @@ export class Analyzer {
           ticks += Math.max(thenC.ticks, elseC.ticks);
           manaDynamic ||= thenC.manaDynamic || elseC.manaDynamic;
           tickDynamic ||= thenC.tickDynamic || elseC.tickDynamic;
+          periodic.push(...thenC.periodic, ...elseC.periodic);
           peak = Math.max(peak, thenC.peak, elseC.peak);
           this.mergeBranchValues(env2, thenEnv, elseEnv);
           break;
@@ -304,6 +375,7 @@ export class Analyzer {
           ticks += lt.ticks;
           manaDynamic ||= lt.manaDynamic;
           tickDynamic ||= lt.tickDynamic;
+          periodic.push(...(lt.periodic ?? []));
           peak = Math.max(peak, cur + lt.peak);
           let cap = DEFAULT_SCAN_CAP;
           let et: Type = T.any;
@@ -323,6 +395,7 @@ export class Analyzer {
           ticks += (bodyC.ticks + FOR_OVERHEAD_TICKS) * cap;
           manaDynamic ||= bodyC.manaDynamic;
           tickDynamic ||= bodyC.tickDynamic;
+          periodic.push(...scalePeriodic(bodyC.periodic, cap));
           peak = Math.max(peak, bodyC.peak);
           if (cap > 0) this.invalidateChangedValues(env2, beforeLoop, loopEnv);
           break;
@@ -337,6 +410,7 @@ export class Analyzer {
           ticks += bodyC.ticks * n;
           manaDynamic ||= bodyC.manaDynamic && n > 0;
           tickDynamic ||= bodyC.tickDynamic && n > 0;
+          periodic.push(...scalePeriodic(bodyC.periodic, n));
           peak = Math.max(peak, bodyC.peak);
           if (n === 1) this.copyValues(env2, loopEnv);
           else if (n > 1) this.invalidateChangedValues(env2, beforeLoop, loopEnv);
@@ -354,6 +428,7 @@ export class Analyzer {
             ticks += r.ticks;
             manaDynamic ||= r.manaDynamic;
             tickDynamic ||= r.tickDynamic;
+            periodic.push(...(r.periodic ?? []));
             peak = Math.max(peak, cur + r.peak);
           }
           break;
@@ -361,7 +436,7 @@ export class Analyzer {
       }
     }
 
-    return { mana, ticks, manaDynamic, tickDynamic, peak };
+    return { mana, ticks, manaDynamic, tickDynamic, peak, periodic };
   }
 
   // ---------------- 表达式 ----------------
@@ -421,6 +496,7 @@ export class Analyzer {
           tickDynamic: a.tickDynamic || i.tickDynamic,
           peak: Math.max(a.peak, i.peak),
           value: unknownCostArg(),
+          periodic: [...(a.periodic ?? []), ...(i.periodic ?? [])],
         };
       }
 
@@ -434,6 +510,7 @@ export class Analyzer {
     let ticks = 0;
     let manaDynamic = false;
     let tickDynamic = false;
+    const periodic: PeriodicBudget[] = [];
     let peak = 0;
     const argTypes: Type[] = [];
     const argValues: CostArg[] = [];
@@ -443,6 +520,7 @@ export class Analyzer {
       ticks += r.ticks;
       manaDynamic ||= r.manaDynamic;
       tickDynamic ||= r.tickDynamic;
+      periodic.push(...(r.periodic ?? []));
       peak = Math.max(peak, r.peak);
       argTypes.push(r.t);
       argValues.push(r.value);
@@ -450,15 +528,21 @@ export class Analyzer {
 
     const meta = getMeta(name);
     if (meta) {
-      if (args.length !== meta.params.length) {
+      const params =
+        [meta.params, ...(meta.legacyParams ?? [])].find(
+          (shape) =>
+            shape.length === args.length &&
+            shape.every((param, index) => assignable(argTypes[index], param.t)),
+        ) ?? meta.params;
+      if (args.length !== params.length) {
         this.errors.push(
-          `元函数「${name}」需要 ${meta.params.length} 个参数，实际给了 ${args.length} 个`,
+          `元函数「${name}」需要 ${params.length} 个参数，实际给了 ${args.length} 个`,
         );
       }
-      for (let i = 0; i < Math.min(args.length, meta.params.length); i++) {
-        if (!assignable(argTypes[i], meta.params[i].t)) {
+      for (let i = 0; i < Math.min(args.length, params.length); i++) {
+        if (!assignable(argTypes[i], params[i].t)) {
           this.errors.push(
-            `元函数「${name}」第 ${i + 1} 个参数应为 ${typeName(meta.params[i].t)}，实际是 ${typeName(argTypes[i])}`,
+            `元函数「${name}」第 ${i + 1} 个参数应为 ${typeName(params[i].t)}，实际是 ${typeName(argTypes[i])}`,
           );
         }
       }
@@ -470,6 +554,7 @@ export class Analyzer {
         ticks += cost.ticks.value;
         manaDynamic ||= cost.mana.dynamic;
         tickDynamic ||= cost.ticks.dynamic;
+        if (cost.periodic) periodic.push(cost.periodic);
       } else {
         mana += meta.mana;
         ticks += meta.ticks;
@@ -482,6 +567,7 @@ export class Analyzer {
         tickDynamic,
         peak,
         value: unknownCostArg(),
+        periodic,
       };
     }
 
@@ -502,13 +588,14 @@ export class Analyzer {
       const c = this.analyze(name, argValues);
       return {
         t: spell.ret ?? T.void,
-        mana: mana + c.manaWorst,
-        ticks: ticks + c.tickWorst,
+        mana: mana + c.startMana,
+        ticks: ticks + c.startTicks,
         manaDynamic: manaDynamic || c.manaBudget.dynamic,
         tickDynamic: tickDynamic || c.tickBudget.dynamic,
         // 被调用法术的局部变量叠加在当前神识之上
         peak: Math.max(peak, c.shenshiPeak),
         value: unknownCostArg(),
+        periodic: [...periodic, ...c.periodic],
       };
     }
 
@@ -521,6 +608,7 @@ export class Analyzer {
       tickDynamic,
       peak,
       value: unknownCostArg(),
+      periodic,
     };
   }
 
@@ -534,8 +622,8 @@ export class Analyzer {
     name: string,
     baseMana: number,
     baseTicks: number,
-    calculate: () => { mana: CostAmount; ticks: CostAmount },
-  ): { mana: CostAmount; ticks: CostAmount } {
+    calculate: () => MetaCost,
+  ): MetaCost {
     try {
       const cost = calculate();
       const validMana =
@@ -547,7 +635,19 @@ export class Analyzer {
         cost.ticks.value >= 0 &&
         Number.isInteger(cost.ticks.value) &&
         typeof cost.ticks.dynamic === 'boolean';
-      if (validMana && validTicks) return cost;
+      const period = cost.periodic;
+      const validPeriod =
+        !period ||
+        (period.intervalSeconds === 0.25 &&
+          Number.isFinite(period.mana.value) &&
+          period.mana.value >= 0 &&
+          typeof period.mana.dynamic === 'boolean' &&
+          Number.isInteger(period.ticks.value) &&
+          period.ticks.value >= 0 &&
+          typeof period.ticks.dynamic === 'boolean' &&
+          (period.count.kind !== 'finite' ||
+            (Number.isSafeInteger(period.count.max) && period.count.max >= 0)));
+      if (validMana && validTicks && validPeriod) return cost;
       this.errors.push(
         `元函数「${name}」返回非法静态消耗：法力 ${cost.mana.value}，耗时 ${cost.ticks.value}`,
       );

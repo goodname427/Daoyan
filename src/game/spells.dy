@@ -33,7 +33,7 @@ spell 基础剑气 {
   }
 
   if 不等(best, 空) {
-    发射(self, 朝向(self, 探查(best)), 18)
+    创建弹道(self, 朝向(self, 探查(best)), 380, 18, 2.4)
   }
 }
 
@@ -57,7 +57,7 @@ spell 微剑 {
   }
 
   if 大于等于(best, 0) {
-    发射(self, 朝向(self, pts[best]), 16)
+    创建弹道(self, 朝向(self, pts[best]), 380, 16, 2.4)
   }
 }
 
@@ -82,9 +82,9 @@ spell 三连剑 {
 
   if 大于等于(best, 0) {
     var dir: vec2 = 朝向(self, pts[best])
-    发射(self, dir, 14)
-    发射(self, 旋转(dir, 0.16), 14)
-    发射(self, 旋转(dir, -0.16), 14)
+    创建弹道(self, dir, 380, 14, 2.4)
+    创建弹道(self, 旋转(dir, 0.16), 380, 14, 2.4)
+    创建弹道(self, 旋转(dir, -0.16), 380, 14, 2.4)
   }
 }
 
@@ -99,15 +99,9 @@ spell 爆炎咒 {
 }
 
 
-// 手动瞄准：创建统一实体句柄，再配置方向、速度与威力后激活
+// 手动瞄准：创建即激活，返回统一实体句柄
 spell 御剑·手动 {
-  var sword: entity = 创建弹道(2.4)
-  if 不等(sword, 空) {
-    设置弹道方向(sword, 准星方向())
-    设置弹道速度(sword, 380)
-    设置弹道威力(sword, 22)
-    激活弹道(sword)
-  }
+  var sword: entity = 创建弹道(自身位置(), 准星方向(), 380, 22, 2.4)
 }
 
 
@@ -120,7 +114,7 @@ spell 疾风步 {
 // 持续类：起手后每 1.5 秒续一次护体，共持续 6 秒
 // 注意 —— 每次续期都要再付一次法力，这就是「持续」的代价
 spell 护体金光 @kind=duration @period=1.5 @duration=6 {
-  护体(6, 2.5)
+  调整护体(自身实体(), 6, 2.5)
 }
 
 
@@ -131,7 +125,7 @@ spell 蓄力火球 @kind=duration @period=0.05 @duration=10 @keys=蓄力 {
     var t: num = 按键蓄力(0)
     if 大于等于(t, 0.8) {
       var self: vec2 = 自身位置()
-      发射(self, 准星方向(), 加(20, 乘(最小(t, 2), 40)))
+      创建弹道(self, 准星方向(), 380, 加(20, 乘(最小(t, 2), 40)), 2.4)
     }
     结束施法()
   }
@@ -157,7 +151,7 @@ spell 天雷引 @kind=channel @duration=2 {
   }
 
   if 大于等于(best, 0) {
-    发射(self, 朝向(self, pts[best]), 45)
+    创建弹道(self, 朝向(self, pts[best]), 380, 45, 2.4)
   }
 }
 
@@ -186,7 +180,7 @@ spell 妖兽·扑击 {
     if 小于(bestD, 90) {
       伤害(best, 14)
     } else {
-      发射(self, 朝向(self, 探查(best)), 11)
+      创建弹道(self, 朝向(self, 探查(best)), 380, 11, 2.4)
     }
   }
 }
@@ -211,6 +205,6 @@ spell 妖兽·雷符 {
   }
 
   if 大于等于(best, 0) {
-    发射(self, 朝向(self, pts[best]), 13)
+    创建弹道(self, 朝向(self, pts[best]), 380, 13, 2.4)
   }
 }

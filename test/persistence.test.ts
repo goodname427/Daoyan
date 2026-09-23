@@ -10,9 +10,17 @@ import {
   SAVE_STORAGE_KEY,
 } from '../src/app/persistence';
 import type { PlayerState } from '../src/app/persistence';
-import { parseSpellbook, serializeBook } from '../src/core/index';
+import {
+  compileProgram,
+  metaIndex,
+  migrateSpellSource,
+  Op,
+  parseSpellbook,
+  serializeBook,
+} from '../src/core/index';
 import { DEFAULT_PLAYER_ATTRS, DEFAULT_PLAYER_BINDINGS } from '../src/game/battle';
 import INITIAL_SPELLS from '../src/game/spells.dy?raw';
+import DEMO_SPELLS from '../src/demo/spells.dy?raw';
 
 const defaults: PlayerState = {
   spellSource: serializeBook(parseSpellbook(INITIAL_SPELLS)),
@@ -21,6 +29,19 @@ const defaults: PlayerState = {
 };
 
 describe('versioned player state', () => {
+  it('keeps default and sample spells on the unified creation entry', () => {
+    for (const source of [INITIAL_SPELLS, DEMO_SPELLS]) {
+      expect(source).not.toMatch(/发射\s*\(|设置弹道(?:方向|速度|威力)\s*\(|激活弹道\s*\(/);
+      // 经 AST 编译后检查实参个数，避免把嵌套调用的右括号误认作创建结束。
+      const creations = compileProgram(parseSpellbook(source))
+        .fns.flatMap((fn) => fn.code)
+        .filter((inst) => inst.op === Op.CALLMETA && inst.a === metaIndex('创建弹道'));
+      expect(creations.length).toBeGreaterThan(0);
+      for (const creation of creations) expect(creation.b).toBe(5);
+    }
+    expect(migrateSpellSource(INITIAL_SPELLS)).toMatchObject({ ok: true, diagnostics: [] });
+  });
+
   it('round-trips the spellbook and arena setup in the current schema', () => {
     const state: PlayerState = {
       ...defaults,
@@ -85,6 +106,76 @@ describe('versioned player state', () => {
     expect(JSON.parse(localStorage.getItem(SAVE_STORAGE_KEY) ?? '{}').spellSource).toBe(
       'spell 基础剑气 {\n\n}',
     );
+  });
+
+  it('migrates a legacy launch atomically and retains the last save on an unsafe handle chain', () => {
+    localStorage.clear();
+    const legacy: PlayerState = {
+      ...defaults,
+      spellSource: 'spell 旧术 { 发射(自身位置(), 准星方向(), 18) }',
+    };
+    const saved = savePlayerState(legacy);
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.state.spellSource).toContain('创建弹道(自身位置(), 准星方向(), 380, 18, 2.4)');
+    const previous = localStorage.getItem(SAVE_STORAGE_KEY);
+    const unsafe = {
+      ...legacy,
+      spellSource: 'spell 旧术 { var p: entity = 创建弹道(3) 设置弹道速度(p, 200) 激活弹道(p) }',
+    };
+    expect(savePlayerState(unsafe)).toMatchObject({ ok: false });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(previous);
+    expect(
+      decodePlayerState(JSON.stringify({ version: SAVE_SCHEMA_VERSION, ...unsafe }), defaults),
+    ).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('第 1 行'),
+    });
+    expect(() => encodePlayerState(unsafe)).toThrow('无法解析或安全迁移');
+    expect(savePlayerState({ ...legacy, spellSource: 'spell 旧术 { 不存在() }' })).toMatchObject({
+      ok: false,
+    });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(previous);
+  });
+
+  it('reads legacy modifiers without turning them into control leases and drops damaged records with a diagnostic', () => {
+    const old = decodePlayerState(
+      JSON.stringify({
+        spellSource: 'spell 旧术 { 发射(自身位置(), 准星方向(), 18) }',
+        mods: [{ attr: 'speed', value: 2, duration: -1 }],
+      }),
+      defaults,
+    );
+    expect(old).toMatchObject({ ok: true, migrated: true });
+    if (!old.ok) return;
+    expect(old.state.spellSource).toContain('创建弹道(');
+    expect(old.state).not.toHaveProperty('mods');
+    expect(old.diagnostics?.[0]).toContain('旧增益');
+
+    const damaged = decodePlayerState(
+      JSON.stringify({
+        version: SAVE_SCHEMA_VERSION,
+        spellSource: 'spell 稳定 {}',
+        controlRecords: [{ propertyKey: 'speed', paidPeriods: -1 }],
+      }),
+      defaults,
+    );
+    expect(damaged).toMatchObject({ ok: true, migrated: false });
+    if (!damaged.ok) return;
+    expect(damaged.state).not.toHaveProperty('controlRecords');
+    expect(damaged.diagnostics?.[0]).toContain('控制记录');
+    expect(encodePlayerState(damaged.state)).not.toContain('controlRecords');
+  });
+
+  it('leaves a rejected local save untouched for recovery', () => {
+    localStorage.clear();
+    const damaged = JSON.stringify({
+      version: SAVE_SCHEMA_VERSION,
+      spellSource: 'spell 旧术 { 创建弹道(2) }',
+    });
+    localStorage.setItem(SAVE_STORAGE_KEY, damaged);
+    expect(loadPlayerState(defaults)).toMatchObject({ ok: false });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(damaged);
   });
 
   it('rejects malformed spellbooks and saves from a newer app', () => {
