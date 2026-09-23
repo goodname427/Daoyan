@@ -23,6 +23,7 @@ import {
   recordQaRun,
   recordRiskAssessment,
   reopenCandidateForQa,
+  rollbackStaleQaAcceptance,
   recordScopeRevision,
   recordStagePolicy,
   readFormalVersion,
@@ -76,6 +77,28 @@ describe('formal version lifecycle', () => {
       fixCodeRevision: 'fixed-code',
     });
     expect(currentVersionStagePolicy(version, 'bugfix').mode).toBe('execute');
+    version.orchestration!.qaRuns.push({
+      id: 'stale-qa',
+      agentId: 'qa:stale',
+      independent: true,
+      codeRevision: 'fixed-code',
+      scopeRevision: 1,
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'passed',
+      commands: [],
+      evidence: ['old-report'],
+      createdAt: '2026-09-23T15:01:00.000Z',
+    });
+    version.currentStage = 'bugfix';
+    rollbackStaleQaAcceptance(
+      version,
+      'stale-qa',
+      '报告完成时间早于本轮 QA',
+      '2026-09-23T15:02:00.000Z',
+    );
+    expect(version.currentStage).toBe('qa');
+    expect(version.orchestration!.qaInvalidatedThrough).toBe(2);
+    expect(version.nodes.find((node) => node.id === 'qa')?.summary).toContain('误用旧报告');
     expect(() =>
       reopenCandidateForQa(version, {
         bugId: 'ledger-rounding',

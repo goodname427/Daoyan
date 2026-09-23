@@ -2199,13 +2199,13 @@ export function ensureVersionStageItem(
   const scopeRevision = formalScopeRevision(version);
   const stageStep = expectedVersionStageStep(version, stage);
   const startedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
-  const linked = secretary.items.filter(
+  const allLinked = secretary.items.filter(
     (item) =>
       item.orchestration?.formalVersionId === version.id &&
       item.orchestration.formalStage === stage &&
-      item.orchestration.formalScopeRevision === scopeRevision &&
-      item.createdAt >= startedAt,
+      item.orchestration.formalScopeRevision === scopeRevision,
   );
+  const linked = allLinked.filter((item) => item.createdAt >= startedAt);
   const linkedStep = linked.filter(
     (item) => (item.orchestration?.formalStageStep ?? 'primary') === stageStep,
   );
@@ -2218,7 +2218,7 @@ export function ensureVersionStageItem(
   ) {
     return null;
   }
-  const attempt = linked.length + 1;
+  const attempt = allLinked.length + 1;
   const id = versionStageItemId(version.id, stage, scopeRevision, attempt);
   const direction = versionStageDirection(version, stage);
   const item = itemFromIntake({ id, idea: direction, createdAt: now }, [], 'feature').item;
@@ -4347,6 +4347,12 @@ export function applyAutomaticStagePolicy(version: FormalVersion, stage: Version
   return true;
 }
 
+export function evidenceAfterStageStart(startedAt: string, evidenceAt: string | number): boolean {
+  const start = Date.parse(startedAt);
+  const observed = typeof evidenceAt === 'number' ? evidenceAt : Date.parse(evidenceAt);
+  return Number.isFinite(start) && Number.isFinite(observed) && observed >= start;
+}
+
 async function finalizeDeliveredVersionStage(
   version: FormalVersion,
   item: SecretaryItem,
@@ -4360,6 +4366,10 @@ async function finalizeDeliveredVersionStage(
   const report = reportPath ? await readJson(reportPath) : null;
   if (!isRecord(report) || report.status !== '已交付') {
     throw new Error('阶段运行缺少 PM 交付报告');
+  }
+  const stageStartedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
+  if (!evidenceAfterStageStart(stageStartedAt, String(report.finishedAt ?? ''))) {
+    throw new Error('阶段交付报告早于本轮节点启动，不能复用旧运行');
   }
   const validationProfile = reportValidationProfile(report);
   if (
@@ -4534,6 +4544,9 @@ async function finalizeDeliveredVersionStage(
     if (!testedRevision) throw new Error('版本 QA 缺少开发候选修订');
     assertVerificationDidNotChangeImplementation(report, 'qa', testedRevision, revision);
     const manifest = `${version.documentRoot}/qa.json`.replace(/\\/g, '/');
+    if (!evidenceAfterStageStart(stageStartedAt, (await stat(resolve(root, manifest))).mtimeMs)) {
+      throw new Error('版本 QA 清单早于本轮节点启动，必须重新独立测试');
+    }
     const qaManifest = await readJson(resolve(root, manifest));
     const blocker = qaEnvironmentBlockerReason(qaManifest);
     if (blocker) throw new QaEnvironmentBlockedError(blocker);
@@ -4778,6 +4791,7 @@ async function driveFormalVersion(): Promise<boolean> {
           item.orchestration?.formalVersionId === version!.id &&
           item.orchestration.formalStage === stage &&
           item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
+          item.createdAt >= (version!.nodes.find((node) => node.id === stage)?.startedAt ?? '') &&
           item.createdAt >= (version!.nodes.find((node) => node.id === stage)?.startedAt ?? ''),
       )
     )

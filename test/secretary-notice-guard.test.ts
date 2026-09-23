@@ -41,6 +41,7 @@ import {
   progressNoticeDecision,
   repeatedReviewFindingCount,
   versionTechnicalBlocker,
+  evidenceAfterStageStart,
   workflowHealthSignal,
   observedExitEndsPm,
   nonDocumentationChanges,
@@ -739,9 +740,17 @@ describe('formal version stage dispatch', () => {
     item.status = 'failed';
     version.nodes.find((node) => node.id === 'candidate')!.startedAt = '2099-01-01T00:00:00.000Z';
     expect(versionTechnicalBlocker(version, state.items)).toBeNull();
-    expect(ensureVersionStageItem(state, version, '2099-01-01T00:01:00.000Z')).toMatchObject({
+    const restarted = ensureVersionStageItem(state, version, '2099-01-01T00:01:00.000Z');
+    expect(restarted).toMatchObject({
       status: 'queued',
     });
+    expect(restarted?.id).not.toBe(item.id);
+    expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2026-09-23T12:34:59.681Z')).toBe(
+      false,
+    );
+    expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2099-01-01T00:01:00.000Z')).toBe(
+      true,
+    );
   });
 
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {

@@ -1556,6 +1556,40 @@ export function reopenCandidateForQa(
   version.updatedAt = timestamp;
 }
 
+/** Invalidate a QA acceptance that consumed a report from before this QA round. */
+export function rollbackStaleQaAcceptance(
+  version: FormalVersion,
+  qaRunId: string,
+  reason: string,
+  now?: string,
+): void {
+  if (version.currentStage !== 'bugfix' || version.status !== 'running') {
+    throw new Error('只有刚进入缺陷修复的版本可以撤销过期 QA 接纳');
+  }
+  const orchestration = requireOrchestration(version);
+  const qa = orchestration.qaRuns.at(-1);
+  if (!qa || qa.id !== qaRunId || !reason.trim()) {
+    throw new Error('必须明确指向最新 QA 记录并给出过期证据');
+  }
+  const timestamp = nowIso(now);
+  orchestration.qaInvalidatedThrough = orchestration.qaRuns.length;
+  for (const entry of orchestration.validationEvidence ?? []) {
+    if (entry.ownerId === qa.id && !entry.invalidatedAt) {
+      entry.invalidatedAt = timestamp;
+      entry.invalidationReason = reason;
+    }
+  }
+  for (const stage of ['qa', 'bugfix'] as const) {
+    const node = version.nodes.find((entry) => entry.id === stage)!;
+    node.status = stage === 'qa' ? 'active' : 'pending';
+    node.startedAt = stage === 'qa' ? timestamp : '';
+    node.completedAt = '';
+    node.summary = stage === 'qa' ? `上一轮 QA 误用旧报告，已撤销：${reason}` : '';
+  }
+  version.currentStage = 'qa';
+  version.updatedAt = timestamp;
+}
+
 function qaMatchesCurrentCode(version: FormalVersion, qa: VersionQaRun): boolean {
   const orchestration = requireOrchestration(version);
   if (orchestration.qaRuns.indexOf(qa) < (orchestration.qaInvalidatedThrough ?? 0)) return false;
