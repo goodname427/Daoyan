@@ -1,23 +1,22 @@
 {
-  "status": "passed",
+  "status": "blocked",
   "suites": ["acceptance", "integration", "regression"],
   "commands": [
     {
       "command": "npm test -- test/entity-vnext.test.ts test/core.test.ts test/combat.test.ts test/dsl-migration.test.ts test/persistence.test.ts test/render.test.tsx test/review-regressions.test.ts",
-      "exitCode": 0
-    },
-    {
-      "command": "npm run test:e2e",
-      "exitCode": 0
+      "exitCode": 1
     },
     { "command": "npm run typecheck", "exitCode": 0 },
-    { "command": "npm run build", "exitCode": 0 }
+    { "command": "npm run test:e2e", "exitCode": 1 },
+    { "command": "npm run build", "exitCode": 1 }
   ],
   "evidence": [
-    "原独立 QA Agent 的四轮沙盒尝试均如实记录标准 Vitest、Playwright、build 因 spawn EPERM 未执行；原失败命令和 219 条进程内测试证据保留在 Git 历史与阶段运行目录，不追记为通过。",
-    "主 Agent 在可运行宿主对相同游戏源码执行 7 文件标准 Vitest 219 条，全部通过；20 条 Chromium 浏览器流程包含窄屏、推演台与演武场往返、存档迁移、法球与蓄力路径，全部通过。",
-    "npm run typecheck 与 npm run build 均退出 0；本次构建由当前源码重新生成，未把旧 dist 当作通过证据。",
-    "未确认产品行为缺陷，bugs 为空；完整 Feature 门禁的当前树指纹仍须由 notice guard 与独立 QA 记录共同核对。"
+    "本轮基线 HEAD=c725e334fdebc09dfd7012ad971250841dfb4b95；开工时 Git 工作区干净。",
+    "验收/集成/回归定向 Vitest 在加载 vite.config.ts 时因 esbuild 子进程 spawn EPERM 退出；没有执行测试断言，包括 test/combat.test.ts 的 0.016 秒账本守恒回归。",
+    "TypeScript 类型检查退出 0。Playwright 宣布 20 条测试后在创建 worker 时因 spawn EPERM 退出；没有浏览器用例通过证据。",
+    "生产构建在加载 vite.config.ts 时因 esbuild 子进程 spawn EPERM 退出；本轮没有新构建产物或真实页面体验。",
+    "旧 qa.json 的 passed 属于账本修复 f065d2c 之前的验证，不适用于当前源码；当前未确认新的产品行为缺陷。"
   ],
-  "bugs": []
+  "bugs": [],
+  "blocker": "当前执行环境禁止 Vitest/Vite 的 esbuild 子进程及 Playwright worker 启动，均返回 spawn EPERM；定向断言、浏览器验收和生产构建未运行，需在允许子进程的宿主对当前修订重新执行。"
 }
