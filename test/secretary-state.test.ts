@@ -25,6 +25,7 @@ import {
   reconciliationTargets,
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
+  reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
   supersedeRedundantDevelopmentItems,
@@ -183,6 +184,29 @@ describe('persistent secretary state', () => {
     ).toBe(true);
     expect(retry.status).toBe('superseded');
     expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
+  });
+
+  it('reopens a paused QA host blocker only after the caller verifies replacement evidence', () => {
+    const state = createSecretaryState('2026-09-23T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'blocked-qa', idea: '版本测试', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'failed';
+    item.summary = '版本测试环境阻断：spawn EPERM';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'qa',
+      formalStageConsumedAt: state.initializedAt,
+    };
+    state.items.push(item);
+    expect(reopenEnvironmentBlockedQaDelivery(state, 'another-version', state.initializedAt)).toBe(
+      false,
+    );
+    expect(reopenEnvironmentBlockedQaDelivery(state, 'version-1', state.initializedAt)).toBe(true);
+    expect(item.status).toBe('delivered');
+    expect(item.orchestration.formalStageConsumedAt).toBeUndefined();
   });
 
   it('retires stale formal-stage work when its control-plane version is archived', () => {
@@ -699,6 +723,7 @@ describe('persistent secretary state', () => {
   it('infers natural conversation intent without producer flags', () => {
     expect(inferMessageIntent('现在做到哪一步了？', false)).toBe('question');
     expect(inferMessageIntent('秘书为啥一直在审查', false)).toBe('question');
+    expect(inferMessageIntent('现在还有多少任务', false)).toBe('question');
     expect(inferMessageIntent('继续按当前计划推进', false)).toBe('continue');
     expect(inferMessageIntent('采用兼容旧存档的方案', true)).toBe('reply');
     expect(inferMessageIntent('现在可以继续了', true)).toBe('continue');

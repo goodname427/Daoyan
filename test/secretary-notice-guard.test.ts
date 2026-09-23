@@ -18,6 +18,9 @@ import {
   taskFailureCoveredByFeatureGate,
   formatActiveRunStatus,
   deliveryCompletionMessage,
+  publicProgressPhase,
+  versionStageScheduleMessage,
+  qaEnvironmentBlockerReason,
   isBootstrapGraceActive,
   localQuestionResponse,
   ensureVersionStageItem,
@@ -62,6 +65,32 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('secretary worker process launch', () => {
+  it('distinguishes a QA host blocker from a product bug and explains stage retries', () => {
+    const blocked = {
+      status: 'blocked',
+      blocker: '浏览器启动时 spawn EPERM',
+      bugs: [],
+      commands: [{ command: 'npm run test:e2e', exitCode: 1 }],
+      evidence: ['Playwright 未启动'],
+    };
+    expect(qaEnvironmentBlockerReason(blocked)).toContain('spawn EPERM');
+    expect(qaEnvironmentBlockerReason({ ...blocked, status: 'failed', blocker: '' })).toBeNull();
+    expect(
+      qaEnvironmentBlockerReason({
+        ...blocked,
+        status: 'failed',
+        blocker: '',
+        evidence: ['标准 Vitest 在配置加载时 spawn EPERM'],
+      }),
+    ).toContain('可运行宿主补验');
+    expect(qaEnvironmentBlockerReason({ ...blocked, bugs: [{ id: 'real-bug' }] })).toBeNull();
+    expect(versionStageScheduleMessage('版本测试', 3, '报告缺少回归证据')).toBe(
+      '【版本节点·版本测试】第 3 轮重试；上一轮未接纳：报告缺少回归证据。',
+    );
+    expect(versionStageScheduleMessage('版本测试', 1)).toContain('开始');
+    expect(publicProgressPhase('执行 formal-qa / gpt-6-sol')).toBe('执行工作项');
+    expect(publicProgressPhase('审查修复 / / gpt-6-astra')).toBe('修复审查问题');
+  });
   it('requires successful QA, browser, and build commands before reaccepting an empty retry', () => {
     const result = {
       status: 'passed' as const,

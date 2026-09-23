@@ -459,7 +459,9 @@ export function inferMessageIntent(
   if (hasWaitingItem) {
     if (
       /[?？]$/.test(normalized) ||
-      /(进度|状态|做到|为什么|为何|为啥|怎么|如何|是否|有没有|哪些)/.test(normalized)
+      /(进度|状态|做到|为什么|为何|为啥|怎么|如何|是否|有没有|哪些|还有多少任务|剩余多少任务)/.test(
+        normalized,
+      )
     )
       return 'question';
     if (messageIsNewDirection(normalized)) return 'direction';
@@ -470,6 +472,7 @@ export function inferMessageIntent(
     /[?？]$/.test(normalized) ||
     /^(为什么|为何|为啥|怎么|如何|是否|有没有|进度|状态|哪些)/.test(normalized) ||
     /(为什么|为何|为啥|怎么).{0,32}(审查|门禁|卡住|进度|阶段)/.test(normalized) ||
+    /(?:还有|剩余|完成).{0,8}(?:多少|几).{0,8}(?:任务|工作项)/.test(normalized) ||
     /^(?:现在|目前).{0,16}(?:进度|状态|做到|情况)/.test(normalized)
   )
     return 'question';
@@ -1071,6 +1074,30 @@ export function reopenVerifiedQaDelivery(
   now: string,
 ): boolean {
   return reopenVerifiedStageDelivery(state, versionId, 'qa', emptyStoppedAttemptIds, now);
+}
+
+/** Recheck an environment-blocked QA report only after separate host evidence is supplied. */
+export function reopenEnvironmentBlockedQaDelivery(
+  state: SecretaryState,
+  versionId: string,
+  now: string,
+): boolean {
+  const item = [...state.items]
+    .reverse()
+    .find(
+      (candidate) =>
+        candidate.status === 'failed' &&
+        candidate.summary.startsWith('版本测试环境阻断：') &&
+        candidate.orchestration?.formalVersionId === versionId &&
+        candidate.orchestration.formalStage === 'qa' &&
+        Boolean(candidate.orchestration.formalStageConsumedAt),
+    );
+  if (!item) return false;
+  item.status = 'delivered';
+  item.summary = '独立宿主补验已通过，等待正式版本阶段重新核验。';
+  item.updatedAt = now;
+  delete item.orchestration!.formalStageConsumedAt;
+  return true;
 }
 
 function reopenVerifiedStageDelivery(

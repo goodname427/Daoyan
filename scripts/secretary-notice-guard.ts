@@ -69,6 +69,7 @@ import {
   publicSecretaryState,
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
+  reopenEnvironmentBlockedQaDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -1668,20 +1669,71 @@ export function formatActiveRunStatus(input: {
   return parts.join('');
 }
 
+const FORMAL_STAGE_NAMES: Record<string, string> = {
+  'charter-draft': '版本策划',
+  'module-design': '详细策划',
+  'design-review': '策划审核',
+  'task-breakdown': '任务拆分',
+  'version-planning': '版本排期',
+  development: '开发执行',
+  qa: '版本测试',
+  bugfix: '缺陷修复',
+  candidate: '候选构建',
+  'producer-acceptance': '候选体验',
+  archived: '版本归档',
+};
+
+export function publicProgressPhase(phase: string): string {
+  if (/^执行\s+\S+\s*\//.test(phase) || phase === '执行任务') return '执行工作项';
+  if (phase.startsWith('审查修复')) return '修复审查问题';
+  return phase.replace(/^Feature\s*/, '').replace(/\s*\/\s*gpt-[\w.-]+.*$/i, '');
+}
+
+export function versionStageScheduleMessage(
+  stageTitle: string,
+  attempt: number,
+  rejectionReason = '',
+): string {
+  const label = `【版本节点·${stageTitle}】`;
+  return rejectionReason
+    ? `${label}第 ${attempt} 轮重试；上一轮未接纳：${rejectionReason}。`
+    : `${label}开始；完成后自动推进。`;
+}
+
 async function localActiveRunQuestionResponse(message: string): Promise<string | null> {
-  if (!/(审查|门禁|agent|任务节点|子任务|工作项|卡住|卡在哪|为什么.*(?:久|慢))/i.test(message))
+  if (
+    !/(审查|门禁|agent|任务节点|子任务|工作项|卡住|卡在哪|为什么.*(?:久|慢)|(?:当前|现在|版本).*(?:还有|剩余|完成|进度|任务)|(?:还有|剩余|完成).*(?:多少|几).*(?:任务|工作项))/i.test(
+      message,
+    )
+  )
     return null;
   const item = state.items.find((candidate) => candidate.id === state.activeItemId);
-  if (!item?.runDirectory) return '当前没有关联到正在执行的 Agent 运行；秘书会继续核对队列。';
+  if (!item?.runDirectory) {
+    const blocked = [...state.items]
+      .reverse()
+      .find((candidate) => candidate.summary.startsWith('版本测试环境阻断：'));
+    if (blocked)
+      return `【版本节点·版本测试】暂停：${blocked.summary.slice('版本测试环境阻断：'.length)}`;
+    return '当前没有关联到正在执行的 Agent 运行；秘书会继续核对队列。';
+  }
   const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
   const recovery = await readJson(resolve(item.runDirectory, 'recovery.json'));
   const validation = isRecord(recovery?.validationProgress) ? recovery.validationProgress : null;
   const plannedTasks =
     isRecord(recovery?.plan) && Array.isArray(recovery.plan.tasks) ? recovery.plan.tasks : [];
+  const visibleTasks = plannedTasks.filter(
+    (task) => !isRecord(task) || task.id !== 'formal-development-summary',
+  );
   const completedTasks = Array.isArray(recovery?.taskRuns)
     ? new Set(
         recovery.taskRuns
-          .filter((run) => isRecord(run) && run.result === 'passed' && isRecord(run.task))
+          .filter(
+            (run) =>
+              isRecord(run) &&
+              run.result === 'passed' &&
+              isRecord(run.task) &&
+              run.task.id !== 'formal-development-summary',
+          )
           .map((run) => String(run.task.id)),
       ).size
     : 0;
@@ -1706,13 +1758,13 @@ async function localActiveRunQuestionResponse(message: string): Promise<string |
   const workerIdentity = String(progress?.workerProcessIdentity ?? '');
   return formatActiveRunStatus({
     stage,
-    phase: String(progress?.phase ?? recovery?.phase ?? '等待阶段快照'),
+    phase: publicProgressPhase(String(progress?.phase ?? recovery?.phase ?? '等待阶段快照')),
     elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
     live:
       isOwnedProcessAlive(workerPid, workerIdentity) ||
       isOwnedProcessAlive(item.processPid, item.processIdentity),
     completedTasks,
-    totalTasks: plannedTasks.length,
+    totalTasks: visibleTasks.length,
     fastGateAttempts: Number(fastGate?.attempts ?? 0),
     fastGatePassed: fastGate?.passed === true,
     reviewAttempts: Number(review?.attempts ?? 0),
@@ -2040,7 +2092,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
         : stage === 'development'
           ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
           : stage === 'qa'
-            ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}]}。任务交付成功不等于产品测试通过；发现缺陷时 status 必须为 failed 并完整登记。只运行和记录测试，不修改产品实现。`
+            ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
             : stage === 'bugfix' && bugfixStep === 'primary'
               ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
               : stage === 'bugfix' && bugfixStep === 'reverification'
@@ -2919,7 +2971,7 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
   const decision = progressNoticeDecision(
     orchestration.lastProgressPhase ?? '',
     orchestration.lastProgressNoticeAt ?? '',
-    run.phase,
+    publicProgressPhase(run.phase),
     now,
   );
   if (!decision.notify) return;
@@ -2928,9 +2980,15 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
   await saveState();
   const elapsedMinutes = Math.max(0, Math.floor(run.elapsedSeconds / 60));
   const elapsed = elapsedMinutes > 0 ? `，本轮已运行约 ${elapsedMinutes} 分钟` : '';
+  const stage = item.orchestration?.formalStage;
+  const label = stage
+    ? `【版本节点·${FORMAL_STAGE_NAMES[stage] ?? stage}】`
+    : item.scope === 'version'
+      ? '【版本任务】'
+      : '【Feature】';
   await emitNotice(
     decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
-    `${item.scope === 'version' ? '版本' : 'Feature'}进度：${decision.phase}${elapsed}。仍在正常执行，无需你介入。`,
+    `${label}${decision.phase}${elapsed}；正常执行，无需你介入。`,
     item,
   );
 }
@@ -3071,13 +3129,15 @@ async function reconcileItem(
     item.completedTasks.push(...completed);
     await saveState();
     for (const task of completed) {
-      const parent = task.parentScope === 'version' ? '版本' : 'Feature';
-      await emitNotice(
-        'task-complete',
-        `任务完成：${task.taskTitle}（${parent}：${task.parentTitle}）。`,
-        item,
-        task,
-      );
+      const stage = item.orchestration?.formalStage;
+      if (stage && (stage !== 'development' || task.taskId === 'formal-development-summary'))
+        continue;
+      const label = stage
+        ? `【版本工作项·${FORMAL_STAGE_NAMES[stage] ?? stage}】`
+        : task.parentScope === 'version'
+          ? '【版本工作项】'
+          : '【Feature 工作项】';
+      await emitNotice('task-complete', `${label}${task.taskTitle}已完成。`, item, task);
     }
   }
   if (run.status === 'review-ready' || run.status === 'delivered') {
@@ -3802,6 +3862,31 @@ interface QaManifestBug {
   linkedWorkItemId: string;
 }
 
+class QaEnvironmentBlockedError extends Error {}
+
+export function qaEnvironmentBlockerReason(value: unknown): string | null {
+  if (!isRecord(value) || !['blocked', 'failed'].includes(String(value.status))) return null;
+  if (!Array.isArray(value.bugs) || value.bugs.length > 0) return null;
+  let commands: StageCommand[];
+  try {
+    commands = parseStageCommands(value.commands);
+  } catch {
+    return null;
+  }
+  if (!commands.some((command) => command.exitCode !== 0)) return null;
+  if (value.status === 'blocked' && typeof value.blocker === 'string' && value.blocker.trim()) {
+    return value.blocker.trim().replace(/\s+/g, ' ').slice(0, 240);
+  }
+  if (
+    value.status === 'failed' &&
+    Array.isArray(value.evidence) &&
+    value.evidence.some((entry) => typeof entry === 'string' && /spawn\s+EPERM/i.test(entry))
+  ) {
+    return '标准测试、浏览器或构建在执行 Agent 沙盒遭遇 spawn EPERM；尚无已确认的产品缺陷，需在可运行宿主补验。';
+  }
+  return null;
+}
+
 export function parseQaResult(
   value: unknown,
   workItems: VersionWorkItem[],
@@ -4331,7 +4416,10 @@ async function finalizeDeliveredVersionStage(
     if (!testedRevision) throw new Error('版本 QA 缺少开发候选修订');
     assertVerificationDidNotChangeImplementation(report, 'qa', testedRevision, revision);
     const manifest = `${version.documentRoot}/qa.json`.replace(/\\/g, '/');
-    const result = parseQaResult(await readJson(resolve(root, manifest)), version.workItems);
+    const qaManifest = await readJson(resolve(root, manifest));
+    const blocker = qaEnvironmentBlockerReason(qaManifest);
+    if (blocker) throw new QaEnvironmentBlockedError(blocker);
+    const result = parseQaResult(qaManifest, version.workItems);
     const existingBugIds = new Set(version.bugs.map((bug) => bug.id));
     if (result.bugs.some((bug) => existingBugIds.has(bug.id))) {
       throw new Error('QA 结果包含重复缺陷 id');
@@ -4564,6 +4652,17 @@ async function driveFormalVersion(): Promise<boolean> {
   for (let guard = 0; guard < version.nodes.length; guard += 1) {
     if (version.status === 'waiting-producer' || PRODUCER_STAGES.has(version.currentStage)) break;
     const stage = version.currentStage;
+    if (
+      state.items.some(
+        (item) =>
+          item.status === 'failed' &&
+          item.summary.startsWith('版本测试环境阻断：') &&
+          item.orchestration?.formalVersionId === version!.id &&
+          item.orchestration.formalStage === stage &&
+          item.orchestration.formalScopeRevision === formalScopeRevision(version!),
+      )
+    )
+      break;
     if (applyAutomaticStagePolicy(version, stage)) {
       if (!(await writeDrivenFormalVersion(version))) {
         const refreshed = await readFormalVersion(root);
@@ -4641,7 +4740,8 @@ async function driveFormalVersion(): Promise<boolean> {
           continue;
         }
       } catch (error) {
-        delivered.summary = `阶段交付未能写入正式版本，将自动安排修复：${error instanceof Error ? error.message : String(error)}`;
+        const reason = error instanceof Error ? error.message : String(error);
+        delivered.summary = `阶段交付未能写入正式版本，将自动安排修复：${reason}`;
         const persisted = await readFormalVersion(root);
         if (persisted?.id === version.id) {
           version = persisted;
@@ -4652,13 +4752,40 @@ async function driveFormalVersion(): Promise<boolean> {
           }
         }
         delivered.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        if (error instanceof QaEnvironmentBlockedError) {
+          delivered.status = 'failed';
+          delivered.summary = `版本测试环境阻断：${reason}`;
+          await emitNotice(
+            'version-stage-blocked',
+            `【版本节点·版本测试】暂停：${reason} 原始失败证据已保留，主 Agent 将在可运行宿主补验；无需你操作。`,
+            delivered,
+          );
+          changed = true;
+          break;
+        }
       }
     }
     const queued = ensureVersionStageItem(state, version);
     if (queued) {
+      const rejected = [...state.items]
+        .reverse()
+        .find(
+          (item) =>
+            item.id !== queued.id &&
+            item.orchestration?.formalVersionId === version!.id &&
+            item.orchestration.formalStage === stage &&
+            item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
+            item.summary.startsWith('阶段交付未能写入正式版本'),
+        );
+      const retryReason = rejected?.summary.split('将自动安排修复：')[1]?.trim() ?? '';
+      const attempt = Number(/-(\d+)$/.exec(queued.id)?.[1] ?? 1);
       await emitNotice(
-        'version-stage-scheduled',
-        `秘书已安排版本“${version.title}”的“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”，完成后自动继续。`,
+        retryReason ? 'version-stage-retry' : 'version-stage-scheduled',
+        versionStageScheduleMessage(
+          version.nodes.find((node) => node.id === stage)?.title ?? stage,
+          attempt,
+          retryReason,
+        ),
         queued,
       );
       changed = true;
@@ -4838,6 +4965,35 @@ async function coordinateOnce(): Promise<void> {
         }
       } catch {
         // An invalid QA report or stale gate cannot retire its retry.
+      }
+    }
+    const blocked = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'failed' &&
+          item.summary.startsWith('版本测试环境阻断：') &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === 'qa' &&
+          !isOwnedProcessAlive(item.processPid, item.processIdentity),
+      );
+    if (blocked?.runDirectory) {
+      try {
+        const result = parseQaResult(
+          await readJson(resolve(root, activeFormalVersion.documentRoot, 'qa.json')),
+          activeFormalVersion.workItems,
+        );
+        if (qaResultReadyForReacceptance(result)) {
+          await readFeatureGateArtifact(blocked.runDirectory);
+          reopenedDeliveredQa =
+            reopenEnvironmentBlockedQaDelivery(
+              state,
+              activeFormalVersion.id,
+              new Date().toISOString(),
+            ) || reopenedDeliveredQa;
+        }
+      } catch {
+        // Preserve the block until a complete, matching host rerun is available.
       }
     }
   }
