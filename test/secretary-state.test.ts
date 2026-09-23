@@ -697,6 +697,23 @@ describe('persistent secretary state', () => {
     expect(nextRunnableItem(state, state.initializedAt)).toBeNull();
   });
 
+  it('ignores missing reconciliation evidence left on a superseded item', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const queued = itemFromIntake(
+      { id: 'new', idea: '继续独立 QA', createdAt: state.initializedAt },
+      [],
+    ).item;
+    const retired = structuredClone(queued);
+    retired.id = 'retired';
+    retired.status = 'superseded';
+    retired.orchestration!.reconciliationOutcome = 'missing';
+    state.items.push(retired, queued);
+
+    expect(nextRunnableItem(state, state.initializedAt)?.id).toBe('new');
+    retired.status = 'tracking';
+    expect(nextRunnableItem(state, state.initializedAt)).toBeNull();
+  });
+
   it('runs one item at a time and wakes retry items only after their timer', () => {
     const state = createSecretaryState('2026-09-14T00:00:00.000Z');
     const first = itemFromIntake(

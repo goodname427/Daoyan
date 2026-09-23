@@ -1242,7 +1242,12 @@ export function firstUntrackedScheduledFact(
 
 export function nextRunnableItem(state: SecretaryState, now: string): SecretaryItem | null {
   if (state.activeItemId) return null;
-  if (state.items.some((item) => item.orchestration?.reconciliationOutcome === 'missing'))
+  if (
+    state.items.some(
+      (item) =>
+        item.status !== 'superseded' && item.orchestration?.reconciliationOutcome === 'missing',
+    )
+  )
     return null;
   const timestamp = Date.parse(now);
   const firstPending = state.items.find((item) =>
