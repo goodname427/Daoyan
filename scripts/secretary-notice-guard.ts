@@ -4353,6 +4353,37 @@ export function evidenceAfterStageStart(startedAt: string, evidenceAt: string | 
   return Number.isFinite(start) && Number.isFinite(observed) && observed >= start;
 }
 
+export function supersedeObsoleteFormalItems(
+  secretary: SecretaryState,
+  version: FormalVersion | null,
+  now = new Date().toISOString(),
+  processAlive: (pid: number, identity: string) => boolean = isOwnedProcessAlive,
+): number {
+  if (!version) return 0;
+  const startedAt = version.nodes.find((node) => node.id === version.currentStage)?.startedAt ?? '';
+  let count = 0;
+  for (const item of secretary.items) {
+    if (
+      item.orchestration?.formalVersionId !== version.id ||
+      !['queued', 'retry-wait', 'active', 'tracking'].includes(item.status) ||
+      (item.orchestration.formalStage === version.currentStage && item.createdAt >= startedAt) ||
+      processAlive(item.processPid, item.processIdentity) ||
+      item.orchestration.processOccupied
+    ) {
+      continue;
+    }
+    item.status = 'superseded';
+    item.summary = `版本已重新进入“${version.currentStage}”，旧阶段工作项保留审计，不再阻止派发。`;
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration.processOccupied = false;
+    item.updatedAt = now;
+    if (secretary.activeItemId === item.id) secretary.activeItemId = '';
+    count += 1;
+  }
+  return count;
+}
+
 async function finalizeDeliveredVersionStage(
   version: FormalVersion,
   item: SecretaryItem,
@@ -4952,6 +4983,7 @@ async function coordinateOnce(): Promise<void> {
   const stateBeforeNormalization = JSON.stringify(state);
   const normalized = normalizeSecretaryState(state);
   const activeFormalVersion = await readFormalVersion(root);
+  const supersededObsolete = supersedeObsoleteFormalItems(state, activeFormalVersion);
   const stoppedCollapsedItems = new Set(
     state.items
       .filter(
@@ -5178,6 +5210,7 @@ async function coordinateOnce(): Promise<void> {
   // event.  Do not turn that no-op observation into a fresh state write (and
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
+    supersededObsolete > 0 ||
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||

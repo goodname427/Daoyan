@@ -42,6 +42,7 @@ import {
   repeatedReviewFindingCount,
   versionTechnicalBlocker,
   evidenceAfterStageStart,
+  supersedeObsoleteFormalItems,
   workflowHealthSignal,
   observedExitEndsPm,
   nonDocumentationChanges,
@@ -751,6 +752,33 @@ describe('formal version stage dispatch', () => {
     expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2099-01-01T00:01:00.000Z')).toBe(
       true,
     );
+  });
+
+  it('retires a dead prior-stage writer after a version rollback', () => {
+    const secretary = createSecretaryState('2026-09-23T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'rollback-writer',
+      title: '退回复验',
+      direction: '重测候选',
+      documentRoot: 'docs/versions/rollback-writer',
+      currentStage: 'bugfix',
+      now: '2026-09-23T00:00:00.000Z',
+    });
+    const item = ensureVersionStageItem(secretary, version, '2026-09-23T00:01:00.000Z')!;
+    item.status = 'tracking';
+    item.processPid = 1234;
+    item.processIdentity = 'old-run';
+    secretary.activeItemId = item.id;
+    version.currentStage = 'qa';
+    version.nodes.find((node) => node.id === 'qa')!.startedAt = '2026-09-23T00:02:00.000Z';
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => true)).toBe(0);
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => false)).toBe(1);
+    expect(item.status).toBe('superseded');
+    expect(item.runDirectory).toBe('');
+    expect(secretary.activeItemId).toBe('');
+    expect(ensureVersionStageItem(secretary, version, '2026-09-23T00:03:00.000Z')).toMatchObject({
+      status: 'queued',
+    });
   });
 
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {
