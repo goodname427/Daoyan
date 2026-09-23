@@ -67,6 +67,7 @@ import {
   projectFactsFromItems,
   projectFactsFromStatus,
   publicSecretaryState,
+  reopenVerifiedDevelopmentDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -4538,6 +4539,41 @@ async function coordinateOnce(): Promise<void> {
         migrationBootstrapFailures,
       )
     : false;
+  let reopenedDeliveredDevelopment = false;
+  if (activeFormalVersion?.currentStage === 'development') {
+    const emptyStoppedAttemptIds = new Set<string>();
+    for (const item of state.items) {
+      if (!stoppedCollapsedItems.has(item.id) || !item.runDirectory) continue;
+      const checkpoint = await readJson(resolve(item.runDirectory, 'recovery.json'));
+      if (Array.isArray(checkpoint?.taskRuns) && checkpoint.taskRuns.length === 0) {
+        emptyStoppedAttemptIds.add(item.id);
+      }
+    }
+    const delivered = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'delivered' &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === 'development' &&
+          item.orchestration.formalStageConsumedAt &&
+          item.summary.startsWith('阶段交付未能写入正式版本') &&
+          item.runDirectory,
+      );
+    if (delivered?.runDirectory && emptyStoppedAttemptIds.size > 0) {
+      try {
+        await readFeatureGateArtifact(delivered.runDirectory);
+        reopenedDeliveredDevelopment = reopenVerifiedDevelopmentDelivery(
+          state,
+          activeFormalVersion.id,
+          emptyStoppedAttemptIds,
+          new Date().toISOString(),
+        );
+      } catch {
+        // A mismatched gate cannot retire a development retry.
+      }
+    }
+  }
   const persistedCorrections = await persistScheduleCorrections(
     state,
     async (correction) => {
@@ -4589,6 +4625,7 @@ async function coordinateOnce(): Promise<void> {
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||
+    reopenedDeliveredDevelopment ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||

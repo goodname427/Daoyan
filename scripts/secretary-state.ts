@@ -999,6 +999,53 @@ export function supersedeDevelopmentMigrationBootstrapFailures(
   return changed;
 }
 
+/** Reuse an already delivered batch when its rejected replacement did no work. */
+export function reopenVerifiedDevelopmentDelivery(
+  state: SecretaryState,
+  versionId: string,
+  emptyStoppedAttemptIds: ReadonlySet<string>,
+  now: string,
+): boolean {
+  const delivered = [...state.items]
+    .reverse()
+    .find(
+      (item) =>
+        item.status === 'delivered' &&
+        item.orchestration?.formalVersionId === versionId &&
+        item.orchestration.formalStage === 'development' &&
+        Boolean(item.orchestration.formalStageConsumedAt) &&
+        item.summary.startsWith('阶段交付未能写入正式版本'),
+    );
+  if (!delivered) return false;
+  const replacements = state.items.filter(
+    (item) =>
+      emptyStoppedAttemptIds.has(item.id) &&
+      item.orchestration?.formalVersionId === versionId &&
+      item.orchestration.formalStage === 'development' &&
+      item.orchestration.formalStageStep === delivered.orchestration?.formalStageStep &&
+      item.orchestration.formalScopeRevision === delivered.orchestration?.formalScopeRevision &&
+      ['active', 'tracking', 'retry-wait'].includes(item.status),
+  );
+  if (replacements.length === 0) return false;
+  for (const item of replacements) {
+    item.status = 'superseded';
+    item.summary = '该开发重试尚无已完成工作项；改为重新验收上一轮已交付且门禁仍匹配的批次。';
+    item.completedAt ||= now;
+    item.updatedAt = now;
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration!.processOccupied = false;
+    item.orchestration!.awaitingReview = false;
+    item.orchestration!.reconciliationOutcome = 'delivered';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+  }
+  delete delivered.orchestration!.formalStageConsumedAt;
+  delivered.summary = '旧开发批次的同树完整门禁已重新核对，等待正式版本阶段验收。';
+  delivered.updatedAt = now;
+  return true;
+}
+
 export function isRunEligibleForAdoption(
   updatedAt: string,
   initializedAt: string,

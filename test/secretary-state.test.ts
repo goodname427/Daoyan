@@ -22,6 +22,7 @@ import {
   taskCompletionKey,
   unrecordedTaskCompletions,
   reconciliationTargets,
+  reopenVerifiedDevelopmentDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
   supersedeRedundantDevelopmentItems,
@@ -45,6 +46,64 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('reopens a verified development delivery only after its same-scope empty retry stops', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const delivered = itemFromIntake(
+      { id: 'delivered-development', idea: '执行版本开发', createdAt: state.initializedAt },
+      [],
+    ).item;
+    delivered.status = 'delivered';
+    delivered.summary = '阶段交付未能写入正式版本，将自动安排修复：旧验收规则拒收';
+    delivered.orchestration = {
+      ...delivered.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'development',
+      formalScopeRevision: 2,
+      formalStageConsumedAt: '2026-09-21T00:01:00.000Z',
+    };
+    const retry = itemFromIntake(
+      { id: 'empty-retry', idea: '再次执行版本开发', createdAt: state.initializedAt },
+      [],
+    ).item;
+    retry.status = 'tracking';
+    retry.processPid = 123;
+    retry.processIdentity = 'stopped-process';
+    retry.orchestration = {
+      ...retry.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'development',
+      formalScopeRevision: 2,
+      processOccupied: true,
+    };
+    state.items.push(delivered, retry);
+    state.activeItemId = retry.id;
+
+    expect(
+      reopenVerifiedDevelopmentDelivery(state, 'version-1', new Set(), '2026-09-21T00:02:00.000Z'),
+    ).toBe(false);
+    expect(delivered.orchestration.formalStageConsumedAt).toBeTruthy();
+    expect(
+      reopenVerifiedDevelopmentDelivery(
+        state,
+        'version-1',
+        new Set([retry.id]),
+        '2026-09-21T00:02:00.000Z',
+      ),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(retry.processPid).toBe(0);
+    expect(state.activeItemId).toBe('');
+    expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(
+      reopenVerifiedDevelopmentDelivery(
+        state,
+        'version-1',
+        new Set([retry.id]),
+        '2026-09-21T00:03:00.000Z',
+      ),
+    ).toBe(false);
+  });
+
   it('retires stale formal-stage work when its control-plane version is archived', () => {
     const state = createSecretaryState('2026-09-21T00:00:00.000Z');
     const item = itemFromIntake(
