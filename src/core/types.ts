@@ -16,7 +16,16 @@ export interface Vec2 {
 }
 
 /** 运行期值：num→number, bool→boolean, vec2→Vec2, entity→number(id), list→数组, 空→null */
-export type Value = number | boolean | Vec2 | Value[] | null;
+export type QueryValue =
+  | {
+      ok: true;
+      value: number | Vec2 | Value[];
+      observedAt: number;
+      targetId: number;
+      field: string;
+    }
+  | { ok: false; reason: 'unavailable' };
+export type Value = number | boolean | Vec2 | QueryValue | Value[] | null;
 
 export type PrimKind = 'num' | 'bool' | 'vec2' | 'entity';
 
@@ -31,6 +40,7 @@ export type Type =
   | { k: 'bool' }
   | { k: 'vec2' }
   | { k: 'entity' }
+  | { k: 'query'; value: 'num' | 'vec2' | 'entities' | 'positions' }
   | { k: 'any' } // 用于「空」字面量与泛型相等比较
   | { k: 'list'; elem: ListElem; cap: number }
   | { k: 'void' };
@@ -40,6 +50,7 @@ export const T = {
   bool: { k: 'bool' } as Type,
   vec2: { k: 'vec2' } as Type,
   entity: { k: 'entity' } as Type,
+  query: (value: 'num' | 'vec2' | 'entities' | 'positions'): Type => ({ k: 'query', value }),
   any: { k: 'any' } as Type,
   void: { k: 'void' } as Type,
   list: (elem: ListElem, cap: number = DYN_CAP): Type => ({ k: 'list', elem, cap }),
@@ -63,6 +74,14 @@ export function shenshiOf(t: Type): number {
       return 1;
     case 'vec2':
       return 2;
+    case 'query':
+      return t.value === 'positions'
+        ? 133
+        : t.value === 'entities'
+          ? 69
+          : t.value === 'vec2'
+            ? 6
+            : 5;
     case 'list':
       // 列表 = 1 点表头 + 每个槽位的元素价格（容量即预算）
       return 1 + PRIM_SHENSHI[t.elem] * Math.max(t.cap, 0);
@@ -90,6 +109,7 @@ export function elemTypeOf(t: Type): Type | null {
 }
 
 export function typeName(t: Type): string {
+  if (t.k === 'query') return `query<${t.value}>`;
   if (t.k === 'list') return `list<${t.elem},${t.cap < 0 ? '?' : t.cap}>`;
   return t.k;
 }
@@ -103,6 +123,7 @@ export function assignable(from: Type, to: Type): boolean {
   if (from.k === 'any' || to.k === 'any') return true;
   if (from.k === 'void' || to.k === 'void') return false;
   if (from.k === to.k) {
+    if (from.k === 'query' && to.k === 'query') return from.value === to.value;
     if (from.k === 'list' && to.k === 'list') {
       return from.elem === to.elem || to.elem === 'any' || from.elem === 'any';
     }

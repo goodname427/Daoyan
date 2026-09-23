@@ -18,8 +18,11 @@ import type {
   SpellBook,
   SpellCost,
   SpellMeta,
+  WorldEvent,
+  WorldEventType,
 } from '../core/index';
 import { makeKeyState } from '../core/input';
+import { ChargeSession, type ChargeEnd, type SlotIntent } from '../core/input';
 
 /**
  * 战斗运行时。
@@ -81,6 +84,26 @@ export interface CastInstance {
   ended: boolean;
 }
 
+interface EventCast {
+  readonly ownerId: number;
+  readonly spell: string;
+  readonly event: WorldEvent;
+  readonly vm: VM;
+  readonly session: ControlSession;
+  readonly response: EventResponseSummary;
+  tickCredit: number;
+}
+
+interface EventResponseSummary {
+  eventId: number;
+  type: WorldEventType;
+  spell: string;
+  state: 'running' | 'success' | 'failed';
+  mana: number;
+  ticks: number;
+  error: string | null;
+}
+
 const ARENA_W = 1600;
 const ARENA_H = 1200;
 
@@ -120,6 +143,14 @@ export class Battle {
   casts = new Map<number, Map<string, CastInstance>>();
   /** actorId → 所有并发 VM 当前共同占用的神识 */
   private shenshiUsage = new Map<number, number>();
+  private eventCasts = new Map<number, EventCast>();
+  readonly eventResponses: EventResponseSummary[] = [];
+  private nextEventCastId = 1;
+  readonly chargeSessions = new Map<string, ChargeSession>();
+  readonly finishedCharges: ChargeSession[] = [];
+  private slotIntents: SlotIntent[] = [];
+  private physicalSlots = new Set<string>();
+  private inputOverflow = false;
 
   input: BattleInput = { up: false, down: false, left: false, right: false };
   /** 当前按住的槽位集合（玩家用，驱动键位法术的 keys[0]） */
@@ -170,8 +201,11 @@ export class Battle {
   // ---------------- 波次 ----------------
 
   startWave(index: number): void {
+    for (const session of [...this.chargeSessions.values()])
+      if (session.projectileId !== null) this.finishCharge(session, 'target-lost');
     this.waveIndex = index;
     const spec = WAVES[Math.min(index, WAVES.length - 1)];
+    for (const projectile of this.world.projectiles) this.world.refundEntityEnergy(projectile.id);
     this.world.projectiles = [];
 
     for (let i = 0; i < spec.chaser; i++) this.spawnFoe('chaser');
@@ -190,48 +224,54 @@ export class Battle {
       if (Math.hypot(x - this.player.x, y - this.player.y) > 420) break;
     }
 
-    if (kind === 'chaser') {
-      return this.world.spawnActor({
-        name: '扑击妖兽',
-        faction: 'foe',
-        x,
-        y,
-        attrs: {
-          hpMax: 60,
-          manaMax: 220,
-          manaRegen: 46,
-          shenshiMax: 40,
-          speed: 108,
-          power: 1,
-        },
-        radius: 12,
-        behavior: 'chaser',
-        attackRange: 260,
-        attackInterval: 1.9,
-        castSlow: 0.35,
-        bindings: { attack: '妖兽·扑击' },
-      });
-    }
-    return this.world.spawnActor({
-      name: '妖兽符修',
-      faction: 'foe',
-      x,
-      y,
-      attrs: {
-        hpMax: 45,
-        manaMax: 240,
-        manaRegen: 52,
-        shenshiMax: 40,
-        speed: 88,
-        power: 1,
-      },
-      radius: 11,
-      behavior: 'shooter',
-      attackRange: 460,
-      attackInterval: 2.3,
-      castSlow: 0.35,
-      bindings: { attack: '妖兽·雷符' },
+    const foe =
+      kind === 'chaser'
+        ? this.world.spawnActor({
+            name: '扑击妖兽',
+            faction: 'foe',
+            x,
+            y,
+            attrs: {
+              hpMax: 60,
+              manaMax: 220,
+              manaRegen: 46,
+              shenshiMax: 40,
+              speed: 108,
+              power: 1,
+            },
+            radius: 12,
+            behavior: 'chaser',
+            attackRange: 260,
+            attackInterval: 1.9,
+            castSlow: 0.35,
+            bindings: { attack: '妖兽·扑击' },
+          })
+        : this.world.spawnActor({
+            name: '妖兽符修',
+            faction: 'foe',
+            x,
+            y,
+            attrs: {
+              hpMax: 45,
+              manaMax: 240,
+              manaRegen: 52,
+              shenshiMax: 40,
+              speed: 88,
+              power: 1,
+            },
+            radius: 11,
+            behavior: 'shooter',
+            attackRange: 460,
+            attackInterval: 2.3,
+            castSlow: 0.35,
+            bindings: { attack: '妖兽·雷符' },
+          });
+    // 战场只公开可见目标的位置；其余属性仍须由权威规则逐字段授权。
+    this.world.grantSenseField(this.player.id, foe.id, 'position', {
+      shenshiUpperBound: foe.attr.shenshiMax,
+      resistanceUpperBound: 0,
     });
+    return foe;
   }
 
   // ---------------- 主循环 ----------------
@@ -240,6 +280,8 @@ export class Battle {
     if (!this.started || this.paused) return;
     if (this.state !== 'fighting') return;
     if (!Number.isFinite(dt) || dt <= 0) return;
+    this.expireChargeSessions();
+    this.consumeSlotIntents();
     let remaining = dt;
     while (remaining > 0 && this.state === 'fighting') {
       // 世界在边界前使用已付费效果；核心在边界上先清理再续费。
@@ -278,7 +320,10 @@ export class Battle {
       if (a.alive && a.faction === 'foe') this.updateFoe(a, dt);
     }
     this.advanceCasts(dt);
+    this.advanceChargeSessions(dt);
+    this.advanceEventCasts(dt);
     this.updateProjectiles(dt);
+    this.world.dispatchWorldEvents();
     this.world.pruneControlRecords();
     this.reportEndedMaintains(maintained);
     this.separate();
@@ -318,28 +363,32 @@ export class Battle {
 
   private movePlayer(dt: number): void {
     const p = this.player;
-    if (!p.alive || p.stun > 0) return;
     const dx = (this.input.right ? 1 : 0) - (this.input.left ? 1 : 0);
     const dy = (this.input.down ? 1 : 0) - (this.input.up ? 1 : 0);
-    if (dx === 0 && dy === 0) return;
-    const l = Math.hypot(dx, dy);
-    const speed = p.attr.speed * this.moveMul(p);
-    this.world.moveActor(p, (dx / l) * speed * dt, (dy / l) * speed * dt);
+    this.world.advanceActorMotion(p, { x: dx, y: dy }, this.moveMul(p), dt);
   }
 
   /** 施法中的移动速度倍率 */
   private moveMul(a: Actor): number {
     const active = this.activeCasts(a.id);
-    if (active.length === 0) return 1;
+    const charging = [...this.chargeSessions.values()].some((session) => session.actorId === a.id);
+    if (active.length === 0 && !charging) return 1;
     return Math.min(
+      ...(charging ? [a.castSlow] : []),
       ...active.map((cast) => (cast.meta.kind === 'channel' ? cast.meta.channelSlow : a.castSlow)),
     );
   }
 
   private updateFoe(a: Actor, dt: number): void {
-    if (a.stun > 0) return;
+    if (a.stun > 0) {
+      this.world.advanceActorMotion(a, { x: 0, y: 0 }, 1, dt);
+      return;
+    }
     const target = this.nearestHostile(a);
-    if (!target) return;
+    if (!target) {
+      this.world.advanceActorMotion(a, { x: 0, y: 0 }, 1, dt);
+      return;
+    }
     const dx = target.x - a.x;
     const dy = target.y - a.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -377,11 +426,7 @@ export class Battle {
       my += ux * a.strafe * 0.9;
     }
 
-    const l = Math.hypot(mx, my);
-    if (l > 1e-6) {
-      const speed = a.attr.speed * (casting ? a.castSlow : 1);
-      this.world.moveActor(a, (mx / l) * speed * dt, (my / l) * speed * dt);
-    }
+    this.world.advanceActorMotion(a, { x: mx, y: my }, casting ? a.castSlow : 1, dt);
 
     if (d <= a.attackRange && a.attackTimer <= 0) {
       if (this.trigger(a.id, 'attack')) {
@@ -489,13 +534,13 @@ export class Battle {
   }
 
   private updateProjectiles(dt: number): void {
-    const keep: typeof this.world.projectiles = [];
+    const removed: number[] = [];
     for (const p of this.world.projectiles) {
+      const activeDt = Math.min(dt, Math.max(0, p.life));
       p.life -= dt;
 
-      if (p.active) {
-        p.x += p.dx * p.speed * dt;
-        p.y += p.dy * p.speed * dt;
+      if (p.active && activeDt > 0) {
+        this.world.advanceProjectileMotion(p, activeDt);
       }
 
       let dead = p.life <= 0;
@@ -508,22 +553,22 @@ export class Battle {
           if (!a.alive || a.faction === p.faction || p.hit.has(a.id)) continue;
           if (Math.hypot(a.x - p.x, a.y - p.y) <= p.radius + a.radius) {
             const wasAlive = a.alive;
-            this.world.damage(a.id, p.damage);
+            this.world.hitProjectile(p, a.id);
             if (wasAlive && !a.alive) this.stats.kills++;
-            p.hit.add(a.id);
             if (p.pierce > 0) p.pierce--;
             else dead = true;
             break;
           }
         }
       }
-      if (!dead) keep.push(p);
+      if (dead) removed.push(p.id);
     }
-    this.world.projectiles = keep;
+    for (const id of removed) this.world.removeProjectile(id);
   }
 
   private separate(): void {
     const list = this.world.aliveActors();
+    const contacts: Array<{ sourceId: number; targetId: number; x: number; y: number }> = [];
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i];
@@ -533,21 +578,41 @@ export class Battle {
         const d = Math.hypot(dx, dy);
         const min = a.radius + b.radius;
         if (d > 1e-6 && d < min) {
+          contacts.push({ sourceId: a.id, targetId: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
           const push = (min - d) / 2;
           const ux = dx / d;
           const uy = dy / d;
           this.world.moveActor(a, -ux * push, -uy * push);
           this.world.moveActor(b, ux * push, uy * push);
+          const an = a.velocity.x * ux + a.velocity.y * uy;
+          const bn = b.velocity.x * ux + b.velocity.y * uy;
+          if (an > 0) {
+            a.velocity.x -= an * ux;
+            a.velocity.y -= an * uy;
+          }
+          if (bn < 0) {
+            b.velocity.x -= bn * ux;
+            b.velocity.y -= bn * uy;
+          }
         }
       }
     }
+    this.world.commitActorContacts(contacts);
   }
 
   private handleDamage(target: Actor): void {
-    const interrupted = this.activeCasts(target.id).filter((cast) => cast.meta.interruptible);
+    for (const session of [...this.chargeSessions.values()])
+      if (session.actorId === target.id && (!target.alive || session.interruptible))
+        this.finishCharge(session, target.alive ? 'interrupted' : 'death');
+    const interrupted = this.activeCasts(target.id).filter(
+      (cast) => !target.alive || cast.meta.interruptible,
+    );
     for (const cast of interrupted) {
       this.removeCast(target.id, cast.triggerSlot, true);
     }
+    for (const [id, cast] of this.eventCasts)
+      if (cast.ownerId === target.id && (!target.alive || this.metaOf(cast.spell).interruptible))
+        this.finishEventCast(id, true);
     this.stats.interrupts += interrupted.length;
     if (interrupted.length > 0) {
       this.pushLog(`${target.name} 的 ${interrupted.length} 个法术被打断`);
@@ -558,7 +623,9 @@ export class Battle {
   private checkEnd(): void {
     if (!this.player.alive) {
       this.state = 'defeat';
+      for (const session of [...this.chargeSessions.values()]) this.finishCharge(session, 'death');
       for (const actorId of [...this.casts.keys()]) this.cancelCasts(actorId);
+      for (const id of [...this.eventCasts.keys()]) this.finishEventCast(id, true);
       this.pushLog('道消身陨……');
       return;
     }
@@ -566,7 +633,10 @@ export class Battle {
     if (foesLeft > 0) return;
     if (this.waveIndex >= WAVES.length - 1) {
       this.state = 'victory';
+      for (const session of [...this.chargeSessions.values()])
+        this.finishCharge(session, 'cancelled');
       for (const actorId of [...this.casts.keys()]) this.cancelCasts(actorId);
+      for (const id of [...this.eventCasts.keys()]) this.finishEventCast(id, true);
       this.pushLog('尽数伏诛，此局功成');
     } else {
       this.startWave(this.waveIndex + 1);
@@ -580,7 +650,10 @@ export class Battle {
   }
 
   isCasting(actorId: number): boolean {
-    return (this.casts.get(actorId)?.size ?? 0) > 0;
+    return (
+      (this.casts.get(actorId)?.size ?? 0) > 0 ||
+      [...this.chargeSessions.values()].some((session) => session.actorId === actorId)
+    );
   }
 
   shenshiInUse(actorId: number): number {
@@ -600,17 +673,119 @@ export class Battle {
   setPaused(paused: boolean): void {
     if (!this.started || this.state !== 'fighting') return;
     this.paused = paused;
-    if (paused) this.clearPlayerInput();
+    if (!paused) this.expireChargeSessions();
   }
 
   /** 触发某单位绑定在指定槽位上的法术 */
-  trigger(actorId: number, slot: string): boolean {
+  subscribeSpellEvent(
+    actorId: number,
+    bindingId: string,
+    type: WorldEventType,
+    spell: string,
+    options: { sourceId?: number; targetId?: number; session?: ControlSession } = {},
+  ): number | null {
+    if (!this.program.index.has(spell) || this.costs[spell]?.errors.length) return null;
+    return this.world.subscribeEvent(
+      actorId,
+      bindingId,
+      type,
+      (event) => this.startEventCast(actorId, spell, event),
+      options,
+    );
+  }
+
+  unsubscribeSpellEvent(sequence: number): void {
+    this.world.unsubscribeEvent(sequence);
+  }
+
+  private startEventCast(actorId: number, spell: string, event: WorldEvent): void {
+    const actor = this.world.byId(actorId);
+    if (!actor?.alive) return;
+    const response: EventResponseSummary = {
+      eventId: event.eventId,
+      type: event.type,
+      spell,
+      state: 'running',
+      mana: 0,
+      ticks: 0,
+      error: null,
+    };
+    this.eventResponses.unshift(response);
+    if (this.eventResponses.length > 32) this.eventResponses.pop();
+    const active = [...this.eventCasts.values()].filter((cast) => cast.ownerId === actorId);
+    if (active.length >= 32 || active.filter((cast) => cast.spell === spell).length >= 8) {
+      this.world.eventDrops.capacity++;
+      response.state = 'failed';
+      response.error = '响应容量已满';
+      return;
+    }
+    let vm: VM | null = null;
+    const session = this.world.createControlSession(
+      actorId,
+      (record, phase) => vm?.chargeControl(record, phase) ?? false,
+    );
+    if (!session) {
+      this.world.eventDrops.capacity++;
+      response.state = 'failed';
+      response.error = '会话或账户不可用';
+      return;
+    }
+    vm = this.createBattleVm(actor, session, false);
+    vm.setKeyState(null);
+    vm.start(spell);
+    const id = this.nextEventCastId++;
+    this.world.retainEventRoot(event.rootEventId);
+    this.eventCasts.set(id, {
+      ownerId: actorId,
+      spell,
+      event,
+      vm,
+      session,
+      response,
+      tickCredit: 0,
+    });
+    this.world.withEventCause(event, () => vm!.advance(1));
+    if (vm.isDone) this.finishEventCast(id);
+  }
+
+  private advanceEventCasts(dt: number): void {
+    for (const [id, cast] of [...this.eventCasts]) {
+      const actor = this.world.byId(cast.ownerId);
+      if (!actor?.alive) {
+        this.finishEventCast(id, true);
+        continue;
+      }
+      cast.tickCredit += ((dt * 1000) / TICK_MS) * actor.attr.castSpeed;
+      if ((cast.vm.isRunning || cast.vm.pendingTickDebt > 0) && cast.tickCredit > 0)
+        cast.tickCredit -= this.world.withEventCause(cast.event, () =>
+          cast.vm.advance(cast.tickCredit),
+        );
+      if (cast.vm.isDone) this.finishEventCast(id);
+    }
+  }
+
+  private finishEventCast(id: number, cancel = false): void {
+    const cast = this.eventCasts.get(id);
+    if (!cast) return;
+    if (cancel) cast.vm.cancel();
+    cast.response.state = cast.vm.failure || cancel ? 'failed' : 'success';
+    cast.response.mana = cast.vm.spentMana;
+    cast.response.ticks = cast.vm.spentTicks;
+    cast.response.error = cast.vm.failure ?? (cancel ? '会话已终止' : null);
+    cast.session.end();
+    this.eventCasts.delete(id);
+    this.world.releaseEventRoot(cast.event.rootEventId);
+    if (cast.vm.failure) this.pushLog(`「${cast.spell}」事件响应失败：${cast.vm.failure}`);
+  }
+
+  /** 触发某单位绑定在指定槽位上的法术 */
+  trigger(actorId: number, slot: string, releasingCharge = false, spellOverride?: string): boolean {
     if (!this.started || this.paused) return false;
     const a = this.world.byId(actorId);
     if (!a || !a.alive) return false;
     if (a.stun > 0) return false;
 
-    const spell = a.bindings[slot];
+    const spell = spellOverride ?? a.bindings[slot];
     if (!spell) return false;
     if (!this.program.index.has(spell)) return false;
 
@@ -622,6 +797,7 @@ export class Battle {
     if (this.casts.get(actorId)?.has(slot)) return false;
 
     const meta = this.metas[spell] ?? normalizeMeta(null);
+    if (meta.charge && !releasingCharge) return this.beginCharge(a, slot, meta);
     const controlCharge: { vm: VM | null; mana: number; ticks: number } = {
       vm: null,
       mana: 0,
@@ -674,21 +850,266 @@ export class Battle {
     return true;
   }
 
+  private beginCharge(a: Actor, slot: string, meta: SpellMeta): boolean {
+    if (this.chargeSessions.has(`${a.id}:${slot}`) || this.casts.get(a.id)?.has(slot)) return false;
+    if (
+      !['prepare', 'projectile'].includes(meta.charge ?? '') ||
+      !Number.isFinite(meta.duration) ||
+      meta.duration <= 0 ||
+      !Number.isFinite(meta.period) ||
+      meta.period <= 0 ||
+      (meta.charge === 'projectile' &&
+        (!Number.isFinite(meta.chargeMana ?? 5) || (meta.chargeMana ?? 5) <= 0))
+    )
+      return false;
+    const used = this.shenshiInUse(a.id);
+    if (!this.world.tryReserveEntityShenshi(a.id, 1)) return false;
+    this.shenshiUsage.set(a.id, used + 1);
+    const session = new ChargeSession(
+      a.id,
+      slot,
+      meta.charge!,
+      meta.duration,
+      Math.max(0.25, meta.period),
+      meta.charge === 'projectile' ? (this.nearestHostile(a)?.id ?? null) : null,
+      a.bindings[slot],
+      meta.interruptible,
+      meta.chargeMana ?? 5,
+    );
+    if (meta.charge === 'projectile') {
+      // 名额和账户在付款前验证；旧五参创建仍由原入口即激活。
+      if (this.world.projectiles.filter((item) => item.ownerId === a.id).length >= 16) {
+        this.releaseChargeShenshi(a.id);
+        return false;
+      }
+      const createPrice = 8 + meta.duration * 2;
+      if (this.world.resourceLedger.payMana(a.id, createPrice, 'charge-create') === null) {
+        this.releaseChargeShenshi(a.id);
+        return false;
+      }
+      const projectile = this.world.spawnProjectile({
+        faction: a.faction,
+        ownerId: a.id,
+        x: a.x,
+        y: a.y,
+        dx: a.aim.x,
+        dy: a.aim.y,
+        speed: 380,
+        damage: 0,
+        life: meta.duration,
+        active: false,
+      });
+      if (!projectile) {
+        this.releaseChargeShenshi(a.id);
+        return false;
+      }
+      session.projectileId = projectile.id;
+      session.state = 'held';
+      session.workTicks = 2 + Math.ceil(meta.duration / 2);
+    } else if (this.world.resourceLedger.payMana(a.id, 1, 'charge-start') === null) {
+      this.releaseChargeShenshi(a.id);
+      return false;
+    }
+    this.chargeSessions.set(`${a.id}:${slot}`, session);
+    this.stats.casts++;
+    return true;
+  }
+
+  private releaseChargeShenshi(actorId: number): void {
+    const next = Math.max(0, this.shenshiInUse(actorId) - 1);
+    if (next === 0) this.shenshiUsage.delete(actorId);
+    else this.shenshiUsage.set(actorId, next);
+    this.world.reportEntityShenshiUsage(actorId, next);
+  }
+
+  private finishCharge(session: ChargeSession, reason: ChargeEnd): void {
+    if (!session.finish(reason)) return;
+    if (reason !== 'released' && session.projectileId !== null)
+      this.world.removeProjectile(session.projectileId);
+    this.releaseChargeShenshi(session.actorId);
+    const key = `${session.actorId}:${session.slot}`;
+    if (this.chargeSessions.get(key) === session) this.chargeSessions.delete(key);
+    this.finishedCharges.push(session);
+    if (this.finishedCharges.length > 64) this.finishedCharges.shift();
+  }
+
+  cancelCharge(slot: string): void {
+    const session = this.chargeSessions.get(`${this.player.id}:${slot}`);
+    if (session) this.finishCharge(session, 'cancelled');
+  }
+
+  private expireChargeSessions(): void {
+    for (const session of [...this.chargeSessions.values()]) {
+      const actor = this.world.byId(session.actorId);
+      if (!actor?.alive) this.finishCharge(session, 'death');
+      else if (session.projectileId !== null && !this.world.entityById(session.projectileId))
+        this.finishCharge(session, 'target-lost');
+      else if (session.targetId !== null && !this.world.byId(session.targetId)?.alive)
+        this.finishCharge(session, 'target-lost');
+      else if (
+        session.elapsed >=
+        (session.mode === 'prepare' ? session.duration * 2 : session.duration) - 1e-9
+      )
+        this.finishCharge(session, 'expired');
+    }
+  }
+
+  private consumeSlotIntents(): void {
+    if (this.inputOverflow) {
+      for (const session of [...this.chargeSessions.values()])
+        this.finishCharge(session, 'cancelled');
+      this.slotIntents = [];
+      this.inputOverflow = false;
+      this.physicalSlots.clear();
+      this.heldSlots.clear();
+      return;
+    }
+    const intents = this.slotIntents.splice(0);
+    for (const intent of intents) {
+      if (intent.type === 'press') {
+        this.heldSlots.add(intent.slot);
+        this.castPlayer(intent.slot);
+      } else {
+        this.heldSlots.delete(intent.slot);
+        const session = this.chargeSessions.get(`${this.player.id}:${intent.slot}`);
+        if (session) this.releaseCharge(session);
+      }
+    }
+  }
+
+  private releaseCharge(session: ChargeSession): void {
+    const actor = this.world.byId(session.actorId);
+    if (!actor?.alive) {
+      this.finishCharge(session, 'death');
+      return;
+    }
+    if (session.mode === 'prepare') {
+      if (session.elapsed < session.duration) {
+        this.finishCharge(session, 'early-release');
+        return;
+      }
+      session.state = 'releasing';
+      this.finishCharge(session, 'released');
+      // 效果只在合法松开后启动一次，原 VM 仍按自己的 tick 与法力合同执行。
+      this.trigger(actor.id, session.slot, true, session.spell);
+      return;
+    }
+    const projectile =
+      session.projectileId === null
+        ? null
+        : this.world.ownedProjectile(actor.id, session.projectileId);
+    if (!projectile || (session.targetId !== null && !this.world.byId(session.targetId)?.alive)) {
+      this.finishCharge(session, 'target-lost');
+      return;
+    }
+    if (session.periods === 0) {
+      this.finishCharge(session, 'early-release');
+      return;
+    }
+    const balance = this.world.resourceLedger.balance(projectile.id);
+    const available = balance.damage - balance.reserved.damage;
+    if (
+      available <= 0 ||
+      this.world.resourceLedger.payMana(actor.id, 4.5, 'charge-release') === null
+    ) {
+      this.finishCharge(session, 'exhausted');
+      return;
+    }
+    projectile.damage = available;
+    projectile.dx = actor.aim.x;
+    projectile.dy = actor.aim.y;
+    projectile.x = actor.x + projectile.dx * (actor.radius + projectile.radius);
+    projectile.y = actor.y + projectile.dy * (actor.radius + projectile.radius);
+    projectile.active = true;
+    if (
+      !this.world.applyImpulse(projectile.id, { x: projectile.dx * 380, y: projectile.dy * 380 })
+    ) {
+      projectile.active = false;
+      this.finishCharge(session, 'cancelled');
+      return;
+    }
+    this.world.fx.push({ kind: 'shoot', x: projectile.x, y: projectile.y });
+    session.workTicks += 3;
+    this.finishCharge(session, 'released');
+  }
+
+  private advanceChargeSessions(dt: number): void {
+    for (const session of [...this.chargeSessions.values()]) {
+      const actor = this.world.byId(session.actorId);
+      if (!actor?.alive) {
+        this.finishCharge(session, 'death');
+        continue;
+      }
+      const next = Math.min(session.duration, session.elapsed + dt);
+      while ((session.periods + 1) * session.period <= next + 1e-9) {
+        if (session.mode === 'projectile') {
+          const projectile =
+            session.projectileId === null
+              ? null
+              : this.world.ownedProjectile(actor.id, session.projectileId);
+          if (
+            !projectile ||
+            (session.targetId !== null && !this.world.byId(session.targetId)?.alive)
+          ) {
+            this.finishCharge(session, 'target-lost');
+            break;
+          }
+          if (
+            this.world.injectEntityEnergy(
+              projectile.id,
+              actor.id,
+              'damage',
+              session.manaPerPeriod,
+            ) === null
+          ) {
+            this.finishCharge(session, 'exhausted');
+            break;
+          }
+        } else if (this.world.resourceLedger.payMana(actor.id, 1, 'charge-work') === null) {
+          this.finishCharge(session, 'exhausted');
+          break;
+        }
+        session.periods++;
+        session.workTicks++;
+      }
+      if (session.terminal) continue;
+      if (session.mode === 'prepare')
+        session.workTicks +=
+          ((Math.min(session.duration, session.elapsed + dt) -
+            Math.min(session.duration, session.elapsed)) *
+            1000) /
+          TICK_MS;
+      session.elapsed = session.mode === 'prepare' ? session.elapsed + dt : next;
+      if (session.mode === 'prepare' && session.elapsed >= session.duration) session.state = 'held';
+      if (session.mode === 'projectile' && session.elapsed >= session.duration)
+        this.finishCharge(session, 'expired');
+    }
+  }
+
   /**
    * 玩家按下某槽位的物理键。
    * - 按键型法术（声明了 keys）：起手进入持续施法，并标记该槽位按住
    * - 普通法术：等同 trigger 一次性触发
    */
   pressSlot(slot: string): boolean {
-    if (!this.started || this.paused) return false;
-    if (this.heldSlots.has(slot)) return false;
-    this.heldSlots.add(slot);
-    return this.castPlayer(slot);
+    if (!this.started || this.state !== 'fighting' || this.physicalSlots.has(slot)) return false;
+    if (this.slotIntents.length >= 64) {
+      this.inputOverflow = true;
+      return false;
+    }
+    this.physicalSlots.add(slot);
+    this.slotIntents.push({ slot, type: 'press' });
+    return true;
   }
 
   /** 玩家松开某槽位的物理键 */
   releaseSlot(slot: string): void {
-    this.heldSlots.delete(slot);
+    if (!this.physicalSlots.delete(slot)) return;
+    if (this.slotIntents.length >= 64) {
+      this.inputOverflow = true;
+      return;
+    }
+    this.slotIntents.push({ slot, type: 'release' });
   }
 
   castPlayer(slot: string): boolean {
@@ -713,7 +1134,10 @@ export class Battle {
     this.player.base[key] = safeValue;
     this.world.recompute(this.player);
     if (refillResource && key === 'hpMax') this.player.hp = this.player.attr.hpMax;
-    if (refillResource && key === 'manaMax') this.player.mana = this.player.attr.manaMax;
+    if (refillResource && key === 'manaMax') {
+      this.player.mana = this.player.attr.manaMax;
+      this.world.observeManaThreshold(this.player.id);
+    }
   }
 
   setPlayerBaseAttrs(attrs: Partial<Attributes>, refillResource = false): void {
@@ -735,13 +1159,21 @@ export class Battle {
   }
 
   restart(): void {
+    for (const id of [...this.eventCasts.keys()]) this.finishEventCast(id, true);
     for (const actorId of this.casts.keys()) this.cancelCasts(actorId);
+    for (const session of [...this.chargeSessions.values()])
+      this.finishCharge(session, 'cancelled');
     this.world.reset();
     this.world.bounds = { w: ARENA_W, h: ARENA_H };
     this.world.onDamage = (target) => this.handleDamage(target);
     this.casts.clear();
     this.shenshiUsage.clear();
     this.heldSlots.clear();
+    this.physicalSlots.clear();
+    this.slotIntents = [];
+    this.inputOverflow = false;
+    this.finishedCharges.length = 0;
+    this.eventResponses.length = 0;
     this.clearPlayerInput();
     this.log = [];
     this.time = 0;
@@ -758,14 +1190,9 @@ export class Battle {
       controlSession,
       retainControlSessionOnCompletion: retain,
       resources: {
-        trySpendMana: (amount) => {
-          if (amount > a.mana) return false;
-          a.mana -= amount;
-          return true;
-        },
         tryReserveShenshi: (amount) => {
           const current = this.shenshiInUse(a.id);
-          if (current + amount > a.attr.shenshiMax) return false;
+          if (!this.world.tryReserveEntityShenshi(a.id, amount)) return false;
           this.shenshiUsage.set(a.id, current + amount);
           return true;
         },
@@ -773,6 +1200,7 @@ export class Battle {
           const next = Math.max(0, this.shenshiInUse(a.id) - amount);
           if (next === 0) this.shenshiUsage.delete(a.id);
           else this.shenshiUsage.set(a.id, next);
+          this.world.reportEntityShenshiUsage(a.id, next);
         },
       },
     });
@@ -829,6 +1257,9 @@ export class Battle {
     this.input.left = false;
     this.input.right = false;
     this.heldSlots.clear();
+    this.physicalSlots.clear();
+    this.slotIntents = [];
+    this.inputOverflow = false;
   }
 }
 

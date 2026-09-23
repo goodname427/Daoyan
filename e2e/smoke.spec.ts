@@ -54,8 +54,9 @@ test.describe('player state persistence', () => {
     await fireSpell.click();
     await expect(fireSpell).toHaveClass(/active/);
     await expect(editor).toHaveAttribute('aria-label', '爆炎咒 法术源码');
-    await editor.fill((await editor.inputValue()).replace('伤害(f, 30)', '伤害(f, 31)'));
-    await expect(editor).toHaveValue(/伤害\(f, 31\)/);
+    await expect(editor).toHaveValue(/近战斩击\(准星方向\(\), 150, 30\)/);
+    await editor.fill((await editor.inputValue()).replace(', 150, 30)', ', 150, 31)'));
+    await expect(editor).toHaveValue(/近战斩击\(准星方向\(\), 150, 31\)/);
     await page.locator('.tabs .tab').nth(1).click();
     await page.locator('.attr-editor input').first().fill('240');
     await page.locator('.bindings select').nth(1).selectOption('三连剑');
@@ -68,6 +69,7 @@ test.describe('player state persistence', () => {
     expect(downloadPath).not.toBeNull();
     if (!downloadPath) return;
     const exportedSave = JSON.parse(await readFile(downloadPath, 'utf8'));
+    expect(exportedSave.spellSource).toContain('近战斩击(准星方向(), 150, 31)');
 
     await page.reload();
     await page.locator('.tabs .tab').nth(1).click();
@@ -76,7 +78,7 @@ test.describe('player state persistence', () => {
     await page.locator('.tabs .tab').first().click();
     await fireSpell.click();
     await expect(editor).toHaveAttribute('aria-label', '爆炎咒 法术源码');
-    await expect(editor).toHaveValue(/伤害\(f, 31\)/);
+    await expect(editor).toHaveValue(/近战斩击\(准星方向\(\), 150, 31\)/);
 
     const imported = JSON.stringify({
       ...exportedSave,
@@ -120,19 +122,27 @@ test.describe('player state persistence', () => {
         JSON.stringify({
           ...currentSave,
           arenaAttrs: { castSpeed: 2 },
-          arenaBindings: { '5': '天雷引' },
+          // A duration spell stays observable across the HUD refresh interval;
+          // the current short channel spell can finish between two refreshes.
+          arenaBindings: { '5': '护体金光' },
         }),
       ),
     });
 
-    // The editor values alone only prove React state changed. These assertions
-    // read Battle-owned output, then trigger its newly imported slot binding.
-    await expect(
-      page.locator('.attrs .attr-row').filter({ hasText: '施法速度' }).locator('b'),
-    ).toHaveText('2.00');
+    await expect(page.getByRole('status')).toContainText('已导入存档');
+    // Read a paid, authorized Battle snapshot, not just the React setup input.
+    // Attribute rows no longer expose live values before an explicit observation.
     await page.locator('.battle-controls .run').click();
+    const attributes = page.getByRole('region', { name: '授权属性面板' });
+    await expect(attributes).toContainText('尚无获准快照');
+    await attributes.getByRole('button', { name: '读取自身快照' }).click();
+    await expect(
+      attributes.locator('.attr-row').filter({ hasText: 'castSpeed' }).locator('b'),
+    ).toHaveText('2.00');
     await page.keyboard.press('Digit5');
-    await expect(page.getByTestId('active-casts')).toContainText('天雷引');
+    await expect(page.getByTestId('active-casts').locator('[data-slot="5"]')).toContainText(
+      '护体金光',
+    );
     sink.assert();
   });
 
@@ -269,17 +279,23 @@ test.describe('blueprint editing tools', () => {
   test('undoes a node deletion together with its connected edges', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
+    // Keep connection geometry independent of the size of the default spell graph.
+    await page.locator('.code-input').fill('spell 撤销连线 {}');
     await page.getByTestId('lab-blueprint-mode').click();
     const blueprint = page.locator('.blueprint-callout');
     const initialNodes = await blueprint.locator('.react-flow__node').count();
     const initialEdges = await blueprint.locator('.react-flow__edge').count();
     await blueprint.getByRole('button', { name: /调用\(施法\)/ }).click();
     const added = blueprint.locator('.react-flow__node').last();
+    await expect(blueprint.locator('.react-flow__node')).toHaveCount(initialNodes + 1);
+    await blueprint.locator('.graph-wrap').scrollIntoViewIfNeeded();
+    await blueprint.getByRole('button', { name: 'Fit View' }).click();
     const source = blueprint
-      .locator('.react-flow__node')
-      .first()
-      .locator('.react-flow__handle.source');
-    const target = added.locator('.react-flow__handle.target').first();
+      .locator('.react-flow__node[data-id="entry"]')
+      .locator('.react-flow__handle[data-handleid="flow-out"]');
+    const target = added.locator('.react-flow__handle[data-handleid="flow-in"]');
+    await expect(source).toBeInViewport();
+    await expect(target).toBeInViewport();
     const sourceBox = await source.boundingBox();
     const targetBox = await target.boundingBox();
     expect(sourceBox).not.toBeNull();
@@ -332,11 +348,32 @@ test.describe('blueprint editing tools', () => {
 });
 
 test.describe('lab functionality', () => {
+  test('keeps third phase rehearsal reachable on a narrow screen and across tabs', async ({
+    page,
+  }) => {
+    const sink = captureErrors(page);
+    await page.setViewportSize({ width: 390, height: 780 });
+    await page.goto('/');
+    const rehearsal = page.getByLabel('第三期沙盒复现');
+    await expect(rehearsal).toBeVisible();
+    await rehearsal.getByRole('button', { name: '复现事件与双法术' }).click();
+    await expect(rehearsal.getByTestId('event-rehearsal')).toContainText('获准订阅 2 个');
+    await page.locator('.tabs .tab').nth(1).click();
+    await expect(page.getByLabel('账户与会话摘要')).toBeVisible();
+    await page.locator('.tabs .tab').first().click();
+    await expect(rehearsal).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    sink.assert();
+  });
+
   test('explains dynamic costs and runs the entity projectile spell', async ({ page }) => {
     const sink = captureErrors(page);
     await page.goto('/');
     const create = page.locator('.meta-spell').filter({ hasText: '创建弹道' });
-    await expect(create).toContainText('实体创建 · 法10+动态');
+    await expect(create).toContainText('实体创建');
+    await expect(create).toContainText('起手 法10+动态 / 2+动态t');
     await create.click();
     await expect(page.locator('.meta-inspector')).toContainText('法力基础');
     await expect(page.locator('.meta-inspector')).toContainText('10 + 动态');
@@ -407,6 +444,17 @@ test.describe('lab functionality', () => {
     const sink = captureErrors(page);
     await page.goto('/');
     await page.locator('.tabs .tab').first().click();
+    // Exercise the entity-list type regression explicitly; the default sword
+    // spell now creates a projectile without scanning or allocating a list.
+    await page.locator('.code-input').fill(`spell 蓝图实体列表 {
+  var seen: query<entities> = 扫描敌人(自身位置(), 240)
+  if 查询可用(seen) {
+    var foes: list<entity, 8> = 查询实体列表(seen)
+    for foe in foes {
+      创建弹道(自身位置(), 准星方向(), 380, 18, 2.4)
+    }
+  }
+}`);
     await page.getByTestId('lab-blueprint-mode').click();
     await expect(page.locator('.blueprint-callout .node-entry')).toBeVisible();
     const compile = page.locator('.blueprint-callout .blueprint-toolbar .run');
@@ -416,6 +464,7 @@ test.describe('lab functionality', () => {
     await expect(page.locator('.blueprint-callout .errors')).not.toContainText(/声明为 num/);
     await page.getByTestId('lab-code-mode').click();
     await expect(page.locator('.code-input')).toHaveValue(/list<entity, 8>/);
+    await expect(page.locator('.code-input')).toHaveValue(/查询实体列表\(seen\)/);
     await expect(page.locator('.code-input')).toHaveValue(/创建弹道\(/);
     sink.assert();
   });

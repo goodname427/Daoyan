@@ -159,6 +159,14 @@ class Parser {
 
   private parseType(): Type {
     const n = this.name();
+    if (n === 'query') {
+      this.expect('<');
+      const value = this.name();
+      if (!['num', 'vec2', 'entities', 'positions'].includes(value))
+        throw new ParseError(`未知查询值类型: ${value}`);
+      this.expect('>');
+      return T.query(value as 'num' | 'vec2' | 'entities' | 'positions');
+    }
     if (n === 'list' || n === '列表') {
       this.expect('<');
       const elem = this.name();
@@ -494,6 +502,7 @@ export function parseSpellbook(src: string): SpellBook {
 // ============================ AST → DSL 序列化 ============================
 
 function serType(t: Type): string {
+  if (t.k === 'query') return `query<${t.value}>`;
   if (t.k === 'list') {
     const cap = t.cap < 0 ? '' : `, ${t.cap}`;
     return `list<${t.elem}${cap}>`;
@@ -559,6 +568,8 @@ function serAnnotations(spell: Spell): string {
   const m = spell.meta;
   const parts: string[] = [];
   if (m.kind) parts.push(`@kind=${m.kind}`);
+  if (m.charge) parts.push(`@charge=${m.charge}`);
+  if (m.chargeMana !== undefined) parts.push(`@chargeMana=${m.chargeMana}`);
   if (m.period !== undefined) parts.push(`@period=${m.period}`);
   if (m.duration !== undefined) parts.push(`@duration=${m.duration}`);
   if (m.keys && m.keys.length > 0) parts.push(`@keys=${m.keys.join(',')}`);

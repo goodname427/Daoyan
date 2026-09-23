@@ -1,0 +1,236 @@
+{
+  "workItems": [
+    {
+      "id": "adr-motion-energy",
+      "status": "completed",
+      "typecheck": "not-run",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "node scripts/check-docs.mjs", "exitCode": 0 },
+        {
+          "command": "npx prettier --check \"docs/adr/*.md\" docs/architecture/invariants.md",
+          "exitCode": 0
+        },
+        { "command": "git diff --check", "exitCode": 0 }
+      ],
+      "evidence": [
+        "ADR 0018 adopted; runtime and movement feel remained downstream acceptance work."
+      ]
+    },
+    {
+      "id": "adr-attributes-ledger",
+      "status": "completed",
+      "typecheck": "not-run",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "node scripts/check-docs.mjs", "exitCode": 0 },
+        {
+          "command": "npx prettier --check \"docs/adr/*.md\" docs/architecture/invariants.md",
+          "exitCode": 0
+        },
+        { "command": "git diff --check", "exitCode": 0 }
+      ],
+      "evidence": [
+        "ADR 0019 adopted; runtime resource counterexamples remained downstream acceptance work."
+      ]
+    },
+    {
+      "id": "adr-events-context",
+      "status": "completed",
+      "typecheck": "not-run",
+      "targetedTests": "passed",
+      "commands": [
+        { "command": "node scripts/check-docs.mjs", "exitCode": 0 },
+        {
+          "command": "npx prettier --check \"docs/adr/*.md\" docs/architecture/invariants.md",
+          "exitCode": 0
+        },
+        { "command": "git diff --check", "exitCode": 0 }
+      ],
+      "evidence": [
+        "ADR 0020 adopted; ordering, authorization and refund behavior remained downstream acceptance work."
+      ]
+    },
+    {
+      "id": "entity-state",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/entity-vnext.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Bounded entity audit state and headless checks reported passing; Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "motion-effects",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/entity-vnext.test.ts test/combat.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Powered movement, inertia and teleport implemented; headless motion and VM checks passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "sense-permissions",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npx vitest run test/entity-vnext.test.ts test/dsl-migration.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Paid field-level sensing and migration diagnostics implemented; headless checks passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "slice-one-experience",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/render.test.tsx test/combat.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Lab and combat sensing/motion feedback implemented; headless battle check passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "resource-ledger",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/core.test.ts test/entity-vnext.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Shared resource ledger and headless resource checks reported passing; projectile pool consumption was left for a downstream task. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "projectile-energy",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/entity-vnext.test.ts test/combat.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Three projectile energy modes and bounded hit accounting implemented; headless World/VM/Battle checks passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "six-attributes",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/entity-vnext.test.ts test/core.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Six Actor attribute bindings and anti-arbitrage behavior implemented; headless checks passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "legacy-migration",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npx vitest run test/dsl-migration.test.ts test/persistence.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Legacy spell and save isolation implemented; headless migration checks passed. Vitest stopped at spawn EPERM before assertions; default-book legacy sensing calls were passed to a downstream task."
+      ]
+    },
+    {
+      "id": "slice-two-experience",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npx vitest run test/render.test.tsx test/persistence.test.ts test/combat.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Searchable meta catalog, safe presets and updated default spellbook implemented; headless spell and battle checks passed. Vitest stopped at spawn EPERM before assertions; page interaction awaits Feature review."
+      ]
+    },
+    {
+      "id": "passive-events",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/core.test.ts test/combat.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Bounded ordered passive event dispatch and independent responses implemented; headless Node behavior passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "active-monitor",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/entity-vnext.test.ts test/core.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Explicit paid monitoring and stop conditions implemented; headless checks passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "charge-sessions",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        { "command": "npx vitest run test/core.test.ts test/combat.test.ts", "exitCode": 1 }
+      ],
+      "evidence": [
+        "Two explicit charge session modes and idempotent termination implemented; headless behavior passed. Vitest stopped at spawn EPERM before assertions."
+      ]
+    },
+    {
+      "id": "slice-three-experience",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "failed",
+      "commands": [
+        { "command": "npm run typecheck", "exitCode": 0 },
+        {
+          "command": "npx vitest run test/render.test.tsx test/combat.test.ts test/persistence.test.ts",
+          "exitCode": 1
+        }
+      ],
+      "evidence": [
+        "Phase-three lab, combat controls and narrow-screen regression cases implemented; headless event, charge and migration checks passed. Vitest stopped at spawn EPERM before assertions; browser/E2E remain unrun."
+      ]
+    }
+  ]
+}

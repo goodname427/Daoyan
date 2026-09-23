@@ -9,7 +9,7 @@ import {
   type CostArg,
   type Ctx,
 } from '../meta';
-import { effectCost, isPositiveFinite } from '../pricing';
+import { effectCost, impulseEnergy, isPositiveFinite, teleportPrice } from '../pricing';
 
 function positionCost(
   ctx: Ctx | null,
@@ -19,20 +19,20 @@ function positionCost(
 ) {
   const pointArg = args[pointIndex];
   if (!ctx || !pointArg?.known) {
-    return { mana: dynamicCost(5), ticks: dynamicCost(2) };
+    return { mana: dynamicCost(20), ticks: dynamicCost(4) };
   }
   const point = asVec(pointArg.value);
   const target =
     targetIndex < 0 ? ctx.caster : ctx.world.entityById(asEntity(args[targetIndex]?.value ?? null));
   if (!target || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-    return { mana: fixedCost(5), ticks: fixedCost(2) };
+    return { mana: fixedCost(1), ticks: fixedCost(1) };
   }
+  if (!ctx.world.canTeleportEntity(target.id, point, ctx.controlSession?.canControl))
+    return { mana: fixedCost(1), ticks: fixedCost(1) };
   const distance = Math.hypot(point.x - target.x, point.y - target.y);
   const relation = ctx.world.controlCostMultiplier(ctx.caster, target);
-  return {
-    mana: fixedCost(5 + (distance / 20) * relation),
-    ticks: fixedCost(2 + Math.ceil((distance / 100) * relation)),
-  };
+  const resistance = ctx.world.controlPropertyBinding(target, 'position')?.resistance() ?? 0;
+  return teleportPrice(distance, relation, resistance);
 }
 
 /** 操控类：改变世界，收高额法力。伤害统一受「术法威力」属性影响 */
@@ -89,6 +89,7 @@ export default function register(): void {
 
   defMeta({
     name: '近战斩击',
+    discountableFixedMana: 1,
     group: '实体控制',
     params: [
       { name: '方向', t: V },
@@ -112,7 +113,7 @@ export default function register(): void {
       const o = { x: c.caster.x, y: c.caster.y };
       const hit = c.world.raycast(o, d, dist, 18, c.caster.faction);
       if (hit) {
-        c.world.damage(hit.id, dmg);
+        c.world.damage(hit.id, dmg, false, c.caster.id);
         c.log.push(`斩击命中 #${hit.id}，造成 ${Math.round(dmg)} 点伤害`);
       } else {
         c.log.push('斩击落空');
@@ -123,6 +124,7 @@ export default function register(): void {
 
   defMeta({
     name: '伤害',
+    discountableFixedMana: 1,
     group: '实体控制',
     params: [
       { name: '目标', t: E },
@@ -136,7 +138,7 @@ export default function register(): void {
     impl: (c, a) => {
       const id = asEntity(a[0]);
       const dmg = asNum(a[1]) * c.caster.attr.power;
-      if (!isPositiveFinite(dmg) || !c.world.damage(id, dmg)) return false;
+      if (!isPositiveFinite(dmg) || !c.world.damage(id, dmg, false, c.caster.id)) return false;
       c.log.push(`对 #${id} 造成 ${Math.round(dmg)} 点伤害`);
       return true;
     },
@@ -144,6 +146,7 @@ export default function register(): void {
 
   defMeta({
     name: '移动',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '方向', t: V },
@@ -152,20 +155,40 @@ export default function register(): void {
     ret: T.void,
     mana: 3,
     ticks: 1,
-    cost: (_ctx, args) => effectCost(args, 3, 1, [{ index: 1, manaPer: 0.05, tickUnit: 100 }]),
-    desc: '沿方向瞬时位移；请求距离越远，法力和耗时越高，不设人为上限',
+    cost: (ctx, args) => {
+      const price = effectCost(args, 3, 1, [{ index: 1, manaPer: 0.05, tickUnit: 100 }]);
+      if (!ctx || !args[0]?.known || !args[1]?.known) {
+        price.mana.dynamic = true;
+        price.ticks.dynamic = true;
+        return price;
+      }
+      const direction = asVec(args[0].value);
+      const distance = asNum(args[1].value);
+      const length = Math.hypot(direction.x, direction.y);
+      if (!Number.isFinite(length) || length < 1e-9 || !isPositiveFinite(distance)) return price;
+      const energy = impulseEnergy(ctx.caster.velocity, {
+        x: (direction.x / length) * distance,
+        y: (direction.y / length) * distance,
+      });
+      price.mana.value += energy / 0.8;
+      price.ticks.value += Math.ceil(energy);
+      price.undiscountedMana = fixedCost(energy / 0.8);
+      return price;
+    },
+    desc: '旧入口按请求量支付冲量并受主动速度上限约束；新法术请使用施加冲量',
     impl: (c, a) => {
       const d = asVec(a[0]);
       const dist = asNum(a[1]);
       const l = Math.hypot(d.x, d.y);
       if (!Number.isFinite(l) || l < 1e-9 || !isPositiveFinite(dist)) return null;
-      c.world.moveActor(c.caster, (d.x / l) * dist, (d.y / l) * dist);
+      c.world.applyImpulse(c.caster.id, { x: (d.x / l) * dist, y: (d.y / l) * dist });
       return null;
     },
   });
 
   defMeta({
     name: '瞬移',
+    legacyOnly: true,
     group: '实体控制',
     params: [{ name: '目标点', t: V }],
     ret: T.void,
@@ -176,7 +199,7 @@ export default function register(): void {
     impl: (c, a) => {
       const p = asVec(a[0]);
       if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
-      c.world.placeActor(c.caster, p.x, p.y);
+      if (!c.world.teleportEntity(c.caster.id, p, c.controlSession?.canControl)) return null;
       c.log.push(`瞬移至 (${Math.round(p.x)}, ${Math.round(p.y)})`);
       return null;
     },
@@ -184,6 +207,7 @@ export default function register(): void {
 
   defMeta({
     name: '设置位置',
+    legacyOnly: true,
     group: '实体控制',
     params: [
       { name: '目标', t: E },
@@ -198,7 +222,7 @@ export default function register(): void {
       const target = c.world.entityById(asEntity(args[0]));
       const point = asVec(args[1]);
       if (!target || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
-      c.world.placeEntity(target, point.x, point.y);
+      if (!c.world.teleportEntity(target.id, point, c.controlSession?.canControl)) return false;
       c.log.push(`设置 #${target.id} 位置为 (${Math.round(target.x)}, ${Math.round(target.y)})`);
       return true;
     },

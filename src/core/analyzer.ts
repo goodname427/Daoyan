@@ -12,6 +12,8 @@ import {
   type MetaCost,
   type PeriodicBudget,
 } from './meta';
+import { payableMana } from './pricing';
+import { RESOURCE_SCALE } from './ledger';
 
 /**
  * 静态分析器。
@@ -125,6 +127,12 @@ function periodicTotal(items: readonly PeriodicBudget[], resource: 'mana' | 'tic
   return { value, dynamic };
 }
 
+function upperMana(value: number): number {
+  const scaled = Math.ceil(value * RESOURCE_SCALE);
+  if (!Number.isSafeInteger(scaled)) throw new RangeError('法力静态计量溢出');
+  return scaled / RESOURCE_SCALE;
+}
+
 function scalePeriodic(items: readonly PeriodicBudget[], times: number): PeriodicBudget[] {
   if (times <= 0) return [];
   return items.map((item) => {
@@ -229,6 +237,49 @@ export class Analyzer {
       shenshiParams: paramsShenshi,
       errors: this.errors.slice(before),
     };
+
+    const charge = spell.meta?.charge;
+    if (charge !== undefined) {
+      const duration = spell.meta?.duration ?? 3;
+      const rawPeriod = spell.meta?.period ?? 1;
+      const period = Math.max(0.25, rawPeriod);
+      const manaPerPeriod = spell.meta?.chargeMana ?? 5;
+      const count = Math.ceil(duration / period);
+      if (
+        !['prepare', 'projectile'].includes(charge) ||
+        (spell.meta?.kind !== undefined && spell.meta.kind !== 'instant') ||
+        (charge === 'projectile' && spell.body.length > 0) ||
+        !Number.isFinite(duration) ||
+        duration <= 0 ||
+        !Number.isFinite(rawPeriod) ||
+        rawPeriod <= 0 ||
+        !Number.isSafeInteger(count) ||
+        !Number.isFinite(8 + duration * 2 + count * manaPerPeriod) ||
+        (charge === 'projectile' && (!Number.isFinite(manaPerPeriod) || manaPerPeriod <= 0))
+      ) {
+        result.errors.push(`法术「${name}」的蓄力会话配置无效`);
+      } else {
+        const start = charge === 'prepare' ? 1 : 8 + duration * 2;
+        const periodic = charge === 'prepare' ? 1 : manaPerPeriod;
+        const release = charge === 'projectile' ? 4.5 : 0;
+        const extra = start + count * periodic + release;
+        result.manaWorst += extra;
+        result.manaBudget.value += extra;
+        result.startMana = start;
+        result.startTicks = charge === 'prepare' ? 0 : 2 + Math.ceil(duration / 2);
+        result.periodic.push({
+          intervalSeconds: period,
+          mana: fixedCost(periodic),
+          ticks: fixedCost(1),
+          count: { kind: 'finite', max: count },
+        });
+        const extraTicks =
+          count + (charge === 'prepare' ? Math.ceil(duration * 100) : 5 + Math.ceil(duration / 2));
+        result.tickWorst += extraTicks;
+        result.tickBudget.value += extraTicks;
+        result.shenshiPeak += 1;
+      }
+    }
 
     this.visiting.delete(name);
     this.memo.set(memoKey, result);
@@ -550,13 +601,37 @@ export class Analyzer {
         const cost = this.staticMetaCost(meta.name, meta.mana, meta.ticks, () =>
           meta.cost!(null, argValues),
         );
-        mana += cost.mana.value;
+        const fixed =
+          meta.discountableFixedMana === undefined
+            ? null
+            : Math.max(meta.discountableFixedMana, cost.undiscountedMana?.value ?? 0);
+        try {
+          mana += upperMana(payableMana(cost.mana.value, fixed, 4));
+        } catch (error) {
+          this.errors.push(`元函数「${name}」静态法力定价失败：${String(error)}`);
+          manaDynamic = true;
+        }
         ticks += cost.ticks.value;
-        manaDynamic ||= cost.mana.dynamic;
+        manaDynamic ||= cost.mana.dynamic || (cost.undiscountedMana?.dynamic ?? false);
         tickDynamic ||= cost.ticks.dynamic;
-        if (cost.periodic) periodic.push(cost.periodic);
+        if (cost.periodic) {
+          try {
+            periodic.push({
+              ...cost.periodic,
+              mana: { ...cost.periodic.mana, value: upperMana(cost.periodic.mana.value) },
+            });
+          } catch (error) {
+            this.errors.push(`元函数「${name}」周期法力定价失败：${String(error)}`);
+            periodic.push({ ...cost.periodic, mana: dynamicCost() });
+          }
+        }
       } else {
-        mana += meta.mana;
+        try {
+          mana += upperMana(payableMana(meta.mana, meta.discountableFixedMana ?? null, 4));
+        } catch (error) {
+          this.errors.push(`元函数「${name}」静态法力定价失败：${String(error)}`);
+          manaDynamic = true;
+        }
         ticks += meta.ticks;
       }
       return {

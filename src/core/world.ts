@@ -1,4 +1,6 @@
 import type { Vec2 } from './types';
+import { RESOURCE_SCALE, ResourceLedger, type EnergyPool } from './ledger';
+import { sensePrice } from './pricing';
 import {
   baseAttributes,
   computeAttributes,
@@ -54,6 +56,15 @@ export interface Projectile {
   hit: Set<number>;
   /** 创建后可先配置；只有激活的弹道才移动和碰撞 */
   active: boolean;
+  /** 当前实际速度；由运动推进更新，朝向与上限变化不直接改写。 */
+  velocity: Vec2;
+  motionSource: 'projectile' | 'none';
+  teleportAllowed: boolean;
+  /** 主动运动计划只引用预付池，不持有 owner 的法力账户。 */
+  behavior: 'glide' | 'thrust' | 'track';
+  thrust: Vec2;
+  trackTargetId: number | null;
+  driveRemaining: number;
 }
 
 export interface Actor {
@@ -64,6 +75,15 @@ export interface Actor {
 
   x: number;
   y: number;
+  velocity: Vec2;
+  motionSource: 'base' | 'spell' | 'none';
+  teleportAllowed: boolean;
+  /** 世界授予的不可兑换运动功率；仅角色拥有。 */
+  movePower: number;
+  baseSpeed: number;
+  drive: Vec2;
+  driveRemaining: number;
+  drivePaid: boolean;
   /** 输入方向（单位向量），不受控制覆写影响 */
   baseAim: Vec2;
   /** 合成控制覆写后的有效准星方向 */
@@ -107,6 +127,190 @@ export interface Actor {
 
 /** DSL `entity` 句柄可以指向的统一世界对象。 */
 export type Entity = Actor | Projectile;
+
+/** 核心内部审计字段。读取权由上层探查合同另行检查，不直接暴露给 DSL。 */
+export type EntityAuditField =
+  | 'position'
+  | 'facing'
+  | 'velocity'
+  | 'speedMax'
+  | 'motionSource'
+  | 'movePower'
+  | 'hp'
+  | 'hpMax'
+  | 'mana'
+  | 'manaMax'
+  | 'manaRegen'
+  | 'shenshiUsed'
+  | 'shenshiMax'
+  | 'castSpeed'
+  | 'manaCostMul'
+  | 'armor'
+  | 'damage'
+  | 'perception'
+  | 'lifetime'
+  | 'resistances'
+  | 'ownership'
+  | 'sessions'
+  | 'events';
+
+export interface EntityAuditEvent {
+  readonly at: number;
+  readonly type: string;
+  readonly summary: string;
+}
+
+export interface EntityAuditBinding {
+  readonly isAvailable: () => boolean;
+  readonly read: () => unknown;
+  /** 本字段探查抗性；未声明的内建字段为 0。 */
+  readonly senseResistance?: () => number;
+}
+
+export type EntityAuditBindings = Partial<Record<EntityAuditField, EntityAuditBinding>>;
+export interface SenseGrant {
+  /** 授权由权威世界配置；公开上界必须在整个授权期覆盖隐藏真值。 */
+  readonly shenshiUpperBound: number;
+  readonly resistanceUpperBound: number;
+  /** 组合实体无 Actor 身份时，由授权者公布保守关系。 */
+  readonly relation?: 1 | 2 | 8;
+}
+export interface SenseQuote {
+  readonly distance: number;
+  readonly relation: number;
+  readonly targetShenshi: number;
+  readonly readerShenshi: number;
+  readonly resistance: number;
+  readonly level: 0 | 1 | 2;
+  readonly privateSelf: boolean;
+}
+/** 一个目标和一个字段构成有限监控范围；付款账户必须是启动者本人。 */
+export interface ActiveMonitorRequest {
+  readonly ownerId: number;
+  readonly payerId: number;
+  readonly targetId: number;
+  readonly field: EntityAuditField;
+  readonly intervalSeconds: number;
+  readonly periods: number;
+}
+export interface ActiveMonitorSnapshot {
+  readonly id: number;
+  readonly ownerId: number;
+  readonly targetId: number;
+  readonly field: EntityAuditField;
+  readonly nextScanAt: number | null;
+  readonly finishedAt: number | null;
+  readonly remainingPeriods: number;
+  readonly paidMana: number;
+  readonly paidTicks: number;
+  readonly latest: EntityAuditResult | null;
+}
+interface ActiveMonitor extends ActiveMonitorSnapshot {
+  readonly payerId: number;
+  readonly intervalSeconds: number;
+}
+export type EntityAuditResult =
+  | {
+      readonly ok: true;
+      readonly value: unknown;
+      readonly observedAt: number;
+      readonly targetId: number;
+      readonly field: EntityAuditField;
+    }
+  | { readonly ok: false; readonly reason: 'unavailable' };
+
+const MAX_AUDIT_EVENTS = 16;
+const MAX_AUDIT_COMPOSITES = 64;
+const MAX_CONTROL_SESSIONS = 64;
+const MAX_AUDIT_SESSIONS = MAX_CONTROL_SESSIONS * 2;
+
+function finiteAuditVector(value: unknown): Vec2 | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const vector = value as Partial<Vec2>;
+  return Number.isFinite(vector.x) && Number.isFinite(vector.y)
+    ? { x: vector.x!, y: vector.y! }
+    : undefined;
+}
+
+/** binding 的数据也按字段校验，避免组合实体提供无限列表或可变引用。 */
+function boundedAuditValue(field: EntityAuditField, value: unknown): unknown | undefined {
+  if (field === 'position' || field === 'facing' || field === 'velocity')
+    return finiteAuditVector(value);
+  if (
+    field === 'speedMax' ||
+    field === 'movePower' ||
+    field === 'hp' ||
+    field === 'hpMax' ||
+    field === 'mana' ||
+    field === 'manaMax' ||
+    field === 'manaRegen' ||
+    field === 'shenshiUsed' ||
+    field === 'shenshiMax' ||
+    field === 'castSpeed' ||
+    field === 'manaCostMul' ||
+    field === 'armor' ||
+    field === 'damage' ||
+    field === 'perception' ||
+    field === 'lifetime'
+  )
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+  if (field === 'motionSource')
+    return typeof value === 'string' && value.length > 0 && value.length <= 32 ? value : undefined;
+  if (field === 'ownership' || field === 'resistances') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const entries = Object.entries(value);
+    if (entries.length > 16) return undefined;
+    const result: Record<string, string | number | null> = Object.create(null);
+    for (const [key, item] of entries) {
+      if (key.length > 32) return undefined;
+      if (field === 'resistances') {
+        if (typeof item !== 'number' || !Number.isFinite(item) || item < 0) return undefined;
+        result[key] = item;
+        continue;
+      }
+      if (typeof item === 'number' && Number.isFinite(item)) result[key] = item;
+      else if (typeof item === 'string' && item.length <= 64) result[key] = item;
+      else if (item === null) result[key] = null;
+      else return undefined;
+    }
+    return result;
+  }
+  if (!Array.isArray(value)) return undefined;
+  if (field === 'sessions') {
+    if (value.length > MAX_AUDIT_SESSIONS) return undefined;
+    const sessions: { id: number; role: string }[] = [];
+    for (const item of value) {
+      if (
+        !item ||
+        typeof item !== 'object' ||
+        !Number.isSafeInteger(item.id) ||
+        item.id < 1 ||
+        typeof item.role !== 'string' ||
+        item.role.length > 32
+      )
+        return undefined;
+      sessions.push({ id: item.id, role: item.role });
+    }
+    return sessions;
+  }
+  if (value.length > MAX_AUDIT_EVENTS) return undefined;
+  const events: EntityAuditEvent[] = [];
+  for (const item of value) {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      typeof item.at !== 'number' ||
+      !Number.isFinite(item.at) ||
+      typeof item.type !== 'string' ||
+      item.type.length > 32 ||
+      typeof item.summary !== 'string' ||
+      item.summary.length > 160
+    )
+      return undefined;
+    events.push({ at: item.at, type: item.type, summary: item.summary });
+  }
+  return events;
+}
 
 export type EntityCapability =
   'identity' | 'transform' | 'vitality' | 'caster' | 'movement' | 'projectile' | 'modifiers';
@@ -168,6 +372,47 @@ export interface ControlRequest {
 
 const MAX_CONTROL_RECORDS = 64;
 const CONTROL_PERIOD = 0.25;
+const EVENT_QUEUE_LIMIT = 1024;
+const EVENT_ATTEMPT_LIMIT = 256;
+
+export type WorldEventType = 'damage' | 'collision' | 'mana-exhausted' | 'disappear';
+export interface WorldEvent {
+  readonly eventId: number;
+  readonly worldSequence: number;
+  readonly simTime: number;
+  readonly rootEventId: number;
+  readonly parentEventId: number | null;
+  readonly depth: number;
+  readonly type: WorldEventType;
+  readonly sourceId: number | null;
+  readonly targetId: number | null;
+  /** 提交时冻结的只读摘要；不得把实体对象或账户交给响应。 */
+  readonly summary: Readonly<{ amount?: number; x?: number; y?: number }>;
+}
+
+interface EventSubscription {
+  readonly sequence: number;
+  readonly bindingId: string;
+  readonly ownerId: number;
+  readonly type: WorldEventType;
+  readonly sourceId: number | null;
+  readonly targetId: number | null;
+  readonly sessionId: number | null;
+  readonly respond: (event: WorldEvent) => void;
+}
+
+interface QueuedWorldEvent {
+  readonly event: WorldEvent;
+  readonly candidates: Array<{ sequence: number; projection: WorldEvent }>;
+  readonly terminalEntity?: Entity;
+}
+
+interface EventRoot {
+  attempts: number;
+  pending: number;
+  retained: number;
+  seen: Set<string>;
+}
 
 export class World {
   actors: Actor[] = [];
@@ -176,8 +421,447 @@ export class World {
   /** 表现层事件队列，视图每帧消费 */
   fx: FxEvent[] = [];
   bounds = { w: 1600, h: 1200 };
-  /** 伤害回调，战斗层用它实现「受击打断施法」 */
+  /** 提交后的兼容通知；仅用于打断旧实例，不能在此同步派发响应。 */
   onDamage: ((target: Actor, amount: number) => void) | null = null;
+  private eventSequence = 1;
+  private subscriptionSequence = 1;
+  private subscriptions = new Map<number, EventSubscription>();
+  private eventQueue: QueuedWorldEvent[] = [];
+  private eventRoots = new Map<number, EventRoot>();
+  private currentEvent: WorldEvent | null = null;
+  private dispatchingEvents = false;
+  private cycleAttempts = new Map<number, number>();
+  private exhaustedAccounts = new Map<number, boolean>();
+  private subscriptionShenshi = new Map<number, number>();
+  private activeMonitors = new Map<number, ActiveMonitor>();
+  private nextMonitorId = 1;
+  private chargingMonitorId: number | null = null;
+  private scanningMonitorId: number | null = null;
+  private actorContacts = new Set<string>();
+  readonly eventDrops = { queue: 0, depth: 0, root: 0, cycle: 0, capacity: 0 };
+  /** 核心权威资源账；Battle 和界面只能读取其授权投影。 */
+  readonly resourceLedger = new ResourceLedger(
+    (id) => this.byId(id),
+    () => this.controlTime,
+    (entityId, payerId) => {
+      const entity = this.entityById(entityId);
+      return (
+        !!entity &&
+        this.entityAvailable(entity) &&
+        (entity.kind === 'projectile' ? entity.ownerId === payerId : entity.id === payerId)
+      );
+    },
+    (payerId) => this.observeManaThreshold(payerId),
+  );
+
+  /** 登记占用 1 神识；稳定 bindingId 是因果去重身份，重登不能绕过它。 */
+  subscribeEvent(
+    ownerId: number,
+    bindingId: string,
+    type: WorldEventType,
+    respond: (event: WorldEvent) => void,
+    options: { sourceId?: number; targetId?: number; session?: ControlSession } = {},
+  ): number | null {
+    const owner = this.byId(ownerId);
+    if (
+      !owner?.alive ||
+      !bindingId ||
+      bindingId.length > 128 ||
+      !['damage', 'collision', 'mana-exhausted', 'disappear'].includes(type) ||
+      this.subscriptions.size >= 256 ||
+      [...this.subscriptions.values()].filter((item) => item.ownerId === ownerId).length >= 32 ||
+      (options.session && (!options.session.active || options.session.controllerId !== ownerId)) ||
+      !this.tryReserveSubscriptionShenshi(ownerId)
+    )
+      return null;
+    const sequence = this.subscriptionSequence++;
+    this.subscriptions.set(sequence, {
+      sequence,
+      bindingId,
+      ownerId,
+      type,
+      sourceId: options.sourceId ?? null,
+      targetId: options.targetId ?? null,
+      sessionId: options.session?.id ?? null,
+      respond,
+    });
+    return sequence;
+  }
+
+  unsubscribeEvent(sequence: number): void {
+    const subscription = this.subscriptions.get(sequence);
+    if (!subscription) return;
+    this.subscriptions.delete(sequence);
+    const used = (this.subscriptionShenshi.get(subscription.ownerId) ?? 0) - 1;
+    if (used <= 0) this.subscriptionShenshi.delete(subscription.ownerId);
+    else this.subscriptionShenshi.set(subscription.ownerId, used);
+  }
+
+  private tryReserveSubscriptionShenshi(id: number): boolean {
+    const actor = this.byId(id);
+    if (!actor?.alive) return false;
+    const used = this.subscriptionShenshi.get(id) ?? 0;
+    if (
+      used +
+        (this.auditShenshiUsage.get(id) ?? 0) +
+        (this.auditVmShenshiTotal.get(id) ?? 0) +
+        this.controlRecordShenshiUsed(id) >=
+      actor.attr.shenshiMax
+    )
+      return false;
+    this.subscriptionShenshi.set(id, used + 1);
+    return true;
+  }
+
+  /** 建立时不读取目标；每个周期在授权和余额检查后付款，才产生快照。 */
+  startActiveMonitor(request: ActiveMonitorRequest): number | null {
+    const owner = this.byId(request.ownerId);
+    const target = this.entityById(request.targetId);
+    if (
+      !owner?.alive ||
+      owner.mana < 1 ||
+      request.payerId !== request.ownerId ||
+      !Number.isSafeInteger(request.targetId) ||
+      (target ? !this.entityAvailable(target) : !this.auditComposites.has(request.targetId)) ||
+      !Number.isSafeInteger(request.periods) ||
+      request.periods < 1 ||
+      request.periods > 256 ||
+      !Number.isSafeInteger(request.intervalSeconds / CONTROL_PERIOD) ||
+      request.intervalSeconds < CONTROL_PERIOD ||
+      request.intervalSeconds > 60 ||
+      this.activeMonitors.size >= 256 ||
+      [...this.activeMonitors.values()].filter((monitor) => monitor.ownerId === owner.id).length >=
+        32 ||
+      !Number.isFinite(this.controlTime + request.intervalSeconds) ||
+      !this.senseQuote(owner, request.targetId, request.field) ||
+      !this.tryReserveSubscriptionShenshi(owner.id)
+    )
+      return null;
+    const id = this.nextMonitorId++;
+    this.activeMonitors.set(id, {
+      ...request,
+      id,
+      nextScanAt: this.controlTime + request.intervalSeconds,
+      finishedAt: null,
+      remainingPeriods: request.periods,
+      paidMana: 0,
+      paidTicks: 0,
+      latest: null,
+    });
+    return id;
+  }
+
+  stopActiveMonitor(id: number, ownerId: number): boolean {
+    const monitor = this.activeMonitors.get(id);
+    if (!monitor || monitor.ownerId !== ownerId) return false;
+    this.activeMonitors.delete(id);
+    const used = (this.subscriptionShenshi.get(ownerId) ?? 0) - 1;
+    if (used <= 0) this.subscriptionShenshi.delete(ownerId);
+    else this.subscriptionShenshi.set(ownerId, used);
+    return true;
+  }
+
+  activeMonitorSnapshot(id: number, ownerId: number): ActiveMonitorSnapshot | null {
+    this.pruneActiveMonitors();
+    const monitor = this.activeMonitors.get(id);
+    if (!monitor || monitor.ownerId !== ownerId) return null;
+    return { ...monitor, latest: monitor.latest && structuredClone(monitor.latest) };
+  }
+
+  private pruneActiveMonitors(): void {
+    for (const monitor of this.activeMonitors.values()) {
+      if (monitor.id === this.scanningMonitorId) continue;
+      const owner = this.byId(monitor.ownerId);
+      const target = this.entityById(monitor.targetId);
+      if (
+        !owner?.alive ||
+        (owner.mana < 1 && monitor.finishedAt === null && monitor.id !== this.chargingMonitorId) ||
+        (target ? !this.entityAvailable(target) : !this.auditComposites.has(monitor.targetId)) ||
+        !this.senseQuote(owner, monitor.targetId, monitor.field)
+      )
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+    }
+  }
+
+  private scanActiveMonitor(monitor: ActiveMonitor): void {
+    this.scanningMonitorId = monitor.id;
+    try {
+      const owner = this.byId(monitor.ownerId);
+      const target = this.entityById(monitor.targetId);
+      const quote =
+        owner?.alive &&
+        (target ? this.entityAvailable(target) : this.auditComposites.has(monitor.targetId)) &&
+        this.senseQuote(owner, monitor.targetId, monitor.field);
+      if (!quote) {
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+        return;
+      }
+      let price;
+      try {
+        price = sensePrice(quote);
+      } catch {
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+        return;
+      }
+      if (monitor.paidTicks + price.ticks.value > 600) {
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+        return;
+      }
+      let paid: number | null;
+      this.chargingMonitorId = monitor.id;
+      try {
+        paid = this.resourceLedger.payMana(monitor.payerId, price.mana.value, 'monitor');
+      } catch {
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+        return;
+      } finally {
+        this.chargingMonitorId = null;
+      }
+      if (paid === null) {
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+        return;
+      }
+      const charged = {
+        ...monitor,
+        paidMana: monitor.paidMana + paid,
+        paidTicks: monitor.paidTicks + price.ticks.value,
+      };
+      this.activeMonitors.set(monitor.id, charged);
+      const result = this.readEntityAuditField(monitor.targetId, monitor.field);
+      const currentTarget = this.entityById(monitor.targetId);
+      if (
+        !result.ok ||
+        (currentTarget
+          ? !this.entityAvailable(currentTarget)
+          : !this.auditComposites.has(monitor.targetId)) ||
+        !this.senseQuote(owner!, monitor.targetId, monitor.field)
+      ) {
+        this.stopActiveMonitor(monitor.id, monitor.ownerId);
+        return;
+      }
+      this.activeMonitors.set(monitor.id, {
+        ...charged,
+        remainingPeriods: monitor.remainingPeriods - 1,
+        nextScanAt:
+          monitor.remainingPeriods === 1 || owner!.mana < 1
+            ? null
+            : monitor.nextScanAt! + monitor.intervalSeconds,
+        finishedAt:
+          monitor.remainingPeriods === 1 || owner!.mana < 1
+            ? this.controlTime + monitor.intervalSeconds
+            : null,
+        latest: result,
+      });
+    } finally {
+      this.scanningMonitorId = null;
+    }
+  }
+
+  /** 只可由权威碰撞事务调用；零伤害接触也有独立摘要。 */
+  private recordCollision(sourceId: number, targetId: number, x: number, y: number): void {
+    this.queueWorldEvent('collision', sourceId, targetId, { x, y });
+  }
+
+  /** 一帧接触集合只在开始接触时生成碰撞，持续接触不重复发布。 */
+  commitActorContacts(
+    contacts: ReadonlyArray<{ sourceId: number; targetId: number; x: number; y: number }>,
+  ): void {
+    const next = new Set<string>();
+    for (const contact of contacts) {
+      const key = `${contact.sourceId}:${contact.targetId}`;
+      next.add(key);
+      if (!this.actorContacts.has(key))
+        this.recordCollision(contact.sourceId, contact.targetId, contact.x, contact.y);
+    }
+    this.actorContacts = next;
+  }
+
+  /** 外层响应跨帧继续时保留因果根与去重状态。 */
+  retainEventRoot(rootEventId: number): void {
+    const root = this.eventRoots.get(rootEventId);
+    if (root) root.retained++;
+  }
+
+  releaseEventRoot(rootEventId: number): void {
+    const root = this.eventRoots.get(rootEventId);
+    if (!root) return;
+    root.retained = Math.max(0, root.retained - 1);
+    this.releaseIdleRoot(rootEventId);
+  }
+
+  withEventCause<T>(event: WorldEvent, action: () => T): T {
+    const previous = this.currentEvent;
+    this.currentEvent = event;
+    try {
+      return action();
+    } finally {
+      this.currentEvent = previous;
+    }
+  }
+
+  private queueWorldEvent(
+    type: WorldEventType,
+    sourceId: number | null,
+    targetId: number | null,
+    summary: WorldEvent['summary'],
+    terminalEntity?: Entity,
+  ): void {
+    if (this.eventQueue.length >= EVENT_QUEUE_LIMIT) {
+      this.eventDrops.queue++;
+      return;
+    }
+    const eventId = this.eventSequence++;
+    const parent = this.currentEvent;
+    const rootEventId = parent?.rootEventId ?? eventId;
+    let root = this.eventRoots.get(rootEventId);
+    if (!root) {
+      if (this.eventRoots.size >= EVENT_QUEUE_LIMIT) {
+        this.eventDrops.queue++;
+        return;
+      }
+      root = { attempts: 0, pending: 0, retained: 0, seen: new Set() };
+      this.eventRoots.set(rootEventId, root);
+    }
+    const event: WorldEvent = Object.freeze({
+      eventId,
+      worldSequence: eventId,
+      simTime: this.controlTime,
+      rootEventId,
+      parentEventId: parent?.eventId ?? null,
+      depth: (parent?.depth ?? -1) + 1,
+      type,
+      sourceId,
+      targetId,
+      summary: Object.freeze({ ...summary }),
+    });
+    const candidates = [...this.subscriptions.values()]
+      .filter((item) => item.type === type)
+      .flatMap((item) => {
+        const projection = this.projectWorldEvent(item.ownerId, event, terminalEntity);
+        return projection && this.eventMatches(item, projection)
+          ? [{ sequence: item.sequence, projection }]
+          : [];
+      });
+    root.pending++;
+    this.eventQueue.push({ event, candidates, terminalEntity });
+  }
+
+  dispatchWorldEvents(): void {
+    if (this.dispatchingEvents) return;
+    this.dispatchingEvents = true;
+    try {
+      while (this.eventQueue.length > 0) {
+        const queued = this.eventQueue.shift()!;
+        const { event } = queued;
+        const root = this.eventRoots.get(event.rootEventId)!;
+        for (const { sequence, projection } of queued.candidates) {
+          const sub = this.subscriptions.get(sequence);
+          if (
+            !sub ||
+            !this.byId(sub.ownerId)?.alive ||
+            (sub.sessionId !== null && !this.controlSessions.get(sub.sessionId)?.active)
+          )
+            continue;
+          // 重投影只能删减发生时获准的字段，后授予的权限不补发历史信息。
+          const delivered = this.projectWorldEvent(sub.ownerId, projection, queued.terminalEntity);
+          if (!delivered || !this.eventMatches(sub, delivered)) continue;
+          if (event.depth > 8) {
+            this.eventDrops.depth++;
+            continue;
+          }
+          const key = `${sub.ownerId}:${sub.bindingId}:${event.type}:${event.sourceId}:${event.targetId}`;
+          if (root.seen.has(key)) continue;
+          const cycle = Math.floor(event.simTime / CONTROL_PERIOD);
+          const cycleUsed = this.cycleAttempts.get(cycle) ?? 0;
+          if (root.attempts >= EVENT_ATTEMPT_LIMIT) {
+            this.eventDrops.root++;
+            continue;
+          }
+          if (cycleUsed >= EVENT_ATTEMPT_LIMIT) {
+            this.eventDrops.cycle++;
+            continue;
+          }
+          root.seen.add(key);
+          root.attempts++;
+          this.cycleAttempts.set(cycle, cycleUsed + 1);
+          try {
+            this.withEventCause(event, () => sub.respond(delivered));
+          } catch {
+            this.eventDrops.capacity++;
+          }
+        }
+        root.pending--;
+        this.releaseIdleRoot(event.rootEventId);
+      }
+    } finally {
+      this.dispatchingEvents = false;
+      const currentCycle = Math.floor(this.controlTime / CONTROL_PERIOD);
+      for (const cycle of this.cycleAttempts.keys())
+        if (cycle < currentCycle - 1) this.cycleAttempts.delete(cycle);
+    }
+  }
+
+  private releaseIdleRoot(id: number): void {
+    const root = this.eventRoots.get(id);
+    if (root && root.pending === 0 && root.retained === 0) this.eventRoots.delete(id);
+  }
+
+  private eventMatches(subscription: EventSubscription, event: WorldEvent): boolean {
+    return (
+      (subscription.sourceId === null || subscription.sourceId === event.sourceId) &&
+      (subscription.targetId === null || subscription.targetId === event.targetId)
+    );
+  }
+
+  private projectWorldEvent(
+    ownerId: number,
+    event: WorldEvent,
+    terminalEntity?: Entity,
+  ): WorldEvent | null {
+    const reader = this.byId(ownerId);
+    if (!reader?.alive) return null;
+    if (event.type === 'mana-exhausted') return event.targetId === ownerId ? event : null;
+    const canRead = (id: number | null, field: EntityAuditField): boolean =>
+      id !== null &&
+      (id === ownerId || !!this.senseQuoteForEvent(reader, id, field, terminalEntity));
+    const sourceVisible = canRead(event.sourceId, 'events');
+    const targetVisible = canRead(event.targetId, 'events');
+    const selfEvent =
+      event.targetId === ownerId || (event.type === 'collision' && event.sourceId === ownerId);
+    if (!selfEvent && !targetVisible) return null;
+    const summary: { amount?: number; x?: number; y?: number } = {};
+    if (targetVisible && canRead(event.targetId, 'hp') && event.summary.amount !== undefined)
+      summary.amount = event.summary.amount;
+    // 碰撞坐标属于接触源；受击/消失坐标属于目标。自身接触的必要摘要保留。
+    const positionId = event.type === 'collision' ? event.sourceId : event.targetId;
+    if (
+      positionId === ownerId ||
+      (canRead(positionId, 'events') && canRead(positionId, 'position'))
+    ) {
+      if (event.summary.x !== undefined) summary.x = event.summary.x;
+      if (event.summary.y !== undefined) summary.y = event.summary.y;
+    }
+    return Object.freeze({
+      ...event,
+      sourceId: sourceVisible ? event.sourceId : null,
+      targetId: targetVisible ? event.targetId : null,
+      summary: Object.freeze(summary),
+    });
+  }
+
+  /** 观察已提交的可用余额边沿，失败付款及初始不足不发事件。 */
+  observeManaThreshold(id: number): void {
+    const actor = this.byId(id);
+    if (!actor?.alive) return;
+    const exhausted = actor.mana < 1;
+    const previous = this.exhaustedAccounts.get(id);
+    this.exhaustedAccounts.set(id, exhausted);
+    if (exhausted)
+      for (const monitor of this.activeMonitors.values())
+        if (monitor.ownerId === id && monitor.id !== this.chargingMonitorId)
+          this.stopActiveMonitor(monitor.id, id);
+    if (previous === false && exhausted) this.queueWorldEvent('mana-exhausted', id, id, {});
+  }
 
   /** Actor 与 Projectile 共用同一 ID 空间，句柄在一次 World 生命周期内不复用。 */
   private nextEntityId = 1;
@@ -194,8 +878,30 @@ export class World {
   private controlTime = 0;
   private nextControlSequence = 1;
   private nextControlSessionId = 1;
+  private auditBindings = new WeakMap<Entity, EntityAuditBindings>();
+  private auditEvents = new WeakMap<object, EntityAuditEvent[]>();
+  private auditComposites = new Map<number, { bindings: EntityAuditBindings; token: object }>();
+  private auditShenshiUsage = new Map<number, number>();
+  private auditVmShenshiUsage = new WeakMap<object, { id: number; used: number }>();
+  private auditVmShenshiTotal = new Map<number, number>();
+  private senseGrants = new Map<string, SenseGrant>();
+  private senseHidden = new Set<number>();
+  private senseOccluded = new Set<number>();
 
   reset(): void {
+    this.activeMonitors.clear();
+    this.subscriptions.clear();
+    this.eventQueue = [];
+    this.eventRoots.clear();
+    this.currentEvent = null;
+    this.dispatchingEvents = false;
+    this.cycleAttempts.clear();
+    this.exhaustedAccounts.clear();
+    this.subscriptionShenshi.clear();
+    this.actorContacts.clear();
+    for (const key of Object.keys(this.eventDrops) as Array<keyof typeof this.eventDrops>)
+      this.eventDrops[key] = 0;
+    this.resourceLedger.reset();
     this.actors = [];
     this.projectiles = [];
     this.events = [];
@@ -207,6 +913,15 @@ export class World {
     this.controlRecords = [];
     this.controlBase = new WeakMap();
     this.controlTime = 0;
+    this.auditBindings = new WeakMap();
+    this.auditEvents = new WeakMap();
+    this.auditComposites.clear();
+    this.auditShenshiUsage.clear();
+    this.auditVmShenshiUsage = new WeakMap();
+    this.auditVmShenshiTotal.clear();
+    this.senseGrants.clear();
+    this.senseHidden.clear();
+    this.senseOccluded.clear();
     // 保留计数器，避免重置前持有的句柄误指向新场景对象。
     this.nextModifierId = 1;
   }
@@ -214,7 +929,11 @@ export class World {
   /** 每帧推进：法力回复、增益计时、属性重算 */
   tickActor(a: Actor, dt: number): void {
     if (!a.alive) return;
+    if (!Number.isFinite(dt) || dt < 0) throw new RangeError('非法世界时间');
+    this.resourceLedger.observeMana(a.id);
     a.mana = Math.min(a.attr.manaMax, a.mana + a.attr.manaRegen * dt);
+    this.resourceLedger.recordManaWorldChange(a.id, 'regen');
+    this.observeManaThreshold(a.id);
     if (a.stun > 0) a.stun = Math.max(0, a.stun - dt);
     if (a.hitFlash > 0) a.hitFlash = Math.max(0, a.hitFlash - dt);
     if (a.mods.length > 0 && tickModifiers(a.mods, dt)) this.recompute(a);
@@ -229,6 +948,14 @@ export class World {
       faction: init.faction,
       x: init.x,
       y: init.y,
+      velocity: { x: 0, y: 0 },
+      motionSource: 'none',
+      teleportAllowed: true,
+      movePower: base.speed > 0 ? 4 : 0,
+      baseSpeed: base.speed,
+      drive: { x: 0, y: 0 },
+      driveRemaining: 0,
+      drivePaid: false,
       aim: { x: 1, y: 0 },
       baseAim: { x: 1, y: 0 },
       hp: base.hpMax,
@@ -251,7 +978,10 @@ export class World {
       deathTimer: 0,
     };
     this.propertyBindings.set(a, this.actorPropertyBindings(a));
+    this.auditBindings.set(a, this.actorAuditBindings(a));
     this.actors.push(a);
+    this.resourceLedger.observeMana(a.id);
+    this.observeManaThreshold(a.id);
     return a;
   }
 
@@ -264,6 +994,172 @@ export class World {
     return (
       this.actors.find((a) => a.id === id) ?? this.projectiles.find((p) => p.id === id) ?? null
     );
+  }
+
+  /** 注能只向仍存在的实体发布来源；付款、容量与凭证创建由账本一笔完成。 */
+  injectEntityEnergy(
+    entityId: number,
+    payerId: number,
+    pool: EnergyPool,
+    mana: number,
+    sessionId: number | null = null,
+    effectId: number | null = null,
+  ): number | null {
+    if (!this.entityById(entityId)) return null;
+    return this.resourceLedger.inject(entityId, payerId, pool, mana, sessionId, effectId);
+  }
+
+  /** 销毁、死亡与取消重放均返回原结算额，不产生第二次退款。 */
+  refundEntityEnergy(entityId: number): number {
+    return this.resourceLedger.terminate(entityId);
+  }
+
+  /** 实体权威移除先结算，再公布只读消失事实；重复移除无事件。 */
+  removeProjectile(projectileId: number): boolean {
+    const projectile = this.projectiles.find((item) => item.id === projectileId);
+    if (!projectile) return false;
+    this.refundEntityEnergy(projectileId);
+    this.projectiles = this.projectiles.filter((item) => item !== projectile);
+    this.pruneActiveMonitors();
+    this.queueWorldEvent(
+      'disappear',
+      projectileId,
+      projectileId,
+      {
+        x: projectile.x,
+        y: projectile.y,
+      },
+      projectile,
+    );
+    return true;
+  }
+
+  /** 有限计划由所有者配置；后续每周期只消耗法球自己的余额。 */
+  configureProjectileBehavior(
+    ownerId: number,
+    projectileId: number,
+    behavior: Projectile['behavior'],
+    thrust: Vec2 = { x: 0, y: 0 },
+    trackTargetId: number | null = null,
+  ): boolean {
+    const projectile = this.ownedProjectile(ownerId, projectileId);
+    if (
+      !this.byId(ownerId)?.alive ||
+      !projectile ||
+      !projectile.active ||
+      !['glide', 'thrust', 'track'].includes(behavior)
+    )
+      return false;
+    if (![thrust.x, thrust.y].every(Number.isFinite) || Math.hypot(thrust.x, thrust.y) > 380)
+      return false;
+    if (behavior === 'track' && (!Number.isSafeInteger(trackTargetId) || trackTargetId === null))
+      return false;
+    projectile.behavior = behavior;
+    projectile.thrust = { ...thrust };
+    projectile.trackTargetId = behavior === 'track' ? trackTargetId : null;
+    projectile.driveRemaining = 0;
+    return true;
+  }
+
+  /** 在周期边沿付款后发布主动冲量；停供时速度只按阻力衰减。 */
+  advanceProjectileMotion(projectile: Projectile, dt: number): void {
+    if (!Number.isFinite(dt) || dt < 0) throw new RangeError('非法弹道时间');
+    if (!projectile.active || this.entityById(projectile.id) !== projectile) return;
+    let remaining = dt;
+    while (remaining > 1e-9) {
+      if (projectile.driveRemaining <= 1e-9) {
+        this.driveProjectilePeriod(projectile);
+        projectile.driveRemaining = CONTROL_PERIOD;
+      }
+      const step = Math.min(remaining, projectile.driveRemaining);
+      const drag = 0.5;
+      const factor = (1 - Math.exp(-drag * step)) / drag;
+      projectile.x += projectile.velocity.x * factor;
+      projectile.y += projectile.velocity.y * factor;
+      projectile.velocity.x *= Math.exp(-drag * step);
+      projectile.velocity.y *= Math.exp(-drag * step);
+      projectile.driveRemaining = Math.max(0, projectile.driveRemaining - step);
+      remaining -= step;
+    }
+  }
+
+  private driveProjectilePeriod(projectile: Projectile): void {
+    if (projectile.behavior === 'glide') return;
+    // 当前没有独立死亡后行为授权入口；预付能量本身不授予继续做功的权限。
+    if (!this.byId(projectile.ownerId)?.alive) {
+      this.revokeProjectileBehavior(projectile);
+      return;
+    }
+    let delta = projectile.thrust;
+    if (projectile.behavior === 'track') {
+      const targetId = projectile.trackTargetId;
+      const owner = this.byId(projectile.ownerId);
+      if (
+        targetId === null ||
+        !owner ||
+        !owner.alive ||
+        !this.senseQuote(owner, targetId, 'position')
+      )
+        return;
+      if (!this.resourceLedger.consume(projectile.id, 'scan', 1, 'scan')) return;
+      const target = this.entityWithCapability(targetId, 'vitality');
+      if (!target || !target.alive || target.faction === projectile.faction) return;
+      const dx = target.x - projectile.x;
+      const dy = target.y - projectile.y;
+      const length = Math.hypot(dx, dy);
+      if (!Number.isFinite(length) || length < 1e-9) return;
+      const push = Math.hypot(projectile.thrust.x, projectile.thrust.y);
+      delta = { x: (dx / length) * push, y: (dy / length) * push };
+    }
+    const next = {
+      x: projectile.velocity.x + delta.x,
+      y: projectile.velocity.y + delta.y,
+    };
+    const speed = Math.hypot(next.x, next.y);
+    if (!Number.isFinite(speed) || speed > projectile.speed + 1e-9) return;
+    const before = Math.hypot(projectile.velocity.x, projectile.velocity.y);
+    const work = Math.max(0, (speed * speed - before * before) / (380 * 380));
+    const loss = (delta.x * delta.x + delta.y * delta.y) / (380 * 380);
+    const cost =
+      (Math.ceil(work * RESOURCE_SCALE) + Math.ceil(loss * RESOURCE_SCALE)) / RESOURCE_SCALE;
+    if (!Number.isFinite(cost) || cost <= 0) return;
+    const reservation = this.resourceLedger.reserve(projectile.id, 'motion', cost);
+    if (reservation === null) return;
+    if (!this.resourceLedger.settle(reservation, { motionWork: work, controlLoss: loss })) return;
+    projectile.velocity = next;
+    projectile.motionSource = 'projectile';
+  }
+
+  private revokeProjectileBehavior(projectile: Projectile): void {
+    projectile.behavior = 'glide';
+    projectile.thrust = { x: 0, y: 0 };
+    projectile.trackTargetId = null;
+  }
+
+  /** 请求值不是能源；每次穿透命中都从可用 damage 池独立结算。 */
+  hitProjectile(projectile: Projectile, targetId: number): boolean {
+    const target = this.entityWithCapability(targetId, 'vitality');
+    if (
+      this.entityById(projectile.id) !== projectile ||
+      !projectile.active ||
+      !Number.isFinite(projectile.damage) ||
+      projectile.damage < 0 ||
+      !target ||
+      !target.alive ||
+      target.faction === projectile.faction ||
+      projectile.hit.has(targetId)
+    )
+      return false;
+    projectile.hit.add(targetId);
+    this.recordCollision(projectile.id, targetId, projectile.x, projectile.y);
+    const available = this.resourceLedger.balance(projectile.id);
+    const released = Math.min(projectile.damage, available.damage - available.reserved.damage);
+    if (!Number.isFinite(released) || released <= 0) return false;
+    const reservation = this.resourceLedger.reserve(projectile.id, 'damage', released);
+    if (reservation === null || !this.resourceLedger.settle(reservation, { damage: released }))
+      return false;
+    this.damage(targetId, released, true, projectile.id);
+    return true;
   }
 
   hasCapability<C extends EntityCapability>(
@@ -290,6 +1186,218 @@ export class World {
     return entity ? { x: entity.x, y: entity.y } : null;
   }
 
+  /** 组合能力实体与 Actor/Projectile 共用句柄空间，仅安装其明确声明的审计能力。 */
+  registerAuditComposite(bindings: EntityAuditBindings): number | null {
+    if (this.auditComposites.size >= MAX_AUDIT_COMPOSITES) return null;
+    const id = this.nextEntityId++;
+    this.auditComposites.set(id, { bindings: { ...bindings }, token: {} });
+    return id;
+  }
+
+  removeAuditComposite(id: number): void {
+    this.auditComposites.delete(id);
+    this.pruneActiveMonitors();
+  }
+
+  /** 缺句柄、缺能力或失效 binding 统一明确拒绝，不返回伪造的零值。 */
+  readEntityAuditField(id: number, field: EntityAuditField): EntityAuditResult {
+    const entity = this.entityById(id);
+    const composite = entity ? null : this.auditComposites.get(id);
+    const binding = entity ? this.auditBindings.get(entity)?.[field] : composite?.bindings[field];
+    try {
+      if (!binding?.isAvailable()) return { ok: false, reason: 'unavailable' };
+      const value = boundedAuditValue(field, binding.read());
+      if (value === undefined) return { ok: false, reason: 'unavailable' };
+      return { ok: true, value, observedAt: this.controlTime, targetId: id, field };
+    } catch {
+      return { ok: false, reason: 'unavailable' };
+    }
+  }
+
+  setSenseVisibility(id: number, visible: boolean, occluded = false): void {
+    if (visible) this.senseHidden.delete(id);
+    else this.senseHidden.add(id);
+    if (occluded) this.senseOccluded.add(id);
+    else this.senseOccluded.delete(id);
+    this.pruneActiveMonitors();
+  }
+
+  grantSenseField(
+    readerId: number,
+    targetId: number,
+    field: EntityAuditField,
+    grant: SenseGrant,
+  ): void {
+    if (
+      !Number.isFinite(grant.shenshiUpperBound) ||
+      grant.shenshiUpperBound < 0 ||
+      !Number.isFinite(grant.resistanceUpperBound) ||
+      grant.resistanceUpperBound < 0
+    )
+      throw new RangeError('非法探查公开上界');
+    if (grant.relation !== undefined && ![1, 2, 8].includes(grant.relation))
+      throw new RangeError('非法探查公开关系');
+    const target = this.entityById(targetId);
+    const binding = target
+      ? this.auditBindings.get(target)?.[field]
+      : this.auditComposites.get(targetId)?.bindings[field];
+    const resistance = binding?.senseResistance?.() ?? 0;
+    if (!Number.isFinite(resistance) || resistance < 0 || resistance > grant.resistanceUpperBound)
+      throw new RangeError('探查抗性公开上界不足');
+    if (target?.kind === 'actor' && target.attr.shenshiMax > grant.shenshiUpperBound)
+      throw new RangeError('探查公开上界不足');
+    this.senseGrants.set(`${readerId}:${targetId}:${field}`, { ...grant });
+  }
+
+  revokeSenseField(readerId: number, targetId: number, field: EntityAuditField): void {
+    this.senseGrants.delete(`${readerId}:${targetId}:${field}`);
+    this.pruneActiveMonitors();
+  }
+
+  /** 只返回已授权的公开定价输入；值始终在实扣之后由审计 binding 读取。 */
+  senseQuote(reader: Actor, targetId: number, field: EntityAuditField): SenseQuote | null {
+    return this.senseQuoteForEvent(reader, targetId, field);
+  }
+
+  /** 终止事件仅借用刚移除实体的能力和位置校验权限，不读取新的载荷值。 */
+  private senseQuoteForEvent(
+    reader: Actor,
+    targetId: number,
+    field: EntityAuditField,
+    terminalEntity?: Entity,
+  ): SenseQuote | null {
+    const terminal = terminalEntity?.id === targetId ? terminalEntity : undefined;
+    const target = this.entityById(targetId) ?? terminal;
+    const composite = target ? null : this.auditComposites.get(targetId);
+    const binding = target ? this.auditBindings.get(target)?.[field] : composite?.bindings[field];
+    try {
+      if (!binding || (!terminal && !binding.isAvailable())) return null;
+    } catch {
+      return null;
+    }
+    const self = targetId === reader.id;
+    const privateField =
+      field === 'mana' ||
+      field === 'shenshiUsed' ||
+      field === 'resistances' ||
+      field === 'sessions' ||
+      field === 'events' ||
+      field === 'ownership' ||
+      field === 'motionSource' ||
+      field === 'movePower';
+    const grant = this.senseGrants.get(`${reader.id}:${targetId}:${field}`);
+    if (!self && !grant && field !== 'position' && field !== 'facing') return null;
+    if (!self && privateField && !grant) return null;
+    const perception = reader.attr.perception;
+    if (!Number.isFinite(perception) || perception <= 0) return null;
+    const radius = 240 * perception;
+    if (!Number.isFinite(radius)) return null;
+    let distance = 0;
+    if (!self) {
+      if (this.senseHidden.has(targetId) || this.senseOccluded.has(targetId)) return null;
+      const position = target
+        ? { x: target.x, y: target.y }
+        : this.readEntityAuditField(targetId, 'position');
+      if (!position || ('ok' in position && !position.ok)) return null;
+      const point = 'ok' in position ? (position.value as Vec2) : position;
+      distance = Math.hypot(point.x - reader.x, point.y - reader.y);
+      if (!Number.isFinite(distance) || distance > radius) return null;
+    }
+    const privateSelf = self && privateField;
+    const readerShenshi = reader.attr.shenshiMax;
+    if (!Number.isFinite(readerShenshi) || readerShenshi <= 0) return null;
+    // 非自身字段的隐藏输入只取授权时固定的公开界，不按目标真值变档。
+    const targetShenshi = self ? readerShenshi : (grant?.shenshiUpperBound ?? 0);
+    const resistance = self ? 0 : (grant?.resistanceUpperBound ?? 0);
+    if (target?.kind === 'actor' && !self && !grant) return null;
+    const relation = target ? this.entityCostMultiplier(reader, target) : (grant?.relation ?? 8);
+    const level: 0 | 1 | 2 = privateField ? 2 : field === 'position' || field === 'facing' ? 0 : 1;
+    return {
+      distance: self || field === 'position' || field === 'facing' ? distance : radius,
+      relation,
+      targetShenshi,
+      readerShenshi,
+      resistance,
+      level,
+      privateSelf,
+    };
+  }
+
+  /** 单条历史和每实体历史均设硬上限；只存摘要，不保存任意载荷。 */
+  recordEntityAuditEvent(id: number, type: string, summary: string): boolean {
+    const owner = this.entityById(id) ?? this.auditComposites.get(id)?.token;
+    if (
+      !owner ||
+      typeof type !== 'string' ||
+      typeof summary !== 'string' ||
+      !/^[a-z][a-z0-9-]{0,31}$/.test(type)
+    )
+      return false;
+    const history = this.auditEvents.get(owner) ?? [];
+    history.push({ at: this.controlTime, type, summary: summary.slice(0, 160) });
+    if (history.length > MAX_AUDIT_EVENTS) history.shift();
+    this.auditEvents.set(owner, history);
+    return true;
+  }
+
+  /** VM 或 Battle 的共享神识账户提交后同步当前占用。 */
+  reportEntityShenshiUsage(id: number, used: number): boolean {
+    if (!this.entityWithCapability(id, 'caster') || !Number.isSafeInteger(used) || used < 0)
+      return false;
+    if (used === 0) this.auditShenshiUsage.delete(id);
+    else this.auditShenshiUsage.set(id, used);
+    return true;
+  }
+
+  tryReserveEntityShenshi(id: number, amount: number): boolean {
+    const actor = this.entityWithCapability(id, 'caster');
+    if (!actor || !Number.isSafeInteger(amount) || amount < 0) return false;
+    const used = this.auditShenshiUsage.get(id) ?? 0;
+    const next = used + amount;
+    if (
+      !Number.isSafeInteger(next + (this.auditVmShenshiTotal.get(id) ?? 0)) ||
+      next +
+        (this.auditVmShenshiTotal.get(id) ?? 0) +
+        (this.subscriptionShenshi.get(id) ?? 0) +
+        this.controlRecordShenshiUsed(id) >
+        actor.attr.shenshiMax
+    )
+      return false;
+    return this.reportEntityShenshiUsage(id, next);
+  }
+
+  /** 无 Battle 共享账户时，多个并发 VM 的占用仍按施法实例求和。 */
+  reportVmShenshiUsage(id: number, vm: object, used: number): boolean {
+    if (!this.entityWithCapability(id, 'caster') || !Number.isSafeInteger(used) || used < 0)
+      return false;
+    const previous = this.auditVmShenshiUsage.get(vm);
+    if (previous && previous.id !== id) return false;
+    const total = (this.auditVmShenshiTotal.get(id) ?? 0) - (previous?.used ?? 0) + used;
+    if (!Number.isSafeInteger(total) || total < 0) return false;
+    if (used === 0) this.auditVmShenshiUsage.delete(vm);
+    else this.auditVmShenshiUsage.set(vm, { id, used });
+    if (total === 0) this.auditVmShenshiTotal.delete(id);
+    else this.auditVmShenshiTotal.set(id, total);
+    return true;
+  }
+
+  /** 无 Battle 钩子的 VM 也从同一施法者容量逐笔原子保留。 */
+  tryReserveVmShenshi(id: number, vm: object, amount: number): boolean {
+    const actor = this.entityWithCapability(id, 'caster');
+    if (!actor || !Number.isSafeInteger(amount) || amount < 0) return false;
+    const previous = this.auditVmShenshiUsage.get(vm);
+    if (previous && previous.id !== id) return false;
+    const used = this.auditVmShenshiTotal.get(id) ?? 0;
+    const allUsed =
+      used +
+      (this.auditShenshiUsage.get(id) ?? 0) +
+      (this.subscriptionShenshi.get(id) ?? 0) +
+      this.controlRecordShenshiUsed(id);
+    if (!Number.isSafeInteger(allUsed + amount) || allUsed + amount > actor.attr.shenshiMax)
+      return false;
+    return this.reportVmShenshiUsage(id, vm, (previous?.used ?? 0) + amount);
+  }
+
   /** 会话 ID 与控制记录序号在同一个 World 生命周期内不复用。 */
   createControlSession(
     controllerId: number,
@@ -298,6 +1406,7 @@ export class World {
   ): ControlSession | null {
     const controller = this.entityById(controllerId);
     if (!controller || !this.entityAvailable(controller)) return null;
+    if (this.controlSessions.size >= MAX_CONTROL_SESSIONS) return null;
     const id = this.nextControlSessionId++;
     const sessions = this.controlSessions;
     const session: ControlSession = {
@@ -310,10 +1419,14 @@ export class World {
       canControl,
       end: () => {
         if (!sessions.delete(id)) return;
+        for (const [sequence, sub] of this.subscriptions)
+          if (sub.sessionId === id) this.unsubscribeEvent(sequence);
         this.removeControlRecords((record) => record.controllerSessionId === id);
+        this.recordEntityAuditEvent(controllerId, 'session-end', `session ${id}`);
       },
     };
     this.controlSessions.set(id, session);
+    this.recordEntityAuditEvent(controllerId, 'session-start', `session ${id}`);
     return session;
   }
 
@@ -339,6 +1452,11 @@ export class World {
       if (record.nextPaymentAt !== null)
         next = Math.min(next, Math.max(0, record.nextPaymentAt - this.controlTime));
     }
+    for (const monitor of this.activeMonitors.values())
+      next = Math.min(
+        next,
+        Math.max(0, (monitor.nextScanAt ?? monitor.finishedAt!) - this.controlTime),
+      );
     return next;
   }
 
@@ -349,6 +1467,7 @@ export class World {
 
   /** 模拟时钟；同一时刻先清理失效与到期，再按时间、序号结算维持。 */
   advanceControlTime(dt: number): void {
+    if (this.scanningMonitorId !== null) throw new RangeError('监控扫描期间不能重入模拟时钟');
     if (!Number.isFinite(dt) || dt < 0) throw new RangeError('非法控制时间');
     const end = this.controlTime + dt;
     if (!Number.isFinite(end)) throw new RangeError('控制时间溢出');
@@ -360,7 +1479,14 @@ export class World {
         if (record.nextPaymentAt !== null && record.nextPaymentAt > this.controlTime)
           boundary = Math.min(boundary, record.nextPaymentAt);
       }
+      for (const monitor of this.activeMonitors.values())
+        if ((monitor.nextScanAt ?? monitor.finishedAt!) > this.controlTime)
+          boundary = Math.min(boundary, monitor.nextScanAt ?? monitor.finishedAt!);
       this.controlTime = boundary;
+      for (const monitor of this.activeMonitors.values())
+        if (monitor.finishedAt !== null && monitor.finishedAt <= boundary)
+          this.stopActiveMonitor(monitor.id, monitor.ownerId);
+      this.pruneActiveMonitors();
       this.removeControlRecords(
         (record) =>
           (record.expiresAt !== null && record.expiresAt <= boundary) ||
@@ -388,6 +1514,10 @@ export class World {
           nextPaymentAt: record.nextPaymentAt! + CONTROL_PERIOD,
         };
       }
+      for (const monitor of [...this.activeMonitors.values()]
+        .filter((item) => item.nextScanAt !== null && item.nextScanAt <= boundary)
+        .sort((a, b) => a.nextScanAt! - b.nextScanAt! || a.id - b.id))
+        if (this.activeMonitors.has(monitor.id)) this.scanActiveMonitor(monitor);
       if (boundary >= end) break;
     }
   }
@@ -419,13 +1549,8 @@ export class World {
     );
     const before =
       this.controlValue(target, record.propertyKey, [...peers]) ?? binding.readBase?.();
-    let after = this.controlValue(target, record.propertyKey, [...peers, record]) ?? record.effect;
-    if (record.propertyKey === 'position' && typeof after !== 'number') {
-      after = {
-        x: Math.min(this.bounds.w - target.radius, Math.max(target.radius, after.x)),
-        y: Math.min(this.bounds.h - target.radius, Math.max(target.radius, after.y)),
-      };
-    }
+    const after =
+      this.controlValue(target, record.propertyKey, [...peers, record]) ?? record.effect;
     if (before === undefined) throw new RangeError('控制属性无基础值');
     const strength = binding.effectStrength(record.effect, before, after);
     if (!Number.isFinite(strength) || strength < 0) throw new RangeError('非法控制效果强度');
@@ -440,6 +1565,7 @@ export class World {
     duration: number,
     request: ControlRequest = {},
   ): boolean {
+    if (propertyKey === 'position') return this.rejectControl('位置须使用独立传送效果');
     const descriptor = getControlPropertyDescriptor(propertyKey);
     if (!descriptor) return this.rejectControl(`缺少属性能力：${propertyKey}`);
     if (!Number.isFinite(duration) || duration < 0)
@@ -488,7 +1614,9 @@ export class World {
       }
       if (session && !this.chargeControl(session, candidate, 'start'))
         return this.rejectControl('法力余额不足或执行上限已达，详见施法结果');
-      return binding.apply(normalized, duration) || this.rejectControl('目标拒绝该效果');
+      if (!binding.apply(normalized, duration)) return this.rejectControl('目标拒绝该效果');
+      this.recordEntityAuditEvent(targetId, 'control', descriptor.propertyKey);
+      return true;
     }
     const old = this.controlRecords.find(
       (record) =>
@@ -500,6 +1628,19 @@ export class World {
     );
     if (!old && this.controlRecords.length >= MAX_CONTROL_RECORDS)
       return this.rejectControl('控制记录容量已满');
+    if (!old && controllerId !== 0) {
+      const controller = this.byId(controllerId);
+      if (
+        !controller ||
+        (this.auditShenshiUsage.get(controllerId) ?? 0) +
+          (this.auditVmShenshiTotal.get(controllerId) ?? 0) +
+          (this.subscriptionShenshi.get(controllerId) ?? 0) +
+          this.controlRecordShenshiUsed(controllerId) +
+          1 >
+          controller.attr.shenshiMax
+      )
+        return this.rejectControl('控制记录神识不足');
+    }
     const expiresAt = duration === 0 ? null : this.controlTime + duration;
     if (expiresAt !== null && !Number.isFinite(expiresAt))
       return this.rejectControl('控制到期时间溢出');
@@ -541,12 +1682,17 @@ export class World {
     if (canControl) this.controlPermissions.set(record.sequence, canControl);
     this.nextControlSequence++;
     this.refreshControl(target, descriptor.propertyKey);
+    this.recordEntityAuditEvent(targetId, 'control', descriptor.propertyKey);
     return true;
   }
 
   private rejectControl(reason: string): false {
     this.events.push(`控制失败：${reason}`);
     return false;
+  }
+
+  private controlRecordShenshiUsed(controllerId: number): number {
+    return this.controlRecords.filter((record) => record.controllerId === controllerId).length;
   }
 
   /** 同一实体能力按关系定价，而不是按 Actor / Projectile 拆成不同元法术。 */
@@ -594,13 +1740,29 @@ export class World {
   recompute(a: Actor): void {
     a.attr = computeAttributes(a.base, a.mods);
     this.refreshControl(a, 'rotation');
-    for (const key of ['speed', 'damage', 'perception', 'armor'] as const)
+    for (const key of [
+      'speed',
+      'damage',
+      'perception',
+      'armor',
+      'hpMax',
+      'manaMax',
+      'manaRegen',
+      'shenshiMax',
+      'castSpeed',
+      'manaCostMul',
+    ] as const)
       if (
         this.controlRecords.some((record) => record.targetId === a.id && record.propertyKey === key)
       )
         this.refreshControl(a, key);
     if (a.hp > a.attr.hpMax) a.hp = a.attr.hpMax;
-    if (a.mana > a.attr.manaMax) a.mana = a.attr.manaMax;
+    if (a.mana > a.attr.manaMax) {
+      this.resourceLedger.observeMana(a.id);
+      a.mana = a.attr.manaMax;
+      this.resourceLedger.recordManaWorldChange(a.id, 'clampLoss');
+      this.observeManaThreshold(a.id);
+    }
   }
 
   /** 鼠标与 AI 更新基础朝向，仍有效的控制层继续优先。 */
@@ -628,10 +1790,13 @@ export class World {
     this.recompute(a);
   }
 
-  damage(id: number, amount: number): boolean {
+  damage(id: number, amount: number, conserved = false, sourceId: number | null = null): boolean {
     const a = this.entityWithCapability(id, 'vitality');
-    if (!a || !a.alive) return false;
-    const real = Math.max(1, amount - a.attr.armor);
+    if (!a || !a.alive || !Number.isFinite(amount) || amount <= 0) return false;
+    const real = conserved
+      ? Math.min(a.hp, Math.max(0, amount - Math.max(0, a.attr.armor)))
+      : Math.max(1, amount - a.attr.armor);
+    if (real <= 0) return false;
     a.hp -= real;
     a.hitFlash = 0.15;
     this.fx.push({ kind: 'hit', x: a.x, y: a.y });
@@ -644,8 +1809,28 @@ export class World {
     } else {
       this.events.push(`${a.name}#${a.id} 受到 ${Math.round(real)} 伤害，剩余 ${Math.round(a.hp)}`);
     }
+    this.recordEntityAuditEvent(a.id, 'damage', `${real}`);
     this.onDamage?.(a, real);
-    if (!a.alive) this.pruneControlRecords();
+    if (!a.alive) {
+      for (const projectile of this.projectiles)
+        if (projectile.ownerId === a.id) this.revokeProjectileBehavior(projectile);
+      this.pruneActiveMonitors();
+      for (const [sequence, sub] of this.subscriptions)
+        if (sub.ownerId === a.id) this.unsubscribeEvent(sequence);
+      for (const session of [...this.controlSessions.values()])
+        if (session.controllerId === a.id) session.end();
+      this.exhaustedAccounts.delete(a.id);
+      this.pruneControlRecords();
+      this.refundEntityEnergy(a.id);
+    }
+    this.queueWorldEvent(
+      'damage',
+      sourceId,
+      a.id,
+      { amount: real, x: a.x, y: a.y },
+      a.alive ? undefined : a,
+    );
+    if (!a.alive) this.queueWorldEvent('disappear', a.id, a.id, { x: a.x, y: a.y }, a);
     return true;
   }
 
@@ -661,15 +1846,152 @@ export class World {
     a.y = Math.min(this.bounds.h - a.radius, Math.max(a.radius, a.y + dy));
   }
 
-  placeActor(a: Actor, x: number, y: number): void {
-    a.x = Math.min(this.bounds.w - a.radius, Math.max(a.radius, x));
-    a.y = Math.min(this.bounds.h - a.radius, Math.max(a.radius, y));
+  /** 普通移动按模拟时间和已预付的 0.25 秒世界功率积分。 */
+  advanceActorMotion(a: Actor, intent: Vec2, speedScale: number, dt: number): void {
+    if (!a.alive || !Number.isFinite(dt) || dt <= 0) return;
+    const length = Math.hypot(intent.x, intent.y);
+    const speedMax = Number.isFinite(a.attr.speed) ? Math.max(0, a.attr.speed) : 0;
+    const desired =
+      a.stun > 0 ||
+      a.baseSpeed <= 0 ||
+      !Number.isFinite(speedScale) ||
+      speedScale <= 0 ||
+      !Number.isFinite(length) ||
+      length < 1e-9
+        ? { x: 0, y: 0 }
+        : {
+            x: (intent.x / length) * speedMax * speedScale,
+            y: (intent.y / length) * speedMax * speedScale,
+          };
+    const requested =
+      Number.isFinite(desired.x) && Number.isFinite(desired.y) ? desired : { x: 0, y: 0 };
+    const changed = Math.hypot(requested.x - a.drive.x, requested.y - a.drive.y) > 0.1;
+    if (changed) {
+      a.driveRemaining = 0;
+      a.drive = requested;
+      a.drivePaid = false;
+    }
+    let remaining = dt;
+    while (remaining > 1e-9) {
+      if (a.driveRemaining <= 1e-9 && Math.hypot(a.drive.x, a.drive.y) > 0) {
+        const ratio = Math.hypot(a.drive.x, a.drive.y) / a.baseSpeed;
+        const price = Math.max(1, ratio * ratio);
+        if (Number.isFinite(price) && a.movePower + 1e-9 >= price) {
+          a.movePower = Math.max(0, a.movePower - price);
+          a.drivePaid = true;
+        } else {
+          a.drivePaid = false;
+        }
+        a.driveRemaining = CONTROL_PERIOD;
+      }
+      const step = Math.min(remaining, a.driveRemaining > 1e-9 ? a.driveRemaining : CONTROL_PERIOD);
+      const active = a.drivePaid && a.driveRemaining > 1e-9 && Math.hypot(a.drive.x, a.drive.y) > 0;
+      const target = active ? a.drive : { x: 0, y: 0 };
+      const decay = Math.exp(-20 * step);
+      const factor = (1 - decay) / 20;
+      const vx = a.velocity.x;
+      const vy = a.velocity.y;
+      this.moveActor(
+        a,
+        target.x * step + (vx - target.x) * factor,
+        target.y * step + (vy - target.y) * factor,
+      );
+      a.velocity = {
+        x: target.x + (vx - target.x) * decay,
+        y: target.y + (vy - target.y) * decay,
+      };
+      if (
+        (a.x <= a.radius && a.velocity.x < 0) ||
+        (a.x >= this.bounds.w - a.radius && a.velocity.x > 0)
+      )
+        a.velocity.x = 0;
+      if (
+        (a.y <= a.radius && a.velocity.y < 0) ||
+        (a.y >= this.bounds.h - a.radius && a.velocity.y > 0)
+      )
+        a.velocity.y = 0;
+      if (active) a.motionSource = 'base';
+      if (a.baseSpeed > 0) a.movePower = Math.min(4, a.movePower + 4 * step);
+      a.driveRemaining = Math.max(0, a.driveRemaining - step);
+      remaining -= step;
+    }
   }
 
-  /** Transform 能力的统一位置写入；Actor 与 Projectile 走同一条语义。 */
-  placeEntity(entity: Entity, x: number, y: number): void {
-    entity.x = Math.min(this.bounds.w - entity.radius, Math.max(entity.radius, x));
-    entity.y = Math.min(this.bounds.h - entity.radius, Math.max(entity.radius, y));
+  /** 元法术扣款后发布一次冲量；实际速度不由朝向或上限覆写。 */
+  applyImpulse(targetId: number, delta: Vec2): boolean {
+    const target = this.entityById(targetId);
+    if (
+      !target ||
+      !this.entityAvailable(target) ||
+      (target.kind === 'projectile' && !target.active)
+    )
+      return false;
+    const x = target.velocity.x + delta.x;
+    const y = target.velocity.y + delta.y;
+    if (![x, y].every(Number.isFinite)) return false;
+    const before = Math.hypot(target.velocity.x, target.velocity.y);
+    const after = Math.hypot(x, y);
+    const max = target.kind === 'actor' ? target.attr.speed : target.speed;
+    if (
+      !Number.isFinite(max) ||
+      max < 0 ||
+      !Number.isFinite(after) ||
+      (after > max + 1e-9 && after > before + 1e-9)
+    )
+      return false;
+    target.velocity = { x, y };
+    target.motionSource = target.kind === 'actor' ? 'spell' : 'projectile';
+    return true;
+  }
+
+  /** 检查可公开的传送前置条件；失败不改变任何世界状态。 */
+  canTeleportEntity(
+    targetId: number,
+    point: Vec2,
+    canControl?: ControlSession['canControl'],
+  ): boolean {
+    const target = this.entityById(targetId);
+    if (
+      !target ||
+      !this.entityAvailable(target) ||
+      !target.teleportAllowed ||
+      !this.controlPropertyBinding(target, 'position')
+    )
+      return false;
+    if (canControl && !this.canControl(canControl, target, 'position')) return false;
+    if (
+      !Number.isFinite(point.x) ||
+      !Number.isFinite(point.y) ||
+      point.x < target.radius ||
+      point.y < target.radius ||
+      point.x > this.bounds.w - target.radius ||
+      point.y > this.bounds.h - target.radius
+    )
+      return false;
+    if (
+      this.actors.some(
+        (a) =>
+          a !== target &&
+          a.alive &&
+          Math.hypot(a.x - point.x, a.y - point.y) < a.radius + target.radius,
+      )
+    )
+      return false;
+    return true;
+  }
+
+  /** 传送只在所有空间和能力检查通过后提交坐标。 */
+  teleportEntity(
+    targetId: number,
+    point: Vec2,
+    canControl?: ControlSession['canControl'],
+  ): boolean {
+    if (!this.canTeleportEntity(targetId, point, canControl)) return false;
+    const target = this.entityById(targetId)!;
+    target.x = point.x;
+    target.y = point.y;
+    this.recordEntityAuditEvent(target.id, 'control', 'teleport');
+    return true;
   }
 
   private entityAvailable(entity: Entity): boolean {
@@ -777,7 +2099,13 @@ export class World {
       else multiply *= record.effect as number;
     }
     const value = ((base as number) + add) * multiply;
-    return Number.isFinite(value) && (descriptor.merge !== 'multiply' || value > 0) ? value : null;
+    if (!Number.isFinite(value)) return null;
+    if (key === 'manaRegen') return value >= 0 ? value : null;
+    if (key === 'castSpeed' || key === 'manaCostMul')
+      return value >= 0.25 && value <= 4 ? value : null;
+    if (key === 'shenshiMax') return Number.isSafeInteger(value) && value > 0 ? value : null;
+    if (key === 'hpMax' || key === 'manaMax') return value > 0 ? value : null;
+    return descriptor.merge !== 'multiply' || value > 0 ? value : null;
   }
 
   private validControlValue(
@@ -822,13 +2150,34 @@ export class World {
       propertyKey: ControlPropertyKey,
       apply: (effect: ControlPropertyEffect, duration: number) => boolean,
     ) => bind(propertyKey, 'maintain', null, validControlDuration, apply);
+    const attribute = (
+      key: 'hpMax' | 'manaMax' | 'manaRegen' | 'shenshiMax' | 'castSpeed' | 'manaCostMul',
+    ): ControlPropertyBinding => ({
+      ...maintain(key, () => true),
+      readBase: () => computeAttributes(actor.base, actor.mods)[key],
+      writeEffective: (value) => {
+        actor.attr[key] = value as number;
+        if (key === 'hpMax' && actor.hp > actor.attr.hpMax) actor.hp = actor.attr.hpMax;
+        if (key === 'manaMax' && actor.mana > actor.attr.manaMax) {
+          this.resourceLedger.observeMana(actor.id);
+          actor.mana = actor.attr.manaMax;
+          this.resourceLedger.recordManaWorldChange(actor.id, 'clampLoss');
+          this.observeManaThreshold(actor.id);
+        }
+      },
+      effectStrength: (_effect, before, after) => {
+        if (typeof before !== 'number' || typeof after !== 'number') return Number.NaN;
+        if (key === 'hpMax' || key === 'manaMax' || key === 'shenshiMax')
+          return Math.abs(after - before) / 10;
+        if (key === 'castSpeed' || key === 'manaCostMul')
+          return Math.abs(Math.log2(after / before));
+        if (key === 'manaRegen') return Math.abs(after - before) * CONTROL_PERIOD;
+        return Math.abs(after - before);
+      },
+    });
     return {
       position: {
-        ...commit('position', (effect) => {
-          const point = effect as Vec2;
-          this.placeEntity(actor, point.x, point.y);
-          return true;
-        }),
+        ...commit('position', () => false),
         readBase: () => ({ x: actor.x, y: actor.y }),
       },
       rotation: {
@@ -869,6 +2218,12 @@ export class World {
           actor.attr.armor = value as number;
         },
       },
+      hpMax: attribute('hpMax'),
+      manaMax: attribute('manaMax'),
+      manaRegen: attribute('manaRegen'),
+      shenshiMax: attribute('shenshiMax'),
+      castSpeed: attribute('castSpeed'),
+      manaCostMul: attribute('manaCostMul'),
     };
   }
 
@@ -898,11 +2253,7 @@ export class World {
     ) => bind(propertyKey, 'write', 'overlay', validControlDuration, apply);
     return {
       position: {
-        ...commit('position', (effect) => {
-          const point = effect as Vec2;
-          this.placeEntity(projectile, point.x, point.y);
-          return true;
-        }),
+        ...commit('position', () => false),
         readBase: () => ({ x: projectile.x, y: projectile.y }),
       },
       rotation: {
@@ -978,6 +2329,88 @@ export class World {
     };
   }
 
+  private auditBinding(read: () => unknown, isAvailable: () => boolean): EntityAuditBinding {
+    return { read, isAvailable };
+  }
+
+  private commonAuditBindings(entity: Entity): EntityAuditBindings {
+    const available = () => this.entityById(entity.id) === entity;
+    const sessions = () => {
+      const controller = [...this.controlSessions.values()]
+        .filter((session) => session.controllerId === entity.id)
+        .map((session) => ({ id: session.id, role: 'controller' as const }));
+      const target = this.controlRecords
+        .filter((record) => record.targetId === entity.id && record.controllerSessionId !== null)
+        .map((record) => ({ id: record.controllerSessionId!, role: 'target' as const }));
+      return [
+        ...new Map(
+          [...controller, ...target].map((entry) => [`${entry.id}:${entry.role}`, entry]),
+        ).values(),
+      ];
+    };
+    return {
+      position: this.auditBinding(() => ({ x: entity.x, y: entity.y }), available),
+      velocity: this.auditBinding(() => entity.velocity, available),
+      motionSource: this.auditBinding(() => entity.motionSource, available),
+      ownership: this.auditBinding(
+        () => ({
+          ownerId: entity.kind === 'actor' ? entity.id : entity.ownerId,
+          faction: entity.faction,
+        }),
+        available,
+      ),
+      sessions: this.auditBinding(sessions, available),
+      events: this.auditBinding(() => this.auditEvents.get(entity) ?? [], available),
+      resistances: this.auditBinding(() => {
+        const result: Record<string, number> = {};
+        for (const [key, binding] of Object.entries(this.propertyBindings.get(entity) ?? {})) {
+          if (binding?.isAvailable()) result[key] = binding.resistance();
+        }
+        return result;
+      }, available),
+    };
+  }
+
+  private actorAuditBindings(actor: Actor): EntityAuditBindings {
+    const available = () => this.entityById(actor.id) === actor;
+    return {
+      ...this.commonAuditBindings(actor),
+      facing: this.auditBinding(() => actor.aim, available),
+      speedMax: this.auditBinding(() => actor.attr.speed, available),
+      movePower: this.auditBinding(() => actor.movePower, available),
+      hp: this.auditBinding(() => actor.hp, available),
+      hpMax: this.auditBinding(() => actor.attr.hpMax, available),
+      mana: this.auditBinding(() => actor.mana, available),
+      manaMax: this.auditBinding(() => actor.attr.manaMax, available),
+      manaRegen: this.auditBinding(() => actor.attr.manaRegen, available),
+      shenshiUsed: this.auditBinding(
+        () =>
+          (this.auditShenshiUsage.get(actor.id) ?? 0) +
+          (this.auditVmShenshiTotal.get(actor.id) ?? 0) +
+          (this.subscriptionShenshi.get(actor.id) ?? 0) +
+          this.controlRecordShenshiUsed(actor.id),
+        available,
+      ),
+      shenshiMax: this.auditBinding(() => actor.attr.shenshiMax, available),
+      castSpeed: this.auditBinding(() => actor.attr.castSpeed, available),
+      manaCostMul: this.auditBinding(() => actor.attr.manaCostMul, available),
+      armor: this.auditBinding(() => actor.attr.armor, available),
+      damage: this.auditBinding(() => actor.attr.power, available),
+      perception: this.auditBinding(() => actor.attr.perception, available),
+    };
+  }
+
+  private projectileAuditBindings(projectile: Projectile): EntityAuditBindings {
+    const available = () => this.entityById(projectile.id) === projectile;
+    return {
+      ...this.commonAuditBindings(projectile),
+      facing: this.auditBinding(() => ({ x: projectile.dx, y: projectile.dy }), available),
+      speedMax: this.auditBinding(() => projectile.speed, available),
+      damage: this.auditBinding(() => projectile.damage, available),
+      lifetime: this.auditBinding(() => projectile.life, available),
+    };
+  }
+
   spawnProjectile(p: {
     faction: Faction;
     ownerId: number;
@@ -1012,9 +2445,18 @@ export class World {
       pierce: p.pierce ?? 0,
       hit: new Set<number>(),
       active: p.active ?? true,
+      velocity: p.active === false ? { x: 0, y: 0 } : { x: p.dx * p.speed, y: p.dy * p.speed },
+      motionSource: p.active === false ? 'none' : 'projectile',
+      teleportAllowed: true,
+      behavior: 'glide',
+      thrust: { x: 0, y: 0 },
+      trackTargetId: null,
+      driveRemaining: 0,
     };
     this.propertyBindings.set(proj, this.projectilePropertyBindings(proj));
+    this.auditBindings.set(proj, this.projectileAuditBindings(proj));
     this.projectiles.push(proj);
+    this.recordEntityAuditEvent(proj.id, 'spawn', `owner ${proj.ownerId}`);
     return proj;
   }
 

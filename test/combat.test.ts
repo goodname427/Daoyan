@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { parseSpellbook } from '../src/core/index';
+import { analyzeBook, parseSpellbook, TICK_MS } from '../src/core/index';
 import { Battle } from '../src/game/battle';
+import { importSpellPresets, SPELL_PRESETS } from '../src/app/spellPresets';
 
 const SRC = join(process.cwd(), 'src', 'game', 'spells.dy');
 
@@ -27,7 +28,175 @@ describe('战斗初始化', () => {
   });
 });
 
+describe('第二期用户法术预设实战', () => {
+  it('默认法术书的三种法球均可绑定，并进入对应运动模式', () => {
+    for (const [name, mode] of [
+      ['法球·冲量滑行', 'glide'],
+      ['法球·持续推进', 'thrust'],
+      ['法球·目标追踪', 'track'],
+    ] as const) {
+      const battle = new Battle(parseSpellbook(readFileSync(SRC, 'utf8')), {
+        playerAttrs: { shenshiMax: 80, manaMax: 800 },
+      });
+      const foe = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+      foe.x = battle.player.x + 140;
+      foe.y = battle.player.y + 70;
+      battle.setBinding('1', name);
+      expect(battle.castPlayer('1')).toBe(true);
+      run(battle, 0.58);
+      const ball = battle.world.projectiles.find((item) => item.ownerId === battle.player.id);
+      expect(ball?.behavior).toBe(mode);
+      if (ball && mode === 'thrust')
+        expect(battle.world.resourceLedger.balance(ball.id).motion).toBeGreaterThan(0);
+      if (ball && mode === 'track')
+        expect(battle.world.resourceLedger.balance(ball.id).scan).toBeGreaterThan(0);
+      expect(battle.stats.backfires).toBe(0);
+    }
+  });
+
+  for (const preset of SPELL_PRESETS) {
+    it(`${preset.name}可从共享法术书绑定并影响获准目标`, () => {
+      const imported = importSpellPresets(readFileSync(SRC, 'utf8'), [
+        { name: preset.name, importAs: preset.name },
+      ]);
+      expect(imported.ok).toBe(true);
+      if (!imported.ok) return;
+      const battle = new Battle(parseSpellbook(imported.source), {
+        playerAttrs: { shenshiMax: 80, manaMax: preset.name === '对手减速' ? 800 : 400 },
+      });
+      const foe = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+      foe.x = battle.player.x + 100;
+      foe.y = battle.player.y;
+      const originalSpeed = foe.attr.speed;
+      const originalArmor = foe.attr.armor;
+      battle.setBinding('1', preset.name);
+      expect(battle.castPlayer('1')).toBe(true);
+      run(battle, 0.4);
+      expect(battle.stats.backfires).toBe(0);
+      if (preset.name === '对手减速') expect(foe.attr.speed).toBeLessThan(originalSpeed);
+      else expect(foe.attr.armor).toBeLessThan(originalArmor);
+    });
+  }
+});
+
+describe('事件法术响应', () => {
+  function authorizeNearbyTarget(battle: Battle, target: Battle['player']) {
+    target.x = battle.player.x + 140;
+    target.y = battle.player.y;
+    battle.world.grantSenseField(battle.player.id, target.id, 'events', {
+      shenshiUpperBound: target.attr.shenshiMax,
+      resistanceUpperBound: 0,
+    });
+  }
+
+  it('同名双订阅分别记录响应结果和实际费用', () => {
+    const battle = new Battle(parseSpellbook('spell 同术 { 瞬移(自身位置()) }'), {
+      playerAttrs: { manaMax: 25, manaRegen: 0 },
+    });
+    const foe = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+    authorizeNearbyTarget(battle, foe);
+    expect(battle.subscribeSpellEvent(battle.player.id, 'same-1', 'damage', '同术')).not.toBeNull();
+    expect(battle.subscribeSpellEvent(battle.player.id, 'same-2', 'damage', '同术')).not.toBeNull();
+    battle.world.damage(foe.id, 1);
+    battle.world.dispatchWorldEvents();
+    run(battle, 0.3);
+    expect(battle.eventResponses).toHaveLength(2);
+    expect(new Set(battle.eventResponses.map((response) => response.eventId)).size).toBe(1);
+    expect(battle.eventResponses.map((response) => response.state).sort()).toEqual([
+      'failed',
+      'success',
+    ]);
+    expect(battle.eventResponses[0].mana + battle.eventResponses[1].mana).toBeGreaterThan(0);
+  });
+
+  it('同一受击可启动两个独立法术；共享余额使后者失败且不回滚先者', () => {
+    const book = parseSpellbook(`
+      spell 甲 { 瞬移(自身位置()) }
+      spell 乙 { 瞬移(自身位置()) }
+    `);
+    const battle = new Battle(book, {
+      playerAttrs: { manaMax: 25, manaRegen: 0 },
+      playerBindings: {},
+    });
+    const target = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+    authorizeNearbyTarget(battle, target);
+    expect(
+      battle.subscribeSpellEvent(battle.player.id, 'first', 'damage', '甲', {
+        targetId: target.id,
+      }),
+    ).not.toBeNull();
+    expect(
+      battle.subscribeSpellEvent(battle.player.id, 'second', 'damage', '乙', {
+        targetId: target.id,
+      }),
+    ).not.toBeNull();
+    battle.world.damage(target.id, 1);
+    battle.world.dispatchWorldEvents();
+    run(battle, 0.3);
+    expect(battle.player.mana).toBeGreaterThanOrEqual(0);
+    expect(battle.player.mana).toBeLessThan(20);
+    expect(battle.log.some((line) => line.includes('乙') && line.includes('失败'))).toBe(true);
+    expect(battle.log.some((line) => line.includes('甲') && line.includes('失败'))).toBe(false);
+    expect(
+      battle.eventResponses.map((response) => [response.spell, response.state]).reverse(),
+    ).toEqual([
+      ['甲', 'success'],
+      ['乙', 'failed'],
+    ]);
+    expect(battle.eventResponses[0].error).toBeTruthy();
+    battle.restart();
+    expect(battle.eventResponses).toHaveLength(0);
+  });
+});
+
+describe('法球实战结算', () => {
+  it('过期弹道只退款未释放余额且不会从主人未来法力续费', () => {
+    const battle = makeBattle();
+    const caster = battle.player;
+    caster.mana -= 10;
+    const p = battle.world.spawnProjectile({
+      faction: 'player',
+      ownerId: caster.id,
+      x: 800,
+      y: 800,
+      dx: 1,
+      dy: 0,
+      speed: 100,
+      damage: 10,
+      life: 0.01,
+    })!;
+    battle.world.injectEntityEnergy(p.id, caster.id, 'damage', 2);
+    const afterFunding = caster.mana;
+    battle.update(0.02);
+    expect(battle.world.projectiles).not.toContain(p);
+    expect(battle.world.resourceLedger.balance(p.id).damage).toBe(0);
+    expect(battle.world.refundEntityEnergy(p.id)).toBe(1.6);
+    expect(caster.mana).toBeGreaterThanOrEqual(afterFunding);
+    expect(battle.world.resourceLedger.snapshot().conserved).toBe(true);
+  });
+});
+
 describe('玩家操作', () => {
+  it('实战中保留冲量惯性，降低 speedMax 后才逐渐减速，越权探查拒绝', () => {
+    const b = makeBattle();
+    const player = b.player;
+    expect(b.world.applyImpulse(player.id, { x: 100, y: 0 })).toBe(true);
+    const afterImpulse = player.velocity.x;
+    expect(afterImpulse).toBeGreaterThan(0);
+    player.attr.speed = 20;
+    expect(player.velocity.x).toBe(afterImpulse);
+    run(b, 0.05);
+    expect(player.velocity.x).toBeGreaterThan(0);
+    expect(player.velocity.x).toBeLessThan(afterImpulse);
+
+    const foe = b.world.actors.find((actor) => actor.faction === 'foe')!;
+    player.x = foe.x - 40;
+    player.y = foe.y;
+    expect(b.world.senseQuote(player, foe.id, 'position')).not.toBeNull();
+    expect(b.world.senseQuote(player, foe.id, 'hp')).toBeNull();
+    expect(b.world.senseQuote(player, 999999, 'position')).toBeNull();
+  });
+
   it('鼠标更新基础朝向，覆写到期依次恢复有效下层与最新瞄准', () => {
     const b = makeBattle();
     const actor = b.player;
@@ -80,11 +249,14 @@ describe('玩家操作', () => {
   });
 
   it('施法需要时间，不是瞬间完成', () => {
-    const b = makeBattle();
-    // 把妖兽定在身边（速度归零），保证三连剑真的要跑满循环
+    const b = new Battle(parseSpellbook(readFileSync(SRC, 'utf8')), {
+      playerAttrs: { manaRegen: 0 },
+    });
+    // 固定目标位置，关闭攻击，隔离施法耗时与自然回蓝/受击打断。
     for (const a of b.world.actors) {
       if (a.faction !== 'foe') continue;
       a.base.speed = 0;
+      a.attackTimer = 100;
       b.world.recompute(a);
       a.x = b.player.x + 120;
       a.y = b.player.y + 20;
@@ -216,7 +388,7 @@ describe('玩家操作', () => {
       spell 乙 { 瞬移(自身位置()) }
     `);
     const b = new Battle(book, {
-      playerAttrs: { manaMax: 10, manaRegen: 0 },
+      playerAttrs: { manaMax: 25, manaRegen: 0 },
       playerBindings: { '1': '甲', '2': '乙' },
     });
 
@@ -259,7 +431,12 @@ describe('玩家操作', () => {
     expect(b.activeCasts(b.player.id)).toHaveLength(1);
     expect(b.shenshiInUse(b.player.id)).toBe(41);
 
-    run(b, 2);
+    // 自身位置现在每次消耗 1 tick；按实际程序工作量等待自然结束。
+    const ticks = analyzeBook(book)['甲'].tickWorst;
+    run(b, (ticks * TICK_MS) / (1000 * b.player.attr.castSpeed) + 0.1);
+    expect(b.activeCasts(b.player.id)).toHaveLength(0);
+    expect(b.stats.backfires).toBe(1);
+    expect(b.stats.interrupts).toBe(0);
     expect(b.shenshiInUse(b.player.id)).toBe(0);
   });
 
@@ -484,7 +661,7 @@ describe('按键状态接入法术', () => {
     expect(b.pressSlot('5')).toBe(true); // 按下 → 起手持续施法
     run(b, 1.2); // 蓄力超过 0.8s 阈值
     b.releaseSlot('5'); // 松开
-    run(b, 0.2); // 下一个周期轮询捕获松开边沿 → 发射 + 结束施法
+    run(b, 0.4); // 松开边沿后还需支付五参法球的运动与伤害储能 tick
 
     expect(b.casts.has(b.player.id)).toBe(false);
     expect(b.world.projectiles.length).toBeGreaterThanOrEqual(1);
@@ -504,6 +681,226 @@ describe('按键状态接入法术', () => {
 
     expect(b.casts.has(b.player.id)).toBe(false);
     expect(b.world.projectiles.length).toBe(0);
+  });
+});
+
+describe('显式蓄力会话', () => {
+  function chargeBattle(mode: 'prepare' | 'projectile', manaMax = 200): Battle {
+    const source =
+      mode === 'prepare'
+        ? 'spell 蓄时 @charge=prepare @duration=0.5 @period=0.25 { 创建弹道(自身位置(), 准星方向(), 380, 8, 2) }'
+        : 'spell 持球 @charge=projectile @chargeMana=10 @duration=2 @period=0.25 { }';
+    const battle = new Battle(parseSpellbook(source), {
+      playerAttrs: { manaMax, manaRegen: 0 },
+      playerBindings: { '5': mode === 'prepare' ? '蓄时' : '持球' },
+    });
+    for (const foe of battle.world.actors.filter((actor) => actor.faction === 'foe')) {
+      foe.base.speed = 0;
+      foe.bindings = {};
+      battle.world.recompute(foe);
+    }
+    return battle;
+  }
+
+  it('按键先入意图；蓄时提前松开取消，完成后松开只发布一次', () => {
+    const battle = chargeBattle('prepare');
+    expect(battle.pressSlot('5')).toBe(true);
+    expect(battle.chargeSessions.size).toBe(0);
+    battle.update(0.01);
+    expect(battle.chargeSessions.size).toBe(1);
+    battle.releaseSlot('5');
+    battle.update(0.01);
+    expect(battle.finishedCharges[0].terminal).toBe('early-release');
+    expect(battle.world.projectiles).toHaveLength(0);
+    battle.pressSlot('5');
+    battle.update(0.01);
+    run(battle, 0.5);
+    expect(battle.world.projectiles).toHaveLength(0);
+    expect([...battle.chargeSessions.values()][0].workTicks).toBeGreaterThan(0);
+    battle.releaseSlot('5');
+    battle.releaseSlot('5');
+    battle.update(0.01);
+    run(battle, 0.3);
+    expect(battle.finishedCharges[1].terminal).toBe('released');
+    expect(battle.world.projectiles).toHaveLength(1);
+  });
+
+  it('蓄时在取消、打断、死亡、耗尽和超时后不会发布效果', () => {
+    for (const reason of ['cancelled', 'interrupted', 'death', 'exhausted', 'expired'] as const) {
+      const battle = chargeBattle('prepare', reason === 'exhausted' ? 1 : 200);
+      battle.pressSlot('5');
+      battle.update(0.01);
+      const session = [...battle.chargeSessions.values()][0];
+      if (reason === 'cancelled') battle.cancelCharge('5');
+      if (reason === 'interrupted') battle.world.damage(battle.player.id, 1);
+      if (reason === 'death') battle.world.damage(battle.player.id, 9999);
+      if (reason === 'exhausted') run(battle, 0.3);
+      if (reason === 'expired') run(battle, 1.1);
+      expect(session.terminal).toBe(reason);
+      battle.releaseSlot('5');
+      battle.update(0.01);
+      expect(battle.world.projectiles).toHaveLength(0);
+      expect(battle.finishedCharges).toHaveLength(1);
+    }
+  });
+
+  it('持球周期注能，释放激活一次且账本守恒', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.update(0.01);
+    const session = [...battle.chargeSessions.values()][0];
+    const projectile = battle.world.ownedProjectile(battle.player.id, session.projectileId!)!;
+    expect(projectile.active).toBe(false);
+    run(battle, 0.5);
+    expect(session.periods).toBe(2);
+    expect(battle.world.resourceLedger.balance(projectile.id).damage).toBe(16);
+    battle.releaseSlot('5');
+    battle.update(0.01);
+    expect(session.terminal).toBe('released');
+    expect(projectile.active).toBe(true);
+    expect(projectile.damage).toBe(16);
+    expect(battle.world.resourceLedger.snapshot().conserved).toBe(true);
+    battle.releaseSlot('5');
+    expect(battle.finishedCharges).toHaveLength(1);
+  });
+
+  it('持球首周期前松开取消且不会发射', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.releaseSlot('5');
+    battle.update(0.01);
+    expect(battle.finishedCharges[0].terminal).toBe('early-release');
+    expect(battle.world.projectiles).toHaveLength(0);
+  });
+
+  it('10 M 注成 8 E，做功 3 E 后取消最多退 5 M，重复取消不再退款', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.update(0.01);
+    const session = [...battle.chargeSessions.values()][0];
+    run(battle, 0.25);
+    const id = session.projectileId!;
+    expect(battle.world.resourceLedger.balance(id).damage).toBe(8);
+    expect(battle.world.resourceLedger.consume(id, 'damage', 3, 'damage')).toBe(true);
+    const before = battle.player.mana;
+    battle.cancelCharge('5');
+    expect(battle.player.mana - before).toBe(5);
+    battle.cancelCharge('5');
+    expect(battle.player.mana - before).toBe(5);
+    expect(battle.world.resourceLedger.snapshot().conserved).toBe(true);
+  });
+
+  it('取消、受击、死亡、耗尽、目标消失均只结算一次', () => {
+    for (const reason of [
+      'cancelled',
+      'interrupted',
+      'death',
+      'exhausted',
+      'target-lost',
+    ] as const) {
+      const battle = chargeBattle('projectile', reason === 'exhausted' ? 13 : 200);
+      battle.pressSlot('5');
+      battle.update(0.01);
+      const session = [...battle.chargeSessions.values()][0];
+      const id = session.projectileId!;
+      if (reason === 'cancelled') battle.cancelCharge('5');
+      if (reason === 'interrupted') battle.world.damage(battle.player.id, 1);
+      if (reason === 'death') battle.world.damage(battle.player.id, 9999);
+      if (reason === 'exhausted') run(battle, 0.3);
+      if (reason === 'target-lost') battle.world.removeProjectile(id);
+      if (reason === 'target-lost') battle.update(0.01);
+      expect(session.terminal).toBe(reason);
+      battle.cancelCharge('5');
+      battle.releaseSlot('5');
+      expect(battle.finishedCharges).toHaveLength(1);
+      expect(battle.world.resourceLedger.snapshot().conserved).toBe(true);
+    }
+  });
+
+  it('目标死亡使持球撤销；同刻松开与打断以先提交的原因结算', () => {
+    const lost = chargeBattle('projectile');
+    lost.pressSlot('5');
+    lost.update(0.01);
+    const held = [...lost.chargeSessions.values()][0];
+    lost.world.damage(held.targetId!, 9999);
+    lost.releaseSlot('5');
+    lost.update(0.01);
+    expect(held.terminal).toBe('target-lost');
+
+    const interrupted = chargeBattle('projectile');
+    interrupted.pressSlot('5');
+    interrupted.update(0.01);
+    run(interrupted, 0.3);
+    const session = [...interrupted.chargeSessions.values()][0];
+    interrupted.releaseSlot('5');
+    interrupted.world.damage(interrupted.player.id, 1);
+    interrupted.update(0.01);
+    expect(session.terminal).toBe('interrupted');
+    expect(interrupted.finishedCharges).toHaveLength(1);
+  });
+
+  it('死亡账户不接受持球余额退款', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.update(0.01);
+    const session = [...battle.chargeSessions.values()][0];
+    run(battle, 0.3);
+    const mana = battle.player.mana;
+    battle.world.damage(battle.player.id, 9999);
+    expect(session.terminal).toBe('death');
+    expect(battle.player.mana).toBe(mana);
+    expect(battle.world.resourceLedger.snapshot().conserved).toBe(true);
+  });
+
+  it('暂停冻结周期并缓存有序输入，恢复先结算已到期会话', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.update(0.01);
+    const session = [...battle.chargeSessions.values()][0];
+    const mana = battle.player.mana;
+    battle.setPaused(true);
+    battle.releaseSlot('5');
+    battle.update(1);
+    expect(battle.player.mana).toBe(mana);
+    expect(session.terminal).toBeNull();
+    session.elapsed = session.duration;
+    battle.setPaused(false);
+    battle.update(0.01);
+    expect(session.terminal).toBe('expired');
+    expect(battle.finishedCharges).toHaveLength(1);
+  });
+
+  it('暂停中松开会在恢复后只发射一次', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.update(0.01);
+    run(battle, 0.3);
+    const session = [...battle.chargeSessions.values()][0];
+    const mana = battle.player.mana;
+    battle.setPaused(true);
+    battle.releaseSlot('5');
+    battle.update(1);
+    expect(battle.player.mana).toBe(mana);
+    battle.setPaused(false);
+    battle.update(0.01);
+    expect(session.terminal).toBe('released');
+    expect(battle.finishedCharges).toHaveLength(1);
+  });
+
+  it('暂停输入缓存溢出时取消会话，恢复不重放部分意图', () => {
+    const battle = chargeBattle('projectile');
+    battle.pressSlot('5');
+    battle.update(0.01);
+    const session = [...battle.chargeSessions.values()][0];
+    battle.setPaused(true);
+    for (let i = 0; i < 33; i++) {
+      battle.releaseSlot('5');
+      battle.pressSlot('5');
+    }
+    battle.setPaused(false);
+    battle.update(0.01);
+    expect(session.terminal).toBe('cancelled');
+    expect(battle.chargeSessions.size).toBe(0);
   });
 });
 

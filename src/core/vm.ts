@@ -5,7 +5,7 @@ import { asNum, knownCostArg } from './meta';
 import { allMetas } from './meta';
 import type { Ctx } from './meta';
 import type { Actor, ControlRecord, ControlSession, World } from './world';
-import { controlRecordPrice } from './pricing';
+import { controlRecordPrice, payableMana } from './pricing';
 import type { KeyState } from './input';
 
 /** 一个 tick 代表多少毫秒的施法时间 */
@@ -20,7 +20,7 @@ export interface CastOptions {
   maxDepth: 32;
   /** 单步追踪（推演模式与调试用） */
   trace?: boolean;
-  /** 战斗层可注入的共享资源账户；推演台不注入时使用本次 VM 的独立预算 */
+  /** 战斗层可注入的共享神识账户；法力付款始终登记在世界账本。 */
   resources?: CastResourceHooks;
   /** 当前施法实例拥有的控制租约；终止时统一释放。 */
   controlSession?: ControlSession;
@@ -29,7 +29,8 @@ export interface CastOptions {
 }
 
 export interface CastResourceHooks {
-  trySpendMana(amount: number): boolean;
+  /** 可选外部共享账户钩子；必须在返回 true 前原子扣除传入金额。 */
+  trySpendMana?(amount: number): boolean;
   tryReserveShenshi(amount: number): boolean;
   releaseShenshi(amount: number): void;
 }
@@ -103,7 +104,6 @@ export class VM {
   private shenshiCur = 0;
   private shenshiPeak = 0;
   private manaSpent = 0;
-  private manaBudget = 0;
   private ticksUsed = 0;
   private tickDebt = 0;
   private steps = 0;
@@ -128,6 +128,7 @@ export class VM {
       endRequested: false,
     };
     this.opts = { ...DEFAULT_OPTIONS, ...options };
+    this.ctx.availableMana = () => this.caster.mana;
   }
 
   /** 接入按键状态（duration / 键位法术用）。引用共享，战斗层原地修改即可 */
@@ -164,7 +165,6 @@ export class VM {
     this.shenshiCur = 0;
     this.shenshiPeak = 0;
     this.manaSpent = 0;
-    this.manaBudget = this.caster.mana;
     this.ticksUsed = 0;
     this.tickDebt = 0;
     this.steps = 0;
@@ -229,17 +229,20 @@ export class VM {
     const debtPaid = Math.min(this.tickDebt, Math.max(0, tickBudget));
     this.tickDebt -= debtPaid;
     if (this.status !== 'running' || this.tickDebt > 0 || debtPaid >= tickBudget) return debtPaid;
-    const startTicks = this.ticksUsed;
     const startSteps = this.steps;
+    let spent = debtPaid;
     while (this.status === 'running') {
+      const startTicks = this.ticksUsed;
       this.execOne();
-      if (this.tickDebt > 0 || this.ticksUsed - startTicks >= tickBudget - debtPaid) break;
+      const instructionTicks = this.ticksUsed - startTicks - this.tickDebt;
+      const paidNow = Math.min(this.tickDebt, Math.max(0, tickBudget - spent - instructionTicks));
+      this.tickDebt -= paidNow;
+      spent += instructionTicks + paidNow;
+      // 本笔债务已还清且本帧仍有预算时继续执行，不能把每个元法术强制拖到下一帧。
+      if (this.tickDebt > 0 || spent >= tickBudget) break;
       if (this.steps - startSteps >= stepCap) break;
     }
-    const instructionTicks = this.ticksUsed - startTicks - this.tickDebt;
-    const paidNow = Math.min(this.tickDebt, Math.max(0, tickBudget - debtPaid - instructionTicks));
-    this.tickDebt -= paidNow;
-    return debtPaid + instructionTicks + paidNow;
+    return spent;
   }
 
   result(): CastResult {
@@ -305,6 +308,41 @@ export class VM {
     this.frames = [];
   }
 
+  /** 先检查累计工作上限，再一次提交法力与 tick 债务；失败无本笔扣款。 */
+  private payWork(mana: number, ticks: number, kind: string): boolean {
+    if (!Number.isFinite(mana) || mana < 0 || !Number.isSafeInteger(ticks) || ticks < 0) {
+      this.fail('非法资源价格');
+      return false;
+    }
+    if (
+      !Number.isSafeInteger(this.ticksUsed + ticks) ||
+      this.ticksUsed + ticks > this.opts.maxTicks
+    ) {
+      this.fail(`施法超时：超过 ${this.opts.maxTicks} tick`);
+      return false;
+    }
+    let paid: number | null;
+    try {
+      paid = this.ctx.world.resourceLedger.payMana(
+        this.caster.id,
+        mana,
+        kind,
+        this.opts.resources?.trySpendMana,
+      );
+    } catch (error) {
+      this.fail(`资源结算失败：${String(error)}`);
+      return false;
+    }
+    if (paid === null) {
+      this.fail(`法力不足：本次还需 ${Math.round(mana)}`);
+      return false;
+    }
+    this.manaSpent += paid;
+    this.ticksUsed += ticks;
+    this.tickDebt += ticks;
+    return true;
+  }
+
   /** 供同一施法实例的外层生命周期把周期费用记入当前 VM。 */
   chargeControl(record: ControlRecord, phase: 'start' | 'period'): boolean {
     try {
@@ -313,25 +351,9 @@ export class VM {
       if (record.mode === 'maintain' && !periodic) throw new RangeError('缺少维持周期价格');
       const baseMana = phase === 'start' ? price.mana.value : 0;
       const baseTicks = phase === 'start' ? price.ticks.value : 0;
-      const mana = (baseMana + (periodic?.mana.value ?? 0)) * this.caster.attr.manaCostMul;
+      const mana = payableMana(baseMana + (periodic?.mana.value ?? 0), null, 1);
       const ticks = baseTicks + (periodic?.ticks.value ?? 0);
-      if (!Number.isFinite(mana) || mana < 0 || !Number.isSafeInteger(ticks) || ticks < 0)
-        throw new RangeError('非法控制资源价格');
-      if (this.ticksUsed + ticks > this.opts.maxTicks) {
-        this.fail(`施法超时：超过 ${this.opts.maxTicks} tick`);
-        return false;
-      }
-      const paid = this.opts.resources
-        ? this.opts.resources.trySpendMana(mana)
-        : this.manaSpent + mana <= this.manaBudget;
-      if (!paid) {
-        this.fail(`法力不足：本次还需 ${Math.round(mana)}`);
-        return false;
-      }
-      this.manaSpent += mana;
-      this.ticksUsed += ticks;
-      this.tickDebt += ticks;
-      return true;
+      return this.payWork(mana, ticks, 'control');
     } catch (error) {
       this.fail(`控制定价失败：${String(error)}`);
       return false;
@@ -348,6 +370,8 @@ export class VM {
   private releaseShenshi(amount: number): void {
     this.shenshiCur = Math.max(0, this.shenshiCur - amount);
     this.opts.resources?.releaseShenshi(amount);
+    if (!this.opts.resources)
+      this.ctx.world.reportVmShenshiUsage(this.caster.id, this, this.shenshiCur);
   }
 
   private pushFrame(idx: number, argc: number): string | null {
@@ -433,7 +457,7 @@ export class VM {
         const next = this.shenshiCur + size;
         const reserved = this.opts.resources
           ? this.opts.resources.tryReserveShenshi(size)
-          : next <= cap;
+          : this.ctx.world.tryReserveVmShenshi(this.caster.id, this, size);
         if (!reserved) {
           this.fail(`神识不足：本次还需 ${size}，上限 ${cap}`);
           return;
@@ -515,10 +539,15 @@ export class VM {
         const argc = inst.b ?? 0;
         const args: Value[] = new Array(argc);
         for (let i = argc - 1; i >= 0; i--) args[i] = stack.pop() ?? null;
+        if (m.attemptMana && this.caster.mana < m.attemptMana) {
+          this.fail('法力不足：无法支付探查尝试');
+          return;
+        }
         const worldCharged =
           typeof m.worldCharged === 'function' ? m.worldCharged(args) : m.worldCharged;
         let baseCost = m.mana;
         let tickCost = m.ticks;
+        let undiscountedMana = 0;
         if (m.cost) {
           try {
             const dynamic = m.cost(this.ctx, args.map(knownCostArg));
@@ -546,6 +575,18 @@ export class VM {
             }
             baseCost = dynamic.mana.value;
             tickCost = dynamic.ticks.value;
+            if (dynamic.undiscountedMana) {
+              if (
+                dynamic.undiscountedMana.dynamic ||
+                !Number.isFinite(dynamic.undiscountedMana.value) ||
+                dynamic.undiscountedMana.value < 0 ||
+                dynamic.undiscountedMana.value > baseCost
+              ) {
+                this.fail(`元函数「${m.name}」返回非法不可折扣消耗`);
+                return;
+              }
+              undiscountedMana = dynamic.undiscountedMana.value;
+            }
           } catch (error) {
             this.fail(`元函数「${m.name}」动态定价失败：${String(error)}`);
             return;
@@ -573,21 +614,31 @@ export class VM {
           }
         }
         // 法力受「法力消耗」属性影响；动态基础价也不得越过注册时声明的上界。
-        const cost = (worldCharged ? 0 : baseCost) * this.caster.attr.manaCostMul;
-        const paid = this.opts.resources
-          ? this.opts.resources.trySpendMana(cost)
-          : this.manaSpent + cost <= this.manaBudget;
-        if (!paid) {
-          this.fail(`法力不足：本次还需 ${Math.round(cost)}，仅有 ${Math.round(this.caster.mana)}`);
+        let cost: number;
+        try {
+          const fixed =
+            m.discountableFixedMana === undefined
+              ? null
+              : Math.max(m.discountableFixedMana, undiscountedMana);
+          cost = worldCharged ? 0 : payableMana(baseCost, fixed, this.caster.attr.manaCostMul);
+        } catch (error) {
+          this.fail(`元函数「${m.name}」定价失败：${String(error)}`);
           return;
         }
-        this.manaSpent += cost;
-        this.ticksUsed += worldCharged ? 0 : tickCost;
-        if (this.ticksUsed > opts.maxTicks) {
-          this.fail(`施法超时：超过 ${opts.maxTicks} tick`);
+        if (
+          !this.payWork(cost, worldCharged && !m.worldChargedTicks ? 0 : tickCost, `meta:${m.name}`)
+        )
           return;
+        const manaBeforeWorldEffect = this.caster.mana;
+        try {
+          stack.push(m.impl(this.ctx, args));
+        } catch (error) {
+          this.fail(`元函数「${m.name}」执行失败：${String(error)}`);
+          return;
+        } finally {
+          if (worldCharged && m.worldChargedTicks)
+            this.manaSpent += Math.max(0, manaBeforeWorldEffect - this.caster.mana);
         }
-        stack.push(m.impl(this.ctx, args));
         // 「结束施法」元函数会让当前施法立即结束
         if (this.ctx.endRequested) {
           this.status = 'done';
@@ -644,7 +695,7 @@ export class VM {
 
 /**
  * 一次性施展并结算（推演台 / 测试用）。
- * 成功扣法力；失败（走火入魔）法力枯竭。
+ * 每步已从共享账户实扣；失败保留已做工作，未提交的调用不扣费。
  */
 export function castSpell(
   program: Program,
@@ -656,12 +707,10 @@ export function castSpell(
   const vm = new VM(program, world, caster, opts);
   const r = vm.run(entry);
   if (r.ok) {
-    caster.mana = Math.max(0, caster.mana - r.mana);
     world.events.push(
       `施展「${entry}」：法力 -${r.mana}，神识峰值 ${r.shenshiPeak}，耗时 ${r.ticks} tick`,
     );
   } else {
-    caster.mana = 0;
     world.events.push(`走火入魔：「${entry}」失败 —— ${r.error}`);
   }
   return r;

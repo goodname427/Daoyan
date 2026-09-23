@@ -1,210 +1,82 @@
-// ============================================================================
-// 道衍 · 演武场法术书
-//
-// 玩家法术：绑定到按键上，按键触发
-// 妖兽法术：妖兽的「本能」，同样走施法管线，同样受神识 / 法力 / 耗时约束
-//
-// 这里的取舍是刻意设计的：
-//   基础剑气  逐个探查，法力随目标数增长 → 人少时便宜
-//   微剑      一次快照，法力恒定但容量只有 3 → 人多时省，但会看漏
-//   御剑·手动 手动瞄准，极便宜，但打不打得中看你自己的手
-//   疾风步    想跑得快就要烧法力
-// ============================================================================
+// 道衍默认用户法术书。所有入口均按当前权限与资源合同编写。
+// 五参创建弹道会预付初始运动和一次伤害储能；绑定与实战共用此书。
 
-
-// @kind=instant|duration|channel  @period 周期  @duration 持续  @keys 虚拟按键
-
-// 自动锁定最近目标，逐个「探查」——朴素写法
 spell 基础剑气 {
-  var self: vec2 = 自身位置()
-  var foes: list<entity, 8> = 感知敌人(self, 460)
-  var best: entity
-  var bestD: num = 999999
-  var p: vec2
-  var d: num
-
-  for f in foes {
-    p = 探查(f)
-    d = 距离(self, p)
-    if 小于(d, bestD) {
-      bestD = d
-      best = f
-    }
-  }
-
-  if 不等(best, 空) {
-    创建弹道(self, 朝向(self, 探查(best)), 380, 18, 2.4)
-  }
+  创建弹道(自身位置(), 准星方向(), 380, 18, 2.4)
 }
 
-
-// 一次快照读进神识，之后纯神识内运算。容量压到 3，神识极省
 spell 微剑 {
-  var self: vec2 = 自身位置()
-  var pts: list<vec2, 3> = 快照(self, 380)
-  var i: num = 0
-  var best: num = -1
-  var bestD: num = 999999
-  var d: num
-
-  for p in pts {
-    d = 距离(self, p)
-    if 小于(d, bestD) {
-      bestD = d
-      best = i
-    }
-    i = 加(i, 1)
-  }
-
-  if 大于等于(best, 0) {
-    创建弹道(self, 朝向(self, pts[best]), 380, 16, 2.4)
-  }
+  创建弹道(自身位置(), 准星方向(), 420, 16, 2.4)
 }
 
-
-// 三连散射：容量 8 的快照 + 旋转，覆盖面广但更贵
 spell 三连剑 {
-  var self: vec2 = 自身位置()
-  var pts: list<vec2, 8> = 快照(self, 460)
-  var i: num = 0
-  var best: num = -1
-  var bestD: num = 999999
-  var d: num
-
-  for p in pts {
-    d = 距离(self, p)
-    if 小于(d, bestD) {
-      bestD = d
-      best = i
-    }
-    i = 加(i, 1)
-  }
-
-  if 大于等于(best, 0) {
-    var dir: vec2 = 朝向(self, pts[best])
-    创建弹道(self, dir, 380, 14, 2.4)
-    创建弹道(self, 旋转(dir, 0.16), 380, 14, 2.4)
-    创建弹道(self, 旋转(dir, -0.16), 380, 14, 2.4)
-  }
+  var origin: vec2 = 自身位置()
+  var direction: vec2 = 准星方向()
+  创建弹道(origin, direction, 380, 14, 2.4)
+  创建弹道(origin, 旋转(direction, 0.16), 380, 14, 2.4)
+  创建弹道(origin, 旋转(direction, -0.16), 380, 14, 2.4)
 }
 
-
-// 范围爆破：贴脸才有效，法力消耗随目标数线性增长
 spell 爆炎咒 {
-  var self: vec2 = 自身位置()
-  var foes: list<entity, 8> = 感知敌人(self, 240)
-  for f in foes {
-    伤害(f, 30)
+  近战斩击(准星方向(), 150, 30)
+}
+
+spell 御剑·手动 {
+  创建弹道(自身位置(), 准星方向(), 380, 22, 2.4)
+}
+
+// 三种法球的可绑定例子：观察滑行、运动池耗尽、扫描池耗尽后的轨迹。
+spell 法球·冲量滑行 {
+  var ball: entity = 创建弹道(自身位置(), 准星方向(), 120, 10, 2.4)
+  设置法球滑行(ball)
+}
+
+spell 法球·持续推进 {
+  var ball: entity = 创建弹道(自身位置(), 准星方向(), 120, 10, 2.4)
+  注入运动能量(ball, 5)
+  设置法球推进(ball, 数乘(准星方向(), 30))
+}
+
+spell 法球·目标追踪 {
+  var seen: query<entities> = 扫描敌人(自身位置(), 240)
+  if 查询可用(seen) {
+    var foes: list<entity, 1> = 查询实体列表(seen)
+    for foe in foes {
+      var ball: entity = 创建弹道(自身位置(), 准星方向(), 120, 10, 2.4)
+      注入运动能量(ball, 5)
+      注入扫描能量(ball, 3)
+      设置法球追踪(ball, foe, 30)
+    }
   }
 }
 
-
-// 手动瞄准：创建即激活，返回统一实体句柄
-spell 御剑·手动 {
-  var sword: entity = 创建弹道(自身位置(), 准星方向(), 380, 22, 2.4)
-}
-
-
-// 身法：想变快，就得烧法力
 spell 疾风步 {
-  移动(准星方向(), 170)
+  传送(自身实体(), 向量加(自身位置(), 数乘(准星方向(), 170)))
 }
 
-
-// 持续类：起手后每 1.5 秒续一次护体，共持续 6 秒
-// 注意 —— 每次续期都要再付一次法力，这就是「持续」的代价
 spell 护体金光 @kind=duration @period=1.5 @duration=6 {
   调整护体(自身实体(), 6, 2.5)
 }
 
-
-// 蓄力火球：按住蓄力，松开时若蓄力≥0.8s 则释放（威力随蓄力时长放大），否则取消
-// 注意：松开靠「按键松开」粘性边沿捕获，不会因周期轮询错过
 spell 蓄力火球 @kind=duration @period=0.05 @duration=10 @keys=蓄力 {
   if 按键松开(0) {
     var t: num = 按键蓄力(0)
     if 大于等于(t, 0.8) {
-      var self: vec2 = 自身位置()
-      创建弹道(self, 准星方向(), 380, 加(20, 乘(最小(t, 2), 40)), 2.4)
+      创建弹道(自身位置(), 准星方向(), 380, 加(20, 乘(最小(t, 2), 40)), 2.4)
     }
     结束施法()
   }
 }
 
-
-// 引导类：读条期间几乎无法移动，但威力可观
 spell 天雷引 @kind=channel @duration=2 {
-  var self: vec2 = 自身位置()
-  var pts: list<vec2, 8> = 快照(self, 460)
-  var i: num = 0
-  var best: num = -1
-  var bestD: num = 999999
-  var d: num
-
-  for p in pts {
-    d = 距离(self, p)
-    if 小于(d, bestD) {
-      bestD = d
-      best = i
-    }
-    i = 加(i, 1)
-  }
-
-  if 大于等于(best, 0) {
-    创建弹道(self, 朝向(self, pts[best]), 380, 45, 2.4)
-  }
+  创建弹道(自身位置(), 准星方向(), 380, 45, 2.4)
 }
 
-
-// ---------------- 妖兽的本能 ----------------
-
-// 近身则撕咬，稍远则扑击
+// 妖兽与玩家使用同一个 Actor 和施法管线。
 spell 妖兽·扑击 {
-  var self: vec2 = 自身位置()
-  var foes: list<entity, 3> = 感知敌人(self, 340)
-  var best: entity
-  var bestD: num = 999999
-  var p: vec2
-  var d: num
-
-  for f in foes {
-    p = 探查(f)
-    d = 距离(self, p)
-    if 小于(d, bestD) {
-      bestD = d
-      best = f
-    }
-  }
-
-  if 不等(best, 空) {
-    if 小于(bestD, 90) {
-      伤害(best, 14)
-    } else {
-      创建弹道(self, 朝向(self, 探查(best)), 380, 11, 2.4)
-    }
-  }
+  近战斩击(准星方向(), 90, 14)
 }
 
-
-// 远程符修：一次快照后遥击
 spell 妖兽·雷符 {
-  var self: vec2 = 自身位置()
-  var pts: list<vec2, 3> = 快照(self, 520)
-  var i: num = 0
-  var best: num = -1
-  var bestD: num = 999999
-  var d: num
-
-  for p in pts {
-    d = 距离(self, p)
-    if 小于(d, bestD) {
-      bestD = d
-      best = i
-    }
-    i = 加(i, 1)
-  }
-
-  if 大于等于(best, 0) {
-    创建弹道(self, 朝向(self, pts[best]), 380, 13, 2.4)
-  }
+  创建弹道(自身位置(), 准星方向(), 380, 13, 2.4)
 }

@@ -1,9 +1,15 @@
 import { T } from '../types';
 import { asEntity, asNum, defMeta, getMeta, type CostArg, type Ctx } from '../meta';
-import { controlPrice, effectCost, isPositiveFinite } from '../pricing';
+import { controlPrice, effectCost, isPositiveFinite, teleportPrice } from '../pricing';
+import { RESOURCE_SCALE } from '../ledger';
 import type { ControlPropertyKey } from '../attributes';
 import { getControlPropertyDescriptor } from '../attributes';
 import type { ControlRecord } from '../world';
+
+const projectileFundingMana = (energy: number): number =>
+  Math.ceil((energy / 0.8) * RESOURCE_SCALE + 2) / RESOURCE_SCALE;
+const initialMotionSpend = (speed: number): number =>
+  (2 * Math.ceil((speed / 380) ** 2 * RESOURCE_SCALE)) / RESOURCE_SCALE;
 
 function finiteVec(value: unknown): value is { x: number; y: number } {
   if (typeof value !== 'object' || value === null) return false;
@@ -24,6 +30,12 @@ const controls: Array<[string, ControlPropertyKey, typeof T.num | typeof T.vec2]
   ['设置存活时间', 'lifetime', T.num],
   ['调整感知', 'perception', T.num],
   ['调整护体', 'armor', T.num],
+  ['调整生命上限', 'hpMax', T.num],
+  ['调整法力上限', 'manaMax', T.num],
+  ['调整法力回复', 'manaRegen', T.num],
+  ['调整神识上限', 'shenshiMax', T.num],
+  ['调整施法速度', 'castSpeed', T.num],
+  ['调整法力消耗', 'manaCostMul', T.num],
 ];
 
 function price(ctx: Ctx | null, args: readonly CostArg[], key: ControlPropertyKey) {
@@ -39,6 +51,7 @@ function price(ctx: Ctx | null, args: readonly CostArg[], key: ControlPropertyKe
     });
   if (!ctx || !args[0]?.known || !args[1]?.known) {
     return controlPrice({
+      propertyKey: key,
       relation: null,
       resistance: null,
       strength: null,
@@ -76,6 +89,7 @@ function price(ctx: Ctx | null, args: readonly CostArg[], key: ControlPropertyKe
     return rejected();
   }
   return controlPrice({
+    propertyKey: key,
     relation: ctx.world.entityCostMultiplier(ctx.caster, target),
     resistance: binding.resistance(),
     strength,
@@ -89,6 +103,39 @@ export default function register(): void {
   const legacyCreate = getMeta('创建弹道');
   const legacyPosition = getMeta('设置位置');
   defMeta({
+    name: '传送',
+    group: '实体控制',
+    params: [
+      { name: '目标', t: T.entity },
+      { name: '落点', t: T.vec2 },
+    ],
+    ret: T.bool,
+    mana: 20,
+    ticks: 4,
+    cost: (ctx, args) => {
+      if (!ctx || !args[0]?.known || !args[1]?.known)
+        return { mana: { value: 20, dynamic: true }, ticks: { value: 4, dynamic: true } };
+      const target = ctx.world.entityById(asEntity(args[0].value));
+      const point = args[1].value;
+      if (!target || !finiteVec(point))
+        return { mana: { value: 1, dynamic: false }, ticks: { value: 1, dynamic: false } };
+      if (!ctx.world.canTeleportEntity(target.id, point, ctx.controlSession?.canControl))
+        return { mana: { value: 1, dynamic: false }, ticks: { value: 1, dynamic: false } };
+      return teleportPrice(
+        Math.hypot(point.x - target.x, point.y - target.y),
+        ctx.world.entityCostMultiplier(ctx.caster, target),
+        ctx.world.controlPropertyBinding(target, 'position')?.resistance() ?? 0,
+      );
+    },
+    desc: '独立高价传送，检查能力、权限、边界和落点；保留当前速度。',
+    impl: (ctx, args) => {
+      const targetId = asEntity(args[0]);
+      const point = args[1];
+      if (!finiteVec(point)) return false;
+      return ctx.world.teleportEntity(targetId, point, ctx.controlSession?.canControl);
+    },
+  });
+  defMeta({
     name: '创建弹道',
     group: '实体创建',
     params: [
@@ -101,15 +148,40 @@ export default function register(): void {
     ret: T.entity,
     mana: 10,
     ticks: 2,
+    worldCharged: (args) => args.length === 5,
+    worldChargedTicks: true,
     legacyParams: legacyCreate ? [legacyCreate.params] : [],
-    cost: (ctx, args) =>
-      args.length === 1 && legacyCreate?.cost
-        ? legacyCreate.cost(ctx, args)
-        : effectCost(args, 10, 2, [
-            { index: 2, manaPer: 0.01, tickUnit: 300, measure: (value) => Math.abs(value - 380) },
-            { index: 3, manaPer: 0.15, tickUnit: 80 },
-            { index: 4, manaPer: 2, tickUnit: 2, measure: (value) => Math.abs(value - 2.4) },
-          ]),
+    cost: (ctx, args) => {
+      if (args.length === 1 && legacyCreate?.cost) return legacyCreate.cost(ctx, args);
+      const base = effectCost(args, 10, 2, [
+        { index: 2, manaPer: 0.01, tickUnit: 300, measure: (value) => Math.abs(value - 380) },
+        { index: 3, manaPer: 0.15, tickUnit: 80 },
+        { index: 4, manaPer: 2, tickUnit: 2, measure: (value) => Math.abs(value - 2.4) },
+      ]);
+      const speed = args[2];
+      const baseDamage = args[3];
+      if (
+        !speed?.known ||
+        typeof speed.value !== 'number' ||
+        !baseDamage?.known ||
+        typeof baseDamage.value !== 'number' ||
+        !ctx
+      ) {
+        base.mana.dynamic = true;
+        base.ticks.dynamic = true;
+      } else if (Number.isFinite(speed.value) && Number.isFinite(baseDamage.value)) {
+        const energy = initialMotionSpend(speed.value);
+        const damage = baseDamage.value * ctx.caster.attr.power;
+        if (!Number.isFinite(energy)) throw new RangeError('初始冲量价格溢出');
+        if (!Number.isFinite(damage)) throw new RangeError('伤害储能价格溢出');
+        const injected =
+          projectileFundingMana(Math.max(0, energy)) + projectileFundingMana(Math.max(0, damage));
+        base.mana.value += injected;
+        base.ticks.value += Math.ceil(energy);
+        base.undiscountedMana = { value: injected, dynamic: false };
+      }
+      return base;
+    },
     desc: '在指定起点按方向创建已激活弹道，返回统一实体句柄。',
     impl: (c, args) => {
       if (args.length === 1 && legacyCreate) return legacyCreate.impl(c, args);
@@ -133,6 +205,24 @@ export default function register(): void {
       const x = origin.x + dx * (c.caster.radius + 6);
       const y = origin.y + dy * (c.caster.radius + 6);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      const basePrice = effectCost(
+        args.map((value) => ({ known: true, value })),
+        10,
+        2,
+        [
+          { index: 2, manaPer: 0.01, tickUnit: 300, measure: (value) => Math.abs(value - 380) },
+          { index: 3, manaPer: 0.15, tickUnit: 80 },
+          { index: 4, manaPer: 2, tickUnit: 2, measure: (value) => Math.abs(value - 2.4) },
+        ],
+      ).mana.value;
+      const motionEnergy = initialMotionSpend(speed);
+      const motionMana = projectileFundingMana(motionEnergy);
+      const damageMana = projectileFundingMana(damage);
+      if (
+        ![basePrice, motionMana, damageMana].every(Number.isFinite) ||
+        (c.availableMana?.() ?? c.caster.mana) < basePrice + motionMana + damageMana
+      )
+        return null;
       const projectile = c.world.spawnProjectile({
         faction: c.caster.faction,
         ownerId: c.caster.id,
@@ -144,15 +234,48 @@ export default function register(): void {
         damage,
         life,
         radius: 7,
+        active: false,
       });
-      if (projectile)
-        c.world.fx.push({ kind: 'shoot', x: origin.x + dx * 16, y: origin.y + dy * 16 });
-      return projectile?.id ?? null;
+      if (!projectile) return null;
+      if (
+        !c.world.resourceLedger.canInjectBatch(projectile.id, c.caster.id, [
+          { pool: 'motion', mana: motionMana },
+          { pool: 'damage', mana: damageMana },
+        ])
+      ) {
+        c.world.projectiles = c.world.projectiles.filter((item) => item !== projectile);
+        return null;
+      }
+      const paid = c.world.resourceLedger.payMana(c.caster.id, basePrice, 'projectile-create');
+      const motion =
+        paid !== null &&
+        c.world.injectEntityEnergy(projectile.id, c.caster.id, 'motion', motionMana);
+      const damageSource =
+        motion && c.world.injectEntityEnergy(projectile.id, c.caster.id, 'damage', damageMana);
+      const initialMotion =
+        damageSource && c.world.resourceLedger.reserve(projectile.id, 'motion', motionEnergy);
+      if (
+        !initialMotion ||
+        !c.world.resourceLedger.settle(initialMotion, {
+          motionWork: motionEnergy / 2,
+          controlLoss: motionEnergy / 2,
+        })
+      ) {
+        c.world.refundEntityEnergy(projectile.id);
+        c.world.projectiles = c.world.projectiles.filter((item) => item !== projectile);
+        return null;
+      }
+      projectile.active = true;
+      projectile.velocity = { x: dx * speed, y: dy * speed };
+      projectile.motionSource = 'projectile';
+      c.world.fx.push({ kind: 'shoot', x: origin.x + dx * 16, y: origin.y + dy * 16 });
+      return projectile.id;
     },
   });
   for (const [name, key, kind] of controls) {
     defMeta({
       name,
+      legacyOnly: key === 'position',
       group: '实体控制',
       params: [
         { name: '目标', t: T.entity },

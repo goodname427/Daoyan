@@ -71,6 +71,8 @@ function defaultValue(t: Type): Value {
       return { x: 0, y: 0 };
     case 'entity':
       return null;
+    case 'query':
+      return { ok: false, reason: 'unavailable' };
     case 'list':
       return [];
     default:

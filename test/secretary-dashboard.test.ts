@@ -1,7 +1,17 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
 import { createServer } from 'node:net';
-import { cp, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -419,11 +429,22 @@ describe('secretary dashboard server', () => {
     'blocks an overdue existing run with %s recovery evidence until a terminal snapshot is restored',
     async (mode) => {
       temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-recovery-'));
-      const secretaryState = resolve(temporary, 'secretary');
-      const releaseState = resolve(temporary, 'releases');
-      const runDirectory = resolve(temporary, 'old-run');
+      // The script root also owns scanRuns() and the recursive run watcher.
+      // Isolating only state directories still observes the real project's PMs
+      // and misses events from this test's recovery directory.
+      const fixture = resolve(temporary, 'fixture');
+      const secretaryState = resolve(fixture, '.daoyan-agent/secretary');
+      const releaseState = resolve(fixture, '.daoyan-agent/releases');
+      const runDirectory = resolve(fixture, '.daoyan-agent/runs/old-run');
       await mkdir(secretaryState, { recursive: true });
       await mkdir(runDirectory, { recursive: true });
+      await mkdir(releaseState, { recursive: true });
+      await mkdir(resolve(fixture, 'docs'), { recursive: true });
+      await cp(resolve(root, 'scripts'), resolve(fixture, 'scripts'), { recursive: true });
+      await cp(resolve(root, 'agents'), resolve(fixture, 'agents'), { recursive: true });
+      await writeFile(resolve(fixture, 'docs/status.md'), '# 恢复测试项目\n');
+      await symlink(resolve(root, 'node_modules'), resolve(fixture, 'node_modules'), 'junction');
+      await writeFile(resolve(fixture, 'package.json'), JSON.stringify({ type: 'module' }));
       const now = new Date().toISOString();
       const state = createSecretaryState(now);
       const item = itemFromIntake({ id: 'old', idea: '已有独立工作', createdAt: now }, []).item;
@@ -450,7 +471,7 @@ describe('secretary dashboard server', () => {
       }
       const statePath = resolve(secretaryState, 'state.json');
       await writeFile(statePath, JSON.stringify(state));
-      const url = await startReviewGuard(secretaryState, releaseState);
+      await startReviewGuard(secretaryState, releaseState, fixture);
       const blocked = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
       expect(blocked.items[0]).toMatchObject({
         status: 'tracking',
@@ -466,9 +487,9 @@ describe('secretary dashboard server', () => {
       expect(
         blocked.orchestration!.reconciliations.filter((entry) => entry.outcome === 'missing'),
       ).toHaveLength(1);
-      await reviewIntake(url, secretaryState, '好的。');
+      const recoveryPath = resolve(runDirectory, 'recovery.json');
       await writeFile(
-        resolve(runDirectory, 'recovery.json'),
+        `${recoveryPath}.tmp`,
         JSON.stringify({
           status: 'delivered',
           runId: 'old-run',
@@ -478,15 +499,15 @@ describe('secretary dashboard server', () => {
           updatedAt: now,
         }),
       );
-      await reviewIntake(url, secretaryState, '现在正式版本处于什么阶段？');
+      await rename(`${recoveryPath}.tmp`, recoveryPath);
       await expect
         .poll(
           async () => {
             const current = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
             return current.items[0].orchestration?.reconciliationOutcome;
           },
-          // The response commits before the separate reconciliation event.
-          // Coverage instrumentation can delay that event without changing its result.
+          // The fixture's file event must reconcile without another intake or
+          // any events from the real project. Keep the original bounded wait.
           { timeout: 20_000 },
         )
         .toBe('delivered');
@@ -500,6 +521,32 @@ describe('secretary dashboard server', () => {
           processOccupied: mode === 'live-worker',
         },
       });
+      if (mode === 'live-worker') {
+        expect(nextRunnableItem(reconciled, now)).toBeNull();
+        const worker = nestedWorker!;
+        await new Promise<void>((resolveExit) => {
+          worker.once('exit', () => resolveExit());
+          worker.kill('SIGTERM');
+        });
+        nestedWorker = null;
+        await expect
+          .poll(
+            async () => {
+              const current = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
+              return current.items[0];
+            },
+            { timeout: 20_000 },
+          )
+          .toMatchObject({
+            status: 'delivered',
+            retryAt: '',
+            orchestration: { reconciliationOutcome: 'delivered', processOccupied: false },
+          });
+      }
+      const completed = JSON.parse(await readFile(statePath, 'utf8')) as SecretaryState;
+      expect(
+        completed.orchestration!.reconciliations.filter((entry) => entry.outcome === 'delivered'),
+      ).toHaveLength(1);
     },
     50_000,
   );

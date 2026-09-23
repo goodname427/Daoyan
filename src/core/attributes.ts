@@ -41,6 +41,12 @@ export const CONTROL_PROPERTY_KEYS = [
   'lifetime',
   'perception',
   'armor',
+  'hpMax',
+  'manaMax',
+  'manaRegen',
+  'shenshiMax',
+  'castSpeed',
+  'manaCostMul',
 ] as const;
 
 export type ControlPropertyKey = (typeof CONTROL_PROPERTY_KEYS)[number];
@@ -153,6 +159,42 @@ const CONTROL_PROPERTY_DESCRIPTORS: Readonly<
     effectKind: 'num',
     merge: 'add',
     normalize: finiteNumber,
+  }),
+  hpMax: Object.freeze({
+    propertyKey: 'hpMax',
+    effectKind: 'num',
+    merge: 'add',
+    normalize: finiteNumber,
+  }),
+  manaMax: Object.freeze({
+    propertyKey: 'manaMax',
+    effectKind: 'num',
+    merge: 'add',
+    normalize: finiteNumber,
+  }),
+  manaRegen: Object.freeze({
+    propertyKey: 'manaRegen',
+    effectKind: 'num',
+    merge: 'add',
+    normalize: finiteNumber,
+  }),
+  shenshiMax: Object.freeze({
+    propertyKey: 'shenshiMax',
+    effectKind: 'num',
+    merge: 'add',
+    normalize: finiteNumber,
+  }),
+  castSpeed: Object.freeze({
+    propertyKey: 'castSpeed',
+    effectKind: 'num',
+    merge: 'multiply',
+    normalize: positiveFinite,
+  }),
+  manaCostMul: Object.freeze({
+    propertyKey: 'manaCostMul',
+    effectKind: 'num',
+    merge: 'multiply',
+    normalize: positiveFinite,
   }),
 });
 

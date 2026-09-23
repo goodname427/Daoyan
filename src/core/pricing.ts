@@ -1,6 +1,8 @@
 import { dynamicCost, fixedCost, type CostAmount, type CostArg, type MetaCost } from './meta';
-import type { ControlMode, ControlWritePolicy } from './attributes';
+import type { ControlMode, ControlPropertyKey, ControlWritePolicy } from './attributes';
 import type { Actor, ControlRecord, World } from './world';
+import type { SenseQuote } from './world';
+import type { Vec2 } from './types';
 
 export interface EffectTerm {
   index: number;
@@ -57,10 +59,94 @@ export function isNonNegativeFinite(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
 }
 
+export const SENSE_ATTEMPT_PRICE: MetaCost = {
+  mana: fixedCost(1),
+  ticks: fixedCost(1),
+  undiscountedMana: fixedCost(1),
+};
+
+/** 探查成功价已包含尝试价；所有输入均是授权给读者的公开报价。 */
+export function sensePrice(quote: SenseQuote): MetaCost {
+  if (quote.privateSelf) return SENSE_ATTEMPT_PRICE;
+  const {
+    distance: d,
+    relation: a,
+    targetShenshi: rt,
+    readerShenshi: sa,
+    resistance: r,
+    level: l,
+  } = quote;
+  if (
+    ![d, rt, sa, r].every(Number.isFinite) ||
+    d < 0 ||
+    rt < 0 ||
+    sa <= 0 ||
+    r < 0 ||
+    ![1, 2, 8].includes(a) ||
+    ![0, 1, 2].includes(l)
+  )
+    throw new RangeError('非法探查价格参数');
+  const gate = a === 8 ? 4 : 0;
+  const mana = Math.ceil(gate + a * (1 + d / 120 + 2 * l + Math.max(0, rt - sa) / 8 + r));
+  const ticks = Math.ceil(gate + a * (1 + d / 240 + l + Math.max(0, rt - sa) / 16 + r / 2));
+  if (!Number.isSafeInteger(mana) || !Number.isSafeInteger(ticks))
+    throw new RangeError('探查价格溢出');
+  return { mana: fixedCost(mana), ticks: fixedCost(ticks), undiscountedMana: fixedCost(mana) };
+}
+
 export const CONTROL_PERIOD_SECONDS = 0.25 as const;
+
+/** 同一法力价格函数用于静态上界（倍率取安全域最大值）和实扣。未声明可折扣的费用全额支付。 */
+export function payableMana(base: number, fixed: number | null, multiplier: number): number {
+  if (
+    !Number.isFinite(base) ||
+    base < 0 ||
+    !Number.isFinite(fixed ?? 0) ||
+    (fixed !== null && (fixed < 1 || fixed > base))
+  )
+    throw new RangeError('非法法力价格');
+  if (fixed === null) return base;
+  if (!Number.isFinite(multiplier) || multiplier < 0.25 || multiplier > 4)
+    throw new RangeError('非法法力费用倍率');
+  const amount = fixed + (base - fixed) * multiplier;
+  if (!Number.isFinite(amount) || amount < 0) throw new RangeError('法力价格溢出');
+  return amount;
+}
+
+/** 弹道参考速率 380；做功与操控损耗都须在冲量发布前付款。 */
+export function impulseEnergy(velocity: Vec2, delta: Vec2): number {
+  const nextX = velocity.x + delta.x;
+  const nextY = velocity.y + delta.y;
+  const work = Math.max(
+    0,
+    (nextX * nextX + nextY * nextY - velocity.x * velocity.x - velocity.y * velocity.y) /
+      (380 * 380),
+  );
+  const control = (delta.x * delta.x + delta.y * delta.y) / (380 * 380);
+  const energy = work + control;
+  if (!Number.isFinite(energy)) throw new RangeError('冲量价格溢出');
+  return energy;
+}
+
+/** 独立传送价格；动态预算由调用方标记。 */
+export function teleportPrice(distance: number, relation: number, resistance: number): MetaCost {
+  if (
+    ![distance, relation, resistance].every(Number.isFinite) ||
+    distance < 0 ||
+    resistance < 0 ||
+    ![1, 2, 8].includes(relation)
+  )
+    throw new RangeError('非法传送价格参数');
+  const gate = relation === 8 ? 4 : 0;
+  const mana = gate + relation * (20 + distance / 10) * (1 + resistance);
+  const ticks = Math.ceil(gate + relation * (4 + distance / 50) * (1 + resistance));
+  if (!Number.isFinite(mana) || !Number.isSafeInteger(ticks)) throw new RangeError('传送价格溢出');
+  return { mana: fixedCost(mana), ticks: fixedCost(ticks) };
+}
 
 /** null 表示分析阶段尚不能确定；运行阶段必须全部解析。 */
 export interface ControlPriceInput {
+  propertyKey?: ControlPropertyKey;
   relation: number | null;
   resistance: number | null;
   strength: number | null;
@@ -108,6 +194,11 @@ export function controlPrice(input: ControlPriceInput): MetaCost {
   const result: MetaCost = { mana, ticks: startTicks };
   if (mode === 'maintain' || mode === null) {
     const periodMana = amount(1, 1, CONTROL_PERIOD_SECONDS, true);
+    if (input.propertyKey === 'manaRegen') {
+      // Each layer pays for its own maximum extra regeneration before that period runs.
+      // Absolute marginal changes make opposing or concurrent layers no cheaper in total.
+      periodMana.value = Math.max(periodMana.value, (s ?? 0) + 1);
+    }
     const periodTicks = ticks(amount(1, 0.1, CONTROL_PERIOD_SECONDS, true));
     const max =
       duration === null || duration === 0 ? null : Math.ceil(duration / CONTROL_PERIOD_SECONDS);
@@ -133,6 +224,7 @@ export function controlRecordPrice(world: World, caster: Actor, record: ControlR
   const binding = target && world.controlPropertyBinding(target, record.propertyKey);
   if (!target || !binding) throw new RangeError('控制目标能力失效');
   return controlPrice({
+    propertyKey: record.propertyKey,
     relation: world.entityCostMultiplier(caster, target),
     resistance: binding.resistance(),
     strength: world.controlEffectStrength(record),

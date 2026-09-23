@@ -116,9 +116,10 @@ interface ExprStmtData extends BaseData {
 interface DeclData extends BaseData {
   kind: 'decl';
   name: string;
-  dtype: 'num' | 'bool' | 'vec2' | 'entity' | 'list';
+  dtype: 'num' | 'bool' | 'vec2' | 'entity' | 'list' | 'query';
   elem?: ListElem;
   cap?: number;
+  queryKind?: 'num' | 'vec2' | 'entities' | 'positions';
 }
 interface AssignData extends BaseData {
   kind: 'assign';
@@ -145,7 +146,7 @@ interface IfData extends BaseData {
 interface EntryData extends BaseData {
   kind: 'entry';
   name: string;
-  ret: 'num' | 'bool' | 'vec2' | 'entity' | 'void';
+  ret: Type | null;
   params?: Param[];
 }
 
@@ -209,6 +210,7 @@ function primType(k: 'num' | 'bool' | 'vec2' | 'entity'): Type {
 
 function declType(d: DeclData): Type {
   if (d.dtype === 'list') return T.list(d.elem ?? 'any', d.cap ?? 0);
+  if (d.dtype === 'query') return T.query(d.queryKind ?? 'num');
   return primType(d.dtype);
 }
 
@@ -388,7 +390,23 @@ function SpellNode({ id, data }: NodeProps<Node>) {
             <option value="vec2">向量</option>
             <option value="entity">实体</option>
             <option value="list">列表</option>
+            <option value="query">查询结果</option>
           </select>
+          {d.dtype === 'query' && (
+            <select
+              className="node-input"
+              aria-label="查询值类型"
+              value={d.queryKind ?? 'num'}
+              onChange={(e) =>
+                updateNodeData(id, { ...data, queryKind: e.target.value as DeclData['queryKind'] })
+              }
+            >
+              <option value="num">数值</option>
+              <option value="vec2">向量</option>
+              <option value="entities">实体列表</option>
+              <option value="positions">坐标列表</option>
+            </select>
+          )}
           {d.dtype === 'list' && (
             <div className="node-list-type">
               <select
@@ -829,7 +847,7 @@ function compileGraph(
   const spell: Spell = {
     name: ed.name || '未命名',
     params: ed.params ?? [],
-    ret: ed.ret === 'void' ? null : primType(ed.ret as 'num' | 'bool' | 'vec2' | 'entity'),
+    ret: ed.ret,
     body,
     tags: [],
   };
@@ -911,7 +929,7 @@ function makeNode(kind: NodeKind, position: { x: number; y: number }): Node {
     case 'free':
       return { ...base, data: { kind: 'free', name: '' } } as Node;
     default:
-      return { ...base, data: { kind: 'entry', name: '新法术', ret: 'void' } } as Node;
+      return { ...base, data: { kind: 'entry', name: '新法术', ret: null } } as Node;
   }
 }
 
@@ -919,13 +937,13 @@ function declDataOf(name: string, t: Type | null): DeclData {
   if (t?.k === 'list') {
     return { kind: 'decl', name, dtype: 'list', elem: t.elem, cap: t.cap };
   }
+  if (t?.k === 'query') return { kind: 'decl', name, dtype: 'query', queryKind: t.value };
   const dtype = !t || t.k === 'void' || t.k === 'any' ? 'num' : t.k;
   return { kind: 'decl', name, dtype };
 }
 
 function entryRetOf(t: Type | null): EntryData['ret'] {
-  if (!t || t.k === 'void') return 'void';
-  return t.k === 'list' || t.k === 'any' ? 'void' : t.k;
+  return t;
 }
 
 function graphFromSpell(spell: Spell): { nodes: Node[]; edges: Edge[] } {
@@ -1133,7 +1151,7 @@ const initialNodes: Node[] = [
     id: 'entry',
     type: 'spell',
     position: { x: 80, y: 40 },
-    data: { kind: 'entry', name: '新法术', ret: 'void' },
+    data: { kind: 'entry', name: '新法术', ret: null },
   },
 ];
 

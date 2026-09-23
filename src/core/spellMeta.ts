@@ -13,6 +13,10 @@ export type SpellKind = 'instant' | 'duration' | 'channel';
 
 export interface SpellMeta {
   kind: SpellKind;
+  /** 显式蓄力会话；旧 duration 和五参创建不自动迁移。 */
+  charge?: 'prepare' | 'projectile';
+  /** 持球每周期投入的法力（转为 damage 储能）。 */
+  chargeMana?: number;
   /** duration 类型：每隔多少秒重复执行一次 */
   period: number;
   /** duration / channel：持续多少秒 */
@@ -48,6 +52,8 @@ export function normalizeMeta(patch?: Partial<SpellMeta> | null): SpellMeta {
   const source = patch ?? {};
   return {
     kind: source.kind ?? DEFAULT_SPELL_META.kind,
+    charge: source.charge,
+    chargeMana: source.chargeMana,
     period: source.period ?? DEFAULT_SPELL_META.period,
     duration: source.duration ?? DEFAULT_SPELL_META.duration,
     interruptible: source.interruptible ?? DEFAULT_SPELL_META.interruptible,
@@ -68,6 +74,9 @@ export function repeatCount(meta: SpellMeta): number {
 }
 
 export function describeMeta(meta: SpellMeta): string {
+  if (meta.charge === 'prepare') return `蓄时瞬发 ${meta.duration}s · 松开后执行一次`;
+  if (meta.charge === 'projectile')
+    return `持球注能 ${meta.duration}s · 每 ${Math.max(0.25, meta.period)}s 注能 · 松开发射`;
   const key = meta.keys.length > 0 ? ` · ${meta.keys.length}键[${meta.keys.join(',')}]` : '';
   switch (meta.kind) {
     case 'instant':

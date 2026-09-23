@@ -6,6 +6,7 @@ import {
   encodePlayerState,
   loadPlayerState,
   savePlayerState,
+  SAVE_INCREMENTAL_KEY,
   SAVE_SCHEMA_VERSION,
   SAVE_STORAGE_KEY,
 } from '../src/app/persistence';
@@ -21,9 +22,10 @@ import {
 import { DEFAULT_PLAYER_ATTRS, DEFAULT_PLAYER_BINDINGS } from '../src/game/battle';
 import INITIAL_SPELLS from '../src/game/spells.dy?raw';
 import DEMO_SPELLS from '../src/demo/spells.dy?raw';
+import { importSpellPresets, SPELL_PRESETS } from '../src/app/spellPresets';
 
 const defaults: PlayerState = {
-  spellSource: serializeBook(parseSpellbook(INITIAL_SPELLS)),
+  spellSource: serializeBook(parseSpellbook('spell 稳定 {}')),
   arenaAttrs: { ...DEFAULT_PLAYER_ATTRS },
   arenaBindings: { ...DEFAULT_PLAYER_BINDINGS },
 };
@@ -39,7 +41,53 @@ describe('versioned player state', () => {
       expect(creations.length).toBeGreaterThan(0);
       for (const creation of creations) expect(creation.b).toBe(5);
     }
-    expect(migrateSpellSource(INITIAL_SPELLS)).toMatchObject({ ok: true, diagnostics: [] });
+    const migration = migrateSpellSource(INITIAL_SPELLS);
+    expect(migration.ok).toBe(true);
+    if (migration.ok) {
+      for (const name of Object.keys(migration.book)) compileProgram(migration.book, name);
+    }
+  });
+
+  it('selectively imports current user presets and preserves names, content and save round trips', () => {
+    const original = 'spell 对手减速 { 自身实体() }\n\nspell 旧书 { 准星方向() }';
+    const selected = importSpellPresets(original, [{ name: '对手减速', importAs: '对手减速2' }]);
+    expect(selected.ok).toBe(true);
+    if (!selected.ok) return;
+    const book = parseSpellbook(selected.source);
+    expect(serializeBook({ 对手减速: book.对手减速 })).toBe(
+      serializeBook(parseSpellbook('spell 对手减速 { 自身实体() }')),
+    );
+    expect(Object.keys(book)).toEqual(['对手减速', '旧书', '对手减速2']);
+    compileProgram(book, '对手减速2');
+    const repeated = importSpellPresets(selected.source, [
+      { name: '对手减速', importAs: '任意新名' },
+    ]);
+    expect(repeated).toMatchObject({
+      ok: true,
+      source: selected.source,
+      imported: [],
+      skipped: ['对手减速'],
+    });
+    expect(
+      importSpellPresets(original, [{ name: '对手减速', importAs: '对手减速' }]),
+    ).toMatchObject({ ok: false });
+    expect(
+      importSpellPresets(original, [{ name: '对手破防', importAs: '错误;名称' }]),
+    ).toMatchObject({ ok: false });
+    for (const preset of SPELL_PRESETS) {
+      const one = importSpellPresets(defaults.spellSource, [
+        { name: preset.name, importAs: preset.name },
+      ]);
+      expect(one.ok).toBe(true);
+      if (!one.ok) continue;
+      const state = { ...defaults, spellSource: one.source };
+      const decoded = decodePlayerState(encodePlayerState(state), defaults);
+      expect(decoded).toMatchObject({ ok: true });
+      if (decoded.ok)
+        expect(
+          compileProgram(parseSpellbook(decoded.state.spellSource), preset.name),
+        ).toBeDefined();
+    }
   });
 
   it('round-trips the spellbook and arena setup in the current schema', () => {
@@ -55,7 +103,7 @@ describe('versioned player state', () => {
 
   it('migrates an unversioned v0 save and fills settings added later', () => {
     const loaded = decodePlayerState(
-      JSON.stringify({ spellSource: INITIAL_SPELLS, arenaAttrs: { hpMax: 240 } }),
+      JSON.stringify({ spellSource: defaults.spellSource, arenaAttrs: { hpMax: 240 } }),
       defaults,
     );
     expect(loaded).toMatchObject({ ok: true, migrated: true });
@@ -108,17 +156,16 @@ describe('versioned player state', () => {
     );
   });
 
-  it('migrates a legacy launch atomically and retains the last save on an unsafe handle chain', () => {
+  it('rejects an old launch and retains the last save on an unsafe handle chain', () => {
     localStorage.clear();
     const legacy: PlayerState = {
       ...defaults,
       spellSource: 'spell 旧术 { 发射(自身位置(), 准星方向(), 18) }',
     };
-    const saved = savePlayerState(legacy);
-    expect(saved.ok).toBe(true);
-    if (!saved.ok) return;
-    expect(saved.state.spellSource).toContain('创建弹道(自身位置(), 准星方向(), 380, 18, 2.4)');
+    expect(savePlayerState(defaults)).toMatchObject({ ok: true });
     const previous = localStorage.getItem(SAVE_STORAGE_KEY);
+    expect(savePlayerState(legacy)).toMatchObject({ ok: false });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(previous);
     const unsafe = {
       ...legacy,
       spellSource: 'spell 旧术 { var p: entity = 创建弹道(3) 设置弹道速度(p, 200) 激活弹道(p) }',
@@ -141,14 +188,14 @@ describe('versioned player state', () => {
   it('reads legacy modifiers without turning them into control leases and drops damaged records with a diagnostic', () => {
     const old = decodePlayerState(
       JSON.stringify({
-        spellSource: 'spell 旧术 { 发射(自身位置(), 准星方向(), 18) }',
+        spellSource: 'spell 旧术 {}',
         mods: [{ attr: 'speed', value: 2, duration: -1 }],
       }),
       defaults,
     );
     expect(old).toMatchObject({ ok: true, migrated: true });
     if (!old.ok) return;
-    expect(old.state.spellSource).toContain('创建弹道(');
+    expect(old.state.spellSource).toContain('spell 旧术');
     expect(old.state).not.toHaveProperty('mods');
     expect(old.diagnostics?.[0]).toContain('旧增益');
 
@@ -176,6 +223,88 @@ describe('versioned player state', () => {
     localStorage.setItem(SAVE_STORAGE_KEY, damaged);
     expect(loadPlayerState(defaults)).toMatchObject({ ok: false });
     expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(damaged);
+    localStorage.setItem(SAVE_STORAGE_KEY, '');
+    expect(loadPlayerState(defaults)).toMatchObject({ ok: false });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe('');
+  });
+
+  it('keeps rejected original bytes while writing and loading later v2 changes separately', () => {
+    localStorage.clear();
+    const original = JSON.stringify({ version: 99, spellSource: 'spell 未来 {}' });
+    localStorage.setItem(SAVE_STORAGE_KEY, original);
+    expect(loadPlayerState(defaults)).toMatchObject({ ok: false });
+    const next = { ...defaults, arenaBindings: { ...defaults.arenaBindings, '1': '新术' } };
+    expect(savePlayerState(next)).toMatchObject({ ok: true });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+    expect(localStorage.getItem(SAVE_INCREMENTAL_KEY)).toContain('新术');
+    expect(loadPlayerState(defaults)).toMatchObject({ ok: true, state: next });
+  });
+
+  it('does not restore a running session or infer energy balances from a plain save', () => {
+    localStorage.clear();
+    const original = JSON.stringify({
+      version: 2,
+      spellSource: 'spell 稳定 {}',
+      activeSessions: [{ id: 7 }],
+      balances: { damage: 18 },
+    });
+    localStorage.setItem(SAVE_STORAGE_KEY, original);
+    const loaded = loadPlayerState(defaults);
+    expect(loaded).toMatchObject({ ok: true });
+    if (!loaded.ok) return;
+    expect(loaded.state).not.toHaveProperty('activeSessions');
+    expect(loaded.state).not.toHaveProperty('balances');
+    expect(loaded.diagnostics).toHaveLength(2);
+    expect(savePlayerState(loaded.state)).toMatchObject({ ok: true });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+    expect(localStorage.getItem(SAVE_INCREMENTAL_KEY)).not.toContain('balances');
+  });
+
+  it('rejects a damaged incremental save without overwriting either stored copy', () => {
+    localStorage.clear();
+    const original = encodePlayerState(defaults);
+    localStorage.setItem(SAVE_STORAGE_KEY, original);
+    localStorage.setItem(SAVE_INCREMENTAL_KEY, '{');
+    expect(loadPlayerState(defaults)).toMatchObject({ ok: false });
+    expect(savePlayerState(defaults)).toMatchObject({ ok: false });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+    expect(localStorage.getItem(SAVE_INCREMENTAL_KEY)).toBe('{');
+  });
+
+  it('isolates valid v1 migration and rejects old five-parameter creation without replacing it', () => {
+    localStorage.clear();
+    const old = JSON.stringify({ version: 1, spellSource: 'spell 旧术 {}' });
+    localStorage.setItem(SAVE_STORAGE_KEY, old);
+    expect(loadPlayerState(defaults)).toMatchObject({ ok: true, migrated: true });
+    expect(savePlayerState(defaults)).toMatchObject({ ok: true });
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(old);
+    expect(localStorage.getItem(SAVE_INCREMENTAL_KEY)).not.toBeNull();
+
+    const five = JSON.stringify({
+      version: 1,
+      spellSource: 'spell 旧术 { 创建弹道(自身位置(), 准星方向(), 380, 18, 2.4) }',
+    });
+    expect(decodePlayerState(five, defaults)).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('第 1 行'),
+    });
+  });
+
+  it('rejects damaged bindings and unknown attributes instead of silently dropping them', () => {
+    for (const broken of [
+      { arenaBindings: [] },
+      { arenaBindings: { '1': 42 } },
+      { arenaBindings: { unknown: '基础剑气' } },
+      { arenaAttrs: { unknown: 12 } },
+      { futureState: { value: 1 } },
+    ]) {
+      expect(
+        decodePlayerState(
+          JSON.stringify({ version: 2, spellSource: 'spell 好 {}', ...broken }),
+          defaults,
+        ),
+      ).toMatchObject({ ok: false });
+    }
   });
 
   it('rejects malformed spellbooks and saves from a newer app', () => {
@@ -196,7 +325,7 @@ describe('versioned player state', () => {
     const loaded = decodePlayerState(
       JSON.stringify({
         version: SAVE_SCHEMA_VERSION,
-        spellSource: INITIAL_SPELLS,
+        spellSource: defaults.spellSource,
         arenaAttrs: { [key]: value },
       }),
       defaults,
@@ -210,7 +339,7 @@ describe('versioned player state', () => {
       decodePlayerState(
         JSON.stringify({
           version: SAVE_SCHEMA_VERSION,
-          spellSource: INITIAL_SPELLS,
+          spellSource: defaults.spellSource,
           arenaAttrs: [],
         }),
         defaults,

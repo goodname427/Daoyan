@@ -13,6 +13,8 @@ export interface Ctx {
   keys: KeyState[] | null;
   /** 法术调用「结束施法」后置真，VM 检测后立即结束 */
   endRequested: boolean;
+  /** 本次调用实扣后的余额；无共享账户时按 VM 起始预算减累计支出。 */
+  availableMana?: () => number;
 }
 
 export interface MetaParam {
@@ -33,7 +35,7 @@ export interface CostAmount {
 }
 
 export interface PeriodicBudget {
-  intervalSeconds: 0.25;
+  intervalSeconds: number;
   mana: CostAmount;
   ticks: CostAmount;
   count: { kind: 'finite'; max: number } | { kind: 'unbounded' } | { kind: 'dynamic' };
@@ -42,6 +44,8 @@ export interface PeriodicBudget {
 export interface MetaCost {
   mana: CostAmount;
   ticks: CostAmount;
+  /** 已含于 mana、但不接受法力折扣的运动注能成本。 */
+  undiscountedMana?: CostAmount;
   /** 起手之外的周期价；有限次数包含建立时付的首周期。 */
   periodic?: PeriodicBudget;
 }
@@ -82,8 +86,14 @@ export interface MetaDef {
    * 与旧 `manaCost` 同时存在时以本字段为准。
    */
   cost?: (ctx: Ctx | null, args: readonly CostArg[]) => MetaCost;
+  /** 显式可折扣的普通效果所保留的固定世界 I/O；未声明者全价。 */
+  discountableFixedMana?: number;
   /** 控制价由 World 在效果生效前原子扣除，VM 不重复收取起手。 */
   worldCharged?: boolean | ((args: Value[]) => boolean);
+  /** 由世界扣法力、但仍由调用 VM 扣本次执行 tick。 */
+  worldChargedTicks?: boolean;
+  /** 读取等领域在报价前必须具备的公开尝试余额。 */
+  attemptMana?: number;
   /** 仅供未迁移的最后可运行 AST 使用的旧实参形状。 */
   legacyParams?: MetaParam[][];
   /** 旧 AST 可运行，但不再显示为玩家可新建的元函数。 */

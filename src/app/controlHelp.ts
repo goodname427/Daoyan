@@ -13,8 +13,8 @@ const CONTROLS: Record<string, { key: string; effect: string; capability: string
   },
   调整速度: {
     key: 'speed',
-    effect: '大于 0 的有限速度倍率',
-    capability: 'speed 写入覆写或维持 binding',
+    effect: '大于 0 的有限速度倍率；作用于 speedMax，不清除既有惯性',
+    capability: 'speedMax 写入覆写或维持 binding',
   },
   强化伤害: {
     key: 'damage',
@@ -32,6 +32,36 @@ const CONTROLS: Record<string, { key: string; effect: string; capability: string
     capability: 'perception 维持 binding',
   },
   调整护体: { key: 'armor', effect: '有限护体增量，可正可负', capability: 'armor 维持 binding' },
+  调整生命上限: {
+    key: 'hpMax',
+    effect: '有限生命上限增量；不赠送当前生命',
+    capability: 'hpMax 维持 binding',
+  },
+  调整法力上限: {
+    key: 'manaMax',
+    effect: '有限法力上限增量；不赠送当前法力',
+    capability: 'manaMax 维持 binding',
+  },
+  调整法力回复: {
+    key: 'manaRegen',
+    effect: '有限回复增量；每层预付周期费',
+    capability: 'manaRegen 维持 binding',
+  },
+  调整神识上限: {
+    key: 'shenshiMax',
+    effect: '有限神识上限增量；已有占用保留',
+    capability: 'shenshiMax 维持 binding',
+  },
+  调整施法速度: {
+    key: 'castSpeed',
+    effect: '大于 0 的有限施法速度倍率；既有 tick 债务仍需偿还',
+    capability: 'castSpeed 维持 binding',
+  },
+  调整法力消耗: {
+    key: 'manaCostMul',
+    effect: '大于 0 的有限法力消耗倍率；控制费不折扣',
+    capability: 'manaCostMul 维持 binding',
+  },
 };
 
 export function controlHelp(name: string) {

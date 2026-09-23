@@ -19,3 +19,46 @@ export interface KeyState {
 export function makeKeyState(): KeyState {
   return { held: false, heldTime: 0, pressEdge: false, releaseEdge: false };
 }
+
+/** 物理输入只携带意图；模拟时钟上的会话才决定效果和终态。 */
+export interface SlotIntent {
+  readonly slot: string;
+  readonly type: 'press' | 'release';
+}
+
+export type ChargeEnd =
+  | 'released'
+  | 'early-release'
+  | 'interrupted'
+  | 'cancelled'
+  | 'death'
+  | 'exhausted'
+  | 'target-lost'
+  | 'expired';
+
+export class ChargeSession {
+  state: 'preparing' | 'held' | 'releasing' | 'settled' = 'preparing';
+  terminal: ChargeEnd | null = null;
+  elapsed = 0;
+  periods = 0;
+  workTicks = 0;
+  projectileId: number | null = null;
+  constructor(
+    readonly actorId: number,
+    readonly slot: string,
+    readonly mode: 'prepare' | 'projectile',
+    readonly duration: number,
+    readonly period: number,
+    readonly targetId: number | null,
+    readonly spell: string = '',
+    readonly interruptible = true,
+    readonly manaPerPeriod = 5,
+  ) {}
+
+  finish(reason: ChargeEnd): boolean {
+    if (this.terminal !== null) return false;
+    this.terminal = reason;
+    this.state = 'settled';
+    return true;
+  }
+}
