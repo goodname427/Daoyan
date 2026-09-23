@@ -1,0 +1,43 @@
+{
+  "sourceRevision": "58d8e4cd480e8857dbc1897cb05b61f9b7f1b1fc",
+  "builtAt": "2026-09-23T04:55:21Z",
+  "buildCommand": "npm run build",
+  "exitCode": 0,
+  "sourceAndBuildConfigDiff": [],
+  "sourceAndBuildConfigPaths": [
+    "src/",
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "electron/",
+    "e2e/"
+  ],
+  "assets": [
+    {
+      "path": "dist/index.html",
+      "sha256": "591F238E9824F1A404DF2F1ABF7B2D8C2F04014F1BF265C9FECB70664FF7DA03"
+    },
+    {
+      "path": "dist/assets/index-CuySrqRP.css",
+      "sha256": "5B7F3A87249B72D9752A6C953D02E01C8AD5AB3E76403DB37F4FC20C941F0A3F"
+    },
+    {
+      "path": "dist/assets/index-CZSTLqfN.js",
+      "sha256": "7866524B2E9D6D7A4FFCF6541B1F51252FD2EC9B093B418FCB62FE8A06B9A123"
+    }
+  ],
+  "experience": {
+    "servedFrom": "dist/",
+    "url": "http://127.0.0.1:4173/",
+    "result": "passed",
+    "steps": [
+      "Select 御剑·手动 in 推演台",
+      "Run 推演一次 and observe 施法成功",
+      "Bind 御剑·手动 in 演武场 and set health to 240",
+      "Start arena and cast slot 1",
+      "Return to 推演台 with spell source preserved"
+    ],
+    "pageErrors": 0,
+    "screenshot": ".daoyan-agent/runs/candidate-dist-experience.png"
+  }
+}

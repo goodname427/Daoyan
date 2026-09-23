@@ -32,6 +32,8 @@
 
 ## 当前迭代
 
+- 正式版本 `draft-2026-09-21-b5fbefbd-c4c9-460e-935d-` 的[候选构建说明](./versions/draft-2026-09-21-b5fbefbd-c4c9-460e-935d-/candidate.md)已由主 Agent 在可运行宿主补齐构建来源和当前 `dist/` 的实际浏览器交互，证据见[构建清单](./versions/draft-2026-09-21-b5fbefbd-c4c9-460e-935d-/candidate-build.json)。原候选 PM 沙盒失败记录保留；阶段正式完成仍待秘书对账，制作人候选验收及发布尚未进行。
+
 - 正式版本 `draft-2026-09-21-b5fbefbd-c4c9-460e-935d-` 的[独立版本 QA](./versions/draft-2026-09-21-b5fbefbd-c4c9-460e-935d-/qa.md)首次在 Agent 隔离环境被 `spawn EPERM` 阻断；主 Agent 已在可运行宿主补齐 110 条标准定向测试、18 条游戏浏览器流程、生产构建和完整门禁，均通过，未确认产品缺陷。正式版本节点仍由秘书依据报告和同树门禁对账推进，候选体验尚未由制作人评审。
 
 - 正式版本 `draft-2026-09-21-b5fbefbd-c4c9-460e-935d-` 的开发批次完成 12/12 工作项、两轮独立审查和最终代码树的 `verify:full`，提交并推送 `d92f633`，经同树门禁对账后已被正式版本接纳。Task 定向 Vitest 在执行 Agent 沙盒中因 `spawn EPERM` 失败的原始证据仍保留；开发阶段事实不替代独立 QA、候选体验或发布结论。
