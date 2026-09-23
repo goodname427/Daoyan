@@ -8,6 +8,7 @@ import {
   continueDispatchResponse,
   currentValidationConfigFingerprint,
   canRebaseFeatureGateAfterNonProductChange,
+  bugfixReverificationAffectedPaths,
   advanceRecordedDirection,
   applyAutomaticStagePolicy,
   featureTaskCompletions,
@@ -1383,6 +1384,28 @@ describe('formal version stage dispatch', () => {
       canRebaseFeatureGateAfterNonProductChange(version, 'rev-current', ['src/core/ledger.ts']),
     ).toBe(false);
     expect(canRebaseFeatureGateAfterNonProductChange(version, 'other-revision', [])).toBe(false);
+  });
+
+  it('records version-wide scope for candidate defects without a linked work item', () => {
+    const version = createFormalVersion({
+      id: 'candidate-defect-scope',
+      title: '候选缺陷',
+      direction: '复验候选体验发现的缺陷。',
+      documentRoot: 'docs/versions/candidate-defect-scope',
+      currentStage: 'bugfix',
+    });
+    version.workItems = [
+      { id: 'core', affectedPaths: ['src/core/ledger.ts'] },
+      { id: 'experience', affectedPaths: ['src/app/CombatView.tsx'] },
+    ] as typeof version.workItems;
+    expect(
+      bugfixReverificationAffectedPaths(version, [{ linkedWorkItemId: '' }] as typeof version.bugs),
+    ).toEqual(['src/core/ledger.ts', 'src/app/CombatView.tsx']);
+    expect(
+      bugfixReverificationAffectedPaths(version, [
+        { linkedWorkItemId: 'core' },
+      ] as typeof version.bugs),
+    ).toEqual(['src/core/ledger.ts']);
   });
 
   it('reuses the development Feature gate after mandatory QA stage documents are recorded', async () => {

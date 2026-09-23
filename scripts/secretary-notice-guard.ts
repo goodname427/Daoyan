@@ -4307,6 +4307,20 @@ export function canRebaseFeatureGateAfterNonProductChange(
   );
 }
 
+export function bugfixReverificationAffectedPaths(
+  version: FormalVersion,
+  bugs: FormalVersion['bugs'],
+): string[] {
+  const affected = bugs.flatMap((bug) => {
+    const workItem = version.workItems.find((entry) => entry.id === bug.linkedWorkItemId);
+    // Candidate defects may not belong to one planned work item; keep their scope conservative.
+    return (workItem ? [workItem] : version.workItems).flatMap(
+      (entry) => entry.affectedPaths ?? [],
+    );
+  });
+  return [...new Set(affected)];
+}
+
 async function featureGateForUnchangedProduct(
   version: FormalVersion,
   testedRevision: string,
@@ -4806,10 +4820,7 @@ async function finalizeDeliveredVersionStage(
         codeRevision: testedRevision,
         commandFingerprint: fingerprintStrings(result.commands.map((command) => command.command)),
         configFingerprint: featureGate.configFingerprint,
-        affectedPaths: bugs.flatMap((bug) => {
-          const workItem = version.workItems.find((entry) => entry.id === bug.linkedWorkItemId);
-          return workItem?.affectedPaths ?? [];
-        }),
+        affectedPaths: bugfixReverificationAffectedPaths(version, bugs),
         inputEvidenceIds: [featureGate.id],
         outputFingerprint: fingerprintStrings([
           result.status,
