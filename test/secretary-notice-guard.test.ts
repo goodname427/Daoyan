@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   continueDispatchResponse,
   currentValidationConfigFingerprint,
+  canRebaseFeatureGateAfterNonProductChange,
   advanceRecordedDirection,
   applyAutomaticStagePolicy,
   featureTaskCompletions,
@@ -1371,6 +1372,17 @@ describe('formal version stage dispatch', () => {
     expect(() =>
       latestReusableFeatureGate(version, 'rev-current', 'tree-current', 'config-changed'),
     ).toThrow('缺少与候选修订匹配');
+    expect(
+      canRebaseFeatureGateAfterNonProductChange(version, 'rev-current', [
+        'docs/status.md',
+        'docs/dev/2026-09-24.md',
+        'docs/versions/live-gate-reuse/bugfix-reverification.json',
+      ]),
+    ).toBe(true);
+    expect(
+      canRebaseFeatureGateAfterNonProductChange(version, 'rev-current', ['src/core/ledger.ts']),
+    ).toBe(false);
+    expect(canRebaseFeatureGateAfterNonProductChange(version, 'other-revision', [])).toBe(false);
   });
 
   it('reuses the development Feature gate after mandatory QA stage documents are recorded', async () => {

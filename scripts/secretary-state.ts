@@ -1110,6 +1110,16 @@ export function reopenVerifiedQaDelivery(
   return reopenVerifiedStageDelivery(state, versionId, 'qa', emptyStoppedAttemptIds, now);
 }
 
+/** An unstarted retry need not rerun a complete defect reverification after its gate is repaired. */
+export function reopenVerifiedBugfixDelivery(
+  state: SecretaryState,
+  versionId: string,
+  emptyStoppedAttemptIds: ReadonlySet<string>,
+  now: string,
+): boolean {
+  return reopenVerifiedStageDelivery(state, versionId, 'bugfix', emptyStoppedAttemptIds, now);
+}
+
 /** Recheck an environment-blocked QA report only after separate host evidence is supplied. */
 export function reopenEnvironmentBlockedQaDelivery(
   state: SecretaryState,
@@ -1137,7 +1147,7 @@ export function reopenEnvironmentBlockedQaDelivery(
 function reopenVerifiedStageDelivery(
   state: SecretaryState,
   versionId: string,
-  stage: 'development' | 'qa',
+  stage: 'development' | 'qa' | 'bugfix',
   emptyStoppedAttemptIds: ReadonlySet<string>,
   now: string,
 ): boolean {

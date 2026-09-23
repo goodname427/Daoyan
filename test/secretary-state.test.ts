@@ -25,6 +25,7 @@ import {
   reconciliationTargets,
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
+  reopenVerifiedBugfixDelivery,
   reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -185,6 +186,40 @@ describe('persistent secretary state', () => {
     ).toBe(true);
     expect(retry.status).toBe('superseded');
     expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
+  });
+
+  it('reopens a verified bugfix report only when its replacement did no work', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const delivered = itemFromIntake(
+      { id: 'delivered-bugfix', idea: '复验缺陷', createdAt: state.initializedAt },
+      [],
+    ).item;
+    delivered.status = 'delivered';
+    delivered.summary = '阶段交付未能写入正式版本，将自动安排修复：门禁证据未匹配';
+    delivered.orchestration = {
+      ...delivered.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'bugfix',
+      formalStageStep: 'reverification',
+      formalScopeRevision: 1,
+      formalStageConsumedAt: state.initializedAt,
+    };
+    const retry = structuredClone(delivered);
+    retry.id = 'empty-bugfix-retry';
+    retry.status = 'tracking';
+    delete retry.orchestration!.formalStageConsumedAt;
+    state.items.push(delivered, retry);
+    state.activeItemId = retry.id;
+
+    expect(reopenVerifiedBugfixDelivery(state, 'version-1', new Set(), state.initializedAt)).toBe(
+      false,
+    );
+    expect(
+      reopenVerifiedBugfixDelivery(state, 'version-1', new Set([retry.id]), state.initializedAt),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(state.activeItemId).toBe('');
   });
 
   it('reopens a paused QA host blocker only after the caller verifies replacement evidence', () => {

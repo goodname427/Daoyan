@@ -71,6 +71,7 @@ import {
   publicSecretaryState,
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
+  reopenVerifiedBugfixDelivery,
   reopenEnvironmentBlockedQaDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
@@ -4286,6 +4287,69 @@ export function latestReusableFeatureGate(
   throw new Error('Version QA 缺少与候选修订匹配的 Feature verify:full 证据');
 }
 
+export function canRebaseFeatureGateAfterNonProductChange(
+  version: FormalVersion,
+  testedRevision: string,
+  changedPaths: string[],
+): boolean {
+  return (
+    Boolean(
+      version.orchestration?.validationEvidence?.some(
+        (entry) =>
+          entry.scope === 'feature' &&
+          entry.codeRevision === testedRevision &&
+          entry.status === 'passed' &&
+          entry.commands.some(
+            (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
+          ),
+      ),
+    ) && productImplementationChanges(changedPaths).length === 0
+  );
+}
+
+async function featureGateForUnchangedProduct(
+  version: FormalVersion,
+  testedRevision: string,
+  currentRevision: string,
+  item: SecretaryItem,
+  manifest: string,
+  report: Record<string, unknown>,
+): Promise<ValidationEvidence> {
+  try {
+    return latestReusableFeatureGate(version, testedRevision);
+  } catch (error) {
+    if (
+      !canRebaseFeatureGateAfterNonProductChange(
+        version,
+        testedRevision,
+        changedFilesBetween(testedRevision, currentRevision),
+      )
+    ) {
+      throw error;
+    }
+    const gate = await readFeatureGateArtifact(item.runDirectory!);
+    recordValidationEvidence(version, {
+      scope: 'feature',
+      ownerId: `main-agent:${item.id}`,
+      status: 'passed',
+      gitTree: gate.workspaceFingerprint,
+      codeRevision: testedRevision,
+      commandFingerprint: gate.commandFingerprint ?? fingerprintStrings([gate.command]),
+      configFingerprint: gate.configFingerprint,
+      affectedPaths: version.workItems.flatMap((workItem) => workItem.affectedPaths ?? []),
+      inputEvidenceIds: [],
+      outputFingerprint: gate.workspaceFingerprint,
+      executionRound: gate.executionRound ?? reportExecutionRound(report),
+      commands: [{ command: gate.command, exitCode: 0 }],
+      evidence: [
+        manifest,
+        gate.log || relative(root, resolve(item.runDirectory!, 'full-gate-evidence.json')),
+      ],
+    });
+    return latestReusableFeatureGate(version, testedRevision);
+  }
+}
+
 function reportValidationProfile(report: Record<string, unknown>): string {
   return isRecord(report.validation) && typeof report.validation.profile === 'string'
     ? report.validation.profile
@@ -4598,46 +4662,14 @@ async function finalizeDeliveredVersionStage(
         verificationRunId: '',
       })),
     );
-    let featureGate: ValidationEvidence;
-    try {
-      featureGate = latestReusableFeatureGate(version, testedRevision);
-    } catch (error) {
-      const priorFeatureGate = version.orchestration?.validationEvidence?.find(
-        (entry) =>
-          entry.scope === 'feature' &&
-          entry.codeRevision === testedRevision &&
-          entry.status === 'passed' &&
-          entry.commands.some(
-            (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
-          ),
-      );
-      if (
-        !priorFeatureGate ||
-        productImplementationChanges(changedFilesBetween(testedRevision, revision)).length > 0
-      ) {
-        throw error;
-      }
-      const gate = await readFeatureGateArtifact(item.runDirectory!);
-      recordValidationEvidence(version, {
-        scope: 'feature',
-        ownerId: `main-agent:${item.id}`,
-        status: 'passed',
-        gitTree: gate.workspaceFingerprint,
-        codeRevision: testedRevision,
-        commandFingerprint: gate.commandFingerprint ?? fingerprintStrings([gate.command]),
-        configFingerprint: gate.configFingerprint,
-        affectedPaths: version.workItems.flatMap((workItem) => workItem.affectedPaths ?? []),
-        inputEvidenceIds: [],
-        outputFingerprint: gate.workspaceFingerprint,
-        executionRound: gate.executionRound ?? reportExecutionRound(report),
-        commands: [{ command: gate.command, exitCode: 0 }],
-        evidence: [
-          manifest,
-          gate.log || relative(root, resolve(item.runDirectory!, 'full-gate-evidence.json')),
-        ],
-      });
-      featureGate = latestReusableFeatureGate(version, testedRevision);
-    }
+    const featureGate = await featureGateForUnchangedProduct(
+      version,
+      testedRevision,
+      revision,
+      item,
+      manifest,
+      report,
+    );
     const qa = recordQaRun(version, {
       agentId: `qa:${item.id}`,
       independent: true,
@@ -4744,7 +4776,14 @@ async function finalizeDeliveredVersionStage(
         await readJson(resolve(root, manifest)),
         bugs.map((bug) => bug.id),
       );
-      const featureGate = latestReusableFeatureGate(version, testedRevision);
+      const featureGate = await featureGateForUnchangedProduct(
+        version,
+        testedRevision,
+        revision,
+        item,
+        manifest,
+        report,
+      );
       const qa = recordQaRun(version, {
         agentId: `qa:${item.id}`,
         independent: true,
@@ -5203,6 +5242,62 @@ async function coordinateOnce(): Promise<void> {
       }
     }
   }
+  let reopenedDeliveredBugfix = false;
+  if (activeFormalVersion?.currentStage === 'bugfix') {
+    const emptyStoppedAttemptIds = new Set<string>();
+    for (const item of state.items) {
+      if (
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        item.orchestration.formalStage !== 'bugfix' ||
+        item.orchestration.formalStageStep !== 'reverification' ||
+        isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+        !item.runDirectory
+      ) {
+        continue;
+      }
+      const checkpoint = await readJson(resolve(item.runDirectory, 'recovery.json'));
+      if (Array.isArray(checkpoint?.taskRuns) && checkpoint.taskRuns.length === 0) {
+        emptyStoppedAttemptIds.add(item.id);
+      }
+    }
+    const delivered = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'delivered' &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === 'bugfix' &&
+          item.orchestration.formalStageStep === 'reverification' &&
+          item.orchestration.formalStageConsumedAt &&
+          item.summary.startsWith('阶段交付未能写入正式版本'),
+      );
+    if (delivered?.runDirectory && emptyStoppedAttemptIds.size > 0) {
+      try {
+        const bugs = activeFormalVersion.bugs.filter((bug) => bug.status === 'verify');
+        const result = parseReverificationResult(
+          await readJson(
+            resolve(root, activeFormalVersion.documentRoot, 'bugfix-reverification.json'),
+          ),
+          bugs.map((bug) => bug.id),
+        );
+        if (
+          bugs.length > 0 &&
+          result.status === 'passed' &&
+          result.commands.every((command) => command.exitCode === 0)
+        ) {
+          await readFeatureGateArtifact(delivered.runDirectory);
+          reopenedDeliveredBugfix = reopenVerifiedBugfixDelivery(
+            state,
+            activeFormalVersion.id,
+            emptyStoppedAttemptIds,
+            new Date().toISOString(),
+          );
+        }
+      } catch {
+        // Preserve the failed attempt until the current tree has a valid gate and report.
+      }
+    }
+  }
   const persistedCorrections = await persistScheduleCorrections(
     state,
     async (correction) => {
@@ -5258,6 +5353,7 @@ async function coordinateOnce(): Promise<void> {
     migratedBootstrapFailure ||
     reopenedDeliveredDevelopment ||
     reopenedDeliveredQa ||
+    reopenedDeliveredBugfix ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||
