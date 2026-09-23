@@ -13,7 +13,11 @@ const POOL_CAP = 1_000_000_000 * RESOURCE_SCALE;
 function units(value: number, round: 'up' | 'down'): number {
   if (!Number.isFinite(value) || value < 0) throw new RangeError('非法资源数量');
   const scaled = value * RESOURCE_SCALE;
-  const result = round === 'up' ? Math.ceil(scaled) : Math.floor(scaled);
+  // Decimal projection of an exact micro balance can land just below its integer.
+  const nearest = Math.round(scaled);
+  const tolerance = Math.min(0.25, Math.max(1e-7, Math.abs(scaled) * Number.EPSILON * 2));
+  const stable = Math.abs(scaled - nearest) <= tolerance ? nearest : scaled;
+  const result = round === 'up' ? Math.ceil(stable) : Math.floor(stable);
   if (!Number.isSafeInteger(result)) throw new RangeError('资源计量溢出');
   return result;
 }

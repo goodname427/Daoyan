@@ -29,6 +29,29 @@ describe('战斗初始化', () => {
 });
 
 describe('第二期用户法术预设实战', () => {
+  it('减速预设在高频更新下保持法力账户守恒', () => {
+    const preset = SPELL_PRESETS.find((entry) => entry.name === '对手减速')!;
+    const book = parseSpellbook(`${readFileSync(SRC, 'utf8')}\n${preset.source}`);
+    const battle = new Battle(book, {
+      autoStart: false,
+      playerBindings: { mouse: '对手减速' },
+    });
+    battle.setPlayerBaseAttr('manaMax', 400, true);
+    battle.setPlayerBaseAttr('shenshiMax', 80);
+    battle.start();
+    const foe = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+    foe.x = battle.player.x + 120;
+    foe.y = battle.player.y;
+    battle.aimAt(foe.x, foe.y);
+    battle.pressSlot('mouse');
+    for (let i = 0; i < 150; i++) {
+      battle.update(0.016);
+      expect(battle.world.resourceLedger.manaAccountSnapshot(battle.player.id)?.conserved).toBe(
+        true,
+      );
+    }
+  });
+
   it('默认法术书的三种法球均可绑定，并进入对应运动模式', () => {
     for (const [name, mode] of [
       ['法球·冲量滑行', 'glide'],
