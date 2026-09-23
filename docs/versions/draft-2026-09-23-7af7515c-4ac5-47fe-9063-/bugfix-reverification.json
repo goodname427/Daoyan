@@ -14,10 +14,10 @@
     }
   ],
   "evidence": [
-    "独立复验于 HEAD=46ab5ab1bfaf8b4dbe726060db774f4d59d07fc4 执行；法力精度修复提交为 f065d2cc940a12ec1482e2e608612caa74417029。策略所列 707f812a51e4d36d70de2360e17076b85fee1f8b 是工作流恢复提交，相关游戏源码与复验测试自修复提交以来未变化。",
+    "2026-09-24 在 HEAD=9be8b5aa7656e0b252af7b7e008dc57c5c5c8725 重新独立执行；法力精度修复提交为 f065d2cc940a12ec1482e2e608612caa74417029。策略所列 707f812a51e4d36d70de2360e17076b85fee1f8b 是工作流恢复提交，相关游戏源码与复验测试自修复提交以来未变化。",
     "进程内 TypeScript 转译的无头实战复验导入对手减速预设、绑定鼠标槽位、设置法力上限 400 与神识上限 80、使敌人距玩家 120、按下槽位后以 0.016 秒推进 150 帧。逐帧检查法力微单位等式、manaAccountSnapshot.conserved 和世界能量账本守恒，全部通过；第 40 帧发生余额不足反噬，反噬总数 1。",
     "第 9 帧余额 131272000 微单位、累计付款 271800000；第 40 帧余额 46775999、累计付款 368200000；第 150 帧余额 89015999、累计付款 368200000。三处账户及世界账本均守恒。",
-    "标准 npm test -- test/combat.test.ts test/entity-vnext.test.ts test/review-regressions.test.ts 在加载 vite.config.ts 时因 esbuild spawn EPERM 退出 1，零测试执行；该环境失败不计入通过命令，详见 bugfix.md。既有 qa.json 的同游戏源码 220 条定向测试、20 条 Chromium 流程和给定 full-gate-evidence.json 仅作回归背景，不冒充本轮独立执行。",
+    "2026-09-24 标准 npm test -- test/combat.test.ts test/entity-vnext.test.ts test/review-regressions.test.ts 再次在加载 vite.config.ts 时因 esbuild spawn EPERM 退出 1，零测试执行；该环境失败不计入通过命令，详见 bugfix.md。既有 qa.json 的同游戏源码 220 条定向测试、20 条 Chromium 流程和给定 full-gate-evidence.json 仅作回归背景，不冒充本轮独立执行。",
     "公开复验结论、临时执行脚本的测试步骤与剩余候选体验边界见 bugfix.md；本轮没有修改产品实现、游戏测试或 .daoyan-agent 运行状态。"
   ]
 }

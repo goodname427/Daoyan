@@ -1,7 +1,7 @@
 # 属性驱动统一实体与资源守恒法术：缺陷独立复验
 
 - 版本：`draft-2026-09-23-7af7515c-4ac5-47fe-9063-`
-- 复验代码：`HEAD=46ab5ab1bfaf8b4dbe726060db774f4d59d07fc4`
+- 复验代码：`HEAD=9be8b5aa7656e0b252af7b7e008dc57c5c5c8725`；前次复验为 `46ab5ab1bfaf8b4dbe726060db774f4d59d07fc4`
 - 结构化结果：[bugfix-reverification.json](./bugfix-reverification.json)
 - 结论：`candidate-micro-mana` 的独立缺陷复验 **passed**；正式节点由 notice guard 对账，本报告不手工推进节点，也不代表候选体验或制作人验收通过。
 
@@ -29,3 +29,11 @@ resourceLedger.snapshot().conserved = true
 标准 `npm test -- test/combat.test.ts test/entity-vnext.test.ts test/review-regressions.test.ts` 尝试退出 1：Vitest 在加载 `vite.config.ts` 时被宿主的 `esbuild spawn EPERM` 阻断，执行了零条测试。该失败保留为环境限制，不把它记成产品测试失败或成功。已有[同游戏源码 QA](./qa.md)记录 220 条定向测试与 20 条 Chromium 流程通过；任务给定的 `pre-push-2026-09-23T15-19-19-281Z/full-gate-evidence.json` 记录完整门禁退出 0。这些是回归背景，不是本轮独立命令。本轮没有浏览器候选交互或页面控制台的新观察；候选体验仍是后续阶段。
 
 本轮只写阶段报告、当前状态和开发日志；没有编辑 `.daoyan-agent`，没有手工推进版本节点，也没有 commit、push、tag 或发布。
+
+## 当前树再次独立复验（2026-09-24）
+
+在 `HEAD=9be8b5aa7656e0b252af7b7e008dc57c5c5c8725` 的干净工作区重新核对缺陷。`git diff --quiet f065d2cc940a12ec1482e2e608612caa74417029 -- src e2e test/combat.test.ts test/entity-vnext.test.ts test/review-regressions.test.ts package.json package-lock.json vite.config.ts electron` 退出 0，受影响产品源码、测试及构建配置与账本修复修订相同。
+
+重新执行上述进程内转译无头命令退出 0：150 帧均满足法力微单位等式、账户 `conserved=true` 与世界能量账本守恒，第 40 帧首次余额不足反噬且总计 1 次；第 9、40、150 帧余额和累计付款与上节记录一致。`npm run typecheck` 退出 0。标准 `npm test -- test/combat.test.ts test/entity-vnext.test.ts test/review-regressions.test.ts` 再次在加载 Vite 配置时因 `esbuild spawn EPERM` 退出 1，执行零条测试，因此不计作本轮标准测试通过。
+
+缺陷 `candidate-micro-mana` 的当前树独立复验结论维持 **passed**；通过依据是实际执行的缺陷场景、逐帧账本断言及同源码差异核对。标准 Vitest 的宿主阻断和本轮未做候选页面交互仍分别保留为验证边界；既有 QA 与完整门禁仅作背景，不代替本轮执行。正式节点继续由 notice guard 对账。
