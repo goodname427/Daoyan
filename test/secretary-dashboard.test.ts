@@ -1159,6 +1159,7 @@ describe('secretary dashboard server', () => {
       direction: '验证项目中枢',
       documentRoot: 'docs/versions/workflow-foundation-2026-09-20',
       currentStage: 'development',
+      now: '2026-09-19T00:00:00.000Z',
     });
     setNodeEvidence(version, 'charter-review', {
       artifact: 'docs/specs/2026-09-20-formal-version-and-secretary-dashboard.md',

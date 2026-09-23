@@ -184,7 +184,7 @@ export interface VersionWorkItem {
 
 export interface VersionBug {
   id: string;
-  origin?: 'qa' | 'producer-acceptance';
+  origin?: 'qa' | 'candidate' | 'producer-acceptance';
   title: string;
   severity: 'blocker' | 'high' | 'medium' | 'low';
   status: 'open' | 'fixing' | 'verify' | 'closed' | 'deferred';
@@ -1494,6 +1494,66 @@ export function transitionVersionBug(
   }
   bug.status = target;
   version.updatedAt = new Date().toISOString();
+}
+
+/** Return a changed candidate to independent QA without reusing its old review. */
+export function reopenCandidateForQa(
+  version: FormalVersion,
+  input: {
+    bugId: string;
+    title: string;
+    expected: string;
+    actual: string;
+    evidence: string;
+    fixCodeRevision: string;
+    now?: string;
+  },
+): void {
+  if (version.currentStage !== 'candidate' || version.status !== 'running') {
+    throw new Error('只有执行中的候选版本可以退回独立测试');
+  }
+  if (!input.evidence.trim() || !input.fixCodeRevision.trim()) {
+    throw new Error('候选退回必须提供修复证据和代码修订');
+  }
+  if (version.bugs.some((bug) => bug.id === input.bugId)) {
+    throw new Error(`候选缺陷 id 重复：${input.bugId}`);
+  }
+  const orchestration = requireOrchestration(version);
+  const previousQa = orchestration.qaRuns.at(-1);
+  if (!previousQa || previousQa.codeRevision === input.fixCodeRevision) {
+    throw new Error('候选退回需要不同于已测基线的修复代码');
+  }
+  const timestamp = nowIso(input.now);
+  version.bugs.push({
+    id: input.bugId,
+    origin: 'candidate',
+    title: input.title,
+    severity: 'high',
+    status: 'open',
+    expected: input.expected,
+    actual: input.actual,
+    evidence: input.evidence,
+    linkedWorkItemId: '',
+  });
+  transitionVersionBug(version, input.bugId, 'fixing');
+  transitionVersionBug(version, input.bugId, 'verify', '', input.fixCodeRevision);
+  recordStagePolicy(version, {
+    stage: 'bugfix',
+    mode: 'execute',
+    reason: `候选体验发现并修复缺陷 ${input.bugId}，须经独立复验。`,
+    evidence: [input.evidence],
+    decidedBy: 'main-agent',
+    scopeRevision: currentScopeRevision(orchestration),
+    now: timestamp,
+  });
+  for (const stage of ['qa', 'bugfix', 'candidate'] as const) {
+    const node = version.nodes.find((entry) => entry.id === stage)!;
+    node.status = stage === 'qa' ? 'active' : 'pending';
+    node.startedAt = stage === 'qa' ? timestamp : '';
+    node.completedAt = '';
+  }
+  version.currentStage = 'qa';
+  version.updatedAt = timestamp;
 }
 
 function qaMatchesCurrentCode(version: FormalVersion, qa: VersionQaRun): boolean {

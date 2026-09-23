@@ -22,6 +22,7 @@ import {
   recordFeatureVerification,
   recordQaRun,
   recordRiskAssessment,
+  reopenCandidateForQa,
   recordScopeRevision,
   recordStagePolicy,
   readFormalVersion,
@@ -37,6 +38,56 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('formal version lifecycle', () => {
+  it('returns a repaired candidate to independent QA with an auditable defect', () => {
+    const version = createFormalVersion({
+      id: 'candidate-repair',
+      title: '候选复验',
+      direction: '账目守恒',
+      documentRoot: 'docs/versions/candidate-repair',
+      currentStage: 'candidate',
+    });
+    version.orchestration!.qaRuns.push({
+      id: 'old-qa',
+      agentId: 'qa:old',
+      independent: true,
+      codeRevision: 'old-code',
+      scopeRevision: 1,
+      suites: ['acceptance', 'integration', 'regression'],
+      status: 'passed',
+      commands: [],
+      evidence: ['old-report'],
+      createdAt: '2026-09-23T00:00:00.000Z',
+    });
+    reopenCandidateForQa(version, {
+      bugId: 'ledger-rounding',
+      title: '法力账户微单位差异',
+      expected: '逐帧守恒',
+      actual: '相差一微单位',
+      evidence: 'docs/versions/candidate-repair/candidate.md',
+      fixCodeRevision: 'fixed-code',
+      now: '2026-09-23T15:00:00.000Z',
+    });
+    expect(version.currentStage).toBe('qa');
+    expect(version.nodes.find((node) => node.id === 'candidate')?.status).toBe('pending');
+    expect(version.nodes.find((node) => node.id === 'qa')?.status).toBe('active');
+    expect(version.bugs[0]).toMatchObject({
+      origin: 'candidate',
+      status: 'verify',
+      fixCodeRevision: 'fixed-code',
+    });
+    expect(currentVersionStagePolicy(version, 'bugfix').mode).toBe('execute');
+    expect(() =>
+      reopenCandidateForQa(version, {
+        bugId: 'ledger-rounding',
+        title: '重复',
+        expected: '守恒',
+        actual: '不守恒',
+        evidence: 'report',
+        fixCodeRevision: 'fixed-code',
+      }),
+    ).toThrow('只有执行中的候选版本');
+  });
+
   it('backs up isolated migration bytes atomically and preserves extension facts for downgrade', async () => {
     const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-migration-drill-'));
     const source = resolve(directory, 'source');

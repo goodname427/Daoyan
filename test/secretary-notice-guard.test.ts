@@ -656,6 +656,7 @@ describe('formal version stage dispatch', () => {
       direction: '继续统一实体控制',
       documentRoot: 'docs/versions/takeover-version',
       currentStage: 'development',
+      now: '2026-09-21T00:00:00.000Z',
     });
     version.workItems.push({
       id: 'core-control',
@@ -692,6 +693,7 @@ describe('formal version stage dispatch', () => {
       direction: '持续推进到真正阻塞',
       documentRoot: 'docs/versions/auto-stage',
       currentStage: 'module-design',
+      now: '2026-09-21T00:00:00.000Z',
     });
 
     const item = ensureVersionStageItem(state, version, '2026-09-21T00:01:00.000Z');
@@ -734,6 +736,12 @@ describe('formal version stage dispatch', () => {
     state.items.shift();
     item.status = 'waiting-producer';
     expect(versionTechnicalBlocker(version, state.items)).toBeNull();
+    item.status = 'failed';
+    version.nodes.find((node) => node.id === 'candidate')!.startedAt = '2099-01-01T00:00:00.000Z';
+    expect(versionTechnicalBlocker(version, state.items)).toBeNull();
+    expect(ensureVersionStageItem(state, version, '2099-01-01T00:01:00.000Z')).toMatchObject({
+      status: 'queued',
+    });
   });
 
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {

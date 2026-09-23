@@ -869,11 +869,13 @@ export function versionTechnicalBlocker(
   items: SecretaryItem[],
 ): { stage: VersionStage; reason: string } | null {
   if (version.status === 'archived') return null;
+  const startedAt = version.nodes.find((node) => node.id === version.currentStage)?.startedAt ?? '';
   const item = items.find(
     (candidate) =>
       candidate.orchestration?.formalVersionId === version.id &&
       candidate.orchestration.formalStage === version.currentStage &&
-      candidate.orchestration.formalScopeRevision === formalScopeRevision(version),
+      candidate.orchestration.formalScopeRevision === formalScopeRevision(version) &&
+      candidate.createdAt >= startedAt,
   );
   return item?.status === 'failed' && item.summary.startsWith('技术阻断：')
     ? { stage: version.currentStage, reason: item.summary }
@@ -2196,11 +2198,13 @@ export function ensureVersionStageItem(
   }
   const scopeRevision = formalScopeRevision(version);
   const stageStep = expectedVersionStageStep(version, stage);
+  const startedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
   const linked = secretary.items.filter(
     (item) =>
       item.orchestration?.formalVersionId === version.id &&
       item.orchestration.formalStage === stage &&
-      item.orchestration.formalScopeRevision === scopeRevision,
+      item.orchestration.formalScopeRevision === scopeRevision &&
+      item.createdAt >= startedAt,
   );
   const linkedStep = linked.filter(
     (item) => (item.orchestration?.formalStageStep ?? 'primary') === stageStep,
@@ -4773,7 +4777,8 @@ async function driveFormalVersion(): Promise<boolean> {
           item.summary.startsWith('版本测试环境阻断：') &&
           item.orchestration?.formalVersionId === version!.id &&
           item.orchestration.formalStage === stage &&
-          item.orchestration.formalScopeRevision === formalScopeRevision(version!),
+          item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
+          item.createdAt >= (version!.nodes.find((node) => node.id === stage)?.startedAt ?? ''),
       )
     )
       break;
