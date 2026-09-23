@@ -11,15 +11,15 @@
       "exitCode": 1
     },
     { "command": "npm run typecheck", "exitCode": 0 },
-    { "command": "node scripts/check-docs.mjs", "exitCode": 0 },
-    { "command": "npm run build", "exitCode": 1 }
+    { "command": "npm run build", "exitCode": 1 },
+    { "command": "node scripts/check-docs.mjs", "exitCode": 0 }
   ],
   "evidence": [
-    "本轮开始时 HEAD 1bf0c674b33d0580447abcbcef04df95f3240183，git status --porcelain=v1 为空；自上轮 QA 的 e8ff401 起只提交了 qa.json、qa.md、docs/status.md 和 docs/dev/2026-09-23.md，游戏代码及测试未改。",
-    "定向 Vitest 在加载 vite.config.ts 时因 esbuild spawn EPERM 退出 1，未执行断言；相关 Playwright 命令启动时因 spawn EPERM 退出 1，未执行浏览器用例；npm run build 同样在配置加载时因 spawn EPERM 退出 1，没有新产物。",
-    "本轮 npm run typecheck 与 node scripts/check-docs.mjs 均退出 0。上轮 QA 的原有 6 个测试文件经临时进程内 runner 执行 190/190 条断言通过；这是先前修订的证据，不登记为本轮标准 Vitest 或浏览器通过。",
-    "开发阶段 full-gate-evidence.json 记录 npm run verify:full 退出 0，配置指纹 bb73f63d3c03fd3d622b96fdf713ec4f1861cabb31314c51b34c90aac0df76aa 与本轮一致；其候选树指纹 5f2d47d36505fb585f6997eb2354839cf8b5c1730de3ca9eab46d2ceb9d7ae17 与本轮报告编写前按仓库算法所得 888165a5196766f9e793367b836408122bd959724a516c16019b95a054222206 不一致，报告同步又修改候选树内的状态和开发日志，旧门禁不能复用。",
-    "验收覆盖实体属性与账本、事件与两种蓄力；集成覆盖战斗、DSL/存档迁移、法术书与面板；回归覆盖旧核心、推演台/演武场往返和窄屏。当前标准断言、真实浏览器与新构建均缺本轮可执行证据，未确认产品行为缺陷。"
+    "本轮开始时 HEAD 0708ee94b9d208c6ec73fc1e17074fd5633348e2，git status --short 为空；相对上一轮 QA 的 1bf0c67，只有 qa.json、qa.md、docs/status.md 和 docs/dev/2026-09-23.md 变化，产品代码与测试未变。",
+    "验收、集成和回归定向 Vitest 在加载 vite.config.ts 时以 esbuild spawn EPERM 退出 1，执行 0 条断言；Playwright 启动时以 spawn EPERM 退出 1，执行 0 条浏览器用例；npm run build 在配置加载时同样退出 1，没有新构建产物。",
+    "本轮 npm run typecheck 与 node scripts/check-docs.mjs 均退出 0；文档检查报告 123 个 Markdown 文件。类型与文档成功不能替代产品行为测试。",
+    "开发阶段 .daoyan-agent/runs/secretary-formal-draft-2026-09-23-7af7515c-4ac5-47fe-9063--3-development-1/full-gate-evidence.json 记录 npm run verify:full 退出 0，候选树指纹 5f2d47d36505fb585f6997eb2354839cf8b5c1730de3ca9eab46d2ceb9d7ae17；此后 docs/status.md 和 docs/dev/2026-09-23.md 等受控文件发生变化，不能把旧门禁判作当前树通过。本轮未重跑统一门禁。",
+    "上一轮 QA 曾在旧修订以临时进程内 runner 完成 190 条无头断言，仅作历史辅助证据。本轮真实浏览器主线、窄屏、迁移交互和当前树构建均未取得通过证据；没有执行到可确认产品行为缺陷的断言或交互。"
   ],
   "bugs": []
 }
