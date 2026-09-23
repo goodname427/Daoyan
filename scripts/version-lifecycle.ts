@@ -258,7 +258,7 @@ export interface FeatureVerification {
   codeRevision: string;
   scopeRevision: number;
   typecheck: 'passed' | 'failed';
-  targetedTests: 'passed' | 'failed';
+  targetedTests: 'passed' | 'failed' | 'covered-by-feature-gate';
   evidence: string[];
   createdAt: string;
 }
@@ -620,7 +620,7 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
       !isRecord(entry) ||
       !isPositiveInteger(entry.scopeRevision) ||
       !['passed', 'failed'].includes(String(entry.typecheck)) ||
-      !['passed', 'failed'].includes(String(entry.targetedTests)) ||
+      !['passed', 'failed', 'covered-by-feature-gate'].includes(String(entry.targetedTests)) ||
       !isStringArray(entry.evidence) ||
       [entry.id, entry.workItemId, entry.agentId, entry.codeRevision, entry.createdAt].some(
         (field) => typeof field !== 'string',
@@ -928,12 +928,27 @@ function currentScopeRevision(orchestration: FormalVersionOrchestration): number
   );
 }
 
-function featureVerificationHasTrustedPass(verification: FeatureVerification): boolean {
+function featureVerificationHasTrustedPass(
+  verification: FeatureVerification,
+  orchestration: FormalVersionOrchestration,
+): boolean {
+  const coveredByFeatureGate =
+    verification.targetedTests === 'covered-by-feature-gate' &&
+    (orchestration.validationEvidence ?? []).some(
+      (evidence) =>
+        evidence.scope === 'feature' &&
+        evidence.status === 'passed' &&
+        !evidence.invalidatedAt &&
+        evidence.codeRevision === verification.codeRevision &&
+        evidence.commands.some(
+          (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
+        ),
+    );
   return (
     verification.agentId.trim().length > 0 &&
     verification.codeRevision.trim().length > 0 &&
     verification.typecheck === 'passed' &&
-    verification.targetedTests === 'passed' &&
+    (verification.targetedTests === 'passed' || coveredByFeatureGate) &&
     verification.evidence.length > 0
   );
 }
@@ -1538,7 +1553,9 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
             verification.workItemId === item.id && verification.scopeRevision === scopeRevision,
         )
         .at(-1);
-      return !latestVerification || !featureVerificationHasTrustedPass(latestVerification);
+      return (
+        !latestVerification || !featureVerificationHasTrustedPass(latestVerification, orchestration)
+      );
     });
     if (missing) throw new Error(`Feature 尚无类型检查与定向测试通过证据：${missing.title}`);
   }

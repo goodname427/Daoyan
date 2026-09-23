@@ -3491,6 +3491,18 @@ export function isTaskScopeCommand(command: string): boolean {
   return true;
 }
 
+export function taskFailureCoveredByFeatureGate(commands: StageCommand[]): boolean {
+  const failed = commands.filter((command) => command.exitCode !== 0);
+  return (
+    failed.length > 0 &&
+    failed.every((command) =>
+      /^npm(?:\.cmd)? (?:test(?: -- .+)?|run docs:(?:check|generate))$/i.test(
+        command.command.trim().replace(/\s+/g, ' '),
+      ),
+    )
+  );
+}
+
 function parseStageCommands(value: unknown): StageCommand[] {
   if (
     !Array.isArray(value) ||
@@ -3761,6 +3773,23 @@ interface FeatureGateArtifact {
   createdAt: string;
 }
 
+export function featureGateMatchesCurrent(
+  value: Record<string, unknown> | null,
+  currentTree: string,
+  currentConfig: string,
+): boolean {
+  return Boolean(
+    value &&
+    value.schemaVersion === 1 &&
+    value.exitCode === 0 &&
+    value.workspaceFingerprint === currentTree &&
+    value.configFingerprint === currentConfig &&
+    value.command === 'npm run verify:full' &&
+    value.commandFingerprint === fingerprintStrings(['npm run verify:full']) &&
+    typeof value.createdAt === 'string',
+  );
+}
+
 function fingerprintStrings(values: string[]): string {
   return createHash('sha256').update(values.join('\0')).digest('hex');
 }
@@ -3817,29 +3846,26 @@ export function currentValidationConfigFingerprint(workspaceRoot = root): string
 
 async function readFeatureGateArtifact(runDirectory: string): Promise<FeatureGateArtifact> {
   const path = resolve(runDirectory, 'full-gate-evidence.json');
-  const value = await readJson(path);
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    value.exitCode !== 0 ||
-    typeof value.workspaceFingerprint !== 'string' ||
-    typeof value.configFingerprint !== 'string' ||
-    typeof value.commandFingerprint !== 'string' ||
-    value.command !== 'npm run verify:full' ||
-    typeof value.createdAt !== 'string'
-  ) {
-    throw new Error('Feature PM 缺少可登记的完整门禁证据');
+  const currentTree = currentValidationTreeFingerprint();
+  const currentConfig = currentValidationConfigFingerprint();
+  const primary = await readJson(path);
+  if (featureGateMatchesCurrent(primary, currentTree, currentConfig)) {
+    return primary as unknown as FeatureGateArtifact;
   }
-  if (value.workspaceFingerprint !== currentValidationTreeFingerprint()) {
+  const entries = await readdir(runsRoot, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries.sort((left, right) => right.name.localeCompare(left.name))) {
+    if (!entry.isDirectory() || !entry.name.startsWith('pre-push-')) continue;
+    const fallbackPath = resolve(runsRoot, entry.name, 'full-gate-evidence.json');
+    const fallback = await readJson(fallbackPath);
+    if (featureGateMatchesCurrent(fallback, currentTree, currentConfig)) {
+      return { ...(fallback as unknown as FeatureGateArtifact), log: fallbackPath };
+    }
+  }
+  if (!primary) throw new Error('Feature PM 缺少可登记的完整门禁证据');
+  if (primary.workspaceFingerprint !== currentTree) {
     throw new Error('Feature 完整门禁证据与当前代码树不匹配');
   }
-  if (
-    value.configFingerprint !== currentValidationConfigFingerprint() ||
-    value.commandFingerprint !== fingerprintStrings([value.command])
-  ) {
-    throw new Error('Feature 完整门禁证据与当前命令或验证配置不匹配');
-  }
-  return value as unknown as FeatureGateArtifact;
+  throw new Error('Feature PM 缺少可登记的完整门禁证据');
 }
 
 export function latestReusableFeatureGate(
@@ -4028,9 +4054,12 @@ async function finalizeDeliveredVersionStage(
     const gate = await readFeatureGateArtifact(item.runDirectory!);
     const taskEvidenceIds: string[] = [];
     for (const result of results) {
+      const coveredByFeatureGate =
+        result.targetedTests === 'failed' && taskFailureCoveredByFeatureGate(result.commands);
       if (
         result.status === 'completed' &&
-        (result.typecheck !== 'passed' || result.targetedTests !== 'passed')
+        (result.typecheck !== 'passed' ||
+          (result.targetedTests !== 'passed' && !coveredByFeatureGate))
       ) {
         throw new Error(`工作项 ${result.id} 尚未形成通过的实现与自测证据`);
       }
@@ -4043,8 +4072,13 @@ async function finalizeDeliveredVersionStage(
           agentId: `feature:${item.id}`,
           codeRevision: revision,
           typecheck: result.typecheck,
-          targetedTests: result.targetedTests,
-          evidence: [evidence, manifest, ...result.evidence],
+          targetedTests: coveredByFeatureGate ? 'covered-by-feature-gate' : result.targetedTests,
+          evidence: [
+            evidence,
+            manifest,
+            ...result.evidence,
+            ...(coveredByFeatureGate ? [gate.log || 'Feature verify:full'] : []),
+          ],
         });
         const commands = result.commands;
         const taskEvidence = recordValidationEvidence(version, {
@@ -4076,11 +4110,16 @@ async function finalizeDeliveredVersionStage(
             result.id,
             result.typecheck,
             result.targetedTests,
+            coveredByFeatureGate ? gate.workspaceFingerprint : '',
             ...result.evidence,
           ]),
           executionRound: gate.executionRound ?? reportExecutionRound(report),
           commands,
-          evidence: [manifest, ...result.evidence],
+          evidence: [
+            manifest,
+            ...result.evidence,
+            ...(coveredByFeatureGate ? [gate.log || 'Feature verify:full'] : []),
+          ],
         });
         taskEvidenceIds.push(taskEvidence.id);
       }

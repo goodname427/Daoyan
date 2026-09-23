@@ -10,10 +10,12 @@ import {
   advanceRecordedDirection,
   applyAutomaticStagePolicy,
   featureTaskCompletions,
+  featureGateMatchesCurrent,
   retryTimeFromOutput,
   resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
+  taskFailureCoveredByFeatureGate,
   isBootstrapGraceActive,
   localQuestionResponse,
   ensureVersionStageItem,
@@ -325,6 +327,43 @@ describe('secretary launch snapshot ordering', () => {
     expect(snapshotPredatesLaunch('2026-09-20T14:23:58.000Z', '2026-09-20T14:23:52.000Z')).toBe(
       false,
     );
+  });
+});
+
+describe('feature gate coverage of task checks', () => {
+  it('covers failed scoped commands only when the final full gate includes them', () => {
+    expect(
+      taskFailureCoveredByFeatureGate([
+        { command: 'npm run typecheck', exitCode: 0 },
+        { command: 'npm test -- test/entity-vnext.test.ts', exitCode: 1 },
+      ]),
+    ).toBe(true);
+    expect(
+      taskFailureCoveredByFeatureGate([{ command: 'npm run docs:generate', exitCode: 1 }]),
+    ).toBe(true);
+    expect(taskFailureCoveredByFeatureGate([{ command: 'npm test -- target', exitCode: 0 }])).toBe(
+      false,
+    );
+    expect(
+      taskFailureCoveredByFeatureGate([{ command: 'node custom-check.mjs', exitCode: 1 }]),
+    ).toBe(false);
+  });
+
+  it('rejects an old or mismatched full-gate artifact', () => {
+    const artifact = {
+      schemaVersion: 1,
+      exitCode: 0,
+      workspaceFingerprint: 'tree',
+      configFingerprint: 'config',
+      command: 'npm run verify:full',
+      commandFingerprint: createHash('sha256').update('npm run verify:full').digest('hex'),
+      createdAt: '2026-09-23T00:00:00.000Z',
+    };
+    expect(featureGateMatchesCurrent(artifact, 'tree', 'config')).toBe(true);
+    expect(featureGateMatchesCurrent(artifact, 'changed', 'config')).toBe(false);
+    expect(
+      featureGateMatchesCurrent({ ...artifact, command: 'npm run verify' }, 'tree', 'config'),
+    ).toBe(false);
   });
 });
 

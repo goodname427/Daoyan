@@ -1182,6 +1182,50 @@ describe('formal version lifecycle', () => {
     expect(() => advanceVersion(version, 'candidate')).not.toThrow();
   });
 
+  it('accepts a failed task-scoped test only when current Feature full-gate evidence covers it', () => {
+    const version = createFormalVersion({
+      id: 'feature-covered-task',
+      title: '完整门禁覆盖',
+      direction: '验证最终代码树',
+      documentRoot: 'docs/versions/feature-covered-task',
+      currentStage: 'development',
+    });
+    version.workItems.push({
+      id: 'kernel',
+      title: '核心实现',
+      owner: 'feature-agent',
+      status: 'completed',
+      dependsOn: [],
+      summary: '',
+      evidence: 'development.json',
+    });
+    recordFeatureVerification(version, {
+      workItemId: 'kernel',
+      agentId: 'feature-agent',
+      codeRevision: 'rev-a',
+      typecheck: 'passed',
+      targetedTests: 'covered-by-feature-gate',
+      evidence: ['task-test-failed.log', 'full-gate-evidence.json'],
+    });
+    expect(() => advanceVersion(version, 'qa')).toThrow('类型检查与定向测试');
+    recordValidationEvidence(version, {
+      scope: 'feature',
+      ownerId: 'feature-run',
+      status: 'passed',
+      gitTree: 'tree-a',
+      codeRevision: 'rev-a',
+      commandFingerprint: 'command-a',
+      configFingerprint: 'config-a',
+      affectedPaths: ['src/core/world.ts'],
+      inputEvidenceIds: [],
+      outputFingerprint: 'output-a',
+      executionRound: 1,
+      commands: [{ command: 'npm run verify:full', exitCode: 0 }],
+      evidence: ['full-gate-evidence.json'],
+    });
+    expect(() => advanceVersion(version, 'qa')).not.toThrow();
+  });
+
   it.each(['execute', 'reduced', 'skip'] as const)(
     'blocks failed regression before candidate even with %s bugfix policy and no open bugs',
     (mode) => {

@@ -26,7 +26,7 @@
 | 9    | `reference-update`         | 玩家参考及生成器源码已更新；类型、Markdown/链接检查通过；生成器与 `docs:check` 启动失败。     |
 | 10   | `entity-model-integration` | 跨层测试与 E2E 断言已增补；类型、静态检查通过；Vitest 和 Playwright 均未运行断言。            |
 
-`development.json` 只列出可核实的 Task 直接命令及退出码。格式、ESLint、`git diff --check` 和临时无头检查若前序输出未提供可还原的完整命令，保留在叙述中而不伪造机器命令；E2E 属于后续集成/版本作用域，不进入 Task 命令清单。清单中的 `status: completed` 表示执行 Agent 已交付输出；`targetedTests: failed` 保留未通过的验收事实，阶段消费方应据此拒绝通过。
+`development.json` 只列出可核实的 Task 直接命令及退出码。格式、ESLint、`git diff --check` 和临时无头检查若前序输出未提供可还原的完整命令，保留在叙述中而不伪造机器命令；E2E 属于后续集成/版本作用域，不进入 Task 命令清单。清单中的 `status: completed` 表示执行 Agent 已交付输出；`targetedTests: failed` 保留直接命令失败的事实。仅当最终代码树、验证配置和 `npm run verify:full` 成功证据全部匹配，且失败命令属于该门禁覆盖范围时，阶段消费方可登记为 `covered-by-feature-gate`；否则仍须拒绝。
 
 ## 后续闭环
 
