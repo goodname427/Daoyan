@@ -613,6 +613,31 @@ export interface ReviewResult {
   findings: ReviewFinding[];
 }
 
+export function reviewFindingSignature(review: ReviewResult): string {
+  if (review.verdict !== 'fix' || review.findings.length === 0) return '';
+  return JSON.stringify(
+    review.findings
+      .map((finding) => {
+        const paths = finding.paths.map((path) => path.replaceAll('\\', '/')).sort();
+        const evidencePaths = paths.filter((path) => !path.startsWith('docs/dev/'));
+        return [finding.severity, ...(evidencePaths.length > 0 ? evidencePaths : paths)];
+      })
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+  );
+}
+
+export function advanceReviewStall(
+  previous: { signature: string; count: number } | undefined,
+  review: ReviewResult,
+): { signature: string; count: number } | undefined {
+  const signature = reviewFindingSignature(review);
+  if (!signature) return undefined;
+  return {
+    signature,
+    count: previous?.signature === signature ? previous.count + 1 : 1,
+  };
+}
+
 export type AgentFailureKind = 'transient' | 'external-blocker' | 'execution';
 
 export interface CompletedCommitRecoveryInput {

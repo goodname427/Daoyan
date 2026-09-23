@@ -29,6 +29,8 @@ import {
   classifyAgentFailure,
   isValidationTreePath,
   preferredWindowsExecutable,
+  reviewFindingSignature,
+  validateReview,
 } from './agent-routing';
 import {
   externalRequestId,
@@ -171,6 +173,8 @@ interface RunSnapshot {
   attempt: number;
   phase: string;
   elapsedSeconds: number;
+  reviewStallCount?: number;
+  progressUpdatedAt?: string;
 }
 
 interface TriageResult {
@@ -225,6 +229,7 @@ let runWatcher: FSWatcher | null = null;
 let retryTimer: NodeJS.Timeout | null = null;
 let noticeRetryTimer: NodeJS.Timeout | null = null;
 let coordinateRecoveryTimer: NodeJS.Timeout | null = null;
+let activeHealthTimer: NodeJS.Timeout | null = null;
 const orphanTimers = new Map<string, NodeJS.Timeout>();
 let httpServer: Server | null = null;
 let processingInbox = false;
@@ -242,6 +247,23 @@ const processExitNotices = new Map<number, ChildProcess>();
 const workerExitTimers = new Map<number, ReturnType<typeof setTimeout>>();
 const activeLaunchStartedAt = new Map<string, string>();
 const progressNoticeIntervalMs = 30 * 60_000;
+const activeHealthIntervalMs = 2 * 60_000;
+
+export function workflowHealthSignal(input: {
+  reviewStallCount: number;
+  recoveryAttempts: number;
+  progressUpdatedAt: string;
+  now: string;
+}): 'repeated-finding' | 'repeated-recovery' | 'stale-progress' | null {
+  if (input.reviewStallCount >= 2) return 'repeated-finding';
+  if (input.recoveryAttempts >= 2) return 'repeated-recovery';
+  const lastProgress = Date.parse(input.progressUpdatedAt);
+  const now = Date.parse(input.now);
+  if (Number.isFinite(lastProgress) && Number.isFinite(now) && now - lastProgress >= 30 * 60_000) {
+    return 'stale-progress';
+  }
+  return null;
+}
 
 function progressNoticePhase(rawPhase: string): string {
   const phase = publicActivityText(rawPhase)
@@ -1493,6 +1515,10 @@ async function scanRuns(): Promise<RunSnapshot[]> {
         attempt: Number(recovery?.attempt ?? recovery?.recoveryAttempts ?? 0),
         phase: String(progress?.phase ?? recovery?.phase ?? status),
         elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
+        reviewStallCount: isRecord(recovery?.reviewStall)
+          ? Number(recovery.reviewStall.count ?? 0)
+          : 0,
+        progressUpdatedAt: String(progress?.updatedAt ?? recovery?.updatedAt ?? ''),
       });
     }
   }
@@ -1565,6 +1591,8 @@ async function snapshotForItem(item: SecretaryItem): Promise<RunSnapshot | null>
     ),
     phase: String(progress?.phase ?? recovery?.phase ?? status),
     elapsedSeconds: Number(progress?.elapsedSeconds ?? 0),
+    reviewStallCount: isRecord(recovery?.reviewStall) ? Number(recovery.reviewStall.count ?? 0) : 0,
+    progressUpdatedAt: String(progress?.updatedAt ?? recovery?.updatedAt ?? ''),
   };
 }
 
@@ -2157,8 +2185,10 @@ export function ensureVersionStageItem(
     (item) => (item.orchestration?.formalStageStep ?? 'primary') === stageStep,
   );
   if (
-    linkedStep.some((item) =>
-      ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status),
+    linkedStep.some(
+      (item) =>
+        ['queued', 'retry-wait', 'active', 'tracking', 'waiting-producer'].includes(item.status) ||
+        (item.status === 'failed' && item.summary.startsWith('技术阻断：')),
     )
   ) {
     return null;
@@ -2767,6 +2797,27 @@ function externalBlocker(message: string): boolean {
   );
 }
 
+export async function repeatedReviewFindingCount(directory: string): Promise<number> {
+  const files = (await readdir(directory))
+    .map((name) => ({ name, round: Number(/^review-(\d+)-.*\.json$/.exec(name)?.[1] ?? 0) }))
+    .filter((entry) => entry.round > 0)
+    .sort((left, right) => right.round - left.round);
+  let signature = '';
+  let count = 0;
+  for (const file of files) {
+    try {
+      const value = await readJson(resolve(directory, file.name));
+      const current = reviewFindingSignature(validateReview(value));
+      if (!current || (signature && current !== signature)) break;
+      signature = current;
+      count += 1;
+    } catch {
+      break;
+    }
+  }
+  return count;
+}
+
 function terminateProcessTree(pid: number, identity: string): void {
   if (!isOwnedProcessAlive(pid, identity)) return;
   if (process.platform === 'win32') {
@@ -2968,10 +3019,24 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
   normalizeSecretaryState(state);
   const orchestration = item.orchestration!;
   const now = new Date().toISOString();
+  const health = workflowHealthSignal({
+    reviewStallCount: run.reviewStallCount ?? 0,
+    recoveryAttempts: item.recoveryAttempts,
+    progressUpdatedAt: run.progressUpdatedAt ?? '',
+    now,
+  });
+  const healthPhase =
+    health === 'repeated-finding'
+      ? '审查问题重复未闭合'
+      : health === 'repeated-recovery'
+        ? '异常恢复重复发生'
+        : health === 'stale-progress'
+          ? '执行进度长时间未更新'
+          : '';
   const decision = progressNoticeDecision(
     orchestration.lastProgressPhase ?? '',
     orchestration.lastProgressNoticeAt ?? '',
-    publicProgressPhase(run.phase),
+    healthPhase || publicProgressPhase(run.phase),
     now,
   );
   if (!decision.notify) return;
@@ -2987,8 +3052,10 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
       ? '【版本任务】'
       : '【Feature】';
   await emitNotice(
-    decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
-    `${label}${decision.phase}${elapsed}；正常执行，无需你介入。`,
+    health ? 'workflow-anomaly' : decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
+    health
+      ? `${label}异常预警：${healthPhase}${elapsed}；秘书已核实进程，重复问题将停止自动重试并保留证据。`
+      : `${label}${decision.phase}${elapsed}；正常执行，无需你介入。`,
     item,
   );
 }
@@ -3100,6 +3167,24 @@ async function reconcileItem(
       evidence,
       reconciledAt: new Date().toISOString(),
     });
+  };
+  const blockTechnicalStall = async (reason: string): Promise<void> => {
+    const firstBlock = item.status !== 'failed';
+    item.status = 'failed';
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    itemOrchestration.processOccupied = false;
+    item.summary = `技术阻断：${reason}`;
+    state.activeItemId = item.id;
+    recordReconciliation('blocked', item.summary, [run.directory]);
+    if (firstBlock) {
+      await emitNotice(
+        'version-stage-blocked',
+        `【工作流异常】${reason} 已停止自动重试，运行记录已保留；需由主 Agent 核查并补验，无需制作人重复下达任务。`,
+        item,
+      );
+    }
   };
   if (
     item.status === 'active' &&
@@ -3280,6 +3365,10 @@ async function reconcileItem(
     if (alreadyWaitingForSnapshot) {
       return true;
     }
+    if (run.error.startsWith('审查停滞：')) {
+      await blockTechnicalStall(run.error);
+      return true;
+    }
     if (externalBlocker(run.error)) {
       const firstBlock = item.status !== 'waiting-producer';
       item.status = 'waiting-producer';
@@ -3324,6 +3413,10 @@ async function reconcileItem(
       itemOrchestration.processOccupied = true;
       recordReconciliation('running', item.summary, [run.directory]);
       attachWorkerExitNotice(item, worker);
+      return true;
+    }
+    if ((await repeatedReviewFindingCount(run.directory)) >= 3) {
+      await blockTechnicalStall('审查停滞：旧运行连续三轮出现同一范围和等级的未关闭问题。');
       return true;
     }
     item.status = 'retry-wait';
@@ -5114,9 +5207,26 @@ async function coordinate(): Promise<void> {
     } finally {
       coordinating = false;
       coordinatePromise = null;
+      scheduleActiveHealthCheck();
     }
   })();
   await coordinatePromise;
+}
+
+function scheduleActiveHealthCheck(): void {
+  if (activeHealthTimer) clearTimeout(activeHealthTimer);
+  activeHealthTimer = null;
+  if (
+    stopping ||
+    !state.items.some(
+      (item) => ['active', 'tracking'].includes(item.status) && Boolean(item.runDirectory),
+    )
+  )
+    return;
+  activeHealthTimer = setTimeout(() => {
+    activeHealthTimer = null;
+    requestCoordinate('运行健康检查');
+  }, activeHealthIntervalMs);
 }
 
 function requestCoordinate(source: string): void {
@@ -5367,6 +5477,7 @@ async function shutdown(): Promise<void> {
   if (retryTimer) clearTimeout(retryTimer);
   if (noticeRetryTimer) clearTimeout(noticeRetryTimer);
   if (coordinateRecoveryTimer) clearTimeout(coordinateRecoveryTimer);
+  if (activeHealthTimer) clearTimeout(activeHealthTimer);
   for (const timer of orphanTimers.values()) clearTimeout(timer);
   orphanTimers.clear();
   inboxWatcher?.close();

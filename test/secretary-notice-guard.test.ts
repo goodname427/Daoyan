@@ -39,6 +39,8 @@ import {
   persistScheduleCorrections,
   publicCodeRevision,
   progressNoticeDecision,
+  repeatedReviewFindingCount,
+  workflowHealthSignal,
   observedExitEndsPm,
   nonDocumentationChanges,
   productImplementationChanges,
@@ -707,6 +709,58 @@ describe('formal version stage dispatch', () => {
       /^\[formal-stage:module-design\]/,
     );
     expect(ensureVersionStageItem(state, version, '2026-09-21T00:02:00.000Z')).toBeNull();
+  });
+
+  it('does not relaunch a stage after a technical review stall', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'stalled-stage',
+      title: '停滞阶段',
+      direction: '构建候选',
+      documentRoot: 'docs/versions/stalled-stage',
+      currentStage: 'candidate',
+    });
+    const item = ensureVersionStageItem(state, version)!;
+    item.status = 'failed';
+    item.summary = '技术阻断：审查停滞：同一问题连续三轮未关闭';
+    expect(ensureVersionStageItem(state, version)).toBeNull();
+  });
+
+  it('detects repeated findings, recovery loops, and stale progress without model polling', () => {
+    const now = '2026-09-23T13:40:00.000Z';
+    const healthy = { reviewStallCount: 0, recoveryAttempts: 0, progressUpdatedAt: now, now };
+    expect(workflowHealthSignal(healthy)).toBeNull();
+    expect(workflowHealthSignal({ ...healthy, reviewStallCount: 2 })).toBe('repeated-finding');
+    expect(workflowHealthSignal({ ...healthy, recoveryAttempts: 2 })).toBe('repeated-recovery');
+    expect(
+      workflowHealthSignal({ ...healthy, progressUpdatedAt: '2026-09-23T13:00:00.000Z' }),
+    ).toBe('stale-progress');
+  });
+
+  it('recognizes an abandoned run with repeated review evidence before resuming it', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-review-stall-'));
+    try {
+      for (let round = 1; round <= 3; round += 1) {
+        await writeFile(
+          resolve(directory, `review-${round}-gpt-6-sol-attempt-1.json`),
+          JSON.stringify({
+            verdict: 'fix',
+            summary: `第 ${round} 轮仍缺体验证据`,
+            findings: [
+              {
+                severity: 'high',
+                title: '候选未验收',
+                detail: `第 ${round} 轮`,
+                paths: ['docs/versions/current/candidate.md'],
+              },
+            ],
+          }),
+        );
+      }
+      expect(await repeatedReviewFindingCount(directory)).toBe(3);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it('does not dispatch producer gates or stages declared unnecessary', () => {

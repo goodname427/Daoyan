@@ -6,6 +6,7 @@ import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   canRebaseEmptyRecovery,
+  advanceReviewStall,
   canReuseFullGateEvidence,
   changedPathsSinceWorkspaceBaseline,
   commitBodyForPlan,
@@ -162,6 +163,7 @@ interface RecoveryCheckpoint {
   plan: TaskPlan;
   taskRuns: TaskRun[];
   review: ReviewResult | null;
+  reviewStall?: { signature: string; count: number };
   validationProgress?: ValidationProgress;
   plannerTokens: number | null;
   reviewerTokens: number | null;
@@ -839,6 +841,13 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
     ),
     taskRuns: value.taskRuns as TaskRun[],
     review: value.review ?? null,
+    reviewStall:
+      value.reviewStall &&
+      typeof value.reviewStall.signature === 'string' &&
+      Number.isSafeInteger(value.reviewStall.count) &&
+      value.reviewStall.count > 0
+        ? value.reviewStall
+        : undefined,
     validationProgress: value.validationProgress ?? {
       fastGate: null,
       independentReview: null,
@@ -860,6 +869,28 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
       : null,
     updatedAt: value.updatedAt ?? '',
   };
+}
+
+async function reviewStallFromRunHistory(
+  directory: string,
+): Promise<{ signature: string; count: number } | undefined> {
+  const files = (await readdir(directory))
+    .map((name) => ({ name, round: Number(/^review-(\d+)-.*\.json$/.exec(name)?.[1] ?? 0) }))
+    .filter((entry) => entry.round > 0)
+    .sort((left, right) => left.round - right.round);
+  let stalled: { signature: string; count: number } | undefined;
+  for (const file of files) {
+    try {
+      const review = validateReview(
+        JSON.parse(await readFile(resolve(directory, file.name), 'utf8')),
+      );
+      stalled = advanceReviewStall(stalled, review);
+    } catch {
+      // A damaged old review cannot prove consecutive unresolved findings.
+      stalled = undefined;
+    }
+  }
+  return stalled;
 }
 
 async function compactProjectContext(): Promise<string> {
@@ -1851,6 +1882,7 @@ let activeDirection = options.direction;
 let activeResolvedDirection = options.direction;
 let activeTaskRuns: TaskRun[] = [];
 let activeReview: ReviewResult | null = null;
+let activeReviewStall: { signature: string; count: number } | undefined;
 let activeValidationProgress: ValidationProgress = {
   fastGate: null,
   independentReview: null,
@@ -1866,6 +1898,14 @@ let activeAbnormalRecoveryCount: number | null = 0;
 let activeLocalRepairRoundCount: number | null = 0;
 let currentPhase = '初始化';
 const currentProcessIdentity = getProcessIdentity(process.pid);
+
+function throwIfReviewStalled(review: ReviewResult): void {
+  if (activeReviewStall && activeReviewStall.count >= 3) {
+    throw new Error(
+      `审查停滞：同一范围和等级的问题已连续 ${activeReviewStall.count} 轮未关闭，已停止自动修复与复审；请核查失败命令、真实产物及运行环境。最近结论：${review.summary}`,
+    );
+  }
+}
 
 function applyProducerGuidance(direction: string): string {
   return options.producerGuidance
@@ -1889,6 +1929,7 @@ async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = '
     plan: activePlan,
     taskRuns: activeTaskRuns,
     review: activeReview,
+    reviewStall: activeReviewStall,
     validationProgress: activeValidationProgress,
     plannerTokens: activePlannerTokens,
     reviewerTokens: activeReviewerTokens,
@@ -2089,6 +2130,7 @@ try {
       activeTaskRuns = checkpoint.taskRuns;
     }
     activeReview = resetCompletedWork ? null : checkpoint.review;
+    activeReviewStall = checkpoint.reviewStall ?? (await reviewStallFromRunHistory(runDirectory));
     activeValidationProgress = resetCompletedWork
       ? { fastGate: null, independentReview: null }
       : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
@@ -2382,10 +2424,12 @@ try {
       );
       activeReview = reviewRun.result;
       activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+      activeReviewStall = advanceReviewStall(activeReviewStall, activeReview);
       console.log(
         `[${reviewBoundary ? '增量复审' : '独立审查'}] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
       );
       await persistCheckpoint('active');
+      throwIfReviewStalled(activeReview);
       if (activeReview.verdict === 'pass') {
         activeValidationProgress.independentReview = {
           ...(await validationStageFingerprint()),
@@ -2437,6 +2481,9 @@ try {
       );
       activeReview = reviewRun.result;
       activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+      activeReviewStall = advanceReviewStall(activeReviewStall, activeReview);
+      await persistCheckpoint('active');
+      throwIfReviewStalled(activeReview);
       if (activeReview.verdict === 'fix') {
         reviewBoundary = await repairAndCheckProgress(activeReview, '增量审查 finding');
       } else {

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  advanceReviewStall,
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
   changedPathsSinceWorkspaceBaseline,
@@ -24,6 +25,7 @@ import {
   planTaskLimit,
   preferredWindowsExecutable,
   qualityLoopAction,
+  reviewFindingSignature,
   resolveProducerDirection,
   reviewRouteForPlan,
   reviewRoutesForPlan,
@@ -635,6 +637,27 @@ describe('agent routing', () => {
         failureKind: 'external-blocker',
       }),
     ).toBe('wait-external');
+  });
+
+  it('detects a recurring review finding even when its wording and report content change', () => {
+    const finding = (title: string, paths: string[]) => ({
+      verdict: 'fix' as const,
+      summary: title,
+      findings: [{ severity: 'high' as const, title, detail: title, paths }],
+    });
+    const first = finding('缺少候选产物', ['docs/versions/current/candidate.md']);
+    const second = finding('构建与体验证据仍缺失', [
+      'docs/versions/current/candidate.md',
+      'docs/dev/2026-09-23.md',
+    ]);
+    const unrelated = finding('另一个模块有问题', ['src/core/runtime.ts']);
+    expect(reviewFindingSignature(first)).toBe(reviewFindingSignature(second));
+    expect(advanceReviewStall(undefined, first)?.count).toBe(1);
+    expect(advanceReviewStall(advanceReviewStall(undefined, first), second)?.count).toBe(2);
+    expect(advanceReviewStall(advanceReviewStall(undefined, first), unrelated)?.count).toBe(1);
+    expect(
+      advanceReviewStall(undefined, { verdict: 'pass', summary: '通过', findings: [] }),
+    ).toBeUndefined();
   });
 
   it('routes formal version stages directly without reopening producer planning', () => {
