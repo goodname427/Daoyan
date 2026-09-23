@@ -27,6 +27,7 @@ import {
   isTaskScopeCommand,
   latestReusableFeatureGate,
   parseQaResult,
+  qaResultReadyForReacceptance,
   parseReverificationResult,
   parseVersionWorkItems,
   pmSnapshotConfirmsLaunch,
@@ -35,6 +36,7 @@ import {
   progressNoticeDecision,
   observedExitEndsPm,
   nonDocumentationChanges,
+  productImplementationChanges,
   replaceVersionWorkItems,
   versionStageDirection,
   versionMessageIsNewDirection,
@@ -58,6 +60,47 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('secretary worker process launch', () => {
+  it('requires successful QA, browser, and build commands before reaccepting an empty retry', () => {
+    const result = {
+      status: 'passed' as const,
+      suites: ['acceptance', 'integration', 'regression'] as Array<
+        'acceptance' | 'integration' | 'regression'
+      >,
+      commands: [
+        { command: 'npm test -- test/entity-vnext.test.ts', exitCode: 0 },
+        { command: 'npm run test:e2e -- e2e/smoke.spec.ts', exitCode: 0 },
+        { command: 'npm run build', exitCode: 0 },
+      ],
+      evidence: ['qa.md'],
+      bugs: [],
+    };
+    expect(qaResultReadyForReacceptance(result)).toBe(true);
+    expect(
+      qaResultReadyForReacceptance({
+        ...result,
+        commands: result.commands.map((command) =>
+          command.command === 'npm run build' ? { ...command, exitCode: 1 } : command,
+        ),
+      }),
+    ).toBe(false);
+    expect(qaResultReadyForReacceptance({ ...result, commands: result.commands.slice(0, 2) })).toBe(
+      false,
+    );
+    expect(qaResultReadyForReacceptance({ ...result, status: 'failed' })).toBe(false);
+  });
+
+  it('keeps control-plane maintenance out of the frozen game candidate comparison', () => {
+    expect(
+      productImplementationChanges([
+        'scripts/secretary-notice-guard.ts',
+        'scripts/secretary-state.ts',
+        'test/secretary-notice-guard.test.ts',
+        'docs/status.md',
+        'src/core/world.ts',
+        'test/entity-vnext.test.ts',
+      ]),
+    ).toEqual(['src/core/world.ts', 'test/entity-vnext.test.ts']);
+  });
   it('reports phase transitions immediately and long phases at a bounded interval', () => {
     const started = '2026-09-21T00:00:00.000Z';
     expect(progressNoticeDecision('', '', '独立审查第 1 轮', started)).toEqual({

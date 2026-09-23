@@ -23,6 +23,7 @@ import {
   unrecordedTaskCompletions,
   reconciliationTargets,
   reopenVerifiedDevelopmentDelivery,
+  reopenVerifiedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
   supersedeRedundantDevelopmentItems,
@@ -102,6 +103,47 @@ describe('persistent secretary state', () => {
         '2026-09-21T00:03:00.000Z',
       ),
     ).toBe(false);
+  });
+
+  it('reopens an externally verified QA delivery without discarding a worked retry', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const delivered = itemFromIntake(
+      { id: 'delivered-qa', idea: '版本测试', createdAt: state.initializedAt },
+      [],
+    ).item;
+    delivered.status = 'delivered';
+    delivered.summary = '阶段交付未能写入正式版本，将自动安排修复：QA 状态必须与缺陷清单一致';
+    delivered.orchestration = {
+      ...delivered.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'qa',
+      formalScopeRevision: 1,
+      formalStageConsumedAt: '2026-09-21T00:01:00.000Z',
+    };
+    const retry = itemFromIntake(
+      { id: 'empty-qa-retry', idea: '再次版本测试', createdAt: state.initializedAt },
+      [],
+    ).item;
+    retry.status = 'tracking';
+    retry.processPid = 123;
+    retry.orchestration = {
+      ...retry.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'qa',
+      formalScopeRevision: 1,
+      processOccupied: true,
+    };
+    state.items.push(delivered, retry);
+    state.activeItemId = retry.id;
+
+    expect(reopenVerifiedQaDelivery(state, 'version-1', new Set(), state.initializedAt)).toBe(
+      false,
+    );
+    expect(
+      reopenVerifiedQaDelivery(state, 'version-1', new Set([retry.id]), state.initializedAt),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
   });
 
   it('retires stale formal-stage work when its control-plane version is archived', () => {

@@ -68,6 +68,7 @@ import {
   projectFactsFromStatus,
   publicSecretaryState,
   reopenVerifiedDevelopmentDelivery,
+  reopenVerifiedQaDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -2521,7 +2522,7 @@ async function processInbox(): Promise<void> {
   } finally {
     processingInbox = false;
   }
-  await coordinate();
+  requestCoordinate('收件后');
 }
 
 function unfinished(run: RunSnapshot): boolean {
@@ -3700,6 +3701,17 @@ export function parseQaResult(
   };
 }
 
+export function qaResultReadyForReacceptance(result: ReturnType<typeof parseQaResult>): boolean {
+  return (
+    result.status === 'passed' &&
+    result.bugs.length === 0 &&
+    result.commands.every((command) => command.exitCode === 0) &&
+    result.commands.some((command) => command.command.startsWith('npm test -- ')) &&
+    result.commands.some((command) => command.command.startsWith('npm run test:e2e')) &&
+    result.commands.some((command) => command.command === 'npm run build')
+  );
+}
+
 export function parseBugfixResult(
   value: unknown,
   bugIds: string[],
@@ -3760,6 +3772,16 @@ function reportChangedFiles(report: Record<string, unknown>): string[] {
 
 export function nonDocumentationChanges(paths: string[]): string[] {
   return paths.filter((path) => !path.replace(/\\/g, '/').startsWith('docs/'));
+}
+
+export function productImplementationChanges(paths: string[]): string[] {
+  return nonDocumentationChanges(paths).filter((path) => {
+    const normalized = path.replace(/\\/g, '/');
+    return !(
+      /^scripts\/(?:secretary-[^/]+|project-secretary)\.ts$/.test(normalized) ||
+      /^test\/secretary-[^/]+\.test\.ts$/.test(normalized)
+    );
+  });
 }
 
 interface FeatureGateArtifact {
@@ -3921,10 +3943,10 @@ function assertVerificationDidNotChangeImplementation(
   testedRevision?: string,
   currentRevision?: string,
 ): void {
-  const reported = nonDocumentationChanges(reportChangedFiles(report));
+  const reported = productImplementationChanges(reportChangedFiles(report));
   const committed =
     testedRevision && currentRevision
-      ? nonDocumentationChanges(changedFilesBetween(testedRevision, currentRevision))
+      ? productImplementationChanges(changedFilesBetween(testedRevision, currentRevision))
       : [];
   const invalid = [...new Set([...reported, ...committed])];
   if (invalid.length > 0) {
@@ -4162,7 +4184,46 @@ async function finalizeDeliveredVersionStage(
         verificationRunId: '',
       })),
     );
-    const featureGate = latestReusableFeatureGate(version, testedRevision);
+    let featureGate: ValidationEvidence;
+    try {
+      featureGate = latestReusableFeatureGate(version, testedRevision);
+    } catch (error) {
+      const priorFeatureGate = version.orchestration?.validationEvidence?.find(
+        (entry) =>
+          entry.scope === 'feature' &&
+          entry.codeRevision === testedRevision &&
+          entry.status === 'passed' &&
+          entry.commands.some(
+            (command) => command.command === 'npm run verify:full' && command.exitCode === 0,
+          ),
+      );
+      if (
+        !priorFeatureGate ||
+        productImplementationChanges(changedFilesBetween(testedRevision, revision)).length > 0
+      ) {
+        throw error;
+      }
+      const gate = await readFeatureGateArtifact(item.runDirectory!);
+      recordValidationEvidence(version, {
+        scope: 'feature',
+        ownerId: `main-agent:${item.id}`,
+        status: 'passed',
+        gitTree: gate.workspaceFingerprint,
+        codeRevision: testedRevision,
+        commandFingerprint: gate.commandFingerprint ?? fingerprintStrings([gate.command]),
+        configFingerprint: gate.configFingerprint,
+        affectedPaths: version.workItems.flatMap((workItem) => workItem.affectedPaths ?? []),
+        inputEvidenceIds: [],
+        outputFingerprint: gate.workspaceFingerprint,
+        executionRound: gate.executionRound ?? reportExecutionRound(report),
+        commands: [{ command: gate.command, exitCode: 0 }],
+        evidence: [
+          manifest,
+          gate.log || relative(root, resolve(item.runDirectory!, 'full-gate-evidence.json')),
+        ],
+      });
+      featureGate = latestReusableFeatureGate(version, testedRevision);
+    }
     const qa = recordQaRun(version, {
       agentId: `qa:${item.id}`,
       independent: true,
@@ -4574,6 +4635,53 @@ async function coordinateOnce(): Promise<void> {
       }
     }
   }
+  let reopenedDeliveredQa = false;
+  if (activeFormalVersion?.currentStage === 'qa') {
+    const emptyStoppedAttemptIds = new Set<string>();
+    for (const item of state.items) {
+      if (
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        item.orchestration.formalStage !== 'qa' ||
+        isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+        !item.runDirectory
+      ) {
+        continue;
+      }
+      const checkpoint = await readJson(resolve(item.runDirectory, 'recovery.json'));
+      if (Array.isArray(checkpoint?.taskRuns) && checkpoint.taskRuns.length === 0) {
+        emptyStoppedAttemptIds.add(item.id);
+      }
+    }
+    const delivered = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'delivered' &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === 'qa' &&
+          item.orchestration.formalStageConsumedAt &&
+          item.summary.startsWith('阶段交付未能写入正式版本'),
+      );
+    if (delivered && emptyStoppedAttemptIds.size > 0) {
+      try {
+        const result = parseQaResult(
+          await readJson(resolve(root, activeFormalVersion.documentRoot, 'qa.json')),
+          activeFormalVersion.workItems,
+        );
+        if (qaResultReadyForReacceptance(result)) {
+          await readFeatureGateArtifact(delivered.runDirectory!);
+          reopenedDeliveredQa = reopenVerifiedQaDelivery(
+            state,
+            activeFormalVersion.id,
+            emptyStoppedAttemptIds,
+            new Date().toISOString(),
+          );
+        }
+      } catch {
+        // An invalid QA report or stale gate cannot retire its retry.
+      }
+    }
+  }
   const persistedCorrections = await persistScheduleCorrections(
     state,
     async (correction) => {
@@ -4626,6 +4734,7 @@ async function coordinateOnce(): Promise<void> {
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||
     reopenedDeliveredDevelopment ||
+    reopenedDeliveredQa ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||

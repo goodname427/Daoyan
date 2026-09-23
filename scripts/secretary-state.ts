@@ -1006,13 +1006,33 @@ export function reopenVerifiedDevelopmentDelivery(
   emptyStoppedAttemptIds: ReadonlySet<string>,
   now: string,
 ): boolean {
+  return reopenVerifiedStageDelivery(state, versionId, 'development', emptyStoppedAttemptIds, now);
+}
+
+/** A separately verified QA rerun may reuse a delivered report after an empty retry. */
+export function reopenVerifiedQaDelivery(
+  state: SecretaryState,
+  versionId: string,
+  emptyStoppedAttemptIds: ReadonlySet<string>,
+  now: string,
+): boolean {
+  return reopenVerifiedStageDelivery(state, versionId, 'qa', emptyStoppedAttemptIds, now);
+}
+
+function reopenVerifiedStageDelivery(
+  state: SecretaryState,
+  versionId: string,
+  stage: 'development' | 'qa',
+  emptyStoppedAttemptIds: ReadonlySet<string>,
+  now: string,
+): boolean {
   const delivered = [...state.items]
     .reverse()
     .find(
       (item) =>
         item.status === 'delivered' &&
         item.orchestration?.formalVersionId === versionId &&
-        item.orchestration.formalStage === 'development' &&
+        item.orchestration.formalStage === stage &&
         Boolean(item.orchestration.formalStageConsumedAt) &&
         item.summary.startsWith('阶段交付未能写入正式版本'),
     );
@@ -1021,7 +1041,7 @@ export function reopenVerifiedDevelopmentDelivery(
     (item) =>
       emptyStoppedAttemptIds.has(item.id) &&
       item.orchestration?.formalVersionId === versionId &&
-      item.orchestration.formalStage === 'development' &&
+      item.orchestration.formalStage === stage &&
       item.orchestration.formalStageStep === delivered.orchestration?.formalStageStep &&
       item.orchestration.formalScopeRevision === delivered.orchestration?.formalScopeRevision &&
       ['active', 'tracking', 'retry-wait'].includes(item.status),
@@ -1029,7 +1049,7 @@ export function reopenVerifiedDevelopmentDelivery(
   if (replacements.length === 0) return false;
   for (const item of replacements) {
     item.status = 'superseded';
-    item.summary = '该开发重试尚无已完成工作项；改为重新验收上一轮已交付且门禁仍匹配的批次。';
+    item.summary = '该阶段重试尚无已完成工作项；改为重新验收上一轮已交付且证据仍匹配的批次。';
     item.completedAt ||= now;
     item.updatedAt = now;
     item.retryAt = '';
@@ -1041,7 +1061,7 @@ export function reopenVerifiedDevelopmentDelivery(
     if (state.activeItemId === item.id) state.activeItemId = '';
   }
   delete delivered.orchestration!.formalStageConsumedAt;
-  delivered.summary = '旧开发批次的同树完整门禁已重新核对，等待正式版本阶段验收。';
+  delivered.summary = '旧阶段批次的同树验证证据已重新核对，等待正式版本阶段验收。';
   delivered.updatedAt = now;
   return true;
 }
