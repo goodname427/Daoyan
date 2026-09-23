@@ -11,8 +11,7 @@
       "exitCode": 0
     },
     { "command": "npm run typecheck", "exitCode": 0 },
-    { "command": "npm run build", "exitCode": 0 },
-    { "command": "npm run verify:full", "exitCode": 0 }
+    { "command": "npm run build", "exitCode": 0 }
   ],
   "evidence": [
     "Initial independent QA run at 85a1759 was blocked by spawn EPERM inside its Agent sandbox; that failed report and all raw exit codes remain in Git history and the QA-1 run directory.",

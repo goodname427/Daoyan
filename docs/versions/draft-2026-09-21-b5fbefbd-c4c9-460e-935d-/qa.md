@@ -24,7 +24,8 @@
 - `npm test -- test/entity-vnext.test.ts test/dsl-migration.test.ts test/core.test.ts test/combat.test.ts test/persistence.test.ts test/render.test.tsx`：退出 0，110 条通过。
 - `npm run test:e2e -- e2e/smoke.spec.ts`：退出 0，18 条实际浏览器流程通过。
 - `npm run build`：退出 0，生产构建产物生成。
-- `node scripts/pre-push-verify.mjs`：实际执行 `npm run verify:full` 并退出 0，340 条单测、覆盖率、沙盒、19 条浏览器 E2E 和构建通过；机器证据为 `.daoyan-agent/runs/pre-push-2026-09-23T04-15-44-680Z/full-gate-evidence.json`。
+
+完整门禁是单独的 Feature 范围支撑证据，不计入 QA 命令：`node scripts/pre-push-verify.mjs` 实际执行 `npm run verify:full` 并退出 0，340 条单测、覆盖率、沙盒、19 条浏览器 E2E 和构建通过；机器证据为 `.daoyan-agent/runs/pre-push-2026-09-23T04-15-44-680Z/full-gate-evidence.json`。当前树还经过后续同等门禁复核，正式接纳时以匹配的最新机器证据为准。
 
 ## 缺陷与后续复验
 
