@@ -1,0 +1,33 @@
+{
+  "status": "failed",
+  "suites": ["acceptance", "integration", "regression"],
+  "commands": [
+    {
+      "command": "npm test -- test/entity-vnext.test.ts test/dsl-migration.test.ts test/core.test.ts test/combat.test.ts test/persistence.test.ts test/render.test.tsx",
+      "exitCode": 1
+    },
+    {
+      "command": "npm run test:e2e -- e2e/smoke.spec.ts",
+      "exitCode": 1
+    },
+    { "command": "npm run typecheck", "exitCode": 0 },
+    { "command": "npm run build", "exitCode": 1 },
+    {
+      "command": "node C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-version-qa-20260923.cjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-version-vitest-20260923.cjs test/entity-vnext.test.ts test/dsl-migration.test.ts test/core.test.ts test/combat.test.ts test/persistence.test.ts test/render.test.tsx",
+      "exitCode": 0
+    },
+    { "command": "node scripts/check-docs.mjs", "exitCode": 0 }
+  ],
+  "evidence": [
+    "Candidate HEAD 598788d8663c30b71dcc416c128dbf6f2c12a4c2; worktree was clean before QA.",
+    "The in-process TypeScript Vitest runner used configFile:false, esbuild:false and a TypeScript transpileModule Vite transform; six existing files and 110 assertions passed. This is supplemental evidence, not the standard Vitest gate.",
+    "Five independent Node scenarios passed: public unified entry, old-launch migration, VM creation and capability rejection, ownership/resistance dual pricing, and infinite Battle maintenance ending on mana exhaustion.",
+    "Standard Vitest failed before collecting tests at vite.config.ts because esbuild spawn returned EPERM. Playwright failed before opening a browser with spawn EPERM. Build failed before bundling at vite.config.ts with esbuild spawn EPERM.",
+    "Acceptance, integration and regression have passing headless coverage, but browser workflow, actual application experience and package verification remain unexecuted; QA cannot pass. No product behavior defect was confirmed in executed assertions."
+  ],
+  "bugs": []
+}
