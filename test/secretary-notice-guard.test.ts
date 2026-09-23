@@ -40,6 +40,7 @@ import {
   publicCodeRevision,
   progressNoticeDecision,
   repeatedReviewFindingCount,
+  versionTechnicalBlocker,
   workflowHealthSignal,
   observedExitEndsPm,
   nonDocumentationChanges,
@@ -724,6 +725,15 @@ describe('formal version stage dispatch', () => {
     item.status = 'failed';
     item.summary = '技术阻断：审查停滞：同一问题连续三轮未关闭';
     expect(ensureVersionStageItem(state, version)).toBeNull();
+    expect(versionTechnicalBlocker(version, state.items)).toEqual({
+      stage: 'candidate',
+      reason: item.summary,
+    });
+    state.items.unshift({ ...item, id: 'new-attempt', status: 'active' });
+    expect(versionTechnicalBlocker(version, state.items)).toBeNull();
+    state.items.shift();
+    item.status = 'waiting-producer';
+    expect(versionTechnicalBlocker(version, state.items)).toBeNull();
   });
 
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {

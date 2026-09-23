@@ -864,17 +864,38 @@ async function versionDocuments(version: FormalVersion): Promise<DashboardDocume
     .sort((left, right) => left.title.localeCompare(right.title, 'zh-CN'));
 }
 
-async function dashboardVersion(version: FormalVersion): Promise<object> {
+export function versionTechnicalBlocker(
+  version: FormalVersion,
+  items: SecretaryItem[],
+): { stage: VersionStage; reason: string } | null {
+  if (version.status === 'archived') return null;
+  const item = items.find(
+    (candidate) =>
+      candidate.orchestration?.formalVersionId === version.id &&
+      candidate.orchestration.formalStage === version.currentStage &&
+      candidate.orchestration.formalScopeRevision === formalScopeRevision(version),
+  );
+  return item?.status === 'failed' && item.summary.startsWith('技术阻断：')
+    ? { stage: version.currentStage, reason: item.summary }
+    : null;
+}
+
+async function dashboardVersion(version: FormalVersion, isCurrent: boolean): Promise<object> {
   const documents = await versionDocuments(version);
   const base = publicVersionState(version) as FormalVersion & Record<string, unknown>;
+  const blocker = isCurrent ? versionTechnicalBlocker(version, state.items) : null;
+  const reason = blocker ? publicActivityText(blocker.reason) : '';
   const usages = await Promise.all(
     base.nodes.map((node) => versionStageUsage(version.id, node.id, state.items)),
   );
   return {
     ...base,
+    health: blocker ? 'blocked' : base.health,
+    operationalBlocker: blocker ? { reason, owner: '主 Agent' } : null,
     documents,
     nodes: base.nodes.map((node, index) => ({
       ...node,
+      ...(blocker?.stage === node.id ? { status: 'blocked', summary: reason } : {}),
       usage: usages[index],
       documents: documents.filter((document) => document.stages.includes(node.id)),
     })),
@@ -5279,7 +5300,7 @@ async function dashboardPayload(selectedVersionId = ''): Promise<object> {
     generatedAt: new Date().toISOString(),
     secretary: publicSecretaryState(state),
     versions: versions.map((candidate) => versionCatalogEntry(candidate, current?.id ?? '')),
-    version: version ? await dashboardVersion(version) : null,
+    version: version ? await dashboardVersion(version, isCurrent) : null,
     isCurrentVersion: isCurrent,
     agents: await dashboardAgents(),
     todos: dashboardTodos(version, isCurrent),

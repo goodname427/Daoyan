@@ -608,7 +608,11 @@ function render(data) {
     $('#progress-bar').style.width = `${version.progress}%`;
     text(
       $('#next-action'),
-      version.status === 'archived' ? '版本已完成归档' : (node?.description ?? '等待正式版本立项'),
+      version.status === 'archived'
+        ? '版本已完成归档'
+        : version.operationalBlocker
+          ? `${version.operationalBlocker.reason} 由主 Agent 补验，制作人无需操作。`
+          : (node?.description ?? '等待正式版本立项'),
     );
   } else {
     text($('#version-title'), '尚未建立正式版本');

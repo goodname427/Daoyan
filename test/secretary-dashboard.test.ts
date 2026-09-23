@@ -1102,6 +1102,35 @@ describe('secretary dashboard server', () => {
             completedAt: '',
           },
           {
+            id: 'technical-blocker',
+            idea: '补验当前版本开发节点',
+            scope: 'feature',
+            status: 'failed',
+            summary: '技术阻断：重复审查未取得新证据。',
+            plannedTasks: [],
+            matchedFact: null,
+            runDirectory: '',
+            processPid: 0,
+            processIdentity: '',
+            recoveryAttempts: 0,
+            retryAt: '',
+            producerGuidance: '',
+            createdAt: '2026-09-20T00:50:00.000Z',
+            updatedAt: '2026-09-20T00:50:00.000Z',
+            completedAt: '',
+            orchestration: {
+              schemaVersion: 1,
+              runId: 'technical-blocker',
+              attempt: 1,
+              reconciliationOutcome: 'blocked',
+              awaitingReview: false,
+              processOccupied: false,
+              formalVersionId: 'dashboard-test',
+              formalStage: 'development',
+              formalScopeRevision: 1,
+            },
+          },
+          {
             id: 'running-feature',
             idea: '实现看板交互',
             scope: 'feature',
@@ -1184,6 +1213,18 @@ describe('secretary dashboard server', () => {
       initial = (await (await fetch(`${url}/api/dashboard`)).json()) as Record<string, unknown>;
     }
     expect((initial.version as { title: string }).title).toBe('看板测试版本');
+    expect(initial.version).toEqual(
+      expect.objectContaining({
+        health: 'blocked',
+        operationalBlocker: {
+          reason: '技术阻断：重复审查未取得新证据。',
+          owner: '主 Agent',
+        },
+      }),
+    );
+    expect((initial.version as { nodes: Array<{ id: string; status: string }> }).nodes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'development', status: 'blocked' })]),
+    );
     expect((initial.secretary as { activeItemId: string }).activeItemId).toBe('running-feature');
     expect(initial.versions).toEqual(
       expect.arrayContaining([
