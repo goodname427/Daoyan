@@ -3,32 +3,23 @@
   "suites": ["acceptance", "integration", "regression"],
   "commands": [
     {
-      "command": "npx vitest run test/entity-vnext.test.ts test/combat.test.ts test/dsl-migration.test.ts test/persistence.test.ts test/render.test.tsx",
+      "command": "npx vitest run test/entity-vnext.test.ts test/core.test.ts test/combat.test.ts test/dsl-migration.test.ts test/persistence.test.ts test/render.test.tsx test/review-regressions.test.ts",
       "exitCode": 1
     },
     {
-      "command": "npm run test:e2e -- --grep \"narrow screen|round trip|restores, exports and imports|browses meta spells|accepts movement\"",
+      "command": "npm run test:e2e -- --grep \"narrow screen|round trip|restores, exports and imports|browses meta spells|accepts movement|charge|monitor|preset|属性\"",
       "exitCode": 1
     },
     { "command": "npm run typecheck", "exitCode": 0 },
     { "command": "node scripts/check-docs.mjs", "exitCode": 0 },
-    {
-      "command": "node .tmp-version-qa.mjs test/entity-vnext.test.ts test/combat.test.ts test/dsl-migration.test.ts test/persistence.test.ts test/render.test.tsx test/review-regressions.test.ts",
-      "exitCode": 1
-    },
-    {
-      "command": "node .tmp-version-qa.mjs test/entity-vnext.test.ts test/combat.test.ts test/dsl-migration.test.ts test/persistence.test.ts test/render.test.tsx test/review-regressions.test.ts",
-      "exitCode": 0
-    },
     { "command": "npm run build", "exitCode": 1 }
   ],
   "evidence": [
-    "当前工作树基线 HEAD e8ff401f7a40fd4ebc700941d13fbec7fcde6b9b；测试开始前 git status --porcelain=v1 为空。",
-    "标准定向 Vitest 在 Vite 配置加载时遭 esbuild spawn EPERM，未执行断言；Playwright 启动时报 spawn EPERM，未执行浏览器用例；构建同样在配置加载时遭 spawn EPERM，未生成新产物。",
-    "临时进程内 Vitest runner 使用 configFile:false、esbuild:false、preserveSymlinks:true 和 TypeScript transpileModule 运行原有 6 个测试文件，190/190 断言通过；runner 在记录后删除，不等同标准 Vitest 或真实浏览器门禁。首次 runner 选项放错位置，仍加载配置并退出 1；修正后退出 0。",
-    "本轮 npm run typecheck 与 node scripts/check-docs.mjs 均退出 0。",
-    "开发阶段 full-gate-evidence.json 记录 npm run verify:full 退出 0；本轮未重跑或确认其候选验证树指纹匹配，故不把它登记为本轮版本 QA 通过证据。",
-    "验收、集成、回归的无头断言通过；真实浏览器主线、窄屏交互与本轮打包仍缺证据。没有从已执行断言中确认产品行为缺陷。"
+    "本轮开始时 HEAD 1bf0c674b33d0580447abcbcef04df95f3240183，git status --porcelain=v1 为空；自上轮 QA 的 e8ff401 起只提交了 qa.json、qa.md、docs/status.md 和 docs/dev/2026-09-23.md，游戏代码及测试未改。",
+    "定向 Vitest 在加载 vite.config.ts 时因 esbuild spawn EPERM 退出 1，未执行断言；相关 Playwright 命令启动时因 spawn EPERM 退出 1，未执行浏览器用例；npm run build 同样在配置加载时因 spawn EPERM 退出 1，没有新产物。",
+    "本轮 npm run typecheck 与 node scripts/check-docs.mjs 均退出 0。上轮 QA 的原有 6 个测试文件经临时进程内 runner 执行 190/190 条断言通过；这是先前修订的证据，不登记为本轮标准 Vitest 或浏览器通过。",
+    "开发阶段 full-gate-evidence.json 记录 npm run verify:full 退出 0，配置指纹 bb73f63d3c03fd3d622b96fdf713ec4f1861cabb31314c51b34c90aac0df76aa 与本轮一致；其候选树指纹 5f2d47d36505fb585f6997eb2354839cf8b5c1730de3ca9eab46d2ceb9d7ae17 与本轮报告编写前按仓库算法所得 888165a5196766f9e793367b836408122bd959724a516c16019b95a054222206 不一致，报告同步又修改候选树内的状态和开发日志，旧门禁不能复用。",
+    "验收覆盖实体属性与账本、事件与两种蓄力；集成覆盖战斗、DSL/存档迁移、法术书与面板；回归覆盖旧核心、推演台/演武场往返和窄屏。当前标准断言、真实浏览器与新构建均缺本轮可执行证据，未确认产品行为缺陷。"
   ],
   "bugs": []
 }
