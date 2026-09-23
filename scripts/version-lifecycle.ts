@@ -839,10 +839,10 @@ function ensureProducerTodo(version: FormalVersion, stage: VersionStage, now: st
   }
   version.todos.push({
     id: randomUUID(),
-    title: stage === 'charter-review' ? '评审版本策划案' : '体验候选版本',
+    title: stage === 'charter-review' ? '确认版本产品意图与策划案' : '体验候选版本',
     detail:
       stage === 'charter-review'
-        ? '确认版本目标、范围、非目标和验收标准，或指出需要调整的内容。'
+        ? `先确认策划对核心原则、相邻情形和推荐体验的理解，再评审范围与验收。${version.nodes.find((node) => node.id === 'charter-draft')?.summary ?? ''}`
         : '体验候选版本，确认通过归档，或指出需要修复和调整的内容。',
     stage,
     assignee: 'producer',

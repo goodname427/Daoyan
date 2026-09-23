@@ -424,6 +424,22 @@ describe('formal version lifecycle', () => {
     expect(versionProgress(version)).toBeGreaterThan(50);
   });
 
+  it('shows the inferred product principle at the producer charter gate', () => {
+    const version = createFormalVersion({
+      id: 'intent-review',
+      title: '意图对齐',
+      direction: '用具体例子说明统一控制体系',
+      documentRoot: 'docs/versions/intent-review',
+      currentStage: 'charter-draft',
+      now: '2026-09-20T00:00:00.000Z',
+    });
+    version.nodes.find((node) => node.id === 'charter-draft')!.summary =
+      '策划推断的核心原则：所有属性控制使用同一合同。';
+    advanceVersion(version, 'charter-review', '2026-09-20T00:01:00.000Z');
+    expect(version.todos[0].detail).toContain('所有属性控制使用同一合同');
+    expect(version.todos[0].detail).toContain('相邻情形');
+  });
+
   it('rejects approvals from the wrong role, stage or revision window', () => {
     const version = createFormalVersion({
       id: 'strict-review',

@@ -710,7 +710,10 @@ describe('formal version stage dispatch', () => {
         formalStageStep: 'primary',
       }),
     );
-    expect(versionStageDirection(version, 'module-design')).toContain('完成必要模块的详细策划');
+    expect(versionStageDirection(version, 'module-design')).toContain('补齐必要模块的详细策划');
+    expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
+    expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
+    expect(versionStageDirection(version, 'design-review')).toContain('相邻情形');
     expect(versionStageDirection(version, 'module-design')).toMatch(
       /^\[formal-stage:module-design\]/,
     );

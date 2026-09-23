@@ -3,4 +3,8 @@
 set -e
 
 echo "▶ pre-push: reuse matching full gate or run npm run verify:full"
+# The verifier can create temporary repositories; do not pass Git's hook-local
+# repository pointers into its subprocesses.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR
+unset GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
 node scripts/pre-push-verify.mjs

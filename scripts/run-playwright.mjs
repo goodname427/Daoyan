@@ -1,10 +1,29 @@
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = resolve(root, 'node_modules', 'playwright', 'cli.js');
 const env = { ...process.env };
+
+if (!env.DAOYAN_E2E_PORT) {
+  env.DAOYAN_E2E_PORT = String(
+    await new Promise((resolvePort, rejectPort) => {
+      const server = createServer();
+      server.on('error', rejectPort);
+      server.listen(0, '127.0.0.1', () => {
+        const address = server.address();
+        if (!address || typeof address === 'string') {
+          server.close();
+          rejectPort(new Error('无法分配 E2E 测试端口'));
+          return;
+        }
+        server.close(() => resolvePort(address.port));
+      });
+    }),
+  );
+}
 
 // Playwright sets FORCE_COLOR=1 for its WebServer and worker processes.  Do
 // not forward an external NO_COLOR as well: current Node reports that conflict
