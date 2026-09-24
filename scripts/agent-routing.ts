@@ -89,6 +89,12 @@ export function validationProfileForPlan(plan: TaskPlan): ValidationProfile {
  */
 export function validationStagesForPlan(plan: TaskPlan): FeatureValidationStage[] {
   const profile = validationProfileForPlan(plan);
+  if (plan.riskSignals.includes('formal-stage-verification')) return ['independent-review'];
+  if (plan.riskSignals.includes('formal-stage-deliverable')) {
+    return plan.tasks.every((task) => ['analysis', 'documentation'].includes(task.type))
+      ? ['independent-review']
+      : ['fast-gate', 'independent-review'];
+  }
   if (profile === 'light') return [];
   if (profile === 'version') return ['independent-review'];
   return ['fast-gate', 'independent-review', 'full-gate'];
@@ -180,7 +186,7 @@ export interface TaskReuseEvidence {
 }
 
 const POST_FEATURE_GATE_REPORT =
-  /^(?:qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)\.(?:json|md)$/;
+  /^(?:(?:qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:qa|bugfix|candidate|archived)-[^/]+\.json)$/;
 
 /**
  * Formal-version reports written after the Feature gate are not implementation
@@ -513,6 +519,7 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
   const template = FORMAL_STAGE_TASKS[stage];
   if (!template) return null;
   const items = stage === 'development' ? formalWorkItems(direction) : null;
+  const finalizing = direction.includes('[formal-stage-finalizing]');
   const summary = direction
     .replace(FORMAL_STAGE_MARKER, '')
     .replace(FORMAL_WORK_ITEMS_PATTERN, '\n')
@@ -563,9 +570,11 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
   return {
     version: 1,
     title: template.title,
-    summary: items
-      ? '按已批准的正式版本工作项图完成开发；执行 Agent 仅处理自己的工作项，Feature PM 在全部任务后统一汇总阶段证据。'
-      : summary,
+    summary: finalizing
+      ? 'Version PM 只整合本节点已交付的 Feature PM 证据，生成阶段产物并检查阶段目标；不重新实现各项任务。'
+      : items
+        ? '按已批准的正式版本工作项图完成开发；执行 Agent 仅处理自己的工作项，Feature PM 在全部任务后统一汇总阶段证据。'
+        : summary,
     producerDecisionRequired: false,
     producerQuestion: '',
     riskSignals: [`正式版本内部阶段：${stage}`],
@@ -577,20 +586,36 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
         ]
       : [...template.deliverables, ...template.verification],
     nonGoals: ['不创建新版本，不越过当前阶段，不替制作人作产品方向决策。'],
-    tasks: developmentTasks ?? [
-      {
-        id: `formal-${stage}`,
-        ...template,
-        objective: summary,
-        reasoning: '该事项由正式版本内核定向派发，不再按制作人新方向重新拆分。',
-        dependsOn: [],
-        validationProfile: versionValidation
-          ? 'version'
-          : stage === 'development' || stage === 'bugfix'
-            ? 'task'
-            : 'light',
-      },
-    ],
+    tasks: finalizing
+      ? [
+          {
+            id: `formal-${stage}-finalize`,
+            ...template,
+            objective: `${summary}\n\n只汇总已完成节点任务的实际产物与命令，不重复实现或重跑已通过的定向测试。开发阶段必须生成逐任务 development.json 和 development.md；QA 阶段只补交叉场景，不重复完整门禁。`,
+            reasoning: 'Version PM 收束节点，不重派 Feature PM 的任务。',
+            dependsOn: [],
+            validationProfile:
+              stage === 'development' || (stage === 'bugfix' && !versionValidation)
+                ? 'feature'
+                : versionValidation
+                  ? 'version'
+                  : 'light',
+          },
+        ]
+      : (developmentTasks ?? [
+          {
+            id: `formal-${stage}`,
+            ...template,
+            objective: summary,
+            reasoning: '该事项由正式版本内核定向派发，不再按制作人新方向重新拆分。',
+            dependsOn: [],
+            validationProfile: versionValidation
+              ? 'version'
+              : stage === 'development' || stage === 'bugfix'
+                ? 'task'
+                : 'light',
+          },
+        ]),
     commitMessage:
       stage === 'development'
         ? items?.length
@@ -1046,6 +1071,39 @@ export function buildLocalPlan(direction: string): TaskPlan {
   if (!normalized) throw new Error('制作人方向不能为空');
 
   const formalStage = FORMAL_STAGE_MARKER.exec(normalized)?.[1];
+  const stageTaskPlan = /^\[formal-stage-task-plan:([a-z-]+)\]/u.exec(normalized)?.[1];
+  if (stageTaskPlan && FORMAL_STAGE_TASKS[stageTaskPlan]) {
+    const template = FORMAL_STAGE_TASKS[stageTaskPlan];
+    return {
+      version: 1,
+      title: `规划 ${stageTaskPlan} 节点交付任务`,
+      summary: `Version PM 按已批准范围拆分当前节点的可独立交付成果。`,
+      producerDecisionRequired: false,
+      producerQuestion: '',
+      riskSignals: [`正式版本节点任务规划：${stageTaskPlan}`],
+      acceptanceCriteria: [
+        '任务合同有稳定 ID、交付物、验收、依赖和独占写入范围',
+        '不预拆 Feature PM 内部执行步骤',
+      ],
+      nonGoals: ['不修改产品实现，不创建新版本，不越过制作人门禁。'],
+      tasks: [
+        {
+          id: `formal-${stageTaskPlan}-plan`,
+          title: `拆分 ${stageTaskPlan} 节点成果`,
+          objective: normalized,
+          type: 'analysis',
+          tier: 'standard',
+          reasoning: '由 Version PM 按当前节点输入制定有界交付合同。',
+          dependsOn: [],
+          paths: template.paths,
+          deliverables: ['机器可校验的 stage-tasks.json 和简短人类可读说明'],
+          verification: ['核对范围、依赖、写入冲突与产品意图'],
+          validationProfile: 'version',
+        },
+      ],
+      commitMessage: `chore(version): plan ${stageTaskPlan} deliverables`,
+    };
+  }
   if (formalStage) {
     const plan = buildFormalStagePlan(normalized, formalStage);
     if (plan) return plan;

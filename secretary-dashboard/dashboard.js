@@ -6,6 +6,8 @@ const statusLabels = {
   blocked: '受阻',
   backlog: '后续版本',
   completed: '已完成',
+  submitted: '待节点验收',
+  accepted: '已验收',
   skipped: '无需执行',
 };
 const agentStatusLabels = {
@@ -229,6 +231,16 @@ function showNode(node, version) {
   appendDefinition(meta, '状态', statusLabels[node.status] ?? node.status);
   appendDefinition(meta, '开始', formatTime(node.startedAt));
   appendDefinition(meta, '完成', formatTime(node.completedAt));
+  if (version.workflowRevision === 2) {
+    const tasks = (version.stageTasks ?? []).filter(
+      (task) => task.stage === node.id && task.stageStartedAt === node.startedAt,
+    );
+    appendDefinition(
+      meta,
+      '交付任务',
+      `${tasks.filter((task) => task.status === 'accepted').length}/${tasks.length} 已验收`,
+    );
+  }
   if (node.usage) {
     appendDefinition(meta, 'Agent 调用', String(node.usage.observedCalls));
     appendDefinition(
@@ -303,7 +315,7 @@ function showDeliveryItem(item, kind) {
   document.querySelectorAll('.delivery-item').forEach((element) => {
     element.classList.toggle('selected', element.dataset.deliveryId === selectedItem.id);
   });
-  text($('#detail-kicker'), kind === 'bug' ? '版本缺陷' : '开发任务');
+  text($('#detail-kicker'), kind === 'bug' ? '版本缺陷' : item.stage ? '节点任务' : '开发任务');
   text($('#detail-title'), item.title || (kind === 'bug' ? '未命名缺陷' : '未命名任务'));
   const meta = $('#detail-meta');
   meta.replaceChildren();
@@ -314,8 +326,11 @@ function showDeliveryItem(item, kind) {
           ['状态', statusLabels[item.status] ?? item.status ?? '未标记'],
         ]
       : [
+          ...(item.stage ? [['版本节点', item.stageTitle || item.stage]] : []),
           ['负责人', item.owner || '未分配'],
           ['状态', statusLabels[item.status] ?? item.status ?? '未标记'],
+          ...(item.pmItemId ? [['Feature PM', item.pmItemId]] : []),
+          ...(item.commit ? [['提交', item.commit.slice(0, 12)]] : []),
         ];
   pairs.forEach(([key, value]) => appendDefinition(meta, key, value));
   text(
@@ -337,6 +352,9 @@ function showDeliveryItem(item, kind) {
         ]
       : [
           ['任务说明', item.summary || item.objective || '待补充'],
+          ...(item.deliverables ? [['交付物', item.deliverables.join('；')]] : []),
+          ...(item.acceptance ? [['验收标准', item.acceptance.join('；')]] : []),
+          ...(item.evidence?.length ? [['证据', item.evidence.join('；')]] : []),
           ['交付状态', statusLabels[item.status] ?? item.status ?? '待开始'],
         ];
   for (const [label, value] of entries) {
@@ -374,7 +392,7 @@ function renderDataList(selector, items, kind) {
     const values =
       kind === 'bug'
         ? [item.severity, item.status]
-        : [item.owner, statusLabels[item.status] ?? item.status];
+        : [item.stageTitle, item.owner, statusLabels[item.status] ?? item.status].filter(Boolean);
     for (const value of values) {
       const span = document.createElement('span');
       span.textContent = value;
@@ -621,7 +639,17 @@ function render(data) {
   renderStages(version);
   renderAgents(data.agents ?? []);
   renderTodos(data.todos ?? []);
-  const work = version?.workItems ?? [];
+  const work =
+    version?.workflowRevision === 2
+      ? (version.stageTasks ?? []).map((task) => ({
+          ...task,
+          id: `${task.stage}:${task.stageStartedAt}:${task.stageStep}:${task.id}`,
+          owner: task.pmItemId ? 'Feature PM' : '待派发',
+          summary: task.objective,
+          stageTitle: version.nodes.find((node) => node.id === task.stage)?.title || task.stage,
+        }))
+      : (version?.workItems ?? []);
+  text($('#work-title'), version?.workflowRevision === 2 ? '节点任务' : '开发任务');
   const bugs = version?.bugs ?? [];
   text($('#bug-count'), String(version?.openBugCount ?? 0));
   renderDataList('#work-items', work, 'work');

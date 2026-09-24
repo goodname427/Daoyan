@@ -48,6 +48,7 @@ async function bootstrapWorkflow(): Promise<void> {
     documentRoot: 'docs/versions/workflow-foundation-2026-09-20',
     currentStage: 'charter-review',
     now: timestamp,
+    workflowRevision: 1,
   });
   version.charterRevision = '1';
   version.scopeFrozen = true;
@@ -166,9 +167,13 @@ if (!command || command === '--help' || command === '-h') usage();
 if (command === 'init') {
   if (args.length < 4) usage();
   const [id, title, direction, documentRoot] = args;
-  await writeFormalVersion(root, createFormalVersion({ id, title, direction, documentRoot }), {
-    allowVersionSwitch: true,
-  });
+  await writeFormalVersion(
+    root,
+    createFormalVersion({ id, title, direction, documentRoot, workflowRevision: 2 }),
+    {
+      allowVersionSwitch: true,
+    },
+  );
 } else if (command === 'bootstrap-workflow') {
   await bootstrapWorkflow();
 } else if (command === 'advance') {

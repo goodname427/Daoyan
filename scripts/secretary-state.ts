@@ -99,7 +99,9 @@ export interface SecretaryItemOrchestration {
   formalVersionId?: string;
   formalStage?: string;
   formalScopeRevision?: number;
-  formalStageStep?: 'primary' | 'reverification';
+  formalStageStep?: 'primary' | 'reverification' | 'planning' | 'task' | 'finalizing';
+  formalTaskId?: string;
+  formalTaskBaseRevision?: string;
   formalStageConsumedAt?: string;
   lastProgressPhase?: string;
   lastProgressNoticeAt?: string;
@@ -309,7 +311,12 @@ function validateItemOrchestration(item: SecretaryItem): void {
       (field) => Object.hasOwn(value, field) && typeof value[field] !== 'string',
     ) ||
     (Object.hasOwn(value, 'formalStageStep') &&
-      !['primary', 'reverification'].includes(String(value.formalStageStep))) ||
+      !['primary', 'reverification', 'planning', 'task', 'finalizing'].includes(
+        String(value.formalStageStep),
+      )) ||
+    (Object.hasOwn(value, 'formalTaskId') && typeof value.formalTaskId !== 'string') ||
+    (Object.hasOwn(value, 'formalTaskBaseRevision') &&
+      typeof value.formalTaskBaseRevision !== 'string') ||
     (Object.hasOwn(value, 'formalScopeRevision') &&
       (!Number.isSafeInteger(value.formalScopeRevision) ||
         Number(value.formalScopeRevision) <= 0)) ||

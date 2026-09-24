@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { validateStageTaskState, type VersionStageTask } from './version-stage-tasks';
 import { existsSync } from 'node:fs';
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
@@ -19,6 +20,11 @@ export const VERSION_STAGES = [
   'producer-acceptance',
   'archived',
 ] as const;
+
+/** New versions omit the two up-front implementation planning stages. */
+export const TASK_OWNED_VERSION_STAGES: VersionStage[] = VERSION_STAGES.filter(
+  (stage) => stage !== 'task-breakdown' && stage !== 'version-planning',
+);
 
 export type VersionStage = (typeof VERSION_STAGES)[number];
 export type LifecycleStatus = 'pending' | 'active' | 'blocked' | 'completed' | 'skipped';
@@ -375,6 +381,9 @@ function validateValidationEvidence(value: unknown): value is ValidationEvidence
 
 export interface FormalVersion {
   schemaVersion: 1;
+  /** Absent on archived versions created before stage-owned tasks. */
+  workflowRevision?: 2;
+  integrationBranch?: string;
   stateRevision: number;
   id: string;
   title: string;
@@ -388,6 +397,8 @@ export interface FormalVersion {
   approvals: VersionApproval[];
   todos: VersionTodo[];
   workItems: VersionWorkItem[];
+  /** Stage-wide deliverables owned by separate Feature PM runs on workflow v2. */
+  stageTasks?: VersionStageTask[];
   bugs: VersionBug[];
   createdAt: string;
   updatedAt: string;
@@ -860,11 +871,25 @@ export function createFormalVersion(input: {
   currentStage?: VersionStage;
   sourceRequestId?: string;
   now?: string;
+  workflowRevision?: 1 | 2;
 }): FormalVersion {
   const createdAt = nowIso(input.now);
   const currentStage = input.currentStage ?? 'direction';
+  const workflowRevision = input.workflowRevision ?? 1;
+  const stageDefinitions = VERSION_STAGE_DEFINITIONS.filter(
+    (definition) => workflowRevision === 1 || TASK_OWNED_VERSION_STAGES.includes(definition.id),
+  );
+  if (!stageDefinitions.some((definition) => definition.id === currentStage)) {
+    throw new Error(`新版本不包含阶段：${currentStage}`);
+  }
   const version: FormalVersion = {
     schemaVersion: 1,
+    ...(workflowRevision === 2 ? { workflowRevision: 2 as const } : {}),
+    ...(workflowRevision === 2
+      ? {
+          integrationBranch: `codex/version-${input.id.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 55)}`,
+        }
+      : {}),
     stateRevision: 0,
     id: input.id,
     title: input.title,
@@ -876,10 +901,12 @@ export function createFormalVersion(input: {
           ? 'waiting-producer'
           : 'running',
     currentStage,
-    scopeFrozen: stageIndex(currentStage) > stageIndex('version-planning'),
+    scopeFrozen:
+      stageIndex(currentStage) >
+      stageIndex(workflowRevision === 2 ? 'design-review' : 'version-planning'),
     charterRevision: '1',
     documentRoot: input.documentRoot,
-    nodes: VERSION_STAGE_DEFINITIONS.map((definition) => ({
+    nodes: stageDefinitions.map((definition) => ({
       ...definition,
       status: stageStatus(definition.id, currentStage),
       summary: '',
@@ -894,6 +921,7 @@ export function createFormalVersion(input: {
     approvals: [],
     todos: [],
     workItems: [],
+    ...(workflowRevision === 2 ? { stageTasks: [] } : {}),
     bugs: [],
     createdAt,
     updatedAt: createdAt,
@@ -1604,8 +1632,8 @@ function qaMatchesCurrentCode(version: FormalVersion, qa: VersionQaRun): boolean
 }
 
 export function advanceVersion(version: FormalVersion, target: VersionStage, now?: string): void {
-  const currentIndex = stageIndex(version.currentStage);
-  const targetIndex = stageIndex(target);
+  const currentIndex = version.nodes.findIndex((node) => node.id === version.currentStage);
+  const targetIndex = version.nodes.findIndex((node) => node.id === target);
   if (targetIndex !== currentIndex + 1) {
     throw new Error(`版本只能从 ${version.currentStage} 推进到下一个阶段`);
   }
@@ -1627,6 +1655,29 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
   if (!policy) throw new Error(`${version.currentStage} 缺少当前范围的阶段策略`);
   if (policy.mode === 'skip' && UNSKIPPABLE_STAGES.has(version.currentStage)) {
     throw new Error(`${version.currentStage} 是固定门禁，不能跳过`);
+  }
+  if (
+    version.workflowRevision === 2 &&
+    policy.mode !== 'skip' &&
+    !['direction', 'charter-review', 'producer-acceptance'].includes(version.currentStage)
+  ) {
+    const startedAt =
+      version.nodes.find((node) => node.id === version.currentStage)?.startedAt ?? '';
+    const tasks = (version.stageTasks ?? []).filter(
+      (task) =>
+        task.stage === version.currentStage &&
+        task.scopeRevision === scopeRevision &&
+        task.stageStartedAt === startedAt &&
+        task.stageStep ===
+          (version.currentStage === 'bugfix' &&
+          version.bugs.some((bug) => bug.status === 'verify') &&
+          version.bugs.every((bug) => ['verify', 'closed', 'deferred'].includes(bug.status))
+            ? 'reverification'
+            : 'primary'),
+    );
+    if (tasks.length === 0 || tasks.some((task) => task.status !== 'accepted')) {
+      throw new Error(`版本节点 ${version.currentStage} 尚有未验收的 Feature PM 任务`);
+    }
   }
   if (
     version.currentStage === 'development' &&
@@ -1717,7 +1768,9 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
   next.status = 'active';
   next.startedAt = timestamp;
   version.currentStage = target;
-  version.scopeFrozen = targetIndex > stageIndex('version-planning');
+  version.scopeFrozen =
+    stageIndex(target) >
+    stageIndex(version.workflowRevision === 2 ? 'design-review' : 'version-planning');
   version.status = next.producerGate
     ? 'waiting-producer'
     : target === 'archived'
@@ -2056,6 +2109,18 @@ async function readVersionFile(path: string): Promise<FormalVersion | null> {
     }
     if (!VERSION_STAGES.includes(parsed.currentStage)) {
       throw new Error(`正式版本阶段无效：${path}`);
+    }
+    if (parsed.workflowRevision !== undefined && parsed.workflowRevision !== 2) {
+      throw new Error(`正式版本工作流修订无效：${path}`);
+    }
+    if (
+      parsed.workflowRevision === 2 &&
+      (typeof parsed.integrationBranch !== 'string' ||
+        !parsed.integrationBranch.startsWith('codex/version-') ||
+        !validateStageTaskState(parsed.stageTasks) ||
+        parsed.nodes.map((node) => node.id).join('|') !== TASK_OWNED_VERSION_STAGES.join('|'))
+    ) {
+      throw new Error(`正式版本节点任务状态损坏：${path}`);
     }
     parsed.stateRevision = Number.isSafeInteger(parsed.stateRevision) ? parsed.stateRevision : 0;
     normalizeFormalVersion(parsed);

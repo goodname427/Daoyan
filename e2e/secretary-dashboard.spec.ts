@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { advanceVersion, createFormalVersion, setNodeEvidence } from '../scripts/version-lifecycle';
+import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 import { captureErrors } from './helpers';
 import { stopSecretaryDashboard, waitForSecretaryDashboard } from '../test/helpers/secretary-guard';
 
@@ -446,6 +447,86 @@ test('shows the inferred product principle before charter approval', async ({ pa
     await expect(todo).toContainText('施法速度→统一定价');
     await expect(todo).toContainText('玩家能自由组合控制效果');
     await expect(todo).toContainText('待确认：开放范围');
+  } finally {
+    await stopSecretaryDashboard(child);
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('shows task-owned version stages and each Feature PM delivery', async ({ page }) => {
+  const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-stage-tasks-e2e-'));
+  const releaseState = resolve(temporary, 'releases');
+  const secretaryState = resolve(temporary, 'secretary');
+  await mkdir(releaseState, { recursive: true });
+  await mkdir(secretaryState, { recursive: true });
+  const version = createFormalVersion({
+    id: 'stage-tasks-e2e',
+    title: '节点任务验收版本',
+    direction: '交付法术体验',
+    documentRoot: 'docs/versions/stage-tasks-e2e',
+    currentStage: 'development',
+    workflowRevision: 2,
+  });
+  version.stageTasks = parseStageTaskManifest(
+    {
+      tasks: [
+        {
+          id: 'spell',
+          title: '法术语义',
+          objective: '实现法术语义',
+          deliverables: ['法术执行'],
+          acceptance: ['定向测试通过'],
+          dependsOn: [],
+          readPaths: ['docs/versions/stage-tasks-e2e/module-design.md'],
+          writePaths: ['src/core/spell.ts'],
+        },
+        {
+          id: 'arena',
+          title: '演武接入',
+          objective: '接入演武场',
+          deliverables: ['演武体验'],
+          acceptance: ['主线体验通过'],
+          dependsOn: ['spell'],
+          readPaths: ['src/core/spell.ts'],
+          writePaths: ['src/game/arena.ts'],
+        },
+      ],
+    },
+    'development',
+    1,
+    version.nodes.find((node) => node.id === 'development')!.startedAt,
+  );
+  version.stageTasks[0].status = 'accepted';
+  version.stageTasks[0].pmItemId = 'pm-spell';
+  version.stageTasks[0].commit = '0123456789abcdef';
+  version.stageTasks[0].evidence = ['docs/versions/stage-tasks-e2e/tasks/development-spell.json'];
+  await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version));
+  const port = await freePort();
+  const child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+    cwd: root,
+    env: {
+      ...process.env,
+      DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+      DAOYAN_RELEASE_STATE_DIR: releaseState,
+      DAOYAN_SECRETARY_HTTP_PORT: String(port),
+      DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+      DAOYAN_SECRETARY_NO_DISPATCH: '1',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  try {
+    await waitForSecretaryDashboard(child, `http://127.0.0.1:${port}`);
+    await page.goto(`http://127.0.0.1:${port}`);
+    await expect(page.locator('[data-stage="task-breakdown"]')).toHaveCount(0);
+    await expect(page.locator('[data-stage="version-planning"]')).toHaveCount(0);
+    await expect(page.locator('#work-title')).toHaveText('节点任务');
+    await expect(page.locator('#work-items .delivery-item')).toHaveCount(2);
+    await page.getByRole('button', { name: /法术语义/ }).click();
+    await expect(page.locator('#detail-meta')).toContainText('pm-spell');
+    await expect(page.locator('#detail-meta')).toContainText('0123456789ab');
+    await expect(page.locator('#delivery-detail')).toContainText('定向测试通过');
+    await page.screenshot({ path: resolve(root, 'test-results/stage-tasks.png'), fullPage: true });
   } finally {
     await stopSecretaryDashboard(child);
     await rm(temporary, { recursive: true, force: true });

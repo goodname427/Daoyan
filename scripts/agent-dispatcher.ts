@@ -937,6 +937,7 @@ async function askPlanner(
 - 若缺少的是实现细节，请自行做保守决定；只有产品方向冲突、不可逆选择或大版本发布才设置 producerDecisionRequired=true。
 - commitMessage 使用 Conventional Commits。
 - 不创建单独的 review 任务，调度器会统一进行独立审查。
+- 若方向以 [formal-stage-deliverable: 或 [formal-stage-verification: 开头，这是 Version PM 已批准的一项交付合同；只规划该 Feature PM 内部步骤，不重新拆同级 Feature、不新建版本，必须保留合同写入范围和证据产物。
 
 压缩项目上下文：
 <project-context>
@@ -2165,6 +2166,13 @@ try {
           resolve(runDirectory, 'planner.log'),
         );
       } catch (error) {
+        if (
+          /^\[formal-stage-(?:deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.test(
+            activeResolvedDirection,
+          )
+        ) {
+          throw error;
+        }
         console.warn(
           `[规划接管] 深度规划不可用，改用本地零 token 路由：${error instanceof Error ? error.message : String(error)}`,
         );
@@ -2201,6 +2209,17 @@ try {
   }
 
   const plan = activePlan;
+  const formalTaskKind =
+    /^\[formal-stage-(deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.exec(
+      activeResolvedDirection,
+    )?.[1];
+  if (formalTaskKind && !plan.riskSignals.includes(`formal-stage-${formalTaskKind}`)) {
+    plan.riskSignals.push(`formal-stage-${formalTaskKind}`);
+    await writeFile(
+      resolve(runDirectory, 'plan.validated.json'),
+      `${JSON.stringify(plan, null, 2)}\n`,
+    );
+  }
 
   console.log(`\n[计划] ${plan.title}`);
   console.log(plan.summary);
