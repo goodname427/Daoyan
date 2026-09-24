@@ -1,0 +1,33 @@
+{
+  "tasks": [
+    {
+      "id": "intent-charter",
+      "title": "形成供制作人对齐的版本策划案",
+      "objective": "从制作人已记录的工作流反馈提炼系统原则与完整体验，提出本版小范围试运行方案，并把尚待制作人确认的推断显式保留在立项评审前。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md：版本策划案，首页给出原则、推荐体验和待确认假设的短摘要。",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json：绑定版本 ID 与策划修订 1 的结构化产品意图记录。"
+      ],
+      "acceptance": [
+        "策划案区分制作人明确方向与例子、策划推断及待确认假设；写明问题、目标、范围、非目标、适用边界、完整体验和可观察的验收标准。",
+        "结构化记录符合现有意图合同，包含原始信号、共通原则、至少两个制作人未逐项指定的相邻情形及其预期行为、推荐体验、边界和开放假设；版本 ID 为 pilot-agent-intent-2026-09-24，charterRevision 为 1，且与策划案表述一致。",
+        "策划案提出立项后只选一个最小且可真实体验的对齐闭环改进，说明如何观察节点任务到 Feature PM 的交接、独立审查、单次集成门禁与失败恢复；具体产品取舍标为待制作人确认，不当作已批准范围。",
+        "说明如何记录实际 Agent 调用、已知 token 下界与缺失用量、重复读取、全量门禁次数、返工及耗时；未知用量不计为零，阶段计划不冒充实际结果。",
+        "策划案不启动详细设计或开发，不扩展到调度框架重构、游戏玩法修改、自动发布或以代理审核替代制作人批准；无法可靠推断的原则和取舍明确升级到制作人立项评审。"
+      ],
+      "dependsOn": [],
+      "readPaths": [
+        ".daoyan-agent/releases/current.json",
+        "docs/workflow.md",
+        "docs/agent-workflow.md",
+        "docs/specs/2026-09-23-product-intent-alignment.md",
+        "docs/specs/2026-09-24-stage-task-pms.md",
+        "docs/specs/2026-09-23-agent-collaboration-efficiency.md"
+      ],
+      "writePaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+      ]
+    }
+  ]
+}
