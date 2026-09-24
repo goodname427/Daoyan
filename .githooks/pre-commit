@@ -3,4 +3,8 @@
 set -e
 
 echo "▶ pre-commit: npm run verify"
+# Git exports repository-local variables to hooks. Tests create temporary Git
+# repositories, so let their subprocesses discover those repositories by cwd.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR
+unset GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
 npm run verify

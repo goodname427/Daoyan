@@ -149,7 +149,8 @@ afterEach(async () => {
     await new Promise<void>((resolveClose) => webhookServer?.close(() => resolveClose()));
     webhookServer = null;
   }
-  if (temporary) await rm(temporary, { recursive: true, force: true });
+  if (temporary)
+    await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   temporary = '';
 });
 

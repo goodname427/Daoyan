@@ -53,6 +53,11 @@ import {
   waitForProcessIdentity,
 } from './process-identity';
 import {
+  parseProductIntentAlignment,
+  productIntentReviewSummary,
+  PRODUCT_INTENT_ARTIFACT,
+} from './product-intent';
+import {
   applyContinueToSchedule,
   applyWaitingReply,
   acknowledgeWaitingSnapshot,
@@ -2094,10 +2099,11 @@ function draftVersionId(request: IntakeRequest): string {
 const PRODUCER_STAGES = new Set<VersionStage>(['charter-review', 'producer-acceptance']);
 
 const STAGE_DELIVERABLES: Partial<Record<VersionStage, string>> = {
-  'charter-draft': '形成版本策划案，明确价值、范围、非目标、验收标准与建议阶段策略。',
-  'module-design': '完成必要模块的详细策划；不适用内容明确说明，不为凑流程制造文档。',
-  'design-review': '以主策身份审查详细策划，修正遗漏并给出通过或升级制作人的结论。',
-  'task-breakdown': '把已批准范围拆成可验证、带依赖和验收标准的工作项。',
+  'charter-draft': '先提炼制作人例子背后的系统原则并提出完整体验，再形成版本策划案供制作人对齐。',
+  'module-design': '沿已批准的产品意图补齐必要模块的详细策划；不适用内容明确说明。',
+  'design-review':
+    '以主策身份核对详细策划是否落实产品原则和未列举的相邻情形，修正遗漏或升级制作人。',
+  'task-breakdown': '把已批准的产品原则和范围拆成可验证、带依赖和验收标准的工作项。',
   'version-planning': '按依赖和风险排序工作项，控制版本工作量并冻结可执行范围。',
   development: '完成当前版本全部开发工作、定向自测、文档、完整门禁、审查和 Git 交付。',
   qa: '作为独立测试角色执行版本验收、集成和主线回归，不代替 Feature Agent 修代码。',
@@ -2155,21 +2161,25 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     stage === 'bugfix' && bugfixStep === 'reverification' ? 'bugfix-reverification' : stage
   }.json`.replace(/\\/g, '/');
   const stageSpecific =
-    stage === 'task-breakdown'
-      ? `同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
-      : stage === 'design-review'
-        ? `同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
-        : stage === 'development'
-          ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
-          : stage === 'qa'
-            ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
-            : stage === 'bugfix' && bugfixStep === 'primary'
-              ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
-              : stage === 'bugfix' && bugfixStep === 'reverification'
-                ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
-                : stage === 'candidate'
-                  ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
-                  : '';
+    stage === 'charter-draft'
+      ? `同时写入 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}，JSON 格式为 {"schemaVersion":1,"versionId":"${version.id}","charterRevision":"${version.charterRevision}","producerSignals":["制作人的原始例子或观察"],"inferredPrinciple":"策划推断的共通系统原则","adjacentCases":[{"scenario":"制作人未逐项指定的相邻情形一","expectedBehavior":"按原则应如何运作"},{"scenario":"相邻情形二","expectedBehavior":"按原则应如何运作"}],"recommendedExperience":"补全后的玩家体验","scopeBoundary":"原则适用边界","openAssumptions":[]}。有待确认的策划推断才填入 openAssumptions；没有则保持空数组。先区分明确要求、举例和策划推断，不把例子直接抄成封闭任务清单；用至少两个未列举情形检验推断，再给出策划推荐，不把整理想法的工作推给制作人。策划案首页以简短文字呈现同一解释及待确认假设，供制作人先判断方向。若不能可靠推断原则，明确标记假设并建议退回对齐，不能把猜测写成已批准事实。`
+      : stage === 'module-design'
+        ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT} 和已批准章程；详细规则必须体现推断的系统原则、相邻情形及边界。若设计只能覆盖原话中的例子，先修正策划，不继续缩成例子清单。`
+        : stage === 'design-review'
+          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；检查详细策划能否自然处理其中未列举的相邻情形，以及任何未确认假设是否被擅自当作制作人决定。若原则被缩成例子补丁，decision=changes-requested；若需制作人取舍，decision=producer-escalation。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
+          : stage === 'task-breakdown'
+            ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；在任务拆分报告中逐项说明工作如何兑现系统原则和相邻情形，不能只列制作人举过的例子。同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
+            : stage === 'development'
+              ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
+              : stage === 'qa'
+                ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
+                : stage === 'bugfix' && bugfixStep === 'primary'
+                  ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
+                  : stage === 'bugfix' && bugfixStep === 'reverification'
+                    ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
+                    : stage === 'candidate'
+                      ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
+                      : '';
   const formalWorkItems =
     stage === 'development' && dispatchableFormalWorkItems(version)
       ? `<formal-work-items>${JSON.stringify(version.workItems)}</formal-work-items>`
@@ -4524,9 +4534,19 @@ async function finalizeDeliveredVersionStage(
   const evidence = item.runDirectory ? relative(root, reportPath).replace(/\\/g, '/') : item.id;
   const revision = currentGitRevision();
   const artifact = stageArtifact(version, stage);
+  const alignment =
+    stage === 'charter-draft'
+      ? parseProductIntentAlignment(
+          await readJson(resolve(root, version.documentRoot, PRODUCT_INTENT_ARTIFACT)),
+          version.id,
+          version.charterRevision,
+        )
+      : null;
   setNodeEvidence(version, stage, {
     artifact,
-    summary: `该阶段已由秘书调度完成；交付证据：${evidence}。`,
+    summary: alignment
+      ? `${productIntentReviewSummary(alignment)} 对齐记录：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。交付证据：${evidence}。`
+      : `该阶段已由秘书调度完成；交付证据：${evidence}。`,
   });
 
   if (stage === 'design-review') {

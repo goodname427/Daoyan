@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createFormalVersion, setNodeEvidence } from '../scripts/version-lifecycle';
+import { advanceVersion, createFormalVersion, setNodeEvidence } from '../scripts/version-lifecycle';
 import { captureErrors } from './helpers';
 import { stopSecretaryDashboard, waitForSecretaryDashboard } from '../test/helpers/secretary-guard';
 
@@ -388,6 +388,56 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
       await embeddedMobileContext.close();
     }
     errors.assert();
+  } finally {
+    await stopSecretaryDashboard(child);
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('shows the inferred product principle before charter approval', async ({ page }) => {
+  const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-intent-review-e2e-'));
+  const releaseState = resolve(temporary, 'releases');
+  const secretaryState = resolve(temporary, 'secretary');
+  await mkdir(releaseState, { recursive: true });
+  await mkdir(secretaryState, { recursive: true });
+  const version = createFormalVersion({
+    id: 'intent-review-e2e',
+    title: '产品意图对齐验收版本',
+    direction: '以减速为例提出统一控制规则',
+    documentRoot: 'docs/versions/intent-review-e2e',
+    currentStage: 'charter-draft',
+  });
+  setNodeEvidence(version, 'charter-draft', {
+    artifact: 'docs/versions/intent-review-e2e/charter-draft.md',
+    summary:
+      '策划推断的核心原则：所有属性控制遵循同一合同。相邻情形：施法速度→统一定价；法球上限→统一结算。建议玩家体验：玩家能自由组合控制效果。待确认：开放范围。',
+  });
+  advanceVersion(version, 'charter-review');
+  await writeFile(resolve(releaseState, 'current.json'), JSON.stringify(version), 'utf8');
+  const port = await freePort();
+  const child = spawn(process.execPath, [tsxCliPath, secretaryPath, 'run'], {
+    cwd: root,
+    env: {
+      ...process.env,
+      DAOYAN_SECRETARY_STATE_DIR: secretaryState,
+      DAOYAN_RELEASE_STATE_DIR: releaseState,
+      DAOYAN_SECRETARY_HTTP_PORT: String(port),
+      DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+      DAOYAN_SECRETARY_NO_DISPATCH: '1',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+
+  try {
+    await waitForSecretaryDashboard(child, `http://127.0.0.1:${port}`);
+    await page.goto(`http://127.0.0.1:${port}`);
+    const todo = page.locator('#producer-todos .todo');
+    await expect(todo).toContainText('确认版本产品意图与策划案');
+    await expect(todo).toContainText('所有属性控制遵循同一合同');
+    await expect(todo).toContainText('施法速度→统一定价');
+    await expect(todo).toContainText('玩家能自由组合控制效果');
+    await expect(todo).toContainText('待确认：开放范围');
   } finally {
     await stopSecretaryDashboard(child);
     await rm(temporary, { recursive: true, force: true });
