@@ -7,6 +7,7 @@ import {
   type SecretaryNotice,
 } from '../scripts/secretary-channel';
 import { WebhookSecretaryChannel } from '../scripts/webhook-secretary-channel';
+import { secretaryChannelHubFromEnvironment } from '../scripts/secretary-channels';
 
 const notice: SecretaryNotice = {
   id: 'notice-1',
@@ -28,6 +29,37 @@ function fakeChannel(id: string, overrides: Partial<SecretaryChannel> = {}): Sec
 }
 
 describe('secretary communication channels', () => {
+  it('never configures external channels for a local-only guard, even with real channel settings', async () => {
+    const hub = await secretaryChannelHubFromEnvironment(
+      {
+        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_WEBHOOK_URL: 'https://example.test/hook',
+        DAOYAN_DINGTALK_CLIENT_ID: 'configured-client',
+        DAOYAN_DINGTALK_CLIENT_SECRET: 'configured-secret',
+        DAOYAN_DINGTALK_ALLOWED_SENDER_IDS: 'producer',
+      },
+      { info: vi.fn(), error: vi.fn() },
+    );
+
+    await hub.start(async () => ({ requestId: 'request', accepted: true }));
+    expect(hub.configuredChannelIds()).toEqual([]);
+    expect(hub.activeChannelIds()).toEqual([]);
+    expect(await hub.publish(notice)).toEqual({
+      attemptedChannelIds: [],
+      failedChannelIds: [],
+    });
+    await hub.stop();
+  });
+
+  it('keeps configured channels available for the real guard', async () => {
+    const hub = await secretaryChannelHubFromEnvironment(
+      { DAOYAN_SECRETARY_WEBHOOK_URL: 'https://example.test/hook' },
+      { info: vi.fn(), error: vi.fn() },
+    );
+
+    expect(hub.configuredChannelIds()).toEqual(['webhook:generic']);
+  });
+
   it('derives stable platform request ids without exposing the platform message id', () => {
     expect(externalRequestId('dingtalk', 'message-1')).toBe(
       externalRequestId('dingtalk', 'message-1'),

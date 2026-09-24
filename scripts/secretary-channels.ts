@@ -22,6 +22,9 @@ export async function secretaryChannelHubFromEnvironment(
   environment: NodeJS.ProcessEnv,
   logger: SecretaryChannelLogger,
 ): Promise<SecretaryChannelHub> {
+  if (environment.DAOYAN_SECRETARY_LOCAL_ONLY === '1') {
+    return new SecretaryChannelHub([], logger);
+  }
   const channels: SecretaryChannel[] = [];
   addConfiguredChannel(channels, logger, () => webhookChannelFromEnvironment(environment));
   if (

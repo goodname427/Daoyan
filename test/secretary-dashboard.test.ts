@@ -1850,7 +1850,7 @@ describe('secretary dashboard server', () => {
         ...process.env,
         DAOYAN_SECRETARY_STATE_DIR: secretaryState,
         DAOYAN_SECRETARY_HTTP_PORT: String(port),
-        DAOYAN_SECRETARY_LOCAL_ONLY: '1',
+        DAOYAN_SECRETARY_LOCAL_ONLY: '0',
         DAOYAN_SECRETARY_NO_DISPATCH: '1',
         DAOYAN_SECRETARY_WEBHOOK_URL: `http://127.0.0.1:${webhookPort}`,
         DAOYAN_SECRETARY_WEBHOOK_KIND: 'generic',

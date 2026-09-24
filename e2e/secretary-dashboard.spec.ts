@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +108,14 @@ test('shows the version flow, opens evidence and talks to the secretary', async 
       sessionStorage.setItem(initializedKey, '1');
     });
     await waitForSecretaryDashboard(child, `http://127.0.0.1:${port}`);
+    await expect
+      .poll(async () => {
+        const channels = JSON.parse(
+          await readFile(resolve(secretaryState, 'channels.json'), 'utf8'),
+        ) as { configuredChannelIds: string[] };
+        return channels.configuredChannelIds;
+      })
+      .toEqual([]);
     await page.goto(`http://127.0.0.1:${port}`);
     await expect(page.getByRole('heading', { name: '可视化秘书验收版本' })).toBeVisible();
     const runningAgentStartedAt = new Date(Date.now() - 12_000).toISOString();
