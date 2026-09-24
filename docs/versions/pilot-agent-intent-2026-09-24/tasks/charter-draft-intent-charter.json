@@ -1,32 +1,89 @@
 {
   "taskId": "intent-charter",
   "status": "completed",
-  "summary": "修订 1 策划案和意图记录已形成，产品取舍仍待制作人立项评审。原执行沙盒的解析器启动和 Git 写入失败已保留为失败尝试；主 Agent 在宿主环境重新运行定向检查并接管本地 Git 交付。",
+  "summary": "修订 1 策划案和意图记录已形成；三个相邻情形、原则、推荐体验、边界及开放假设已与结构化记录逐字核对。初稿已有本地提交 ff4c374；本轮差异留给 Feature PM 调度器在独立审查通过后本地提交，不推送。产品取舍仍待制作人立项评审。",
   "commands": [
     {
-      "command": "npx tsx -e \"import { readFileSync } from 'node:fs'; import { parseProductIntentAlignment } from './scripts/product-intent.ts'; const p='docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json'; const v=parseProductIntentAlignment(JSON.parse(readFileSync(p,'utf8')),'pilot-agent-intent-2026-09-24','1'); console.log('intent contract OK; adjacent cases:',v.adjacentCases.length);\"",
+      "command": "node -e \"JSON.parse(require('node:fs').readFileSync('docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json','utf8')); console.log('task evidence JSON parsed')\"",
       "exitCode": 0
     },
     {
-      "command": "node -e \"const fs=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',v=JSON.parse(fs.readFileSync(p+'intent-alignment.json','utf8')),c=fs.readFileSync(p+'charter-draft.md','utf8'); if(v.schemaVersion!==1||v.versionId!=='pilot-agent-intent-2026-09-24'||v.charterRevision!=='1'||v.adjacentCases.length<2||!v.adjacentCases.every(x=>c.includes(x.scenario))||!c.includes('未知/未发生'))process.exit(1); console.log('intent charter validation passed')\"",
+      "command": "node --experimental-strip-types -e \"import { readFileSync } from 'node:fs'; import { parseProductIntentAlignment } from './scripts/product-intent.ts'; const p='docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json'; const v=parseProductIntentAlignment(JSON.parse(readFileSync(p,'utf8')),'pilot-agent-intent-2026-09-24','1'); console.log('intent contract OK; adjacent cases:',v.adjacentCases.length);\"",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e \"const fs=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',v=JSON.parse(fs.readFileSync(p+'intent-alignment.json','utf8')),c=fs.readFileSync(p+'charter-draft.md','utf8'); if(v.schemaVersion!==1||v.versionId!=='pilot-agent-intent-2026-09-24'||v.charterRevision!=='1'||v.adjacentCases.length<2||!v.adjacentCases.every(x=>c.includes(x.scenario)&&c.includes(x.expectedBehavior))||!v.openAssumptions.every(x=>c.includes(x))||![v.inferredPrinciple,v.recommendedExperience,v.scopeBoundary].every(x=>c.includes(x))||!c.includes('未知/未发生'))process.exit(1); console.log('intent charter consistency passed')\"",
+      "exitCode": 0
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    },
+    {
+      "command": "node --experimental-strip-types -e \"import { readFileSync } from 'node:fs'; import { parseProductIntentAlignment } from './scripts/product-intent.ts'; const p='docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json'; const v=parseProductIntentAlignment(JSON.parse(readFileSync(p,'utf8')),'pilot-agent-intent-2026-09-24','1'); console.log('intent contract OK; adjacent cases:',v.adjacentCases.length);\"",
+      "exitCode": 0
+    },
+    {
+      "command": "npx prettier --write docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e \"const fs=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',v=JSON.parse(fs.readFileSync(p+'intent-alignment.json','utf8')),c=fs.readFileSync(p+'charter-draft.md','utf8'); if(v.schemaVersion!==1||v.versionId!=='pilot-agent-intent-2026-09-24'||v.charterRevision!=='1'||v.adjacentCases.length<2||!v.adjacentCases.every(x=>c.includes(x.scenario)&&c.includes(x.expectedBehavior))||!v.openAssumptions.every(x=>c.includes(x))||![v.inferredPrinciple,v.recommendedExperience,v.scopeBoundary].every(x=>c.includes(x))||!c.includes('未知/未发生'))process.exit(1); console.log('intent charter consistency passed')\"",
+      "exitCode": 0
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check",
       "exitCode": 0
     }
   ],
   "failedAttempts": [
     {
-      "command": "npx tsx -e (原执行沙盒中的意图合同解析)",
+      "command": "npx tsx -e \"import { readFileSync } from 'node:fs'; import { parseProductIntentAlignment } from './scripts/product-intent.ts'; const p='docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json'; const v=parseProductIntentAlignment(JSON.parse(readFileSync(p,'utf8')),'pilot-agent-intent-2026-09-24','1'); console.log('intent contract OK; adjacent cases:',v.adjacentCases.length);\"",
       "exitCode": 1,
-      "reason": "esbuild spawn EPERM；相同解析在宿主环境重跑通过"
+      "reason": "原执行沙盒 esbuild spawn EPERM；相同合同解析在宿主环境和 Node 内建类型剥离下重跑通过"
     },
     {
-      "command": "git add -- (三个任务交付文件)",
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
       "exitCode": 128,
-      "reason": "原执行沙盒无法写入 Git 索引及对象库；由主 Agent 在宿主环境接管本地提交"
+      "reason": "原执行沙盒无法写入 Git 索引与对象库；主 Agent 在宿主环境完成初稿提交"
     },
     {
-      "command": "GIT_INDEX_FILE=.intent-charter-check.index git add -- (相同交付文件)",
+      "command": "GIT_INDEX_FILE=.intent-charter-check.index git add -- docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
       "exitCode": 128,
       "reason": "临时索引仍无法写入 Git 对象库"
+    },
+    {
+      "command": "node -e \"const fs=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',v=JSON.parse(fs.readFileSync(p+'intent-alignment.json','utf8')),c=fs.readFileSync(p+'charter-draft.md','utf8'); if(v.schemaVersion!==1||v.versionId!=='pilot-agent-intent-2026-09-24'||v.charterRevision!=='1'||v.adjacentCases.length<2||!v.adjacentCases.every(x=>c.includes(x.scenario))||!c.includes('未知/未发生'))process.exit(1); console.log('intent charter consistency passed')\"",
+      "exitCode": 1,
+      "reason": "发现策划案与 JSON 的首个相邻情形行为及三个开放假设表述不一致；修订后用更严格检查通过"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
+      "exitCode": 128,
+      "reason": "第二次沙盒执行无法创建 .git/index.lock"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 2,
+      "reason": "第二次沙盒环境 Git 命令失败；主 Agent 在宿主环境重跑退出 0"
+    },
+    {
+      "command": "node -e \"const fs=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',v=JSON.parse(fs.readFileSync(p+'intent-alignment.json','utf8')),c=fs.readFileSync(p+'charter-draft.md','utf8'); if(v.schemaVersion!==1||v.versionId!=='pilot-agent-intent-2026-09-24'||v.charterRevision!=='1'||v.adjacentCases.length<2||!v.adjacentCases.every(x=>c.includes(x.scenario)&&c.includes(x.expectedBehavior))||!v.openAssumptions.every(x=>c.includes(x))||!c.includes(v.inferredPrinciple.slice(0,20))||!c.includes('未知/未发生'))process.exit(1); console.log('intent charter consistency passed')\"",
+      "exitCode": 1,
+      "reason": "本轮接管发现首页原则措辞未与结构化记录逐字一致，修订后严格一致性检查退出 0"
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
+      "exitCode": 1,
+      "reason": "本轮接管发现策划案表格格式不符合 Prettier；定向格式化后复查退出 0"
     }
   ],
   "evidence": [
