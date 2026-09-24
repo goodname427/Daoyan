@@ -1,0 +1,38 @@
+{
+  "taskId": "intent-charter",
+  "status": "completed",
+  "summary": "修订 1 策划案和意图记录已形成，产品取舍仍待制作人立项评审。原执行沙盒的解析器启动和 Git 写入失败已保留为失败尝试；主 Agent 在宿主环境重新运行定向检查并接管本地 Git 交付。",
+  "commands": [
+    {
+      "command": "npx tsx -e \"import { readFileSync } from 'node:fs'; import { parseProductIntentAlignment } from './scripts/product-intent.ts'; const p='docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json'; const v=parseProductIntentAlignment(JSON.parse(readFileSync(p,'utf8')),'pilot-agent-intent-2026-09-24','1'); console.log('intent contract OK; adjacent cases:',v.adjacentCases.length);\"",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e \"const fs=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',v=JSON.parse(fs.readFileSync(p+'intent-alignment.json','utf8')),c=fs.readFileSync(p+'charter-draft.md','utf8'); if(v.schemaVersion!==1||v.versionId!=='pilot-agent-intent-2026-09-24'||v.charterRevision!=='1'||v.adjacentCases.length<2||!v.adjacentCases.every(x=>c.includes(x.scenario))||!c.includes('未知/未发生'))process.exit(1); console.log('intent charter validation passed')\"",
+      "exitCode": 0
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx tsx -e (原执行沙盒中的意图合同解析)",
+      "exitCode": 1,
+      "reason": "esbuild spawn EPERM；相同解析在宿主环境重跑通过"
+    },
+    {
+      "command": "git add -- (三个任务交付文件)",
+      "exitCode": 128,
+      "reason": "原执行沙盒无法写入 Git 索引及对象库；由主 Agent 在宿主环境接管本地提交"
+    },
+    {
+      "command": "GIT_INDEX_FILE=.intent-charter-check.index git add -- (相同交付文件)",
+      "exitCode": 128,
+      "reason": "临时索引仍无法写入 Git 对象库"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-intent-charter.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-1-charter-draft-2/recovery.json"
+  ]
+}
