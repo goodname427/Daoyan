@@ -4,6 +4,7 @@ dist-electron/
 release/
 coverage/
 .vite/
+work/
 package-lock.json
 *.dy
 CHANGELOG.md
