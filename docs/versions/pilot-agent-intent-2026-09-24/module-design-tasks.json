@@ -1,0 +1,53 @@
+{
+  "tasks": [
+    {
+      "id": "unified-world-design",
+      "title": "统一世界规则与可编程体验详细策划",
+      "objective": "在已批准的版本策划范围内，把唯一世界理论推敲成可供主策审核的跨模块详细方案：论证规则、资源流和组合闭合性，界定推演台到演武场的完整玩家体验及旧原型影响；不能自行决定仍需制作人取舍的产品规则。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：持续修订的唯一权威世界规则正文，含反例、账本和明确的未决结论。",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md：引用上述正文的模块详细策划，列跨实体合同、玩家交互与失败反馈、候选表达参数、可核验场景及现行原型/ADR 影响；不另立世界公理。"
+      ],
+      "acceptance": [
+        "以范围修订 13、策划修订 2 和制作人已批准的立项评审为边界；分清制作人确认、探索方向、策划推断及待取舍问题。先说明问题、范围、非目标、完整体验和模块责任，不把工作流试运行指标当成游戏主题。",
+        "从少量共同前提推导默认物理、材料/结构、实体存在与消失、生命/死亡、自然损伤与法术作用；修士、法球、稳定物体、机关和人工生命按同一规则判断能力、维持及失效，不凭名称、固定寿命或独立伤害数补洞。对有效质量与接触、普通驱动来源、法力做功与可用性、生命阈值逐项论证或明确未决。",
+        "给出元法术不可组合性、法力来源/接收/环境去向、神识与耗时、授权和账户、事件订阅与有限记忆、原子提交和失败的同一合同；审计现有属性与公开元法术的原子性和价格工作量，追踪等可组合行为保持普通程序。若换算或回收上界仍无法闭合，不用任意折扣或免费效果伪装已解决。",
+        "用至少两个未逐项指定的跨实体玩法及稳定造物、额外供能、创建者死亡、场外/擦边/碰撞、遗体再损、100 点余额挪用 20 点维持储备、回收套利等反例，逐笔指出触发者、施法者、付款方、来源、作用与反作用、耗时、环境去向及失败结果；同一作用不重复结算。",
+        "详细说明玩家在推演台编写、检查、观察预算与失败，进入演武场绑定并见证同规则行为，再返回修改的完整流程；鼠标、手柄、AI 和实体事件只通过统一意图合同进入世界，按键、瞄准、界面探查、表现、配置和帧率不得变为世界特权。预设与敌方修士作为后续规则验证对象说明适用要求，本节点不制作或排期实现。",
+        "给出必要模块的状态所有权、交互、数值/价格表达边界、成功/失败/空状态和验收情形；不适用模块明确说明。逐项对照旧策划、当前代码、相关测试、可体验入口及 ADR 0017–0020，标记已覆盖、存在缺口或待制作人判断，并说明允许重做/移除旧原型时的法术、存档、数据保留及 ADR 覆盖影响，不把旧兼容当作设计前提。",
+        "若新产品解释、不可逆架构取舍或六类理论缺口无法从既定方向推导，列出证据、可选方案与需制作人判断的问题，交由设计审核升级；在判断前不写成既定实现任务、已采纳 ADR、开发切片或预设顺序。文档可独立评审且与唯一理论正文无矛盾。"
+      ],
+      "dependsOn": [],
+      "readPaths": [
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "docs/product/vision.md",
+        "docs/architecture/invariants.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md",
+        "docs/reference/entities-and-attributes.md",
+        "docs/reference/spell-authoring.md",
+        "docs/reference/meta-spells.md",
+        "src/core/attributes.ts",
+        "src/core/world.ts",
+        "src/core/vm.ts",
+        "src/core/pricing.ts",
+        "src/game/battle.ts",
+        "src/app/LabView.tsx",
+        "src/app/CombatView.tsx",
+        "test/core.test.ts",
+        "test/combat.test.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "writePaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md"
+      ]
+    }
+  ]
+}
