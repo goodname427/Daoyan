@@ -1,0 +1,114 @@
+{
+  "taskId": "game-intent-charter",
+  "status": "completed",
+  "scopeRevision": 13,
+  "commands": [
+    {
+      "command": "node --experimental-strip-types -e \"import {readFileSync} from 'node:fs'; import {parseProductIntentAlignment} from './scripts/product-intent.ts'; const p='docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json'; const a=parseProductIntentAlignment(JSON.parse(readFileSync(p,'utf8')),'pilot-agent-intent-2026-09-24','2'); console.log('intent contract OK',a.adjacentCases.length,a.producerSignals.length)\"",
+      "exitCode": 0
+    },
+    {
+      "command": "npx prettier --write docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0
+    },
+    {
+      "command": "node --experimental-strip-types -e \"import {readFileSync} from 'node:fs'; import {parseProductIntentAlignment} from './scripts/product-intent.ts'; const d='docs/versions/pilot-agent-intent-2026-09-24/'; const a=parseProductIntentAlignment(JSON.parse(readFileSync(d+'intent-alignment.json','utf8')),'pilot-agent-intent-2026-09-24','2'); const w=readFileSync(d+'world-theory-draft.md','utf8'),c=readFileSync(d+'charter-draft.md','utf8'); const terms=['法力守恒','修士起步','结构损伤','人工生命','额外供能','创建者死亡','场外','储备挪用','回收套利','元法术与算法工作量审计','接力护送','自修复信标','六类理论缺口']; const missing=terms.filter(x=>!w.includes(x)); const cases=a.adjacentCases.slice(0,2).map(x=>x.scenario.split('：')[0]).filter(x=>!w.includes(x)||!c.includes(x)); if(missing.length||cases.length||!c.includes('范围修订：')) {console.error({missing,cases});process.exit(1)} console.log('scope-13 content and alignment OK')\"",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e \"const fs=require('fs'),path=require('path'); const d='docs/versions/pilot-agent-intent-2026-09-24'; for(const n of ['world-theory-draft.md','charter-draft.md']){const f=path.join(d,n),s=fs.readFileSync(f,'utf8'); for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split('#')[0]; if(t && !t.includes('://') && !fs.existsSync(path.resolve(path.dirname(f),t))){console.error(f,t);process.exitCode=1}}} if(!process.exitCode) console.log('relative links OK')\"",
+      "exitCode": 0
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json'; const r=JSON.parse(fs.readFileSync(p,'utf8')); if(r.taskId!=='game-intent-charter'||r.scopeRevision!==13||r.commands.some(x=>x.exitCode!==0)||r.failedAttempts.some(x=>x.exitCode!==1)) process.exit(1); console.log('task report JSON OK')\"",
+      "exitCode": 0
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+      "exitCode": 0
+    },
+    {
+      "command": "node --experimental-strip-types -e 'import {readFileSync} from \"node:fs\"; import {parseProductIntentAlignment} from \"./scripts/product-intent.ts\"; const d=\"docs/versions/pilot-agent-intent-2026-09-24/\"; const raw=JSON.parse(readFileSync(d+\"intent-alignment.json\",\"utf8\")); if(raw.scopeRevision!==13) throw new Error(\"scope revision mismatch\"); const a=parseProductIntentAlignment(raw,\"pilot-agent-intent-2026-09-24\",\"2\"); const c=readFileSync(d+\"charter-draft.md\",\"utf8\"),w=readFileSync(d+\"world-theory-draft.md\",\"utf8\"); const checks=[a.producerSignals.some(x=>x.includes(\"[本版原话]\")),a.producerSignals.some(x=>x.includes(\"[范围修订13原话]\")),a.producerSignals.some(x=>x.includes(\"[已确认]\")),a.producerSignals.some(x=>x.includes(\"[检验与探索]\")),a.adjacentCases.length>=2,a.adjacentCases.slice(0,2).every(x=>c.includes(x.scenario.split(\"：\")[0])&&w.includes(x.scenario.split(\"：\")[0])),c.includes(\"策划修订：`2`\"),c.includes(\"范围修订：`13`\"),w.includes(\"策划修订 `2`\"),w.includes(\"范围修订 `13`\")]; if(checks.some(x=>!x)) throw new Error(\"alignment/document cross-check failed: \"+checks); console.log(\"intent alignment and charter/theory cross-check OK\");'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "scripts/product-intent.ts"
+      ]
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+      ]
+    },
+    {
+      "command": "npm run docs:check",
+      "exitCode": 0,
+      "evidence": [
+        "scripts/generate-meta-reference.ts",
+        "scripts/check-docs.mjs",
+        "docs/versions/pilot-agent-intent-2026-09-24/"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+      ]
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json; node -e 'const fs=require(\"fs\");const p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json\";const r=JSON.parse(fs.readFileSync(p,\"utf8\"));if(r.taskId!==\"game-intent-charter\"||r.scopeRevision!==13||r.commands.some(x=>!Number.isInteger(x.exitCode))||r.failedAttempts.some(x=>!Number.isInteger(x.exitCode)))process.exit(1);console.log(\"task report JSON and actual exit-code fields OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+      ]
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+      "exitCode": 1,
+      "evidence": ".git/index.lock: Permission denied; Git could not create the lock file. No staging or commit occurred."
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+      "exitCode": 1,
+      "evidence": "首次检查提示 world-theory-draft.md 格式不符；定向格式化后同命令退出 0。"
+    },
+    {
+      "command": "node --experimental-strip-types -e \"import {readFileSync} from 'node:fs'; import {parseProductIntentAlignment} from './scripts/product-intent.ts'; const d='docs/versions/pilot-agent-intent-2026-09-24/'; const a=parseProductIntentAlignment(JSON.parse(readFileSync(d+'intent-alignment.json','utf8')),'pilot-agent-intent-2026-09-24','2'); const w=readFileSync(d+'world-theory-draft.md','utf8'),c=readFileSync(d+'charter-draft.md','utf8'); const terms=['法力守恒','修士起步','结构损伤','人工生命','额外供能','创建者死亡','场外','储备挪用','回收套利','元法术与算法工作量审计','接力护送','自修复信标','六类理论缺口']; const missing=terms.filter(x=>!w.includes(x)); if(missing.length||!c.includes('范围修订：`13`')||!a.adjacentCases.slice(0,2).every(x=>w.includes(x.scenario.split('：')[0])&&c.includes(x.scenario.split('：')[0]))) {console.error('missing',missing);process.exit(1)} console.log('scope-13 content and alignment OK')\"",
+      "exitCode": 1,
+      "evidence": "PowerShell 反引号转义改变了范围字符串。"
+    },
+    {
+      "command": "node --experimental-strip-types -e \"import {readFileSync} from 'node:fs'; import {parseProductIntentAlignment} from './scripts/product-intent.ts'; const d='docs/versions/pilot-agent-intent-2026-09-24/'; const a=parseProductIntentAlignment(JSON.parse(readFileSync(d+'intent-alignment.json','utf8')),'pilot-agent-intent-2026-09-24','2'); const w=readFileSync(d+'world-theory-draft.md','utf8'),c=readFileSync(d+'charter-draft.md','utf8'); const terms=['法力守恒','修士起步','结构损伤','人工生命','额外供能','创建者死亡','场外','储备挪用','回收套利','元法术与算法工作量审计','接力护送','自修复信标','六类理论缺口']; const missing=terms.filter(x=>!w.includes(x)); const cases=a.adjacentCases.slice(0,2).map(x=>x.scenario.split('：')[0]).filter(x=>!w.includes(x)||!c.includes(x)); if(missing.length||cases.length||!c.includes('范围修订：')) {console.error({missing,cases,scope:c.includes('范围修订：')});process.exit(1)} console.log('scope-13 content and alignment OK')\"",
+      "exitCode": 1,
+      "evidence": "发现第二个相邻情形在策划范围中名称不一致；统一名称后定向核对退出 0。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    ".daoyan-agent/releases/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-.json",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "src/core/world.ts",
+    "src/game/battle.ts"
+  ]
+}
