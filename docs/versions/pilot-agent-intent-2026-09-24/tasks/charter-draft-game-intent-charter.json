@@ -1,6 +1,7 @@
 {
   "taskId": "game-intent-charter",
   "status": "completed",
+  "summary": "范围修订 13 的统一世界理论、版本策划与意图对齐已形成供制作人审阅的草案；未决规则仍标为待证，尚未批准开发。",
   "scopeRevision": 13,
   "commands": [
     {
