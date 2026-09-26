@@ -466,5 +466,72 @@
         }
       ]
     }
+  },
+  "latestExecutionEvidence": {
+    "date": "2026-09-26",
+    "summary": "范围修订 13 策划交付物及文档检查通过；前轮 git add 因无法创建 .git/index.lock 失败。本轮未执行 Git 写入；本地提交由独立审查通过后的 Feature PM 统一负责。",
+    "historicalFailure": {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+      "exitCode": 128,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "source": "postHandoffAudit.verifiedRun.commands；指定 diagnose-gpt-6-luna-attempt-1.md 同样确认暂存失败。较早四文件 git add 的命令输出未保留，不反推或覆盖其原记录。"
+    },
+    "commands": [
+      {
+        "command": "node --experimental-strip-types --input-type=module -e 'import {readFileSync} from \"node:fs\"; import {parseProductIntentAlignment} from \"./scripts/product-intent.ts\"; const d=\"docs/versions/pilot-agent-intent-2026-09-24/\"; const a=parseProductIntentAlignment(JSON.parse(readFileSync(d+\"intent-alignment.json\",\"utf8\")),\"pilot-agent-intent-2026-09-24\",\"2\"); const w=readFileSync(d+\"world-theory-draft.md\",\"utf8\"),c=readFileSync(d+\"charter-draft.md\",\"utf8\"); const terms=[\"法力守恒\",\"结构损伤\",\"人工生命\",\"额外供能\",\"创建者死亡\",\"场外\",\"储备挪用\",\"回收套利\",\"元法术与算法工作量审计\",\"六类理论缺口\"]; const cases=a.adjacentCases.slice(0,2).map(x=>x.scenario.split(\"：\")[0]); if(terms.some(x=>!w.includes(x))||cases.some(x=>!w.includes(x)||!c.includes(x))||!c.includes(\"策划修订：`2`\"))process.exit(1); console.log(\"alignment and scope 13 OK; adjacent cases:\",cases.join(\"、\"))'",
+        "exitCode": 0,
+        "output": "alignment and scope 13 OK; adjacent cases: 接力护送、遗体旁的自修复信标",
+        "evidence": [
+          "scripts/product-intent.ts",
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+        ]
+      },
+      {
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 0,
+        "output": "All matched files use Prettier code style!",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "npm run docs:check",
+        "exitCode": 0,
+        "output": "元法术参考检查通过：94 个元法术；文档检查通过：138 个 Markdown 文件，版本 0.2.0",
+        "evidence": [
+          "docs/reference/meta-spells.md",
+          "scripts/generate-meta-reference.ts",
+          "scripts/check-docs.mjs"
+        ]
+      },
+      {
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ],
+        "command": "node -e \"const fs=require('node:fs');const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json';const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.taskId!=='game-intent-charter'||r.status!=='completed'||r.scopeRevision!==13||r.commands.some(x=>!Number.isInteger(x.exitCode)))process.exit(1);console.log('task record structure OK')\"",
+        "output": "task record structure OK",
+        "exitCode": 0
+      },
+      {
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ],
+        "command": "git diff --check",
+        "output": "",
+        "exitCode": 0
+      }
+    ],
+    "evidence": [
+      ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-charter-draft-5/diagnose-gpt-6-luna-attempt-1.md",
+      ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-charter-draft-4/record-evidence-gpt-6-luna-attempt-2.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+    ]
   }
 }
