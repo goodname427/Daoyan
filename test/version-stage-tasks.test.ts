@@ -5,6 +5,7 @@ import { ensureVersionStageItem } from '../scripts/secretary-notice-guard';
 import { createSecretaryState } from '../scripts/secretary-state';
 import {
   assertStageTaskPaths,
+  assertStageTaskDeliveryScope,
   assertTaskWriteScope,
   parseStageTaskManifest,
   readyStageTasks,
@@ -22,6 +23,32 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('ignores separate Main Agent control-plane fixes but rejects game changes outside a task', () => {
+    const [charter] = parseStageTaskManifest(
+      { tasks: [task('charter', [], ['docs/versions/v2/charter-draft.md'])] },
+      'charter-draft',
+      1,
+      '2026-09-26T00:00:00.000Z',
+    );
+    expect(() =>
+      assertStageTaskDeliveryScope(charter, [
+        'scripts/agent-dispatcher.ts',
+        'test/version-stage-tasks.test.ts',
+        'docs/status.md',
+        'docs/dev/2026-09-26.md',
+        'docs/versions/v2/charter-draft.md',
+      ]),
+    ).not.toThrow();
+    expect(() => assertStageTaskDeliveryScope(charter, ['scripts/agent-dispatcher.ts'])).toThrow(
+      '未提交合同内',
+    );
+    expect(() =>
+      assertStageTaskDeliveryScope(charter, [
+        'docs/versions/v2/charter-draft.md',
+        'src/core/world.ts',
+      ]),
+    ).toThrow('超出');
+  });
   it('creates new versions without the up-front breakdown and planning nodes', () => {
     const version = createFormalVersion({
       id: 'v2',
@@ -186,6 +213,12 @@ describe('stage-owned task contracts', () => {
   });
 
   it('keeps task PM checks separate from the final full gate', () => {
+    const charterPlan = buildLocalPlan('整理版本策划');
+    charterPlan.tasks = [
+      { ...charterPlan.tasks[0], type: 'documentation', validationProfile: 'light' },
+    ];
+    charterPlan.riskSignals.push('formal-stage-deliverable');
+    expect(validationStagesForPlan(charterPlan)).toEqual([]);
     const taskPlan = buildLocalPlan('实现测试功能');
     taskPlan.riskSignals.push('formal-stage-deliverable');
     expect(validationStagesForPlan(taskPlan)).not.toContain('full-gate');

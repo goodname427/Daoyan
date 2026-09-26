@@ -26,6 +26,7 @@ import {
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
+  reopenCorrectedStageTaskDelivery,
   reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -51,6 +52,52 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('reopens a corrected stage task only when its matching retry did no work', () => {
+    const state = createSecretaryState('2026-09-26T00:00:00.000Z');
+    const delivered = itemFromIntake(
+      { id: 'old-task', idea: '策划', createdAt: state.initializedAt },
+      [],
+    ).item;
+    delivered.status = 'delivered';
+    delivered.summary = '阶段交付未能写入正式版本：缺少实际检查或交付证据';
+    delivered.orchestration = {
+      ...delivered.orchestration!,
+      formalVersionId: 'v2',
+      formalStage: 'charter-draft',
+      formalScopeRevision: 13,
+      formalTaskId: 'charter',
+      formalStageConsumedAt: state.initializedAt,
+    };
+    const retry = itemFromIntake(
+      { id: 'empty-retry', idea: '重试策划', createdAt: state.initializedAt },
+      [],
+    ).item;
+    retry.status = 'tracking';
+    retry.orchestration = {
+      ...retry.orchestration!,
+      formalVersionId: 'v2',
+      formalStage: 'charter-draft',
+      formalScopeRevision: 13,
+      formalTaskId: 'charter',
+      processOccupied: true,
+    };
+    state.items.push(delivered, retry);
+    state.activeItemId = retry.id;
+    expect(
+      reopenCorrectedStageTaskDelivery(state, delivered.id, new Set(), state.initializedAt),
+    ).toBe(false);
+    expect(
+      reopenCorrectedStageTaskDelivery(
+        state,
+        delivered.id,
+        new Set([retry.id]),
+        state.initializedAt,
+      ),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(state.activeItemId).toBe('');
+  });
   it('merges only explicitly named backlog candidates and records correction evidence', () => {
     const state = createSecretaryState('2026-09-23T00:00:00.000Z');
     for (const id of ['old-a', 'old-b']) {

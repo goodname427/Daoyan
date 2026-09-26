@@ -221,6 +221,17 @@ export function assertTaskWriteScope(task: VersionStageTask, changedFiles: strin
   }
 }
 
+/** Main Agent control-plane commits may land while a game task is being delivered. */
+export function assertStageTaskDeliveryScope(task: VersionStageTask, changedFiles: string[]): void {
+  const controlPlane = (path: string): boolean =>
+    /^(?:scripts|test)\/(?:agent-|secretary-|version-)[^/]+\.ts$/.test(path) ||
+    path === 'docs/status.md' ||
+    /^docs\/dev\/\d{4}-\d{2}-\d{2}\.md$/.test(path);
+  const taskChanges = changedFiles.filter((path) => !controlPlane(normalizedPath(path)));
+  if (taskChanges.length === 0) throw new Error(`节点任务 ${task.id} 未提交合同内交付文件`);
+  assertTaskWriteScope(task, taskChanges);
+}
+
 export function parseStageTaskResult(value: unknown, expectedTaskId: string): StageTaskResult {
   if (
     !isRecord(value) ||

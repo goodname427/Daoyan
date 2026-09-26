@@ -91,9 +91,7 @@ export function validationStagesForPlan(plan: TaskPlan): FeatureValidationStage[
   const profile = validationProfileForPlan(plan);
   if (plan.riskSignals.includes('formal-stage-verification')) return ['independent-review'];
   if (plan.riskSignals.includes('formal-stage-deliverable')) {
-    return plan.tasks.every((task) => ['analysis', 'documentation'].includes(task.type))
-      ? ['independent-review']
-      : ['fast-gate', 'independent-review'];
+    return profile === 'light' ? [] : ['fast-gate', 'independent-review'];
   }
   if (profile === 'light') return [];
   if (profile === 'version') return ['independent-review'];

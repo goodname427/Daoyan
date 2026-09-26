@@ -79,6 +79,7 @@ import {
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
+  reopenCorrectedStageTaskDelivery,
   reopenEnvironmentBlockedQaDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
@@ -131,7 +132,7 @@ import {
 import { parseInvocationTokens, versionStageUsage } from './version-usage';
 import {
   assertStageTaskPaths,
-  assertTaskWriteScope,
+  assertStageTaskDeliveryScope,
   parseStageTaskManifest,
   parseStageTaskResult,
   readyStageTasks,
@@ -5282,7 +5283,7 @@ async function consumeTaskOwnedVersionItem(
   if (!base) throw new Error('节点任务缺少 Git 写入基线');
   const revision = currentGitRevision();
   if (revision === base) throw new Error(`节点任务 ${task.id} 未形成独立提交`);
-  assertTaskWriteScope(task, changedFilesBetween(base, revision));
+  assertStageTaskDeliveryScope(task, changedFilesBetween(base, revision));
   task.status = 'accepted';
   task.pmItemId = item.id;
   task.commit = revision;
@@ -5817,6 +5818,82 @@ async function coordinateOnce(): Promise<void> {
       attachProcessExitNotice(item);
     }
   }
+  let reopenedCorrectedTask = false;
+  if (
+    activeFormalVersion?.workflowRevision === 2 &&
+    cleanWorktree.status === 0 &&
+    !cleanWorktree.stdout.trim()
+  ) {
+    const delivered = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'delivered' &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === activeFormalVersion.currentStage &&
+          item.orchestration.formalScopeRevision === formalScopeRevision(activeFormalVersion) &&
+          item.orchestration.formalTaskId &&
+          item.orchestration.formalStageConsumedAt &&
+          item.summary.includes('缺少实际检查或交付证据'),
+      );
+    const task = stageTasksForCurrentNode(activeFormalVersion).find(
+      (candidate) => candidate.id === delivered?.orchestration?.formalTaskId,
+    );
+    if (delivered?.runDirectory && task?.status === 'pending') {
+      const emptyRetryIds = new Set<string>();
+      for (const item of state.items) {
+        if (
+          item.orchestration?.formalTaskId !== task.id ||
+          item.orchestration.formalVersionId !== activeFormalVersion.id ||
+          item.orchestration.formalScopeRevision !== formalScopeRevision(activeFormalVersion) ||
+          !['active', 'tracking', 'retry-wait'].includes(item.status) ||
+          isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+          (await activeWorkerProcess(item, true)) ||
+          !item.runDirectory
+        )
+          continue;
+        const checkpoint = await readJson(resolve(item.runDirectory, 'recovery.json'));
+        if (Array.isArray(checkpoint?.taskRuns) && checkpoint.taskRuns.length === 0) {
+          emptyRetryIds.add(item.id);
+        }
+      }
+      if (emptyRetryIds.size > 0) {
+        try {
+          const report = await readJson(resolve(delivered.runDirectory, 'report.json'));
+          const resultPath = `${activeFormalVersion.documentRoot}/tasks/${currentStageTaskLabel(activeFormalVersion)}-${task.id}.json`;
+          const result = parseStageTaskResult(await readJson(resolve(root, resultPath)), task.id);
+          if (
+            report?.status !== '已交付' ||
+            !isRecord(report.review) ||
+            report.review.verdict !== 'pass' ||
+            result.commands.some((command) => command.exitCode !== 0) ||
+            !evidenceAfterStageStart(
+              activeFormalVersion.nodes.find((node) => node.id === activeFormalVersion.currentStage)
+                ?.startedAt ?? '',
+              String(report.finishedAt ?? ''),
+            ) ||
+            !delivered.orchestration?.formalTaskBaseRevision
+          )
+            throw new Error('原任务报告或直接检查尚未满足接纳条件');
+          assertStageTaskDeliveryScope(
+            task,
+            changedFilesBetween(
+              delivered.orchestration.formalTaskBaseRevision,
+              currentGitRevision(),
+            ),
+          );
+          reopenedCorrectedTask = reopenCorrectedStageTaskDelivery(
+            state,
+            delivered.id,
+            emptyRetryIds,
+            new Date().toISOString(),
+          );
+        } catch {
+          // Preserve the retry until the corrected result and original delivery can be audited.
+        }
+      }
+    }
+  }
   const waiting = state.items.find((item) => item.status === 'waiting-producer');
   const occupiedItems = state.items.filter(
     (item) =>
@@ -5844,6 +5921,7 @@ async function coordinateOnce(): Promise<void> {
     reopenedDeliveredDevelopment ||
     reopenedDeliveredQa ||
     reopenedDeliveredBugfix ||
+    reopenedCorrectedTask ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||

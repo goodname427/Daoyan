@@ -1127,6 +1127,50 @@ export function reopenVerifiedBugfixDelivery(
   return reopenVerifiedStageDelivery(state, versionId, 'bugfix', emptyStoppedAttemptIds, now);
 }
 
+/** Reuse a task report after its missing structured evidence was repaired and an empty retry stopped. */
+export function reopenCorrectedStageTaskDelivery(
+  state: SecretaryState,
+  deliveredId: string,
+  emptyRetryIds: ReadonlySet<string>,
+  now: string,
+): boolean {
+  const delivered = state.items.find((item) => item.id === deliveredId);
+  if (
+    delivered?.status !== 'delivered' ||
+    !delivered.orchestration?.formalTaskId ||
+    !delivered.orchestration.formalStageConsumedAt ||
+    !delivered.summary.includes('缺少实际检查或交付证据')
+  )
+    return false;
+  const retries = state.items.filter(
+    (item) =>
+      emptyRetryIds.has(item.id) &&
+      ['active', 'tracking', 'retry-wait'].includes(item.status) &&
+      item.orchestration?.formalVersionId === delivered.orchestration?.formalVersionId &&
+      item.orchestration?.formalStage === delivered.orchestration?.formalStage &&
+      item.orchestration?.formalScopeRevision === delivered.orchestration?.formalScopeRevision &&
+      item.orchestration?.formalTaskId === delivered.orchestration?.formalTaskId,
+  );
+  if (retries.length === 0) return false;
+  for (const item of retries) {
+    item.status = 'superseded';
+    item.summary = '重试尚未完成任务；结构化证据已修正，回到原 Feature PM 交付验收。';
+    item.completedAt ||= now;
+    item.updatedAt = now;
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration!.processOccupied = false;
+    item.orchestration!.awaitingReview = false;
+    item.orchestration!.reconciliationOutcome = 'delivered';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+  }
+  delete delivered.orchestration.formalStageConsumedAt;
+  delivered.summary = '结构化证据已修正，等待正式版本重新验收原 Feature PM 交付。';
+  delivered.updatedAt = now;
+  return true;
+}
+
 /** Recheck an environment-blocked QA report only after separate host evidence is supplied. */
 export function reopenEnvironmentBlockedQaDelivery(
   state: SecretaryState,
