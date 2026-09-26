@@ -533,5 +533,11 @@
       "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
       "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
     ]
+  },
+  "reviewInputRecovery": {
+    "originalBaseline": "8091c01ac0ccafb8f98e8ede8a5599f937e5344d",
+    "reviewBaseline": "d90c68345c5b1dc294e9cfbc46f347230d2c4a35",
+    "patch": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-charter-draft-6/review-input-1.patch",
+    "reason": "本次运行开始前，范围修订 13 的合同文件已提交；以当时 HEAD 生成的补丁为空。审查输入改为从本修订策划任务建立时的基线提取四份合同文件的实际差异，独立审查结论仍待复核。"
   }
 }
