@@ -1,0 +1,95 @@
+{
+  "taskId": "unified-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "完成统一理论与详细策划的主策审核：逐项核对共同原则、相邻玩法和反例账本、玩家完整往返、跨入口等价、旧实现/测试/ADR 证据；修正固定机关施力、零余额信标来源时序和两处体验表述。六类物理、资源、生命、原子性及通用程序取舍仍待制作人判断，未授权开发。",
+  "commands": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),path=require(\"path\"),d=\"docs/versions/pilot-agent-intent-2026-09-24\";for(const n of [\"design-review-findings.md\",\"world-theory-draft.md\",\"world-rule-design.md\"]){const f=path.join(d,n),s=fs.readFileSync(f,\"utf8\");for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")&&!fs.existsSync(path.resolve(path.dirname(f),t)))throw Error(f+\" -> \"+t)}}console.log(\"review and source relative links OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/\",v=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\"),a=require(\"./\"+d+\"intent-alignment.json\"),r=fs.readFileSync(d+\"design-review-findings.md\",\"utf8\");if(v.orchestration.scopeRevisions.at(-1).revision!==13||a.scopeRevision!==13||a.charterRevision!==\"2\"||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"approval mismatch\");for(const t of [\"接力护送\",\"自修复信标\",\"100/20\",\"回收套利\",\"创建者死亡\",\"遗体再损\",\"六类未决取舍\",\"推演台\",\"演武场\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\"]){if(!r.includes(t))throw Error(\"missing \"+t)}console.log(\"scope, approval and review coverage OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    },
+    {
+      "command": "$allow = @('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json'); $paths = @(git status --porcelain | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($paths.Count -ne 4 -or @($paths | Where-Object { $_ -notin $allow }).Count -ne 0) { throw \"unexpected write paths: $($paths -join ', ')\" }; 'four allowed write paths only'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=require(\"./\"+d+\"tasks/design-review-unified-world-review.json\"),w=fs.readFileSync(d+\"world-theory-draft.md\",\"utf8\"),p=fs.readFileSync(d+\"world-rule-design.md\",\"utf8\"),f=fs.readFileSync(d+\"design-review-findings.md\",\"utf8\");if(r.taskId!==\"unified-world-review\"||r.status!==\"completed\"||r.scopeRevision!==13||r.charterRevision!==\"2\"||r.failedAttempts.some(x=>x.exitCode!==1)||r.commands.some(x=>x.exitCode!==0))throw Error(\"task JSON contract\");for(const t of [\"固定机关不能平移自身\",\"零余额路径在 B2 的付费读取前\",\"未获准确认目标存在\",\"事件先史\"]){if(!(w+p+f).includes(t))throw Error(\"missing correction \"+t)}console.log(\"task JSON and approved-direction corrections OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const cp=require(\"child_process\"),allowed=new Set([\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\",\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json\"]),s=cp.execFileSync(\"git\",[\"status\",\"--porcelain\"],{encoding:\"utf8\"}),paths=s.split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\"));for(const p of paths)if(!allowed.has(p))throw Error(\"out-of-scope \"+p);if(paths.length!==4)throw Error(\"expected four write paths, got \"+paths.length);console.log(\"four allowed write paths only\")'",
+      "exitCode": 1,
+      "evidence": "Node 子进程在当前沙盒启动 git 时返回 spawnSync git EPERM；改用 PowerShell 直接调用 Git 核对写入范围，退出 0。"
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=require(\"./\"+d+\"tasks/design-review-unified-world-review.json\"),w=fs.readFileSync(d+\"world-theory-draft.md\",\"utf8\"),p=fs.readFileSync(d+\"world-rule-design.md\",\"utf8\"),f=fs.readFileSync(d+\"design-review-findings.md\",\"utf8\");if(r.taskId!==\"unified-world-review\"||r.status!==\"completed\"||r.scopeRevision!==13||r.charterRevision!==\"2\"||r.failedAttempts.length||r.commands.some(x=>x.exitCode!==0))throw Error(\"task JSON contract\");for(const t of [\"固定机关不能平移自身\",\"零余额路径在 B2 的付费读取前\",\"无权确认目标存在\",\"事件先史\"]){if(!(w+p+f).includes(t))throw Error(\"missing correction \"+t)}console.log(\"task JSON and approved-direction corrections OK\")'",
+      "exitCode": 1,
+      "evidence": "首次文档关键词断言写成“无权确认目标存在”，正文实际为“未获准确认目标存在”；校正断言后同类合同检查退出 0。"
+    },
+    {
+      "command": "$p='docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json'; try { Get-Content $p -Raw | ConvertFrom-Json | Select-Object taskId,status } catch { Write-Error $_; exit 1 }",
+      "exitCode": 1,
+      "evidence": "填写通过命令时临时 JSON 出现重复数组结束符，解析检查退出 1；移除重复行并重新格式化后复验。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-unified-world-design.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ]
+}
