@@ -4674,12 +4674,15 @@ export function supersedeObsoleteFormalItems(
 ): number {
   if (!version) return 0;
   const startedAt = version.nodes.find((node) => node.id === version.currentStage)?.startedAt ?? '';
+  const scopeRevision = formalScopeRevision(version);
   let count = 0;
   for (const item of secretary.items) {
     if (
       item.orchestration?.formalVersionId !== version.id ||
       !['queued', 'retry-wait', 'active', 'tracking'].includes(item.status) ||
-      (item.orchestration.formalStage === version.currentStage && item.createdAt >= startedAt) ||
+      (item.orchestration.formalStage === version.currentStage &&
+        item.orchestration.formalScopeRevision === scopeRevision &&
+        item.createdAt >= startedAt) ||
       processAlive(item.processPid, item.processIdentity) ||
       item.orchestration.processOccupied
     ) {
@@ -5492,6 +5495,24 @@ async function coordinateOnce(): Promise<void> {
   const stateBeforeNormalization = JSON.stringify(state);
   const normalized = normalizeSecretaryState(state);
   const activeFormalVersion = await readFormalVersion(root);
+  if (activeFormalVersion) {
+    const scopeRevision = formalScopeRevision(activeFormalVersion);
+    for (const item of state.items) {
+      if (
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        !['queued', 'retry-wait', 'active', 'tracking'].includes(item.status) ||
+        !item.orchestration.processOccupied ||
+        (item.orchestration.formalStage === activeFormalVersion.currentStage &&
+          item.orchestration.formalScopeRevision === scopeRevision)
+      )
+        continue;
+      if (
+        !isOwnedProcessAlive(item.processPid, item.processIdentity, 0) &&
+        !(await activeWorkerProcess(item, true))
+      )
+        item.orchestration.processOccupied = false;
+    }
+  }
   const supersededObsolete = supersedeObsoleteFormalItems(state, activeFormalVersion);
   const cleanWorktree = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
     cwd: root,

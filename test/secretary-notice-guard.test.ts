@@ -68,6 +68,7 @@ import {
 import {
   createFormalVersion,
   currentVersionStagePolicy,
+  recordScopeRevision,
   recordValidationEvidence,
   recordStagePolicy,
   transitionVersionBug,
@@ -814,6 +815,38 @@ describe('formal version stage dispatch', () => {
     });
     expect(item.orchestration?.reconciliationOutcome).toBe('');
     expect(nextRunnableItem(secretary, '2026-09-23T00:03:00.000Z')?.status).toBe('queued');
+  });
+
+  it('retires a dead writer from an older scope in the same stage', () => {
+    const secretary = createSecretaryState('2026-09-23T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'same-stage-scope-revision',
+      title: '范围修订',
+      direction: '统一实体',
+      documentRoot: 'docs/versions/same-stage-scope-revision',
+      currentStage: 'charter-draft',
+      now: '2026-09-23T00:00:00.000Z',
+    });
+    const item = ensureVersionStageItem(secretary, version, '2026-09-23T00:01:00.000Z')!;
+    item.status = 'tracking';
+    item.processPid = 1234;
+    item.processIdentity = 'old-run';
+    secretary.activeItemId = item.id;
+    recordScopeRevision(version, {
+      direction: '修订为统一事件与施法规则',
+      sourceRequestId: 'same-stage-scope-revision-2',
+      disposition: 'merged',
+      reason: '制作人在未冻结草案中纠正方向',
+      now: '2026-09-23T00:02:00.000Z',
+    });
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => true)).toBe(0);
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => false)).toBe(1);
+    expect(item.status).toBe('superseded');
+    expect(secretary.activeItemId).toBe('');
+    expect(ensureVersionStageItem(secretary, version, '2026-09-23T00:03:00.000Z')).toMatchObject({
+      status: 'queued',
+      orchestration: { formalScopeRevision: 2 },
+    });
   });
 
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {
