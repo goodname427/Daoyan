@@ -110,5 +110,238 @@
     "docs/adr/0018-运动供能与命中守恒.md",
     "src/core/world.ts",
     "src/game/battle.ts"
-  ]
+  ],
+  "priorRunEvidenceAudit": {
+    "conclusion": "前次四份策划产物及本地提交 458ca04 可定位；本轮已补查原始方向、范围修订、指定代码、ADR 和静态体验入口。策划仍是待制作人评审的候选方案，未以代码阅读冒充实际游戏体验。",
+    "checkedEvidence": [
+      ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-charter-draft-2/report.json:1（前次任务、独立审查和交付状态）",
+      ".daoyan-agent/releases/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-.json:6（旧版制作人方向）",
+      ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json:8（本版连续方向）、:12（策划修订 2）、:382（范围修订 13 的任务合同）",
+      "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:29（共同前提）、:148（两个相邻玩法）、:155（元法术与工作量）、:180（十项属性）、:224（旧实现证据账）、:242（反例账本）、:261（六类未决）",
+      "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md:1（版本与修订）、:19（推荐体验）、:25（范围与非目标）、:31（验收及待评审）",
+      "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json:1（版本、策划修订及范围修订；原话、推断、相邻情形和假设）",
+      "docs/adr/0018-运动供能与命中守恒.md:34（运动）、:68（储能）、:88（命中）；docs/architecture/invariants.md:1（现行架构约束）",
+      "src/core/attributes.ts:9（十项属性）；src/core/metas/input.ts:4（按键桥接）；src/core/metas/entity.ts:37（分池）、:92（专名追踪）、:156（弹道创建）",
+      "src/core/pricing.ts:26（效果价）、:69（探查价）、:161（控制价）；src/core/vm.ts:549（动态 tick 与付款）",
+      "src/core/world.ts:930（自动回复）、:1140（弹道命中）、:1793（HP 伤害）、:2444（默认寿命）；src/game/battle.ts:364（玩家运动）、:536（弹道生命周期）、:569（碰撞分离）、:680（内建事件订阅）",
+      "src/game/spells.dy:1（默认法术书）；src/app/LabView.tsx:312（推演入口）；src/app/CombatView.tsx:968（共享法术书绑定）；docs/reference/spell-authoring.md:294（玩家编程边界）；docs/reference/meta-spells.md:19（公开目录分组）"
+    ],
+    "followUps": [
+      "world-theory-draft.md:162-163 的职责表将准星方向单列为现实桥接，同时 36 项探查沿用公开目录分组；meta-spells.md:72 证实准星方向属于状态探查。后续正文修订须注明两行重叠或从探查行排除该项。",
+      "前次任务 JSON 的早期 commands 项无逐项 evidence，运行目录只保留执行 Agent 摘要和报告，未找到原始终端输出；其退出码只能引用报告记录。本轮直接阅读补齐事实定位，不把旧命令写成重新执行。",
+      "前次 report.json 标记已交付，当前版本状态 stageTasks 中 game-intent-charter 仍为 pending；这是秘书阶段对账状态，不能由本次证据核对改写为制作人批准或开发启动。",
+      "推荐体验目前只有界面源码、默认法术书和使用指南的静态证据；本轮未启动应用，不能声称新理论的跨实体编程体验已发生。"
+    ],
+    "auditCommands": [
+      {
+        "command": "node -e 'const fs=require(\"fs\");for(const name of [\"pilot-agent-intent-2026-09-24\",\"draft-2026-09-23-7af7515c-4ac5-47fe-9063-\"]){const v=JSON.parse(fs.readFileSync(`.daoyan-agent/releases/versions/${name}.json`,\"utf8\"));console.log(name,{id:v.id,charterRevision:v.charterRevision,currentStage:v.currentStage,scope13:(v.stageTasks||[]).filter(x=>x.scopeRevision===13).map(x=>({id:x.id,status:x.status,stage:x.stage}))})}'",
+        "exitCode": 0,
+        "evidence": [
+          ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json:382",
+          ".daoyan-agent/releases/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-.json:6"
+        ]
+      },
+      {
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 0,
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "node -e 'const fs=require(\"fs\");const p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json\";const r=JSON.parse(fs.readFileSync(p,\"utf8\"));if(r.taskId!==\"game-intent-charter\"||r.scopeRevision!==13||r.priorRunEvidenceAudit.checkedEvidence.length<10||r.priorRunEvidenceAudit.followUps.length<4)process.exit(1);console.log(\"prior-run evidence audit OK\")'",
+        "exitCode": 0,
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "git diff --check",
+        "exitCode": 0,
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "npx prettier --write docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 0,
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      }
+    ],
+    "auditFailedAttempts": [
+      {
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 1,
+        "evidence": "追加审计命令记录后格式未对齐；随后对同一文件定向格式化并复查。"
+      }
+    ]
+  },
+  "currentRunEvidence": {
+    "scopeRevision": 13,
+    "summary": "补全唯一理论正文中的公开目录分类、相邻玩法逐笔账本与法力方向；版本策划增加旧原型和推荐体验对照；意图记录同步两例的来源、失败和未决条件。方案仍待制作人评审，不批准开发切片。",
+    "priorGapDisposition": [
+      "准星方向属于 36 项状态探查，但语义是现实桥接；理论职责表现在明确两行重叠，不把公开目录错误计成 95 项。",
+      "前次早期命令的原始终端输出仍不可得；保留其报告来源，本轮只记录本次实际重新执行的定向命令与输出，不伪称恢复旧输出。",
+      "版本 stageTasks 中 game-intent-charter 的 pending 是秘书对账状态；本执行 Agent 没有修改版本状态或宣称立项获批。",
+      "推荐的跨实体程序体验尚无实现和运行路径；本轮只核对静态代码、测试与界面入口，策划将其标为待证体验，未冒充游戏 E2E。"
+    ],
+    "commands": [
+      {
+        "command": "npx prettier --write docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "exitCode": 0,
+        "output": "world-theory-draft.md and charter-draft.md formatted; intent-alignment.json unchanged",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+        ]
+      },
+      {
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "exitCode": 0,
+        "output": "All matched files use Prettier code style!",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+        ]
+      },
+      {
+        "command": "npm run docs:check",
+        "exitCode": 0,
+        "output": "元法术参考检查通过：94 个元法术；文档检查通过：138 个 Markdown 文件，版本 0.2.0",
+        "evidence": [
+          "docs/reference/meta-spells.md",
+          "scripts/generate-meta-reference.ts",
+          "scripts/check-docs.mjs"
+        ]
+      },
+      {
+        "command": "node --experimental-strip-types -e 'import {readFileSync} from \"node:fs\"; import {parseProductIntentAlignment} from \"./scripts/product-intent.ts\"; const d=\"docs/versions/pilot-agent-intent-2026-09-24/\"; const raw=JSON.parse(readFileSync(d+\"intent-alignment.json\",\"utf8\")); const a=parseProductIntentAlignment(raw,\"pilot-agent-intent-2026-09-24\",\"2\"); const w=readFileSync(d+\"world-theory-draft.md\",\"utf8\"),c=readFileSync(d+\"charter-draft.md\",\"utf8\"); const required=[\"法力守恒\",\"修士起步\",\"结构损伤\",\"人工生命\",\"额外供能\",\"创建者死亡\",\"场外\",\"储备挪用\",\"回收套利\",\"六类理论缺口\",\"来源与付款\",\"反作用或耗散\",\"失败与账本边界\"]; const missing=required.filter(x=>!w.includes(x)); const cases=a.adjacentCases.slice(0,2).map(x=>x.scenario.split(\"：\")[0]); const checks=[raw.scopeRevision===13,a.producerSignals.some(x=>x.includes(\"[已确认]\")),a.producerSignals.some(x=>x.includes(\"[检验与探索]\")),cases.every(x=>w.includes(x)&&c.includes(x)),w.includes(\"36 项状态探查（含 `准星方向`\"),w.includes(\"从环境账户吸收可用法力\"),c.includes(\"策划修订：`2`\"),c.includes(\"范围修订：`13`\"),c.includes(\"旧原型与推荐体验的对照\")]; if(missing.length||checks.some(x=>!x)) {console.error({missing,checks,cases}); process.exit(1)} console.log(\"scope-13 charter/theory/alignment OK; adjacent cases:\",cases.join(\"、\"))'",
+        "exitCode": 0,
+        "output": "scope-13 charter/theory/alignment OK; adjacent cases: 接力护送、遗体旁的自修复信标",
+        "evidence": [
+          "scripts/product-intent.ts",
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+        ]
+      },
+      {
+        "command": "node -e 'const fs=require(\"fs\"),path=require(\"path\"); const d=\"docs/versions/pilot-agent-intent-2026-09-24\"; for(const n of [\"world-theory-draft.md\",\"charter-draft.md\"]){const f=path.join(d,n),s=fs.readFileSync(f,\"utf8\"); for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")&&!fs.existsSync(path.resolve(path.dirname(f),t))){console.error(f,t);process.exitCode=1}}}if(!process.exitCode)console.log(\"relative links OK\")'",
+        "exitCode": 0,
+        "output": "relative links OK",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md"
+        ]
+      },
+      {
+        "command": "git diff --check",
+        "exitCode": 0,
+        "output": "",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "npx prettier --write docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 0,
+        "output": "tasks/charter-draft-game-intent-charter.json formatted",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 0,
+        "output": "All matched files use Prettier code style!",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "node -e 'const fs=require(\"fs\");const p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json\";const r=JSON.parse(fs.readFileSync(p,\"utf8\"));if(r.taskId!==\"game-intent-charter\"||r.scopeRevision!==13||r.currentRunEvidence.scopeRevision!==13||r.currentRunEvidence.commands.some(x=>x.exitCode!==0||!x.command||!x.evidence?.length)||r.currentRunEvidence.priorGapDisposition.length!==4)process.exit(1);console.log(\"current task evidence JSON OK\",r.currentRunEvidence.commands.length,\"recorded checks\")'",
+        "exitCode": 0,
+        "output": "current task evidence JSON OK 6 recorded checks",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      }
+    ],
+    "deliveryEvidence": [
+      "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
+    ],
+    "handoff": "执行 Agent 不提交；Feature PM 在独立审查通过后由调度器执行本地提交，不推送。当前未提交改动和空提交字段只表示尚未进入 Git 交付阶段。"
+  },
+  "deliveryRunEvidence": {
+    "scopeRevision": 13,
+    "summary": "最终差异复核与范围内定向文档验证；四个合同交付文件保留为未提交改动。",
+    "commands": [
+      {
+        "output": "All matched files use Prettier code style!",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ],
+        "exitCode": 0,
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+      },
+      {
+        "output": "元法术参考检查通过：94 个元法术；文档检查通过：138 个 Markdown 文件，版本 0.2.0",
+        "evidence": [
+          "docs/reference/meta-spells.md",
+          "scripts/generate-meta-reference.ts",
+          "scripts/check-docs.mjs"
+        ],
+        "exitCode": 0,
+        "command": "npm run docs:check"
+      },
+      {
+        "output": "four-file JSON, bindings, adjacent cases, and relative links OK",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ],
+        "exitCode": 0,
+        "command": "node --experimental-strip-types --input-type=module -e 'import {readFileSync,existsSync} from \"node:fs\"; import {resolve,dirname,join} from \"node:path\"; import {parseProductIntentAlignment} from \"./scripts/product-intent.ts\"; const root=\"docs/versions/pilot-agent-intent-2026-09-24\"; const report=JSON.parse(readFileSync(join(root,\"tasks/charter-draft-game-intent-charter.json\"),\"utf8\")); const raw=JSON.parse(readFileSync(join(root,\"intent-alignment.json\"),\"utf8\")); const alignment=parseProductIntentAlignment(raw,\"pilot-agent-intent-2026-09-24\",\"2\"); const theory=readFileSync(join(root,\"world-theory-draft.md\"),\"utf8\"); const charter=readFileSync(join(root,\"charter-draft.md\"),\"utf8\"); if(report.taskId!==\"game-intent-charter\"||report.scopeRevision!==13||raw.scopeRevision!==13) throw Error(\"version binding mismatch\"); for(const item of alignment.adjacentCases.slice(0,2)){const name=item.scenario.split(\"：\")[0]; if(!theory.includes(name)||!charter.includes(name)) throw Error(\"missing adjacent case: \"+name)} for(const name of [\"world-theory-draft.md\",\"charter-draft.md\"]){const file=join(root,name); const body=readFileSync(file,\"utf8\"); for(const match of body.matchAll(/\\]\\(([^)]+)\\)/g)){const target=match[1].split(\"#\")[0]; if(target&&!target.includes(\"://\")&&!existsSync(resolve(dirname(file),target))) throw Error(\"broken link: \"+target)}} console.log(\"four-file JSON, bindings, adjacent cases, and relative links OK\")'"
+      },
+      {
+        "output": "",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ],
+        "exitCode": 0,
+        "command": "git diff --check"
+      }
+    ],
+    "unrecoveredFailedAttempt": {
+      "command": null,
+      "exitCode": 1,
+      "output": "前次交付记录称 PowerShell ParserError，原始终端输出未保留",
+      "evidence": [
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-charter-draft-3/review-input-1.patch"
+      ],
+      "disposition": "前次交付将原命令写成方括号摘要，运行目录没有保存原始命令，无法可信还原；保留失败事实与退出码，不将推测命令冒充实跑。已以完整命令重新执行同范围检查并记录通过。"
+    },
+    "commit": null,
+    "gitDisposition": "前次可定位本地提交为 458ca04b8b1c179959b169db3f1a48ac8f4600d9；本轮四份交付文件尚未提交。本地提交由 Feature PM 在独立审查通过后执行，提交结果以 PM 最终报告为准。"
+  }
 }
