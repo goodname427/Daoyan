@@ -1127,7 +1127,7 @@ export function reopenVerifiedBugfixDelivery(
   return reopenVerifiedStageDelivery(state, versionId, 'bugfix', emptyStoppedAttemptIds, now);
 }
 
-/** Reuse a task report after its missing structured evidence was repaired and an empty retry stopped. */
+/** Reuse a task report after its structured evidence was repaired and an unwritten retry stopped. */
 export function reopenCorrectedStageTaskDelivery(
   state: SecretaryState,
   deliveredId: string,
@@ -1139,7 +1139,7 @@ export function reopenCorrectedStageTaskDelivery(
     delivered?.status !== 'delivered' ||
     !delivered.orchestration?.formalTaskId ||
     !delivered.orchestration.formalStageConsumedAt ||
-    !delivered.summary.includes('缺少实际检查或交付证据')
+    !/(缺少实际检查或交付证据|仍有失败的直接检查)/.test(delivered.summary)
   )
     return false;
   const retries = state.items.filter(
@@ -1154,7 +1154,7 @@ export function reopenCorrectedStageTaskDelivery(
   if (retries.length === 0) return false;
   for (const item of retries) {
     item.status = 'superseded';
-    item.summary = '重试尚未完成任务；结构化证据已修正，回到原 Feature PM 交付验收。';
+    item.summary = '重试未产生写入；结构化证据已修正，回到原 Feature PM 交付验收。';
     item.completedAt ||= now;
     item.updatedAt = now;
     item.retryAt = '';
@@ -1169,6 +1169,26 @@ export function reopenCorrectedStageTaskDelivery(
   delivered.summary = '结构化证据已修正，等待正式版本重新验收原 Feature PM 交付。';
   delivered.updatedAt = now;
   return true;
+}
+
+export function repeatedFormalAcceptanceFailureCount(
+  state: SecretaryState,
+  failed: SecretaryItem,
+): number {
+  const owner = failed.orchestration;
+  if (!owner?.formalVersionId || !failed.summary.startsWith('阶段交付未能写入正式版本')) {
+    return 0;
+  }
+  return state.items.filter(
+    (item) =>
+      item.status === 'delivered' &&
+      item.summary === failed.summary &&
+      item.orchestration?.formalVersionId === owner.formalVersionId &&
+      item.orchestration?.formalStage === owner.formalStage &&
+      item.orchestration?.formalScopeRevision === owner.formalScopeRevision &&
+      item.orchestration?.formalStageStep === owner.formalStageStep &&
+      item.orchestration?.formalTaskId === owner.formalTaskId,
+  ).length;
 }
 
 /** Recheck an environment-blocked QA report only after separate host evidence is supplied. */

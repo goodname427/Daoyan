@@ -78,14 +78,14 @@
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
       ]
-    },
+    }
+  ],
+  "failedAttempts": [
     {
       "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
       "exitCode": 1,
       "evidence": ".git/index.lock: Permission denied; Git could not create the lock file. No staging or commit occurred."
-    }
-  ],
-  "failedAttempts": [
+    },
     {
       "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
       "exitCode": 1,

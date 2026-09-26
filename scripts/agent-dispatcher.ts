@@ -12,6 +12,7 @@ import {
   commitBodyForPlan,
   conventionalCommitOrFallback,
   canResumeCompletedCommit,
+  applyFormalStageValidationProfile,
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
@@ -2266,12 +2267,7 @@ try {
   }
 
   const plan = activePlan;
-  const formalTaskKind =
-    /^\[formal-stage-(deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.exec(
-      activeResolvedDirection,
-    )?.[1];
-  if (formalTaskKind && !plan.riskSignals.includes(`formal-stage-${formalTaskKind}`)) {
-    plan.riskSignals.push(`formal-stage-${formalTaskKind}`);
+  if (applyFormalStageValidationProfile(plan, activeResolvedDirection)) {
     await writeFile(
       resolve(runDirectory, 'plan.validated.json'),
       `${JSON.stringify(plan, null, 2)}\n`,

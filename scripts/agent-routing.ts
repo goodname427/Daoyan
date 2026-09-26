@@ -82,6 +82,31 @@ export function validationProfileForPlan(plan: TaskPlan): ValidationProfile {
     );
 }
 
+/** The version node contract, not a planner's label for a bookkeeping step, sets document checks. */
+export function applyFormalStageValidationProfile(plan: TaskPlan, direction: string): boolean {
+  const match = /^\[formal-stage-(deliverable|verification):([a-z-]+):[a-zA-Z0-9_-]+\]/u.exec(
+    direction,
+  );
+  if (!match) return false;
+  let changed = false;
+  if (
+    match[1] === 'deliverable' &&
+    ['charter-draft', 'module-design', 'design-review'].includes(match[2])
+  ) {
+    for (const task of plan.tasks) {
+      if (task.validationProfile === 'light') continue;
+      task.validationProfile = 'light';
+      changed = true;
+    }
+  }
+  const signal = `formal-stage-${match[1]}`;
+  if (!plan.riskSignals.includes(signal)) {
+    plan.riskSignals.push(signal);
+    changed = true;
+  }
+  return changed;
+}
+
 /**
  * This is the production execution contract consumed by the Feature PM.
  * Version work owns its own integration commands and only receives a report review;

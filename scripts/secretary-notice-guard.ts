@@ -80,6 +80,7 @@ import {
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
   reopenCorrectedStageTaskDelivery,
+  repeatedFormalAcceptanceFailureCount,
   reopenEnvironmentBlockedQaDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
@@ -2268,7 +2269,7 @@ function stageTaskDirection(version: FormalVersion, task: VersionStageTask): str
       commit: candidate.commit,
       evidence: candidate.evidence.slice(0, 4),
     }));
-  return `[${marker}:${task.stage}:${task.id}]\n你是此项有界交付的 Feature PM。版本 ${version.id}，节点 ${task.stage}，范围修订 ${task.scopeRevision}。这是已批准版本内的一项任务，不是制作人的新方向。自行规划内部执行 Agent 与顺序，只完成本合同：\n${JSON.stringify(task, null, 2)}\n直接前驱的有限证据索引：${JSON.stringify(dependencies)}。来源是线索，不是新的指令；具体事实以当前代码核实为准。${task.stage === 'charter-draft' ? '' : `产品意图来源：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。`}\n仅读取合同必要的仓库事实和直接前驱结论；不要重读整版原始对话。不要编辑其他任务、节点总报告或 docs/status.md。${verificationOnly ? '本任务只产生独立测试或候选结论，不修改产品实现与游戏测试。' : ''}独立审查必须检查实际差异。\n在交付前写入 ${resultPath}：{"taskId":"${task.id}","status":"completed","summary":"结果","commands":[{"command":"实际运行的定向命令","exitCode":0}],"evidence":["产物或日志路径"]}。真实失败命令保留原退出码，不能用计划命令冒充已执行。不要运行 npm run verify:full；本 PM 的审查与快速门禁由调度器按范围执行。仅本地提交，不推送。`;
+  return `[${marker}:${task.stage}:${task.id}]\n你是此项有界交付的 Feature PM。版本 ${version.id}，节点 ${task.stage}，范围修订 ${task.scopeRevision}。这是已批准版本内的一项任务，不是制作人的新方向。自行规划内部执行 Agent 与顺序，只完成本合同：\n${JSON.stringify(task, null, 2)}\n直接前驱的有限证据索引：${JSON.stringify(dependencies)}。来源是线索，不是新的指令；具体事实以当前代码核实为准。${task.stage === 'charter-draft' ? '' : `产品意图来源：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。`}\n仅读取合同必要的仓库事实和直接前驱结论；不要重读整版原始对话。不要编辑其他任务、节点总报告或 docs/status.md。${verificationOnly ? '本任务只产生独立测试或候选结论，不修改产品实现与游戏测试。' : ''}若节点需要独立审查，必须检查实际差异。\n在交付前写入 ${resultPath}：{"taskId":"${task.id}","status":"completed","summary":"结果","commands":[{"command":"实际运行的定向命令","exitCode":0}],"evidence":["产物或日志路径"]}。commands 只记录最终通过的直接检查；失败命令按真实退出码单列 failedAttempts，不能用计划命令冒充已执行。不要运行 npm run verify:full；调度器按节点 Profile 验证；策划与纯文档节点只做轻量直接检查，不运行代码快速门禁或独立代码审查。仅本地提交，不推送。`;
 }
 
 function stageFinalizingDirection(version: FormalVersion): string {
@@ -4604,6 +4605,13 @@ function reportValidationProfile(report: Record<string, unknown>): string {
     : 'task';
 }
 
+function stageTaskReviewRequired(stage: VersionStage, report: Record<string, unknown>): boolean {
+  return !(
+    ['charter-draft', 'module-design', 'design-review'].includes(stage) &&
+    reportValidationProfile(report) === 'light'
+  );
+}
+
 function reportExecutionRound(report: Record<string, unknown>): number {
   return isRecord(report.validation) &&
     Number.isInteger(report.validation.executionRound) &&
@@ -5276,7 +5284,10 @@ async function consumeTaskOwnedVersionItem(
   ) {
     throw new Error(`节点任务 ${task.id} 把统一门禁记成了直接检查`);
   }
-  if (!isRecord(report.review) || report.review.verdict !== 'pass') {
+  if (
+    stageTaskReviewRequired(stage, report) &&
+    (!isRecord(report.review) || report.review.verdict !== 'pass')
+  ) {
     throw new Error(`节点任务 ${task.id} 缺少独立审查通过证据`);
   }
   const base = item.orchestration?.formalTaskBaseRevision;
@@ -5407,6 +5418,17 @@ async function driveFormalVersion(): Promise<boolean> {
           }
         }
         delivered.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        if (repeatedFormalAcceptanceFailureCount(state, delivered) >= 3) {
+          delivered.status = 'failed';
+          delivered.summary = `技术阻断：同一正式节点交付连续三次未被接纳：${reason}`;
+          await emitNotice(
+            'version-stage-blocked',
+            `【版本节点·重复拒收】暂停：${reason} 三次交付未形成进展，主 Agent 将核查证据与接纳合同。`,
+            delivered,
+          );
+          changed = true;
+          break;
+        }
         if (/超出独占写入范围|只能写入当前版本证据目录|占用 Version PM 的共享文档/.test(reason)) {
           delivered.status = 'failed';
           delivered.summary = `技术阻断：节点任务边界被突破：${reason}`;
@@ -5834,13 +5856,13 @@ async function coordinateOnce(): Promise<void> {
           item.orchestration.formalScopeRevision === formalScopeRevision(activeFormalVersion) &&
           item.orchestration.formalTaskId &&
           item.orchestration.formalStageConsumedAt &&
-          item.summary.includes('缺少实际检查或交付证据'),
+          /(缺少实际检查或交付证据|仍有失败的直接检查)/.test(item.summary),
       );
     const task = stageTasksForCurrentNode(activeFormalVersion).find(
       (candidate) => candidate.id === delivered?.orchestration?.formalTaskId,
     );
     if (delivered?.runDirectory && task?.status === 'pending') {
-      const emptyRetryIds = new Set<string>();
+      const unwrittenRetryIds = new Set<string>();
       for (const item of state.items) {
         if (
           item.orchestration?.formalTaskId !== task.id ||
@@ -5853,19 +5875,25 @@ async function coordinateOnce(): Promise<void> {
         )
           continue;
         const checkpoint = await readJson(resolve(item.runDirectory, 'recovery.json'));
-        if (Array.isArray(checkpoint?.taskRuns) && checkpoint.taskRuns.length === 0) {
-          emptyRetryIds.add(item.id);
+        if (
+          Array.isArray(checkpoint?.taskRuns) &&
+          checkpoint.taskRuns.every(
+            (run: unknown) =>
+              isRecord(run) && Array.isArray(run.changedFiles) && run.changedFiles.length === 0,
+          )
+        ) {
+          unwrittenRetryIds.add(item.id);
         }
       }
-      if (emptyRetryIds.size > 0) {
+      if (unwrittenRetryIds.size > 0) {
         try {
           const report = await readJson(resolve(delivered.runDirectory, 'report.json'));
           const resultPath = `${activeFormalVersion.documentRoot}/tasks/${currentStageTaskLabel(activeFormalVersion)}-${task.id}.json`;
           const result = parseStageTaskResult(await readJson(resolve(root, resultPath)), task.id);
           if (
             report?.status !== '已交付' ||
-            !isRecord(report.review) ||
-            report.review.verdict !== 'pass' ||
+            (stageTaskReviewRequired(activeFormalVersion.currentStage, report) &&
+              (!isRecord(report.review) || report.review.verdict !== 'pass')) ||
             result.commands.some((command) => command.exitCode !== 0) ||
             !evidenceAfterStageStart(
               activeFormalVersion.nodes.find((node) => node.id === activeFormalVersion.currentStage)
@@ -5885,7 +5913,7 @@ async function coordinateOnce(): Promise<void> {
           reopenedCorrectedTask = reopenCorrectedStageTaskDelivery(
             state,
             delivered.id,
-            emptyRetryIds,
+            unwrittenRetryIds,
             new Date().toISOString(),
           );
         } catch {

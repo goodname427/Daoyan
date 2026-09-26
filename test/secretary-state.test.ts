@@ -27,6 +27,7 @@ import {
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
   reopenCorrectedStageTaskDelivery,
+  repeatedFormalAcceptanceFailureCount,
   reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -97,6 +98,47 @@ describe('persistent secretary state', () => {
     expect(retry.status).toBe('superseded');
     expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
     expect(state.activeItemId).toBe('');
+  });
+
+  it('counts only identical formal task rejections and reopens a repaired failed-check report', () => {
+    const state = createSecretaryState('2026-09-26T00:00:00.000Z');
+    const rejected = Array.from({ length: 3 }, (_, index) => {
+      const item = itemFromIntake(
+        { id: `rejected-${index}`, idea: '策划', createdAt: state.initializedAt },
+        [],
+      ).item;
+      item.status = 'delivered';
+      item.summary =
+        '阶段交付未能写入正式版本，将自动安排修复：节点任务 charter 仍有失败的直接检查';
+      item.orchestration = {
+        ...item.orchestration!,
+        formalVersionId: 'v2',
+        formalStage: 'charter-draft',
+        formalScopeRevision: 13,
+        formalStageStep: 'task',
+        formalTaskId: 'charter',
+        formalStageConsumedAt: state.initializedAt,
+      };
+      return item;
+    });
+    const retry = itemFromIntake(
+      { id: 'read-only-retry', idea: '复核', createdAt: state.initializedAt },
+      [],
+    ).item;
+    retry.status = 'retry-wait';
+    retry.orchestration = { ...rejected[2].orchestration!, processOccupied: false };
+    state.items.push(...rejected, retry);
+    expect(repeatedFormalAcceptanceFailureCount(state, rejected[2])).toBe(3);
+    expect(
+      reopenCorrectedStageTaskDelivery(
+        state,
+        rejected[2].id,
+        new Set([retry.id]),
+        state.initializedAt,
+      ),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(rejected[2].orchestration?.formalStageConsumedAt).toBeUndefined();
   });
   it('merges only explicitly named backlog candidates and records correction evidence', () => {
     const state = createSecretaryState('2026-09-23T00:00:00.000Z');

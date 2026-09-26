@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { advanceVersion, createFormalVersion, recordApproval } from '../scripts/version-lifecycle';
-import { buildLocalPlan, validationStagesForPlan } from '../scripts/agent-routing';
+import {
+  applyFormalStageValidationProfile,
+  buildLocalPlan,
+  validationStagesForPlan,
+} from '../scripts/agent-routing';
 import { ensureVersionStageItem } from '../scripts/secretary-notice-guard';
 import { createSecretaryState } from '../scripts/secretary-state';
 import {
@@ -213,11 +217,15 @@ describe('stage-owned task contracts', () => {
   });
 
   it('keeps task PM checks separate from the final full gate', () => {
-    const charterPlan = buildLocalPlan('整理版本策划');
-    charterPlan.tasks = [
-      { ...charterPlan.tasks[0], type: 'documentation', validationProfile: 'light' },
-    ];
-    charterPlan.riskSignals.push('formal-stage-deliverable');
+    const charterPlan = buildLocalPlan('实现任务记录交付');
+    charterPlan.tasks[0].type = 'implementation';
+    expect(
+      applyFormalStageValidationProfile(
+        charterPlan,
+        '[formal-stage-deliverable:charter-draft:game-intent-charter]',
+      ),
+    ).toBe(true);
+    expect(charterPlan.tasks[0].validationProfile).toBe('light');
     expect(validationStagesForPlan(charterPlan)).toEqual([]);
     const taskPlan = buildLocalPlan('实现测试功能');
     taskPlan.riskSignals.push('formal-stage-deliverable');
