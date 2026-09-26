@@ -283,11 +283,11 @@
       "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
       "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
     ],
-    "handoff": "执行 Agent 不提交；Feature PM 在独立审查通过后由调度器执行本地提交，不推送。当前未提交改动和空提交字段只表示尚未进入 Git 交付阶段。"
+    "handoff": "此处记录的是当时的执行 Agent 交接状态：执行 Agent 不提交；后续本地提交结果见 postHandoffAudit，不把交接时的空提交字段当作当前 Git 状态。"
   },
   "deliveryRunEvidence": {
     "scopeRevision": 13,
-    "summary": "最终差异复核与范围内定向文档验证；四个合同交付文件保留为未提交改动。",
+    "summary": "此处保留提交前的差异复核和定向文档验证记录；当时四个合同交付文件尚未提交。",
     "commands": [
       {
         "output": "All matched files use Prettier code style!",
@@ -343,6 +343,128 @@
       "disposition": "前次交付将原命令写成方括号摘要，运行目录没有保存原始命令，无法可信还原；保留失败事实与退出码，不将推测命令冒充实跑。已以完整命令重新执行同范围检查并记录通过。"
     },
     "commit": null,
-    "gitDisposition": "前次可定位本地提交为 458ca04b8b1c179959b169db3f1a48ac8f4600d9；本轮四份交付文件尚未提交。本地提交由 Feature PM 在独立审查通过后执行，提交结果以 PM 最终报告为准。"
+    "gitDisposition": "此字段保留提交前的交接判断；四份交付文件随后由 4ed5774 本地提交，任务 JSON 又由 4e747fb 修正。两次提交均可由 Git 历史定位，本次核对不再创建提交。"
+  },
+  "postHandoffAudit": {
+    "scopeRevision": 13,
+    "charterRevision": "2",
+    "gap": "上轮交接记录中‘四份文件尚未提交’是提交前状态，不能继续当作当前交付结论；早期检查缺失的原始输出不可恢复，已由 deliveryRunEvidence 中带完整命令、退出码和输出的重跑记录替代。",
+    "delivery": "4ed5774 已本地提交理论、策划、意图对齐与任务 JSON；4e747fb 已本地修正任务结果合同。本次仅校正任务证据时态并核对现有交付，不创建新提交、不推送。",
+    "acceptanceEvidence": [
+      "制作人确认、探索方向、策划推断和未决取舍：world-theory-draft.md:18；charter-draft.md:13；intent-alignment.json:1",
+      "共同前提、默认物理、实体生命和结构损伤：world-theory-draft.md:29、:48、:66、:84、:101",
+      "跨实体程序、两个相邻玩法、元法术与算法工作量：world-theory-draft.md:114、:148、:160",
+      "属性、旧实现、现实桥接和逐笔反例账目：world-theory-draft.md:185、:215、:229、:243、:247",
+      "六类未闭合问题与反证：world-theory-draft.md:266、:279",
+      "完整推荐体验、旧原型对照、范围与非目标、验收和待评审取舍：charter-draft.md:19、:25、:35、:41"
+    ],
+    "formattingCorrection": {
+      "failedCommand": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+      "exitCode": 1,
+      "output": "本轮新增检查记录后，Prettier 指出任务 JSON 格式不符。",
+      "fixCommand": "npx prettier --write docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+      "fixExitCode": 0,
+      "evidence": "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+    },
+    "commands": [
+      {
+        "command": "node --experimental-strip-types --input-type=module -e 'import {readFileSync} from \"node:fs\"; import {parseProductIntentAlignment} from \"./scripts/product-intent.ts\"; const d=\"docs/versions/pilot-agent-intent-2026-09-24/\"; const raw=JSON.parse(readFileSync(d+\"intent-alignment.json\",\"utf8\")); const a=parseProductIntentAlignment(raw,\"pilot-agent-intent-2026-09-24\",\"2\"); const w=readFileSync(d+\"world-theory-draft.md\",\"utf8\"),c=readFileSync(d+\"charter-draft.md\",\"utf8\"); const names=a.adjacentCases.slice(0,2).map(x=>x.scenario.split(\"：\")[0]); const required=[\"法力守恒\",\"修士起步\",\"结构损伤\",\"人工生命\",\"额外供能\",\"创建者死亡\",\"场外\",\"储备挪用\",\"回收套利\",\"元法术与算法工作量审计\",\"六类理论缺口\"]; if(raw.scopeRevision!==13||!names.every(x=>w.includes(x)&&c.includes(x))||!required.every(x=>w.includes(x))||!c.includes(\"范围修订：`13`\")) process.exit(1); console.log(\"scope-13 alignment and content OK; adjacent cases:\",names.join(\"、\"))'",
+        "exitCode": 0,
+        "output": "scope-13 alignment and content OK; adjacent cases: 接力护送、遗体旁的自修复信标",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:148",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md:35",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json:1",
+          "scripts/product-intent.ts"
+        ]
+      },
+      {
+        "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "exitCode": 0,
+        "output": "Checking formatting... All matched files use Prettier code style!",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+          "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "node -e \"const fs=require('node:fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json'; const a=JSON.parse(fs.readFileSync(p,'utf8')); if(a.taskId!=='game-intent-charter'||a.postHandoffAudit?.commands?.length<2) process.exit(1); console.log('task JSON and post-handoff evidence OK')\"",
+        "exitCode": 0,
+        "output": "task JSON and post-handoff evidence OK",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      },
+      {
+        "command": "git diff --check",
+        "exitCode": 0,
+        "output": "",
+        "evidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+        ]
+      }
+    ],
+    "verifiedRun": {
+      "scopeRevision": 13,
+      "summary": "本轮定向检查通过；本地暂存因当前环境对 .git 元数据目录无写权限而失败，未发生提交或推送。",
+      "commands": [
+        {
+          "command": "node --experimental-strip-types -e <scope-13 alignment and content cross-check>",
+          "exitCode": 0,
+          "output": "scope-13 alignment and content OK; adjacent cases: 接力护送、遗体旁的自修复信标",
+          "evidence": [
+            "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:148",
+            "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md:35",
+            "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json:1",
+            "scripts/product-intent.ts"
+          ]
+        },
+        {
+          "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+          "exitCode": 0,
+          "output": "Checking formatting... All matched files use Prettier code style!",
+          "evidence": [
+            "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+            "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+            "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+            "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+          ]
+        },
+        {
+          "command": "npm run docs:check",
+          "exitCode": 0,
+          "output": "元法术参考检查通过：94 个元法术；文档检查通过：138 个 Markdown 文件，版本 0.2.0",
+          "evidence": [
+            "scripts/generate-meta-reference.ts",
+            "scripts/check-docs.mjs",
+            "docs/versions/pilot-agent-intent-2026-09-24/"
+          ]
+        },
+        {
+          "command": "node -e <task JSON and scope structure check>",
+          "exitCode": 0,
+          "output": "task JSON and scope structure OK",
+          "evidence": [
+            "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+          ]
+        },
+        {
+          "command": "git diff --check",
+          "exitCode": 0,
+          "output": "",
+          "evidence": [
+            "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json"
+          ]
+        },
+        {
+          "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+          "exitCode": 128,
+          "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+          "evidence": [".git/index (readable; no index.lock created)"]
+        }
+      ]
+    }
   }
 }
