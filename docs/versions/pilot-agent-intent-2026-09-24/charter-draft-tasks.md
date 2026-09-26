@@ -1,6 +1,6 @@
 # 版本策划节点任务
 
-- 版本：`pilot-agent-intent-2026-09-24`；已批准范围修订：**3**；当前节点：`charter-draft`。上一节点 `direction` 已完成，制作人方向记于正式版本状态。
-- 唯一任务 `game-intent-charter`：复核上版制作人原话、旧策划、代码和体验证据，形成自洽的实体与法术世界策划案及同修订意图记录。任务需推导未点名情形，说明原子元法术、定价和资源账本，并提出一条供制作人确认的小规模完整体验及分期。具体交付、验收、输入与独占写入见[机器合同](./charter-draft-tasks.json)。无同节点前驱或写入冲突。
-- 策划案须区分已覆盖、真实缺口与待制作人判断。修士和法球的事件施法、运动及伤害用同一合同解释；预设与演武场敌方修士进入建议体验。任何新产品解释或不可逆取舍留待立项评审，确认前不进入详细策划或开发。
-- `charter-draft.md` 和 `intent-alignment.json` 由此任务独占。共享节点总报告与 `docs/status.md` 留给 Version PM 收束；协作调用及 token 等指标仅作过程观察。本清单不预拆后续节点或 Feature PM 内部步骤。
+- 版本：`pilot-agent-intent-2026-09-24`；范围修订：**12**；当前节点：`charter-draft`。方向已记录，理论与策划尚待制作人认可。
+- 唯一成果 `game-intent-charter`：修订[统一世界理论正文](./world-theory-draft.md)，同步[版本策划范围](./charter-draft.md)和[意图记录](./intent-alignment.json)。用反例、旧实现证据及未点名的玩家行为检验规则是否自洽、可组合；标明未决假设，交制作人评审。详细交付、验收、读取与独占写入见[机器合同](./charter-draft-tasks.json)。无同节点依赖或写入冲突。
+- 当前不选实现切片、不排预设或敌方修士开发、不新增平行理论文档。制作人确认规则后，再决定小规模验证切片；本清单不规划后续节点或 Feature PM 内部步骤。
+- `world-theory-draft.md`、`charter-draft.md` 和 `intent-alignment.json` 由该任务独占写入。节点总报告和 `docs/status.md` 留给 Version PM 收束；协作调用与成本仅作过程观察。

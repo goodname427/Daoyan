@@ -2,26 +2,28 @@
   "tasks": [
     {
       "id": "game-intent-charter",
-      "title": "复核法术世界规则并形成版本策划案",
-      "objective": "按范围修订 3 以制作人原话重新解释上版游戏方向，核查旧策划、实现与体验证据，提出自洽的实体和法术世界规则、完整玩家体验及一个有证据的小规模分期建议，供制作人确认。",
+      "title": "修订统一世界理论与版本策划范围",
+      "objective": "按范围修订 12，以制作人原始方向和后续反馈为一手信号，修订唯一世界理论正文，反证其能否支撑玩家自行编写法术与实体行为，并形成供制作人评审的版本策划范围；不预选开发切片。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md：修订 2 版本策划案，包含系统原则、逐项证据对照、完整体验、开放判断和唯一候选修正切片及分期。",
-        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json：绑定本版本 ID 与 charterRevision 2、与策划案一致的结构化意图记录。"
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：唯一可持续修订的世界理论正文、反例和未决问题。",
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md：与理论一致的版本问题、目标、非目标、体验和制作人评审门槛。",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json：绑定本版本 ID 与策划修订 2 的原话、推断、相邻情形及待确认假设。"
       ],
       "acceptance": [
-        "以旧版状态文件的 direction 和 scopeRevisions 及本版制作人补充为一手信号；旧版 charter-draft.md、module-design.md、archived.md、当前代码与体验只作为待复核的解读或交付事实，不以代理验收推定隐含意图已获确认。",
-        "从属性驱动、统一实体、资源守恒、事件化法术及万物皆法术归纳共通规则；说明修士、法球与未来实体共享的创建、能力、事件订阅和派发、事件触发施法、授权、施法者与付款方、资源、失败及终止合同，并写明能力差异和适用边界。减速、破防、碰撞伤害与修士受伤响应只作为原则的检验例子。",
-        "逐项解释运动、爆炸和伤害等效果的触发、执行者、付款方、能量来源、耗尽和账本；明确法球只消费创建时注入的有限资源且自身不恢复。元法术边界限于不可由已有元法术组合表达的原子状态或世界效果，检验读取位置加移动构成普通追踪术的情形；价格和优化从原子效果及算法工作量解释，不凭空折扣。",
-        "推导至少两个制作人未逐项指定的实体或事件相邻玩法情形及预期行为，覆盖权限、并发、耗尽或失效等边界；描述玩家从推演台编写、查看或导入预设、预算与失败检查，到演武场玩家和敌方修士同规则实战，再返回同一法术书修改验证的成功、失败与往返体验。",
-        "每条新推断均对照旧策划、当前实现和可体验路径，标为已覆盖、存在缺口或仍需制作人判断，并附可定位的文件、测试或行为证据；不预设旧版必有缺口。",
-        "仅在证据确认真实缺口时推荐一个小规模但贯通共享规则的修正切片，列范围、非目标、可观察验收、机制不同的预设及敌方修士体验、分期和 ADR/旧法术或存档迁移影响；若无真实缺口则说明依据并升级开放判断。不得把单一法球碰撞补丁或重做上版框架当作既定范围。",
-        "意图记录符合现有合同：versionId 为 pilot-agent-intent-2026-09-24、charterRevision 为 2，记录原始信号、推断原则、至少两个相邻情形、推荐体验、边界和待确认假设，并与策划案一致。新产品解释或不可逆取舍明示待制作人立项评审，不预先进入详细策划或开发。",
-        "版本节点任务、Feature PM、独立审查、集成门禁及失败恢复仅用于协作过程验证；调用、已知 token 下界、缺失用量、重复阅读与返工只作为过程观察，不作为游戏产品主题。"
+        "以旧版状态文件的 direction、scopeRevisions 及本版范围修订 12 的制作人反馈为意图依据；旧策划、归档、代码和代理验收仅作待复核证据。逐条区分制作人确认、探索方向、策划推断及未决取舍，不把旧例子当成封闭清单。",
+        "仅在 world-theory-draft.md 维护一套从少量共同原则推导的规则，区分世界公理、实体与生命及伤害等推导现象、游戏数值和现实桥接；说明默认物理、实体存续与消失、生命维持与死亡、法力来源去向、耗时、授权、原子术式、事件与有限记忆如何形成跨修士、法球和其他实体的同一合同。",
+        "检验法力守恒与可用性、自然施力及碰撞、结构损伤、稳定物体和人工生命、法球散逸与额外供能、创建者死亡、场外及碰撞、100 点余额挪用 20 点维持储备、回收套利等反例；每一效果交代来源、付款、作用、反作用或耗散、失败及账本，无法闭合的地方保留为明确问题。",
+        "审计现有属性、公开元法术与价格的原子性和算法工作量；可由感知、计算、作用、有限状态及事件再启动组合的追踪等行为不得升为专名元法术。用至少两个未逐项指定的相邻玩法情形检验玩家可编程闭合性、同一程序跨实体运行及资源和权限失败边界。",
+        "把鼠标、按键、瞄准、AI、时间、界面探查、表现及配置归入现实桥接或世界层，描述跨入口等价的施法意图；写明玩家在推演台编写与验证、到演武场观察同规则行为及失败、再返回修改的推荐完整体验，预设和敌方修士仅为后续规则验证目标。",
+        "逐项对照旧策划、当前代码及可体验路径，标记已覆盖、存在缺口或仍需制作人判断，并提供可定位的文件、测试或行为证据；说明与已采纳 ADR 的冲突及原型重做或移除旧内容的影响，不以旧法术、存档兼容阻断立论。",
+        "charter-draft.md 与 intent-alignment.json 和唯一理论正文一致；真实缺口先成为理论待证问题，不将此前的创建注能、组合运动、碰撞施法切片或其他开发顺序写成已批准任务。制作人认可系统解释后才选择小规模验证切片并进入详细策划或开发。",
+        "Agent 节点协作、调用、token 下界、缺失用量、重复阅读和返工只作过程观察，不成为游戏产品主题；本节点只交付供制作人评审的策划，不宣称制作人已确认理论。"
       ],
       "dependsOn": [],
       "readPaths": [
         ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
         ".daoyan-agent/releases/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/charter-draft.md",
@@ -29,21 +31,24 @@
         "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/archived.md",
         "docs/product/vision.md",
         "docs/architecture/invariants.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
         "docs/reference/entities-and-attributes.md",
         "docs/reference/spell-authoring.md",
         "docs/reference/meta-spells.md",
         "docs/specs/2026-09-23-product-intent-alignment.md",
+        "src/core/attributes.ts",
         "src/core/metas/entity.ts",
+        "src/core/metas/input.ts",
         "src/core/world.ts",
         "src/core/vm.ts",
         "src/core/pricing.ts",
         "src/game/battle.ts",
         "src/game/spells.dy",
-        "src/app/spellPresets.ts",
         "src/app/LabView.tsx",
         "src/app/CombatView.tsx"
       ],
       "writePaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
       ]
