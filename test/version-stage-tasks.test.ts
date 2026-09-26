@@ -236,4 +236,27 @@ describe('stage-owned task contracts', () => {
     );
     expect(validationStagesForPlan(finalPlan)).toContain('full-gate');
   });
+
+  it('lets design review produce evidence before escalating a producer decision', () => {
+    const reviewPlan = buildLocalPlan('审核统一世界规则');
+    reviewPlan.producerDecisionRequired = true;
+    reviewPlan.producerQuestion = '请先选择物理规则';
+    expect(
+      applyFormalStageValidationProfile(
+        reviewPlan,
+        '[formal-stage-deliverable:design-review:unified-world-review]',
+      ),
+    ).toBe(true);
+    expect(reviewPlan.producerDecisionRequired).toBe(false);
+    expect(reviewPlan.producerQuestion).toBe('请先选择物理规则');
+    expect(validationStagesForPlan(reviewPlan)).toEqual([]);
+
+    const developmentPlan = buildLocalPlan('实现物理规则');
+    developmentPlan.producerDecisionRequired = true;
+    applyFormalStageValidationProfile(
+      developmentPlan,
+      '[formal-stage-deliverable:development:physics]',
+    );
+    expect(developmentPlan.producerDecisionRequired).toBe(true);
+  });
 });

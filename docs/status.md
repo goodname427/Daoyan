@@ -32,7 +32,7 @@
 
 ## 当前迭代
 
-- 正式试运行版本 `pilot-agent-intent-2026-09-24` 的策划修订 `2`、范围修订 `13` 已获制作人立项评审批准；唯一[世界理论正文](./versions/pilot-agent-intent-2026-09-24/world-theory-draft.md)和[模块详细策划](./versions/pilot-agent-intent-2026-09-24/world-rule-design.md)已由 Feature PM 交付，Version PM 的[公开阶段结论](./versions/pilot-agent-intent-2026-09-24/module-design.md)为详细策划材料已形成、待设计审核。六类规则取舍及旧 ADR 覆盖仍未决；立项批准和本节点交付都不代表理论细节获认可或游戏开发获准。纯策划节点只消费任务的直接检查证据，未运行游戏完整门禁或新规则体验；后续阶段登记由 notice guard 处理，见[开发记录](./dev/2026-09-26.md)。
+- 正式试运行版本 `pilot-agent-intent-2026-09-24` 的策划修订 `2`、范围修订 `13` 已获制作人立项评审批准；唯一[世界理论正文](./versions/pilot-agent-intent-2026-09-24/world-theory-draft.md)和[模块详细策划](./versions/pilot-agent-intent-2026-09-24/world-rule-design.md)已由 Feature PM 交付，Version PM 的[公开阶段结论](./versions/pilot-agent-intent-2026-09-24/module-design.md)为详细策划材料已形成。当前进入主策审核；发现规划器在审核记录产出前就触发了制作人等待，控制面正在修正并从原恢复点继续。六类规则取舍及旧 ADR 覆盖仍未决；立项批准和详细策划交付都不代表理论细节获认可或游戏开发获准。纯策划节点只消费任务的直接检查证据，未运行游戏完整门禁或新规则体验；后续阶段登记由 notice guard 处理，见[开发记录](./dev/2026-09-27.md)。
 
 - 工作流控制面已实现 [ADR-0021](./adr/0021-版本节点任务与PM分层.md) 的版本节点任务制：新正式版本由一个逻辑 Version PM 在每个节点建立任务合同，一项交付对应一个 Feature PM；取消独立的任务拆分与版本排期节点，旧归档版本不迁移。开发集成树使用一次完整门禁，候选经制作人批准后再合回主干。代码与合成看板体验已验证，真实多 PM 成本和返工要在下一次由制作人立项的正式版本中观察；本次不立项或发布游戏版本。
 

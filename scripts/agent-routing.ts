@@ -99,6 +99,13 @@ export function applyFormalStageValidationProfile(plan: TaskPlan, direction: str
       changed = true;
     }
   }
+  // The design-review deliverable is the evidence and options for a decision.
+  // Pausing before it is written leaves the producer with nothing concrete to review.
+  // The stage result can still escalate through design-review.json after delivery.
+  if (match[1] === 'deliverable' && match[2] === 'design-review' && plan.producerDecisionRequired) {
+    plan.producerDecisionRequired = false;
+    changed = true;
+  }
   const signal = `formal-stage-${match[1]}`;
   if (!plan.riskSignals.includes(signal)) {
     plan.riskSignals.push(signal);

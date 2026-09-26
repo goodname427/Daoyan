@@ -936,6 +936,7 @@ async function askPlanner(
 - 不单独建立“阅读现状”“运行门禁”任务；这些是每个执行者和调度器的固定责任。同一模型可以连续完成的实现、测试和文档应保持为一个任务。
 - economy 用于检索、文档与机械工作；standard 用于常规 UI/功能/测试；advanced 用于 core、DSL、VM、并发、共享契约和困难调试；critical 只用于 ADR、不可逆架构和重大迁移。
 - 若缺少的是实现细节，请自行做保守决定；只有产品方向冲突、不可逆选择或大版本发布才设置 producerDecisionRequired=true。
+- 若合同是 design-review 的审核交付，先完成审核记录与可比较的选项，再通过阶段结论升级制作人；不能因为最终可能需要制作人判断就把 producerDecisionRequired 设为 true 并在审核前暂停。
 - commitMessage 使用 Conventional Commits。
 - 不创建单独的 review 任务，调度器会统一进行独立审查。
 - 若方向以 [formal-stage-deliverable: 或 [formal-stage-verification: 开头，这是 Version PM 已批准的一项交付合同；只规划该 Feature PM 内部步骤，不重新拆同级 Feature、不新建版本，必须保留合同写入范围和证据产物。
