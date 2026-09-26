@@ -1,28 +1,40 @@
 {
   "tasks": [
     {
-      "id": "intent-charter",
-      "title": "形成供制作人对齐的版本策划案",
-      "objective": "从制作人已记录的工作流反馈提炼系统原则与完整体验，提出本版小范围试运行方案，并把尚待制作人确认的推断显式保留在立项评审前。",
+      "id": "game-intent-charter",
+      "title": "复核上版游戏意图并形成修订 2 版本策划案",
+      "objective": "以制作人原始方向为一手信号，复核上版策划、实现与可体验路径，提炼可推广的系统原则和完整玩家体验；只向制作人推荐一个有证据的小修正切片，保留未获确认的产品判断。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md：版本策划案，首页给出原则、推荐体验和待确认假设的短摘要。",
-        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json：绑定版本 ID 与策划修订 1 的结构化产品意图记录。"
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md：供制作人立项评审的修订 2 策划案，含原话、推断、逐项证据对照及唯一候选修正切片。",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json：与策划案一致、绑定本版本 ID 和 charterRevision 2 的结构化意图记录。"
       ],
       "acceptance": [
-        "策划案区分制作人明确方向与例子、策划推断及待确认假设；写明问题、目标、范围、非目标、适用边界、完整体验和可观察的验收标准。",
-        "结构化记录符合现有意图合同，包含原始信号、共通原则、至少两个制作人未逐项指定的相邻情形及其预期行为、推荐体验、边界和开放假设；版本 ID 为 pilot-agent-intent-2026-09-24，charterRevision 为 1，且与策划案表述一致。",
-        "策划案提出立项后只选一个最小且可真实体验的对齐闭环改进，说明如何观察节点任务到 Feature PM 的交接、独立审查、单次集成门禁与失败恢复；具体产品取舍标为待制作人确认，不当作已批准范围。",
-        "说明如何记录实际 Agent 调用、已知 token 下界与缺失用量、重复读取、全量门禁次数、返工及耗时；未知用量不计为零，阶段计划不冒充实际结果。",
-        "策划案不启动详细设计或开发，不扩展到调度框架重构、游戏玩法修改、自动发布或以代理审核替代制作人批准；无法可靠推断的原则和取舍明确升级到制作人立项评审。"
+        "以旧版状态文件的 direction 和 scopeRevisions 为制作人一手信号；旧版 charter-draft.md、module-design.md、archived.md、当前代码及体验均只作为待复核的旧解读或交付事实，不把代理验收当作制作人已确认隐含意图。",
+        "从属性驱动、统一实体、资源守恒、事件化法术及万物皆法术等原话归纳共通规则、玩家从推演台到演武场再返回的完整体验、适用边界和开放假设；减速、破防与列举能力作为例子检验原则，并推导至少两个原话未逐项指定的相邻玩法情形及预期行为。",
+        "把每条新推断逐项对照旧策划、当前实现与实际可体验入口，标明已覆盖、存在缺口或仍需制作人判断，给出可定位的文件、测试或行为证据；不预设旧版必有缺口。",
+        "若证据确认真实缺口，只推荐一个小规模、可在推演台和演武场形成完整体验的修正切片，列明范围、非目标、成功与失败验收，以及 ADR、兼容和迁移影响；若候选缺口已覆盖，则撤销该判断并据证据重选或明确升级，不重复开发旧版框架。",
+        "结构化意图记录符合现有合同，版本 ID 为 pilot-agent-intent-2026-09-24、charterRevision 为 2，包含原始信号、原则、至少两个相邻情形、推荐体验、边界与待确认假设，并与策划案一致。",
+        "节点任务、Feature PM、独立审查、集成门禁和失败恢复仅作为协作过程验证；调用、已知 token 下界、缺失用量、重复阅读与返工仅作为过程观察。制作人确认系统解读与切片前，不写详细策划、开发任务或既定的不可逆取舍。"
       ],
       "dependsOn": [],
       "readPaths": [
-        ".daoyan-agent/releases/current.json",
-        "docs/workflow.md",
-        "docs/agent-workflow.md",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        ".daoyan-agent/releases/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/charter-draft.md",
+        "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/module-design.md",
+        "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/archived.md",
+        "docs/product/vision.md",
+        "docs/architecture/invariants.md",
+        "docs/reference/entities-and-attributes.md",
+        "docs/reference/spell-authoring.md",
+        "docs/reference/meta-spells.md",
         "docs/specs/2026-09-23-product-intent-alignment.md",
-        "docs/specs/2026-09-24-stage-task-pms.md",
-        "docs/specs/2026-09-23-agent-collaboration-efficiency.md"
+        "src/core/metas/entity.ts",
+        "src/core/world.ts",
+        "src/game/battle.ts",
+        "src/app"
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
