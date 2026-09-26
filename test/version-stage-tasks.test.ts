@@ -39,6 +39,7 @@ describe('stage-owned task contracts', () => {
         'scripts/agent-dispatcher.ts',
         'test/version-stage-tasks.test.ts',
         'docs/status.md',
+        'docs/workflow.md',
         'docs/dev/2026-09-26.md',
         'docs/versions/v2/charter-draft.md',
       ]),

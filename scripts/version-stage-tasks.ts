@@ -225,7 +225,7 @@ export function assertTaskWriteScope(task: VersionStageTask, changedFiles: strin
 export function assertStageTaskDeliveryScope(task: VersionStageTask, changedFiles: string[]): void {
   const controlPlane = (path: string): boolean =>
     /^(?:scripts|test)\/(?:agent-|secretary-|version-)[^/]+\.ts$/.test(path) ||
-    path === 'docs/status.md' ||
+    ['docs/status.md', 'docs/workflow.md', 'docs/agent-workflow.md'].includes(path) ||
     /^docs\/dev\/\d{4}-\d{2}-\d{2}\.md$/.test(path);
   const taskChanges = changedFiles.filter((path) => !controlPlane(normalizedPath(path)));
   if (taskChanges.length === 0) throw new Error(`节点任务 ${task.id} 未提交合同内交付文件`);
