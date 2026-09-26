@@ -1,0 +1,93 @@
+{
+  "taskId": "unified-world-design",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "在已批准立项评审范围内，将唯一世界理论补成公开 94 项逐名归位和跨实体/边界反例逐笔账本；新增引用理论的模块详细策划，覆盖玩家完整往返、意图与资源合同、六类未决、旧原型和 ADR 0017–0020 影响。新规则仍待设计审核与制作人取舍，未作实现决定。",
+  "commands": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-unified-world-design.json",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-unified-world-design.json"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),path=require(\"path\");const d=\"docs/versions/pilot-agent-intent-2026-09-24\";for(const n of [\"world-theory-draft.md\",\"world-rule-design.md\"]){const f=path.join(d,n),s=fs.readFileSync(f,\"utf8\");for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")&&!fs.existsSync(path.resolve(path.dirname(f),t)))throw Error(f+\" -> \"+t)}}console.log(\"two-document relative links OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=fs.readFileSync(d+\"world-theory-draft.md\",\"utf8\"),r=fs.readFileSync(\"docs/reference/meta-spells.md\",\"utf8\");let names=[];for(const h of [\"运算符（30）\",\"按键状态（4）\",\"状态探查（36）\",\"实体创建（1）\",\"实体控制（22）\",\"施法控制（1）\"]){const section=r.split(\"## \"+h)[1]?.split(\"\\n## \")[0];if(!section)throw Error(\"section \"+h);for(const line of section.split(\"\\n\")){const m=line.match(/^\\| ([^|]+) \\|/);if(m&&!m[1].includes(\"元法术\")&&!m[1].startsWith(\"--\"))names.push(m[1].trim())}}const missing=names.filter(n=>!w.includes(\"`\"+n+\"`\"));console.log({count:names.length,missing});if(names.length!==94||missing.length)process.exit(1)'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/reference/meta-spells.md"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\");const d=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=fs.readFileSync(d+\"world-theory-draft.md\",\"utf8\"),p=fs.readFileSync(d+\"world-rule-design.md\",\"utf8\"),a=JSON.parse(fs.readFileSync(d+\"intent-alignment.json\",\"utf8\")),v=JSON.parse(fs.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));if(a.scopeRevision!==13||a.charterRevision!==\"2\"||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"scope/approval mismatch\");for(const term of [\"接力护送\",\"自修复信标\",\"100\",\"20\",\"回收套利\",\"创建者死亡\",\"遗体再损\",\"场外\",\"擦边\",\"未决\",\"跨实体与边界反例的交易明细\"]){if(!w.includes(term)||!p.includes(term))throw Error(\"missing cross-document term: \"+term)}if(!p.includes(\"./world-theory-draft.md\")||p.includes(\"候选公理组\"))throw Error(\"theory reference or authority mismatch\");console.log(\"scope-13, approval and theory/design content cross-check OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    },
+    {
+      "command": "node -e 'const r=require(\"./docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-unified-world-design.json\");if(r.taskId!==\"unified-world-design\"||r.status!==\"completed\"||r.scopeRevision!==13||r.charterRevision!==\"2\"||r.commands.some(x=>x.exitCode!==0)||r.failedAttempts.some(x=>x.exitCode!==1))process.exit(1);console.log(\"task JSON contract OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-unified-world-design.json"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-unified-world-design.json",
+      "exitCode": 1,
+      "evidence": "首次检查指出任务 JSON 格式不符；定向格式化后重新检查。"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 1,
+      "evidence": "首次检查报告 world-theory-draft.md:5 trailing whitespace；移除后同命令退出 0。"
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\");const d=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=fs.readFileSync(d+\"world-theory-draft.md\",\"utf8\"),p=fs.readFileSync(d+\"world-rule-design.md\",\"utf8\"),a=JSON.parse(fs.readFileSync(d+\"intent-alignment.json\",\"utf8\")),v=JSON.parse(fs.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));if(a.scopeRevision!==13||a.charterRevision!==\"2\"||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"scope/approval mismatch\");for(const term of [\"接力护送\",\"自修复信标\",\"100\",\"20\",\"回收套利\",\"创建者死亡\",\"遗体再损\",\"场外\",\"擦边\",\"未决\",\"跨实体与边界反例的交易明细\"]){if(!w.includes(term)||!p.includes(term))throw Error(\"missing cross-document term: \"+term)}if(!p.includes(\"./world-theory-draft.md\")||p.includes(\"候选公理组\"))throw Error(\"theory reference or authority mismatch\");console.log(\"scope-13, approval and theory/design content cross-check OK\")'",
+      "exitCode": 1,
+      "evidence": "首次交叉检查报告 world-rule-design.md 缺少精确词“回收套利”；补入后同命令退出 0。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    "docs/reference/meta-spells.md",
+    "src/core/world.ts",
+    "src/core/pricing.ts",
+    "src/core/vm.ts",
+    "src/game/battle.ts",
+    "src/app/LabView.tsx",
+    "src/app/CombatView.tsx",
+    "test/core.test.ts",
+    "test/combat.test.ts",
+    "test/entity-vnext.test.ts",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ]
+}
