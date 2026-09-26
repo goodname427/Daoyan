@@ -45,7 +45,7 @@ notice guard 空闲时不得调用模型或轮询项目；只有制作人消息�
 2. 难以撤销的架构决策先写 ADR；普通实现选择记录在规格或开发日志中。
 3. 保持改动聚焦，不覆盖工作区中与任务无关的未提交内容。
 4. 新行为必须有与风险相称的单元、集成或 E2E 覆盖。
-5. 开发中运行 `npm run verify`；交付前运行 `npm run verify:full` 并实际体验受影响路径。
+5. 按 [`docs/workflow.md`](./docs/workflow.md) 的阶段 Profile 验证：规划和纯文档改动只运行直接相关的文档、格式或定向检查；实现阶段运行 `npm run verify`，最终代码树才运行一次 `npm run verify:full` 并实际体验受影响路径。不得为策划案重复运行代码完整门禁。
 6. 同步长期文档和 `docs/status.md`；过程、结论与踩坑记入 `docs/dev/`。
 7. Git 是 AI 的默认版本管理工具：达到完整验证、文档同步且可独立回滚的逻辑节点后，主动形成 Conventional Commit 并决定是否推送；由 AI 按版本节点决定是否打 tag。大版本发布必须由用户明确决定。
 

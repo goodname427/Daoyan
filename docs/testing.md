@@ -12,8 +12,9 @@
 
 ## 门禁
 
-- `npm run verify`：开发与提交前的快速门禁，包含类型、lint、格式、文档和单元测试。
-- `npm run verify:full`：推送、交付和 CI 门禁，在快速门禁基础上增加覆盖率、沙盒、E2E 和生产构建。覆盖率命令为每次调用隔离临时报告目录，避免并发门禁互相删除 Vitest 的 worker 载荷。
+- `npm run docs:check` 与格式检查：规划和纯文档改动的直接门禁；若改动涉及结构化策划记录，再运行相应解析检查。该类交付不运行代码完整门禁。
+- `npm run verify`：实现开发与代码提交前的快速门禁，包含类型、lint、格式、文档和单元测试。
+- `npm run verify:full`：实现交付的最终代码树与 CI 门禁，在快速门禁基础上增加覆盖率、沙盒、E2E 和生产构建。覆盖率命令为每次调用隔离临时报告目录，避免并发门禁互相删除 Vitest 的 worker 载荷。
 - `npm run verify:ci`：CI 对完整门禁的稳定别名，必须与 `verify:full` 等价。
 - `npm run test:e2e` 会在启动 Playwright 前移除外部 `NO_COLOR`：Playwright 对其 WebServer 与 worker 固定启用 `FORCE_COLOR`，两者同时存在会让 Node 为每个子进程输出无关警告。
 
