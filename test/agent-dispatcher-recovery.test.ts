@@ -461,4 +461,133 @@ describe('Feature PM recovery checkpoint', () => {
     },
     integrationTestTimeoutMs,
   );
+
+  it(
+    'keeps completed tasks after a disjoint control-plane commit and revalidates the new tree',
+    async () => {
+      temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-dispatcher-forward-commit-'));
+      await cp(resolve(root, 'scripts'), resolve(temporary, 'scripts'), { recursive: true });
+      await cp(resolve(root, 'agents'), resolve(temporary, 'agents'), { recursive: true });
+      const policyPath = resolve(temporary, 'agents/policy.json');
+      const policy = JSON.parse(await readFile(policyPath, 'utf8')) as {
+        git: { autoCommit: boolean; autoPush: boolean };
+      };
+      policy.git.autoCommit = false;
+      policy.git.autoPush = false;
+      await writeFile(policyPath, `${JSON.stringify(policy, null, 2)}\n`, 'utf8');
+      await mkdir(resolve(temporary, 'docs'), { recursive: true });
+      await writeFile(resolve(temporary, 'docs/status.md'), '# 当前状态\n', 'utf8');
+      await writeFile(resolve(temporary, 'docs/task.md'), '# 原始任务\n', 'utf8');
+      await writeFile(
+        resolve(temporary, 'package.json'),
+        JSON.stringify({ type: 'module' }),
+        'utf8',
+      );
+      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules/\n', 'utf8');
+      git(temporary, ['init']);
+      git(temporary, ['config', 'user.email', 'test@daoyan.local']);
+      git(temporary, ['config', 'user.name', 'Daoyan Test']);
+      git(temporary, ['add', '.']);
+      git(temporary, ['commit', '-m', 'test fixture']);
+      await symlink(resolve(root, 'node_modules'), resolve(temporary, 'node_modules'), 'junction');
+
+      const baseline = git(temporary, ['rev-parse', 'HEAD']).trim();
+      await writeFile(resolve(temporary, 'docs/task.md'), '# 策划任务已完成\n', 'utf8');
+      const task = {
+        id: 'charter',
+        title: '策划任务',
+        objective: '保留已完成策划',
+        type: 'documentation',
+        tier: 'economy',
+        reasoning: '只验证文档',
+        dependsOn: [],
+        paths: ['docs/task.md'],
+        deliverables: ['策划文档'],
+        verification: [],
+      };
+      const plan = {
+        version: 1,
+        title: '控制面提交后恢复',
+        summary: '恢复策划任务而不重复执行',
+        producerDecisionRequired: false,
+        producerQuestion: '',
+        riskSignals: [],
+        acceptanceCriteria: ['保留文档'],
+        nonGoals: [],
+        tasks: [task],
+        commitMessage: 'docs: finish charter',
+      };
+      const fingerprint = await pathFingerprint(temporary, ['docs/task.md']);
+      const runDirectory = resolve(temporary, '.daoyan-agent/runs/forward-commit');
+      await mkdir(runDirectory, { recursive: true });
+      await writeFile(
+        resolve(runDirectory, 'recovery.json'),
+        `${JSON.stringify(
+          {
+            version: 1,
+            status: 'recoverable',
+            processPid: 0,
+            processIdentity: '',
+            phase: '独立审查',
+            direction: plan.summary,
+            resolvedDirection: plan.summary,
+            baseline,
+            workspaceFingerprint: await workspaceFingerprint(temporary),
+            workspaceChangeBaseline: await workspaceChangeBaseline(temporary),
+            plan,
+            taskRuns: [
+              {
+                task,
+                route: { model: 'test', reasoning: 'low' },
+                attempts: 1,
+                result: 'passed',
+                outputFile: '',
+                changedFiles: ['docs/task.md'],
+                tests: [],
+                tokensUsed: 0,
+                completedAt: '2026-09-21T00:00:00.000Z',
+                inputPaths: ['docs/task.md'],
+                inputFingerprint: fingerprint,
+                outputFingerprint: fingerprint,
+                commandFingerprint: stringFingerprint([]),
+                configFingerprint: await configFingerprint(temporary),
+              },
+            ],
+            review: null,
+            plannerTokens: 0,
+            reviewerTokens: null,
+            repairerTokens: null,
+            noPush: true,
+            takeover: false,
+            error: '',
+            updatedAt: '2026-09-21T00:00:00.000Z',
+          },
+          null,
+          2,
+        )}\n`,
+        'utf8',
+      );
+      await writeFile(resolve(temporary, 'docs/control.md'), '# 控制面修复\n', 'utf8');
+      git(temporary, ['add', '--', 'docs/control.md']);
+      git(temporary, ['commit', '-m', 'fix: control-plane repair']);
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          tsxCliPath,
+          resolve(temporary, 'scripts/agent-dispatcher.ts'),
+          '--resume',
+          '.daoyan-agent/runs/forward-commit',
+        ],
+        { cwd: temporary, encoding: 'utf8', timeout: dispatcherTimeoutMs },
+      );
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      expect(result.stdout).toContain('基线之后只有任务范围外的已提交控制面改动');
+      expect(result.stdout).toContain('[恢复] 跳过已完成任务 charter');
+      expect(
+        JSON.parse(await readFile(resolve(runDirectory, 'recovery.json'), 'utf8')).status,
+      ).toBe('delivered');
+    },
+    integrationTestTimeoutMs,
+  );
 });

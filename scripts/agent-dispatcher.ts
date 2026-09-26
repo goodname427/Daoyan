@@ -2049,6 +2049,44 @@ try {
     const canAdoptAbandonedChanges =
       checkpoint.status === 'active' && checkpoint.taskRuns.length === 0;
     const fingerprintMismatch = currentFingerprint !== checkpoint.workspaceFingerprint;
+    const committedAdvance =
+      fingerprintMismatch &&
+      baselineAncestor.code === 0 &&
+      currentHead.code === 0 &&
+      currentHead.stdout.trim() !== checkpoint.baseline
+        ? await git([
+            '-c',
+            'core.quotePath=false',
+            'diff',
+            '--name-only',
+            '-z',
+            checkpoint.baseline,
+            'HEAD',
+            '--',
+          ])
+        : null;
+    const taskScopes = [
+      ...checkpoint.plan.tasks.flatMap((task) => task.paths),
+      ...checkpoint.taskRuns.flatMap((run) => [
+        ...(run.inputPaths ?? []),
+        ...taskOutputPaths(run.task.paths, run.changedFiles),
+      ]),
+    ];
+    const committedAdvancePaths =
+      committedAdvance?.code === 0 ? committedAdvance.stdout.split('\0').filter(Boolean) : [];
+    const currentConfigFingerprint = await verificationConfigFingerprint();
+    const workspacePaths = await workspaceChangedPaths();
+    const unrelatedCommittedAdvance =
+      committedAdvancePaths.length > 0 &&
+      committedAdvancePaths.every(
+        (path) => !taskScopes.some((scope) => pathMatchesTaskScope(path, scope)),
+      ) &&
+      workspacePaths.length > 0 &&
+      workspacePaths.every((path) =>
+        taskScopes.some((scope) => pathMatchesTaskScope(path, scope)),
+      ) &&
+      checkpoint.taskRuns.length > 0 &&
+      checkpoint.taskRuns.every((run) => run.configFingerprint === currentConfigFingerprint);
     let selectivelyReusableTaskRuns: TaskRun[] | null = null;
     let selectiveRecoverySafe = false;
     if (
@@ -2092,6 +2130,7 @@ try {
       !canAdoptAbandonedChanges &&
       !emptyRecoveryCanRebase &&
       !completedCommitCanResume &&
+      !unrelatedCommittedAdvance &&
       !selectiveRecoverySafe
     ) {
       throw new Error(
@@ -2109,6 +2148,10 @@ try {
       console.log('[秘书接管] 检测到 Git 提交已完成，将续传并重新验证。');
     } else if (emptyRecoveryCanRebase) {
       console.log('[秘书接管] 任务尚未开始且仓库仅向前演进，已将空恢复点更新到当前基线。');
+    } else if (unrelatedCommittedAdvance) {
+      console.log(
+        '[秘书接管] 基线之后只有任务范围外的已提交控制面改动；保留任务结果并重做当前树的验证与审查。',
+      );
     } else if (fingerprintMismatch && selectiveRecoverySafe) {
       console.log('[选择性恢复] 工作区变化均可归属到当前计划，将逐项复核已有 Task 证据。');
     } else if (fingerprintMismatch) {
@@ -2117,11 +2160,17 @@ try {
       );
     }
     activePlan = checkpoint.plan;
-    activeBaseline = emptyRecoveryCanRebase ? currentHead.stdout.trim() : checkpoint.baseline;
+    activeBaseline =
+      emptyRecoveryCanRebase || unrelatedCommittedAdvance
+        ? currentHead.stdout.trim()
+        : checkpoint.baseline;
     activeDirection = checkpoint.direction;
     activeResolvedDirection = applyProducerGuidance(checkpoint.resolvedDirection);
     const resetCompletedWork =
-      (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
+      (fingerprintMismatch &&
+        !completedCommitCanResume &&
+        !emptyRecoveryCanRebase &&
+        !unrelatedCommittedAdvance) ||
       options.takeover;
     if (options.takeover) {
       activeTaskRuns = [];
@@ -2133,18 +2182,24 @@ try {
     } else {
       activeTaskRuns = checkpoint.taskRuns;
     }
-    activeReview = resetCompletedWork ? null : checkpoint.review;
-    activeReviewStall = checkpoint.reviewStall ?? (await reviewStallFromRunHistory(runDirectory));
-    activeValidationProgress = resetCompletedWork
-      ? { fastGate: null, independentReview: null }
-      : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
+    activeReview = resetCompletedWork || unrelatedCommittedAdvance ? null : checkpoint.review;
+    activeReviewStall = unrelatedCommittedAdvance
+      ? undefined
+      : (checkpoint.reviewStall ?? (await reviewStallFromRunHistory(runDirectory)));
+    activeValidationProgress =
+      resetCompletedWork || unrelatedCommittedAdvance
+        ? { fastGate: null, independentReview: null }
+        : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
     activePlannerTokens = checkpoint.plannerTokens;
     activeReviewerTokens = checkpoint.reviewerTokens;
     activeRepairerTokens = checkpoint.repairerTokens;
     activeNoPush = options.noPush || checkpoint.noPush;
     activeTakeover =
       options.takeover ||
-      (fingerprintMismatch && !completedCommitCanResume && !emptyRecoveryCanRebase) ||
+      (fingerprintMismatch &&
+        !completedCommitCanResume &&
+        !emptyRecoveryCanRebase &&
+        !unrelatedCommittedAdvance) ||
       checkpoint.takeover === true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {
