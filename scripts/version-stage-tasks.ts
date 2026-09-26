@@ -232,6 +232,21 @@ export function assertStageTaskDeliveryScope(task: VersionStageTask, changedFile
   assertTaskWriteScope(task, taskChanges);
 }
 
+/** A resumed, previously empty run may start after a separate commit. Its earlier
+ * changes must not alter the task's declared inputs or outputs. */
+export function assertStageTaskPrestartScope(task: VersionStageTask, changedFiles: string[]): void {
+  const touched = changedFiles
+    .map(normalizedPath)
+    .filter((path) =>
+      [...task.readPaths, ...task.writePaths].some((scope) =>
+        overlaps(path, normalizedPath(scope)),
+      ),
+    );
+  if (touched.length > 0) {
+    throw new Error(`节点任务 ${task.id} 的执行前基线改动了合同输入或输出：${touched.join('、')}`);
+  }
+}
+
 export function parseStageTaskResult(value: unknown, expectedTaskId: string): StageTaskResult {
   if (
     !isRecord(value) ||

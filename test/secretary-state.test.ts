@@ -27,6 +27,7 @@ import {
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
   reopenCorrectedStageTaskDelivery,
+  reopenVerifiedBlockedStageTaskDelivery,
   repeatedFormalAcceptanceFailureCount,
   reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
@@ -332,6 +333,29 @@ describe('persistent secretary state', () => {
     expect(reopenEnvironmentBlockedQaDelivery(state, 'version-1', state.initializedAt)).toBe(true);
     expect(item.status).toBe('delivered');
     expect(item.orchestration.formalStageConsumedAt).toBeUndefined();
+  });
+
+  it('reopens only a verified task scope false positive for original delivery acceptance', () => {
+    const state = createSecretaryState('2026-09-27T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'review-task', idea: '主策审核', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'failed';
+    item.summary = '技术阻断：节点任务边界被突破：执行前任务说明被改动';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'design-review',
+      formalTaskId: 'review',
+      formalStageConsumedAt: state.initializedAt,
+    };
+    state.items.push(item);
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, 'other', state.initializedAt)).toBe(false);
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(true);
+    expect(item.status).toBe('delivered');
+    expect(item.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(false);
   });
 
   it('retires stale formal-stage work when its control-plane version is archived', () => {

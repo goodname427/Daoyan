@@ -80,6 +80,7 @@ import {
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
   reopenCorrectedStageTaskDelivery,
+  reopenVerifiedBlockedStageTaskDelivery,
   repeatedFormalAcceptanceFailureCount,
   reopenEnvironmentBlockedQaDelivery,
   taskCompletionKey,
@@ -134,6 +135,7 @@ import { parseInvocationTokens, versionStageUsage } from './version-usage';
 import {
   assertStageTaskPaths,
   assertStageTaskDeliveryScope,
+  assertStageTaskPrestartScope,
   parseStageTaskManifest,
   parseStageTaskResult,
   readyStageTasks,
@@ -3925,6 +3927,40 @@ function changedFilesBetween(baseRevision: string, headRevision: string): string
   return result.stdout.split('\0').filter(Boolean);
 }
 
+function gitRevisionIsAncestor(ancestor: string, revision: string): boolean {
+  const result = spawnSync('git', ['merge-base', '--is-ancestor', ancestor, revision], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (result.status === 0) return true;
+  if (result.status === 1) return false;
+  throw new Error('无法核对节点任务恢复前后的 Git 祖先关系');
+}
+
+async function stageTaskExecutionBase(
+  item: SecretaryItem,
+  task: VersionStageTask,
+  revision: string,
+): Promise<string> {
+  const dispatchedBase = item.orchestration?.formalTaskBaseRevision;
+  if (!dispatchedBase) throw new Error('节点任务缺少 Git 写入基线');
+  const checkpoint = item.runDirectory
+    ? await readJson(resolve(item.runDirectory, 'recovery.json'))
+    : null;
+  const executionBase = String(checkpoint?.baseline ?? '');
+  if (!executionBase || executionBase === dispatchedBase) return dispatchedBase;
+  if (
+    checkpoint?.status !== 'delivered' ||
+    !gitRevisionIsAncestor(dispatchedBase, executionBase) ||
+    !gitRevisionIsAncestor(executionBase, revision)
+  ) {
+    throw new Error('节点任务恢复基线无法证明处于原派发与交付提交之间');
+  }
+  assertStageTaskPrestartScope(task, changedFilesBetween(dispatchedBase, executionBase));
+  return executionBase;
+}
+
 function nextStage(version: FormalVersion): VersionStage | null {
   const index = version.nodes.findIndex((node) => node.id === version.currentStage);
   return (version.nodes[index + 1]?.id as VersionStage | undefined) ?? null;
@@ -5290,9 +5326,8 @@ async function consumeTaskOwnedVersionItem(
   ) {
     throw new Error(`节点任务 ${task.id} 缺少独立审查通过证据`);
   }
-  const base = item.orchestration?.formalTaskBaseRevision;
-  if (!base) throw new Error('节点任务缺少 Git 写入基线');
   const revision = currentGitRevision();
+  const base = await stageTaskExecutionBase(item, task, revision);
   if (revision === base) throw new Error(`节点任务 ${task.id} 未形成独立提交`);
   assertStageTaskDeliveryScope(task, changedFilesBetween(base, revision));
   task.status = 'accepted';
@@ -5811,6 +5846,61 @@ async function coordinateOnce(): Promise<void> {
       }
     }
   }
+  let reopenedBlockedStageTask = false;
+  if (
+    activeFormalVersion?.workflowRevision === 2 &&
+    cleanWorktree.status === 0 &&
+    !cleanWorktree.stdout.trim()
+  ) {
+    const blocked = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'failed' &&
+          item.summary.startsWith('技术阻断：节点任务边界被突破：') &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === activeFormalVersion.currentStage &&
+          item.orchestration.formalScopeRevision === formalScopeRevision(activeFormalVersion) &&
+          item.orchestration.formalStageStep === 'task' &&
+          item.orchestration.formalTaskId &&
+          item.orchestration.formalStageConsumedAt &&
+          !isOwnedProcessAlive(item.processPid, item.processIdentity),
+      );
+    const task = stageTasksForCurrentNode(activeFormalVersion).find(
+      (candidate) => candidate.id === blocked?.orchestration?.formalTaskId,
+    );
+    if (blocked?.runDirectory && task?.status === 'pending') {
+      try {
+        const report = await readJson(resolve(blocked.runDirectory, 'report.json'));
+        const checkpoint = await readJson(resolve(blocked.runDirectory, 'recovery.json'));
+        const resultPath = `${activeFormalVersion.documentRoot}/tasks/${currentStageTaskLabel(activeFormalVersion)}-${task.id}.json`;
+        const result = parseStageTaskResult(await readJson(resolve(root, resultPath)), task.id);
+        if (
+          report?.status !== '已交付' ||
+          checkpoint?.status !== 'delivered' ||
+          (stageTaskReviewRequired(activeFormalVersion.currentStage, report) &&
+            (!isRecord(report.review) || report.review.verdict !== 'pass')) ||
+          result.commands.some((command) => command.exitCode !== 0) ||
+          !evidenceAfterStageStart(
+            activeFormalVersion.nodes.find((node) => node.id === activeFormalVersion.currentStage)
+              ?.startedAt ?? '',
+            String(report.finishedAt ?? ''),
+          )
+        )
+          throw new Error('原节点任务尚无可信交付证据');
+        const revision = currentGitRevision();
+        const base = await stageTaskExecutionBase(blocked, task, revision);
+        assertStageTaskDeliveryScope(task, changedFilesBetween(base, revision));
+        reopenedBlockedStageTask = reopenVerifiedBlockedStageTaskDelivery(
+          state,
+          blocked.id,
+          new Date().toISOString(),
+        );
+      } catch {
+        // Keep the technical block until the existing delivery can be proven valid.
+      }
+    }
+  }
   const persistedCorrections = await persistScheduleCorrections(
     state,
     async (correction) => {
@@ -5949,6 +6039,7 @@ async function coordinateOnce(): Promise<void> {
     reopenedDeliveredDevelopment ||
     reopenedDeliveredQa ||
     reopenedDeliveredBugfix ||
+    reopenedBlockedStageTask ||
     reopenedCorrectedTask ||
     (normalized &&
       persistedCorrections === 0 &&

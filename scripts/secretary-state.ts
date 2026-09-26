@@ -1171,6 +1171,27 @@ export function reopenCorrectedStageTaskDelivery(
   return true;
 }
 
+/** The guard calls this only after revalidating a delivered report and its Git scope. */
+export function reopenVerifiedBlockedStageTaskDelivery(
+  state: SecretaryState,
+  itemId: string,
+  now: string,
+): boolean {
+  const item = state.items.find((candidate) => candidate.id === itemId);
+  if (
+    item?.status !== 'failed' ||
+    !item.summary.startsWith('技术阻断：节点任务边界被突破：') ||
+    !item.orchestration?.formalTaskId ||
+    !item.orchestration.formalStageConsumedAt
+  )
+    return false;
+  item.status = 'delivered';
+  item.summary = '执行前提交已与本任务隔离，等待重新验收原 Feature PM 交付。';
+  item.updatedAt = now;
+  delete item.orchestration.formalStageConsumedAt;
+  return true;
+}
+
 export function repeatedFormalAcceptanceFailureCount(
   state: SecretaryState,
   failed: SecretaryItem,

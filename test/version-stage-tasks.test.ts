@@ -10,6 +10,7 @@ import { createSecretaryState } from '../scripts/secretary-state';
 import {
   assertStageTaskPaths,
   assertStageTaskDeliveryScope,
+  assertStageTaskPrestartScope,
   assertTaskWriteScope,
   parseStageTaskManifest,
   readyStageTasks,
@@ -53,6 +54,36 @@ describe('stage-owned task contracts', () => {
         'src/core/world.ts',
       ]),
     ).toThrow('超出');
+  });
+  it('separates a rebased empty run from commits that changed its contract', () => {
+    const [review] = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            ...task('review', [], ['docs/versions/v2/design-review-findings.md']),
+            readPaths: ['docs/versions/v2/world-rule-design.md'],
+          },
+        ],
+      },
+      'design-review',
+      1,
+      '2026-09-26T00:00:00.000Z',
+    );
+    expect(() =>
+      assertStageTaskPrestartScope(review, [
+        'scripts/agent-routing.ts',
+        'docs/versions/v2/design-review-tasks.md',
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertStageTaskPrestartScope(review, ['docs/versions/v2/world-rule-design.md']),
+    ).toThrow('合同输入或输出');
+    expect(() =>
+      assertStageTaskPrestartScope(review, ['docs/versions/v2/design-review-findings.md']),
+    ).toThrow('合同输入或输出');
+    expect(() =>
+      assertStageTaskDeliveryScope(review, ['docs/versions/v2/design-review-findings.md']),
+    ).not.toThrow();
   });
   it('creates new versions without the up-front breakdown and planning nodes', () => {
     const version = createFormalVersion({
