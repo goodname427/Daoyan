@@ -32,7 +32,7 @@
 
 ## 当前迭代
 
-- 正式试运行版本 `pilot-agent-intent-2026-09-24` 现处于版本策划修订 2、范围修订 5：制作人要求从元法术、法力与耗时出发，连生命、法球存续、法力恢复、施法速度和非生命施法都由同一世界规则解释。[修订草案](./versions/pilot-agent-intent-2026-09-24/charter-draft.md)及[世界底层规则候选](./versions/pilot-agent-intent-2026-09-24/world-foundations-draft.md)正在接受规则反例检验和制作人审阅，不是已批准设计；原型期不以旧内容兼容约束新规则。范围修订 3 的[旧任务合同](./versions/pilot-agent-intent-2026-09-24/charter-draft-tasks.md)已过期；策划 Feature PM 曾因工作区路由连接失败未生成恢复快照，notice guard 仍暂停。未选择开发切片，未进入详细策划或开发，见[开发记录](./dev/2026-09-26.md)。
+- 正式试运行版本 `pilot-agent-intent-2026-09-24` 现处于版本策划修订 2、范围修订 7：制作人已确认生命与实体存在分开、法力仅在来源和去向间转移、无施法时世界按默认规律运行，以及现实输入只是传达意图的桥接。[修订草案](./versions/pilot-agent-intent-2026-09-24/charter-draft.md)、[世界底层规则](./versions/pilot-agent-intent-2026-09-24/world-foundations-draft.md)与[生命及世界边界](./versions/pilot-agent-intent-2026-09-24/life-and-world-boundary-draft.md)继续论证生命定义、属性、元法术和输入/AI/界面的分层，尚非已批准设计；原型期不以旧内容兼容约束新规则。范围修订 3 的[旧任务合同](./versions/pilot-agent-intent-2026-09-24/charter-draft-tasks.md)已过期；策划 Feature PM 曾因工作区路由连接失败未生成恢复快照，notice guard 仍暂停。未选择开发切片，未进入详细策划或开发，见[开发记录](./dev/2026-09-26.md)。
 
 - 工作流控制面已实现 [ADR-0021](./adr/0021-版本节点任务与PM分层.md) 的版本节点任务制：新正式版本由一个逻辑 Version PM 在每个节点建立任务合同，一项交付对应一个 Feature PM；取消独立的任务拆分与版本排期节点，旧归档版本不迁移。开发集成树使用一次完整门禁，候选经制作人批准后再合回主干。代码与合成看板体验已验证，真实多 PM 成本和返工要在下一次由制作人立项的正式版本中观察；本次不立项或发布游戏版本。
 
