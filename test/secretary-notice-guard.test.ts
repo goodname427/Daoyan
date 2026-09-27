@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -38,6 +38,7 @@ import {
   parseBugfixResult,
   parseDesignReviewResult,
   parseDesignAcceptanceResult,
+  assertDesignAcceptanceEvidence,
   parseDevelopmentResult,
   isTaskScopeCommand,
   latestReusableFeatureGate,
@@ -1554,6 +1555,46 @@ describe('formal version stage dispatch', () => {
         'dev-commit',
       ),
     ).toThrow('实际操作');
+  });
+
+  it('rejects stale or missing gameplay evidence even when the design document exists', async () => {
+    const fixture = await mkdtemp(resolve(tmpdir(), 'daoyan-design-play-'));
+    try {
+      const directory = resolve(fixture, 'docs/versions/v1');
+      await mkdir(directory, { recursive: true });
+      await writeFile(resolve(directory, 'module-design.md'), '# 已批准策划\n');
+      const screenshot = resolve(directory, 'experience.png');
+      await writeFile(screenshot, 'image evidence');
+      const scenarios: Parameters<typeof assertDesignAcceptanceEvidence>[2] = [
+        {
+          id: 'play-1',
+          workItemId: 'spell',
+          designPath: 'docs/versions/v1/module-design.md',
+          kind: 'main',
+          entry: '演武场',
+          steps: ['启动并施放'],
+          expected: '按策划生效',
+          actual: '生效',
+          result: 'passed',
+          evidence: ['docs/versions/v1/experience.png'],
+        },
+      ];
+      const startedAt = '2026-09-27T00:00:00.000Z';
+      await expect(
+        assertDesignAcceptanceEvidence(fixture, startedAt, scenarios),
+      ).resolves.toBeUndefined();
+      const old = new Date('2026-09-26T00:00:00.000Z');
+      await utimes(screenshot, old, old);
+      await expect(assertDesignAcceptanceEvidence(fixture, startedAt, scenarios)).rejects.toThrow(
+        '本轮开始前',
+      );
+      scenarios[0].evidence = ['docs/versions/v1/missing.png'];
+      await expect(assertDesignAcceptanceEvidence(fixture, startedAt, scenarios)).rejects.toThrow(
+        '证据不存在',
+      );
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
   });
 
   it('requires structured conclusions instead of inferring product success from task delivery', () => {
