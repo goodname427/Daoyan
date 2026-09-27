@@ -1054,6 +1054,7 @@ describe('formal version stage dispatch', () => {
     expect(item?.idea).toContain('tasks/module-design-mdn-bridge.json');
     expect(item?.idea).toContain('若文件尚不存在，必须新建该文件');
     expect(item?.idea).toContain('名称相近的旧轮次文件不是本轮合同');
+    expect(item?.idea).toContain('可复制执行的完整命令');
   });
 
   it('only repeats a rejection for the same stage task in the current round', () => {
