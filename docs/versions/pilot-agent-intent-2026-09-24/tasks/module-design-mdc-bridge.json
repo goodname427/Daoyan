@@ -1,0 +1,49 @@
+{
+  "taskId": "mdc-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接已完成的 mdc-spells 与唯一世界理论，交付统一设备无关意图字段、跨入口等价前提、共同报价/来源/材料/授权/身份/事件反馈合同、六阶段账序及瞄准/暂停恢复/模拟时刻/配置/表现/存档隐私边界。补齐推演台编辑预算单步推演、演武绑定观察及返回同一法术书修订的成功/拒绝/空书/空目标/往返流程，并以相同初态比较修士、法球、机关和敌方修士，覆盖欠费、unknownPrice、域外修复、identityRelation=unknown、DeathBarrier 与旧法术/存档隔离。LabView、CombatView、Battle、Test 仅作现行入口证据；预设和敌方修士留作未来同规则验证，不制作预设、不改游戏或测试。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"player-bridge-design.md\",s=f.readFileSync(q,\"utf8\"),r=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdc-bridge.json\",\"utf8\")),plan=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),spec=plan.tasks.find(x=>x.id===\"mdc-bridge\"),pred=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdc-spells.json\",\"utf8\"));a.equal(r.taskId,\"mdc-bridge\");a.equal(r.status,\"completed\");a.deepEqual(spec.dependsOn,[\"mdc-spells\"]);a.equal(pred.status,\"completed\");for(const x of [\"actor\",\"program\",\"slot\",\"kind\",\"phase\",\"aim\",\"move\",\"targetHint\",\"simTime\",\"sequence\",\"grant\",\"payer\",\"source\",\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"Quote(x)\",\"unknownPrice\",\"unexpressible\",\"identityRelation=unknown\",\"DeathBarrier\",\"六阶段\",\"空书\",\"空目标\",\"旧原件诊断\",\"修士\",\"法球\",\"机关\",\"敌方修士\"])a.ok(s.includes(x),x);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const h=m[1].split(\"#\")[0];if(h&&!h.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),h)),h);n++}}for(const e of r.evidence)a.ok(f.existsSync(e),e);a.ok(r.commands.every(x=>x.exitCode===0));console.log(\"PASS mdc-bridge contract, predecessor, task record, evidence paths and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdc-bridge contract, predecessor, task record, evidence paths and 6 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json"
+      ]
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json"
+  ]
+}
