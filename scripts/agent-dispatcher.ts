@@ -1824,12 +1824,33 @@ async function commitAndPush(
     if (diffCheck.code !== 0)
       throw new Error(`git diff --check 失败：\n${diffCheck.stdout}${diffCheck.stderr}`);
 
-    const add = await git(['add', '-A'], true);
+    const formalTask = /^\[formal-stage-(?:deliverable|verification):/.test(activeDirection);
+    const scopes = formalTask ? [...new Set(plan.tasks.flatMap((task) => task.paths))] : [];
+    const stagePaths: string[] = [];
+    for (const scope of scopes) {
+      if (
+        existsSync(resolve(root, scope)) ||
+        (await git(['ls-files', '--', scope])).stdout.trim()
+      ) {
+        stagePaths.push(scope);
+      }
+    }
+    if (formalTask && stagePaths.length === 0) throw new Error('正式节点任务没有可提交的计划路径');
+    const add = await git(formalTask ? ['add', '-A', '--', ...stagePaths] : ['add', '-A'], true);
     if (add.code !== 0) throw new Error('git add 失败');
     const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
     const staged = await git(['diff', '--cached', '--name-only', '-z']);
     if (staged.code !== 0) throw new Error('Git 暂存文件检查失败');
     const changedFiles = staged.stdout.split('\0').filter(Boolean);
+    if (formalTask) {
+      if (changedFiles.length === 0) throw new Error('正式节点任务没有计划路径内的待提交改动');
+      const unrelated = changedFiles.filter(
+        (path) => !scopes.some((scope) => pathMatchesTaskScope(path, scope)),
+      );
+      if (unrelated.length > 0) {
+        throw new Error(`正式节点任务暂存了合同外文件：${unrelated.join('、')}`);
+      }
+    }
     const body = commitBodyForPlan(plan, changedFiles);
     // The final tree already has matching fast/full gate evidence. Avoid the
     // repository hook replaying npm run verify on the same tree; the message is
