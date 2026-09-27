@@ -1,0 +1,64 @@
+{
+  "taskId": "mdr-world",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "依据主策 changes-requested 退回结论，在唯一世界理论正文中补齐同刻自然接触、预授权补源、到期主动作用、维持、生命与身份判定、撤权及事件派发的权威候选顺序；逐笔复核 F3/F4、六项已选方向、五类实体、接力护送、信标、失供/注能/死亡、场外与连续碰撞、100/20 和回收循环，区分条件式闭合与仍需产品解释。仅完成本轮纯文档任务，不代表理论定型、主策复审通过、ADR 覆盖或游戏开发获准。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const s=require(\"fs\").readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"utf8\");for(const x of [\"changes-requested\",\"同刻权威顺序\",\"F3/F4 逐笔判定\",\"B3 → B2\",\"本轮退回修订的闭合边界\",\"ADR 0020\"]){if(!s.includes(x))throw Error(x)}for(const x of [\"H1\",\"H2\",\"H3\",\"B1\",\"B2\",\"B3\",\"B4\",\"E1\",\"E2\",\"C1\",\"C2\",\"C3\",\"L1\",\"L2\",\"R1\"]){if(!new RegExp(\"^\\\\| \"+x+\" \",\"m\").test(s))throw Error(x)}console.log(\"PASS mdr-world coverage and 15 ledger entries\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-world coverage and 15 ledger entries",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",s=f.readFileSync(q,\"utf8\");let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),x);n++}}console.log(\"PASS \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS 52 local links",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(parseStageTaskResult(r,\"mdr-world\").status,\"completed\");a.ok(r.commands.length&&r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const q of r.evidence)a.ok(f.existsSync(q),q);console.log(\"PASS mdr-world task contract and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-world task contract and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md; $allowed=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json'); $changed=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if(@(Compare-Object $allowed $changed).Count -ne 0){throw 'Changed paths differ from task scope'}; 'PASS only two task paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two task paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json"
+      ]
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ]
+}
