@@ -5438,7 +5438,26 @@ async function consumeTaskOwnedVersionItem(
     const summary = `${version.documentRoot}/${label}-tasks.md`.replace(/\\/g, '/');
     const revision = currentGitRevision();
     if (revision === base) throw new Error('Version PM 节点规划未形成独立提交');
-    const changed = changedFilesBetween(base, revision);
+    const runPlan = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'plan.validated.json'))
+      : null;
+    const expectedMessage =
+      isRecord(runPlan) && typeof runPlan.commitMessage === 'string'
+        ? conventionalCommitOrFallback(runPlan.commitMessage, String(runPlan.title ?? '节点规划'))
+        : '';
+    const planningCommit = expectedMessage
+      ? findTaskCommitEvidence({
+          root,
+          baseline: base,
+          head: revision,
+          expectedMessage,
+          writePaths: [manifest, summary],
+          readPaths: [version.documentRoot],
+        })
+      : null;
+    const changed = planningCommit
+      ? changedFilesBetween(planningCommit.parent, planningCommit.commit)
+      : changedFilesBetween(base, revision);
     if (
       !changed.includes(manifest) ||
       !changed.includes(summary) ||
