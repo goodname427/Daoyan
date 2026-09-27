@@ -1,0 +1,73 @@
+{
+  "taskId": "mdo-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接 mdo-mana 的 R0/K0/V0 与 P0/D0 有限候选证书及 mdo-life 的 LifeAssessment/LifeId 判据，更新唯一理论正文的六阶段共同因果、接力护送和活跃信标惰性修壳逐笔账；明确空/隐藏读取、欠费、无结构、缺料、死亡撤权及私值越权的保留事实。复苏和非零死后响应仍域外，候选未获整版批准或代码实现。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),c=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")),t=c.tasks.find(x=>x.id===\"mdo-theory\");a.deepEqual(t.dependsOn,[\"mdo-mana\",\"mdo-life\"]);a.deepEqual(t.writePaths,[p+\"world-theory-draft.md\"]);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const x of [\"Quote\",\"R0/K0/V0\",\"LifeAssessment\",\"LifeId\",\"DeathBarrier\",\"Tx-H1:32→23\",\"Tx-H2:23→11\",\"Tx-B2:60→55\",\"Tx-B4:55→12\",\"deniedOrUnavailable\",\"missingMaterial\",\"postDeathGrantUnavailable\",\"unknownPrice\",\"原身份复苏域外\"])a.ok(d.includes(x),x);for(const [v,w] of [[2+1+2*(1+2),9],[2+7+3,12],[3*23,69],[3*20,60],[2+1+1*(1+1),5],[2+7*2+11*2+5,43],[60-5-43,12]])a.equal(v,w);let n=0;for(const x of d.matchAll(/\\]\\(([^)]+)\\)/g)){const q=x[1].split(\"#\")[0];if(q&&!q.includes(\"://\")){a.ok(f.existsSync(path.resolve(p,q)),q);n++}}console.log(\"PASS mdo-theory contract, predecessors, clauses, arithmetic and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdo-theory contract, predecessors, clauses, arithmetic and 67 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json\",x=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(x.taskId,\"mdo-theory\");a.equal(x.status,\"completed\");a.ok(x.commands.every(c=>c.exitCode===0));a.ok(x.failedAttempts.every(c=>c.exitCode!==0));for(const e of x.evidence)a.ok(f.existsSync(e),e);console.log(\"PASS mdo-theory task evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdo-theory task evidence",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json",
+      "exitCode": 1,
+      "output": "Code style issues found in module-design-mdo-theory.json.",
+      "resolution": "Format the evidence JSON after adding its self-check command, then rerun the same direct formatting check."
+    },
+    {
+      "command": "rg -n \"module-design-mdo-theory|mdo-theory|world-theory-draft\" docs/versions/pilot-agent-intent-2026-09-24/package.json package.json docs/versions/pilot-agent-intent-2026-09-24/tasks docs/workflow.md -g \"*.json\" -g \"*.md\"",
+      "exitCode": 2,
+      "output": "rg: docs/versions/pilot-agent-intent-2026-09-24/package.json: 系统找不到指定的文件。 (os error 2)",
+      "resolution": "目录级检索包含不存在的版本 package.json，退出码为 2；已依据实际任务证据文件和仓库脚本继续核对。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+  ]
+}
