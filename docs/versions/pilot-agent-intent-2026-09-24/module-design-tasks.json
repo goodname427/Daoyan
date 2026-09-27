@@ -1,60 +1,62 @@
 {
   "modules": [
-    { "id": "physics-material", "title": "普通行动与生命物理证书", "taskId": "mdp-physics" },
-    { "id": "mana-ledger", "title": "普通行动与代谢报价", "taskId": "mdp-mana" },
-    { "id": "life-identity", "title": "具体生命与身份判据", "taskId": "mdp-life" },
-    { "id": "programmable-spells", "title": "程序载体和可表达域", "taskId": "mdp-program" },
-    { "id": "world-theory", "title": "唯一世界理论新增成功域", "taskId": "mdp-theory" },
-    { "id": "player-bridge", "title": "跨入口可执行纸面验收", "taskId": "mdp-bridge" }
+    { "id": "physics-material", "title": "正功与逐体材料证书", "taskId": "mdq-physics" },
+    { "id": "mana-ledger", "title": "有限来源与共同报价", "taskId": "mdq-mana" },
+    { "id": "life-identity", "title": "两类生命的回路与身份", "taskId": "mdq-life" },
+    { "id": "programmable-spells", "title": "四类程序载体容量", "taskId": "mdq-program" },
+    { "id": "world-theory", "title": "唯一世界理论的证书收口", "taskId": "mdq-theory" },
+    { "id": "player-bridge", "title": "逐体证书的跨入口纸面验收", "taskId": "mdq-bridge" }
   ],
   "crossModuleContracts": [
-    "物理独占主动作用的冲量、反作用、结构功及两种具体生命体的 N→X 证书；交资源模块物理作用投影，交生命模块已提交 X 和结构快照，不定 M 价格或 LifeId。既有 D0/P0 接触和惰性材料域是只读前驱。",
-    "法力消费物理投影，独占普通驱动/代谢 Quote、正价和合法尝试价、来源→作用→回收账、tick/神识与静态毛界；已覆盖 P0/R0/K0/V0 不重新设计，域外读取与开放回收须有稳定拒绝边界。",
-    "生命消费已提交 X、净到账 Tx 和 K0/V0，独占两种实体的 LifeAssessment、LifeId、DeathBarrier、恢复截止及撤权；证书不足返回 unknown，惰性修壳不自动复苏。",
-    "程序消费物理结构容量、已报价作用和生命撤权，独占载体装载、有限记忆/事件与授权拒绝；不新增专名原子，首批死后独立 grant 继续关闭。",
-    "理论任务独占 world-theory-draft.md，整合新增普通行动、代谢、生命证书与程序条件，核对六阶段因果；桥接只将获准事实变成推演台→演武场→回编辑的可执行验收，实际可玩证据留后续阶段。Version PM 独占 module-design.md、docs/status.md 和最终跨模块一致性收束。",
-    "候选参数和 ADR 0017–0020 覆盖、旧 DSL/蓝图/存档隔离均待整版审阅；超出已批准方向的取舍须先列玩家效果、优势、代价、推荐理由并升级，不在此轮预批准开发。"
+    "物理独占 C/N→X、接触/反作用、逐体 Q[k] 与可用物理功证书；向资源交付有界作用描述符和能量来源，向生命交付已提交结构事实，向程序交付可承载结构。无来源或材料未裁定时不得签成功作用。",
+    "资源消费物理描述符，独占 M 来源、Quote/Tx、正功取得条件、散逸/回收、合法尝试价及 tick/神识/静态毛界；每个已提交作用必须有同一来源、付款者、价格与物理去向，未知价拒绝，不借未来补源或已付退款。",
+    "生命消费逐体 X、K0/V0 和净到账 Tx，独占 M1/A1 的 LifeAssessment、LifeId、恢复截止、DeathBarrier 和撤权；程序只消费已提交身份/授权事实，不能从余额零、壳体修好或创建者身份推断生命。",
+    "程序消费物理结构、资源报价和生命撤权，独占 M1/B1/J1/A1 的装载、记忆、事件、储池与合计峰值证书；同一 AST、双时点 grant 和已付不回滚沿用前驱，容量缺证或超限拒绝，死后独立 grant 仍关闭。",
+    "理论只维护 world-theory-draft.md 的共同公理与六阶段因果，将四份逐体证书按同一请求/Tx/A/X/事件 ID 接回 H、B、普通行动及最后一击。",
+    "桥接消费四份逐体证书及唯一理论，独占 player-bridge-design.md 的纸面矩阵更新：把证书版本、成功前提、拒绝与已付余态映射到推演台→演武场→返回及跨入口等价步骤；Version PM 在节点总报告核对共同前提，不代写桥接正文。"
   ],
   "tasks": [
     {
-      "id": "mdp-physics",
-      "title": "给普通行动和两种生命体补可测物理证书",
-      "objective": "在已交付 D0/P0 上界定首批普通主动作用和具体失供结构事实。",
+      "id": "mdq-physics",
+      "title": "签发正功与材料来源的有限物理证书",
+      "objective": "补上上一轮 12 M 与 1 E0 正功并列、关键材料仅有符号名而无法验证的缺口。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：新增普通行动的反作用/结构证书、修士与自维持人工造物的 N→X 及扰动证书。"
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：新增首批作用与 M1/A1 的逐体物理、材料和能量证书。"
       ],
       "acceptance": [
-        "相对 mdn-physics 新增修士起步和持续行动、法球或机关的适用/拒绝条件；逐例给承力部位、接触/锚链、双边冲量、正功、热/损伤去向及版本依赖。无落脚/推杆、结构超限、接触未裁定时不伪造作用，已付惯性不续费。",
-        "分别登记一名修士与一个自维持人工造物可测的关键回路、材料/扰动域、失供 N→X、保存容损及恢复前物理状态；检验及时/逾期补源、自然撞击、惰性外壳修补和复制分叉，只交结构事实不签生命结论。",
-        "交资源带单位/上界的作用投影，交生命已提交 X 与结构快照；未知质量、材料、关键回路或复杂接触明示未裁定/域外，不把 D0 惰性修壳写作关键回路修复。"
+        "相对 mdp-physics，给起步、续步、维持、H/B 所用作用逐项列执行者、支点/承力路径、碰撞与反作用双方、正功或预存梯度、动能/结构功/热的前后账；每份证书有有限适用域、单位、精度、版本和可复算上界，不能只重复 W正 样例。",
+        "为接触、磨耗、破坏、修复和改接及 M1/A1 关键回路登记逐体 Q[k] 种类、数量、精度、功能阈值、可逆损伤、残片/热去向及耗尽条件；检验无落脚/推杆/梯度、锚链断、连续碰撞、材料不足、惰性修壳和场外作用。",
+        "交资源模块可核验的物理供能/材料描述符，交生命模块已提交 N→X 与保存承载证据，交程序模块结构容量输入；缺证返回 undetermined/域外且不提交本笔 A，已提交自然事实不回滚。若现有批准域内无法给正功来源，明确标未知并升级，不暗定 M 凭空生能。"
       ],
       "dependsOn": [],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
     },
     {
-      "id": "mdp-mana",
-      "title": "闭合普通驱动、代谢与有源循环报价",
-      "objective": "使首批起步、持续行动和代谢具可复算付款与静态上界。",
+      "id": "mdq-mana",
+      "title": "闭合正功来源、材料扣回与共同价函数",
+      "objective": "用物理证书重算付款到作用的有界来源及材料账，不把条件价格误报为可执行价格。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：新增普通行动/代谢 Quote、来源和无套利循环。"
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：新增逐笔来源、材料、报价、回收与拒绝证书。"
       ],
       "acceptance": [
-        "相对 mdo-mana 消费 mdp-physics 作用描述符，给正价/合法尝试价、算法工作、tick、神识、静态毛界和付款账户；逐笔区分修士、已注源法球和获授权机关的适用/拒绝，不把普通运动或维持写成无源回复。",
-        "给起步→持续行动→代谢/保存、预授权补源及来源→作用→回收→再作用的有限数值账；列可取环境分区、已付散逸、材料和余额，证明不可回收已付散逸套利，100 M 攻击仍只是条件压力输入。",
-        "列首批成功与 unknownPrice/unexpressible 边界、缺源/欠费/换版失败的保留事实；域外读取和开放回收可稳定拒绝，扩域须提出通俗取舍。"
+        "相对 mdp-mana，对 A0/P0/D0/R0/K0/V0 及 H/B、普通行动的首批正向路径标明 actor、payer、grant、M 源、物理供能、Q[k] 源、收款/散逸、材料扣回时点；从原子效果与实际算法工作推出成功价、合法尝试价互斥、tick/神识及静态毛界，引用 mdq-physics 证书版本。",
+        "逐笔复算 100/20、起步/续步、H/B、代谢和来源→作用→回收→再作用；检验无梯度、欠 M/材料、部分作用、竞争付款、来源到期、回收重复和域外材料，写清已提交余态及无套利上界。",
+        "无法证明 M 付款怎样在已批准来源域取得有界正功、或 Q[k] 精度/来源不足时返回 unknownPrice/undetermined，禁止签正向 Tx↔A；开放环境来源、热回收或 M 无源生功仅列为待升级产品解释，不写成既定成功域。"
       ],
-      "dependsOn": ["mdp-physics"],
+      "dependsOn": ["mdq-physics"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
@@ -62,44 +64,45 @@
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
     },
     {
-      "id": "mdp-life",
-      "title": "把生命判定表落实到具体修士和人工生命",
-      "objective": "用可测物理与有源维持证书判存活、救援、身份及撤权。",
+      "id": "mdq-life",
+      "title": "签发 M1/A1 逐体生命、恢复截止与身份连续证书",
+      "objective": "把条件 h/v、回路名与截止规则落到可核验的两体生命判据。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：新增两种实体的功能阈值、救援截止、身份连续证据和逐格结论。"
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：新增 M1/A1 逐体关键回路、窗口和身份结算证书。"
       ],
       "acceptance": [
-        "相对 mdo-life 把 h=2→1→0 和半秒样例改为两种具体实体各有出处的功能、维持/保存截止及不可逆 X 证书；只消费物理已提交结构与法力到账/失供，不自定报价。",
-        "逐格复算 100/20 最后一击、及时/逾期补源、人工生命休眠、遗体惰性修壳、记忆/控制断链及复制唯一承接；给 viable/critical/dormant/dead/unknown、same/new/none/unknown、DeathBarrier/撤权和获准可见字段。",
-        "关键回路仍在 D0 外时，明确原身份复苏不可表达、惰性修壳可表达；余额零或证书缺失不自动判死，身份 unknown 冻结旧私权。"
+        "相对 mdp-life，分别从 mdq-physics 的关键材料、连接、感知/反馈及保存承载和 mdq-mana 的 K0/V0 净到账，推得功能阈值、dueAt/preservationDueAt/recoveryDeadline、可逆与不可逆 X 的测量方法和版本化输入；不能套用 h/v 样例或统一秒数。",
+        "逐 tick 复算 M1/A1 的 100/20 最后一击、无供能、及时/逾期补源、休眠、惰性修壳和复制分叉，逐格给 LifeAssessment、LifeId 连续/未知/新枝、唯一 DeathBarrier 与授权撤销；事件阶段⑥到账不倒救阶段④。",
+        "关键回路、材料、截止或三链连续证据不足时明确 unknown，不从余额零/期限过期直接判 dead，也不从修壳或复制恢复原身份；向程序交付身份/撤权事实，向理论交付共同因果证书。"
       ],
-      "dependsOn": ["mdp-physics", "mdp-mana"],
+      "dependsOn": ["mdq-physics", "mdq-mana"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
     },
     {
-      "id": "mdp-program",
-      "title": "界定首批程序载体的容量与权限",
-      "objective": "判 H/B/普通行动何时可装载、执行或拒绝。",
+      "id": "mdq-program",
+      "title": "签发四类载体合计容量与授权拒绝证书",
+      "objective": "证明条件载池与程序、队列、记忆、神识及并发总峰值能在具体载体上同时成立。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：新增载体容量证书、事件/授权失败及可表达域。"
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：新增 M1/B1/J1/A1 逐体合计容量、损坏换证与负载拒绝证书。"
       ],
       "acceptance": [
-        "相对 mdn-spells 为修士、法球、机关及自维持人工生命列有限感知器、记忆、执行器、队列和供能容量；逐一判 H/B/普通行动的装载条件及缺结构/容量满拒绝，不以 1024 队列常数证明任意实体容量。",
-        "自然 C 只供裁剪事件；主动 read/transfer/applyForce/editMaterial 各自报价及双时点授权。事件响应、死亡撤权和后笔失败保留先前已付事实；不开放死后独立 grant 或追踪专名原子。",
-        "向桥接交程序 hash、授权、可见字段、失败原因和可表达/域外表；无结构证书、私值越权和关键回路编辑须明确拒绝或未知。"
+        "相对 mdp-program，逐体从已证结构列感官/订阅字段、AST 代码、有限记忆、事件队列、储池、执行器与神识容量，按生命周期和同刻并发合计峰值，记录结构版本与损坏换证；旧球 20 M、候选 60 M 不可单独证明 B 三次净入或 H 加 A0 可用。",
+        "用同一证书复算 H/B、普通行动起步续步、代谢及 100/20 的装载、毛扣款、tick、神识、队列竞争、两时点 grant、事件顺序和失败余态；覆盖容量满、容量缺证、损坏、创建者死亡、越权及已付不回滚。",
+        "缺证返回 capacityUnknown，满额返回 capacityFull/queueFull；沿用四原子、同一 AST 和首批死后独立 grant 关闭，不另立专名元法术或暗增储池/队列上限。"
       ],
-      "dependsOn": ["mdp-physics", "mdp-mana", "mdp-life"],
+      "dependsOn": ["mdq-physics", "mdq-mana", "mdq-life"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
@@ -108,18 +111,18 @@
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
     },
     {
-      "id": "mdp-theory",
-      "title": "把新增成功域接回唯一世界理论",
-      "objective": "使普通行动、代谢、具体生命与程序载体共用六阶段因果。",
+      "id": "mdq-theory",
+      "title": "将四份新证书收束到唯一世界理论",
+      "objective": "使首批成功域、无证拒绝与六阶段因果由同一正文解释。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：新增普通行动与两种实体的跨模块逐笔链、反例和未决边界。"
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：新增四份证书的共同因果、反例及未决清单。"
       ],
       "acceptance": [
-        "相对 mdo-theory 新增起步/持续行动/失供救援的 C/N→X、Quote/Tx↔A、LifeAssessment/撤权及事件后继逐笔链；复核物理冲量、材料、M、散逸、tick、神识，不重造模块价或阈值。",
-        "以 H/B 作只读反例，复验接触未裁定不触发、失供球保惯性、人工生命凭自身资格行动、创建者死亡撤权、迟到补源不倒救及回收无套利；逐格标明已证、条件、未知或不可表达。",
-        "保持唯一正文的公理/推导现象/游戏数值/现实桥接边界，列 ADR 0017–0020 和旧原型待覆盖影响，不宣布候选获准或开发就绪。"
+        "相对 mdp-theory，按同一证书版本与 C/N→X、Quote/Tx↔A、LifeAssessment/DeathBarrier、事件 ID，把 H/B、普通行动、100/20 的触发者、执行者、付款方、能源/材料、反作用、耗尽、失败和已付余态接成可复算整链；不在理论正文复制另一套模块参数。",
+        "交叉反证无梯度/材料、法球无注源、创建者死亡、迟到补源、惰性修壳、复制分叉、满额载体与重复回收；逐格标已证、条件、未知或不可表达，向桥接任务交付未来验收的共同前提。",
+        "维持已批准 A/B/B/B/B/B 与公理/推导现象/游戏数值/现实输入边界；列 ADR 0017–0020 和旧 DSL/蓝图、预设、敌方修士、存档的待裁定影响。若四份证书仍需新产品解释，列玩家效果、优势、代价、推荐理由和升级问题，不伪称策划通过或游戏已可玩。"
       ],
-      "dependsOn": ["mdp-physics", "mdp-mana", "mdp-life", "mdp-program"],
+      "dependsOn": ["mdq-physics", "mdq-mana", "mdq-life", "mdq-program"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
@@ -128,25 +131,27 @@
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
     },
     {
-      "id": "mdp-bridge",
-      "title": "形成首批成功域的可执行纸面验收",
-      "objective": "把已获证世界结果映射为双场景玩家流程和跨入口等价断言。",
+      "id": "mdq-bridge",
+      "title": "将新逐体证书接入跨入口纸面验收矩阵",
+      "objective": "把本轮已证、条件、未知与域外结果转为玩家可执行的双场景及相邻普通行动验收步骤。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：新增 H/B/普通行动验收表、输入边沿与旧原件隔离。"
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：更新 H/B、普通行动及 100/20 的推演台→演武场→返回纸面矩阵、跨入口等价断言和旧内容处理。"
       ],
       "acceptance": [
-        "相对 mdo-bridge 用同初态、程序 hash、授权、事件先史、模拟时刻/序号和种子，为 H/B/普通行动列推演台编辑/预算/单步→同书演武场绑定/观察→返回源位置修订的成功、欠费、空结果、越权、接触未裁定及域外拒绝步骤和余态。",
-        "定义暂停/恢复时按键保持、新按下、释放及事件排队的规范请求边沿；鼠标、键盘、手柄、AI、实体事件同请求同报价/实扣/字段裁剪/余态，敌方修士同合同，输入标签不是世界特权。",
-        "为已付不回滚、unknownPrice、身份 unknown、死亡关闭、容量不足与旧 DSL/蓝图/绑定/预设/存档隔离给可见反馈及定位；只承诺证书内纸面结果，不记实际可玩或改游戏测试。"
+        "逐格引用 mdq-physics/mana/life/program 和 mdq-theory 的证书版本及有限适用域；H/B、普通行动、100/20 的成功格必须列正功/材料、Quote/Tx、生命/撤权、程序容量与事件前提，未获证的正向路径不得标为可执行成功。",
+        "从同一初态、AST/programHash、授权、目标可见性、事件先史、模拟时刻/序号和种子出发，写出推演台 DSL/蓝图编辑、预算、单步观察→同书演武场绑定与观察→返回原源位置修订的成功、欠费/缺料/越权/容量拒绝、获准空结果、未知价/身份未知及域外步骤；每格核对规范请求、报价、实扣、字段裁剪、事件顺序、可见拒因和已提交余态。",
+        "鼠标、键盘、手柄、AI、实体事件和敌方修士在同条件下比较同请求、同价、同裁剪与同余态；保留暂停/恢复边沿、死亡撤权、旧 DSL/蓝图/绑定/预设/存档的隔离与 ADR 覆盖点。只定义未来验收，明确现行原型和实际可玩证据仍待开发后验证。"
       ],
-      "dependsOn": ["mdp-theory"],
+      "dependsOn": ["mdq-theory"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
