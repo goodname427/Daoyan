@@ -207,7 +207,8 @@ export function readyStageTasks(tasks: VersionStageTask[]): VersionStageTask[] {
 export function assertStageTaskPaths(task: VersionStageTask, documentRoot: string): void {
   const root = normalizedPath(documentRoot);
   const verificationOnly =
-    ['qa', 'candidate'].includes(task.stage) || task.stageStep === 'reverification';
+    ['design-acceptance', 'qa', 'candidate'].includes(task.stage) ||
+    task.stageStep === 'reverification';
   if (verificationOnly && task.writePaths.some((path) => !path.startsWith(`${root}/`))) {
     throw new Error(`独立验证任务 ${task.id} 只能写入当前版本证据目录`);
   }
