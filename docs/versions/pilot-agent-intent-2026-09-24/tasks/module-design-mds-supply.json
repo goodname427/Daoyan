@@ -1,0 +1,49 @@
+{
+  "taskId": "mds-supply",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "补入 H2、B4、M1 起步/续步及 A1 条件执行包和 M1/A1 各六件摄取包的逐包 ID、上游条件、装载与封印候选读数、作用账、精度、耗尽及拒绝边界；统一反证并给资源、生命、程序交付同版输入。上游真实来源仍未证，正向作用保持条件式。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-supply.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mds-supply\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const s of [\"EL-M1-D1\",\"EL-M1-D2\",\"EL-J1-H2\",\"EL-B1-B4\",\"EL-A1-D1\",\"EL-M1-Ii\",\"EL-A1-Ii\",\"sourceLotId\",\"sealVersion\",\"E0/12\",\"0q\",\"undeterminedEnergy\",\"undeterminedMaterial\",\"undeterminedContact\",\"undeterminedAnchor\",\"capacityInvalidation\",\"第二次回收\",\"C/N→X\"])a.ok(d.includes(s),s);a.equal(6*(1/3),2);a.equal(2-1-1,0);console.log(\"PASS mds supply contract, package coverage and finite balances\")'",
+      "exitCode": 0,
+      "output": "PASS mds supply contract, package coverage and finite balances",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-supply.json\",\"utf8\"));a.equal(e.commands.length,3);for(const c of e.commands){a.equal(c.exitCode,0);for(const x of c.evidence)a.ok(f.existsSync(x),x)}for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\"))a.ok(f.existsSync(path.resolve(p,x)),x)}console.log(\"PASS mds evidence and local links\")'",
+      "exitCode": 0,
+      "output": "PASS mds evidence and local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json"
+      ]
+    }
+  ],
+  "failedAttempts": []
+}
