@@ -3,17 +3,17 @@
   "status": "completed",
   "scopeRevision": 13,
   "charterRevision": "2",
-  "scopeNote": "合同 writePaths 仅列物理设计正文；本轮任务另明确要求此精确路径的交付证据文件。实际变更只有这两处。",
-  "summary": "在 physical-mdq-1 的有限纸面域登记 M1/A1/J1/B1 的逐体材料、承力与预存梯度；将起步、续步、K0/V0、H/B 接触及修壳的双边冲量、能量和 Q[k] 去向接到既有资源价与六阶段事实。无落脚、推杆、梯度、锚链、材料或场外接收证时拒绝或未裁定，已提交自然事实保留。交付资源物理供能描述符、生命 N→X/保存承载输入和程序结构容量输入。仅为策划候选，未运行游戏或批准新 ADR。",
+  "summary": "修订 physical-mdq-1 有限证书：起步、续步、K0/V0、H/B 及材料和 M1/A1 逐体账沿用前驱条件夹具；明确预存物理包的装载来源仍未证，不能将 M 付款当作正功或一般可执行成功。K0 仅适用于 h=2 完整回路，保存承载额外梯度未入初始库存时不得签 N→X。资源、生命和程序按同版材料/能源快照消费；缺证返回 unknownPrice/undetermined 或域外，已提交自然事实保留。",
+  "deliveryNote": "文档与证据检查已完成；本轮 git add 因 .git/index.lock 无写入权限失败，当前工作区未能形成所请求的本地提交。",
   "artifacts": [
     "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
   ],
   "commands": [
     {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),fs=require(\"node:fs\");const p=\"docs/versions/pilot-agent-intent-2026-09-24/\";const d=fs.readFileSync(p+\"physics-material-design.md\",\"utf8\");const e=JSON.parse(fs.readFileSync(p+\"tasks/module-design-mdq-physics.json\",\"utf8\"));a.equal(e.taskId,\"mdq-physics\");a.equal(e.status,\"completed\");for(const s of [\"physical-mdq-1\",\"M1@Xm0\",\"A1@Xa0\",\"PhysicalSupplyDescriptor\",\"MaterialTransition\",\"N-m1→X-m1\",\"N-a1→X-a1\"])a.ok(d.includes(s),s);a.equal(512+256+128+128,1024);a.equal(3-1-2,0);console.log(\"PASS mdq-physics focused contract and arithmetic\")'",
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdq-physics.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.filter(x=>x.id===\"mdq-physics\").at(-1);a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.artifacts,t.writePaths);for(const s of [\"physical-mdq-1\",\"m-drive U:3→2\",\"m-drive U:2→0\",\"J1 U:1→0\",\"beacon-drive U:2→0\",\"N-m1→X-m1\",\"N-a1→X-a1\",\"undeterminedEnergy\",\"PhysicalSupplyDescriptor\",\"CarrierCapacityCertificate\"])a.ok(d.includes(s),s);a.equal(512+256+128+128,1024);a.equal(3-1-2,0);a.equal(2-1-1,0);console.log(\"PASS mdq physics contract and finite balances\")'",
       "exitCode": 0,
-      "output": "PASS mdq-physics focused contract and arithmetic",
+      "output": "PASS mdq physics contract and finite balances",
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
@@ -29,18 +29,30 @@
       ]
     },
     {
-      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
       "exitCode": 0,
       "output": "",
-      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdq-physics.json\",\"utf8\"));for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\"))a.ok(f.existsSync(path.resolve(p,x)),x)}for(const c of e.commands){a.equal(c.exitCode,0);for(const x of c.evidence)a.ok(f.existsSync(x),x)}a.equal(e.failedAttempts[0].exitCode,1);console.log(\"PASS mdq evidence links and command records\")'",
+      "exitCode": 0,
+      "output": "PASS mdq evidence links and command records",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
+      ]
     }
   ],
   "failedAttempts": [
     {
-      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
       "exitCode": 1,
-      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
-      "resolution": "已按文档轻量 Profile 格式化并复检通过。"
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "工作区 .git 当前为只读权限；未暂存、未提交或推送。"
     }
   ]
 }
