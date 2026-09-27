@@ -1,0 +1,54 @@
+{
+  "taskId": "mdv-world-review",
+  "status": "completed",
+  "reviewDecision": "changes-requested",
+  "summary": "独立复审六项 mdv 详细策划、共同初态逐笔因果、指定预算与竞争、未预设跨实体组合、六入口同书往返及当前实现和 ADR-0017 至 0020。封印残量和暂停边沿两项前轮冲突已关闭；正向来源/装载与攻击价、逐体容量和生命连续性仍为条件证，休眠但当前不能醒回的产品解释待判断。形成可核验详细策划退回合同；没有游戏实现、测试、实玩或完整门禁结论。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdv-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\"),ids=[\"physical-residual\",\"action-ledger\",\"life-proof\",\"carrier-budget\",\"pause-bridge\",\"theory-replay\"];for(const id of ids){a.ok(d.includes(\"mdv-\"+id),id);const j=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdv-\"+id+\".json\",\"utf8\"));a.equal(j.status,\"completed\")}for(const s of [\"# `mdv-world-review`\",\"changes-requested\",\"120 M\",\"capacityUnknown\",\"DeathBarrier\",\"ADR-0020\",\"退回详细策划的可核验合同\"]){a.ok(d.includes(s),s)}a.equal(16-12,4);a.equal(32-24,8);a.equal(69+5+43,117);a.equal(3+100+20,123);a.equal(7+123,130);console.log(\"PASS mdv six sources, review coverage and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdv six sources, review coverage and arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",t=JSON.parse(f.readFileSync(p+\"design-review-tasks.json\",\"utf8\")).tasks[0],e=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdv-world-review.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.equal(e.reviewDecision,\"changes-requested\");a.deepEqual(e.evidence,t.writePaths);for(const path of e.evidence)a.ok(f.existsSync(path),path);for(const c of e.commands)a.equal(c.exitCode,0);console.log(\"PASS mdv task evidence contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdv task evidence contract"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdv-world-review.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdv-world-review writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdv-world-review writePaths changed"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdv-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdv-world-review.json",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 1,
+      "reason": "首次追加 Markdown 表格后格式未匹配；随后仅格式化指定复审文件并通过相同检查。"
+    }
+  ]
+}
