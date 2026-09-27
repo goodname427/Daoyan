@@ -1,0 +1,55 @@
+{
+  "taskId": "mds-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "依据已完成的 mds-theory 直接前驱，更新 mdq-bridge 固定 S0 的跨入口纸面重放矩阵：逐格绑定四证版本与理论事实 ID，记录成功条件、Quote/实扣/材料差/余态以及欠费、缺包、缺料、无权、容量、获准空读、未知和域外拒绝；明确六来源规范请求等价、暂停恢复丢弃旧输入边沿，以及旧 DSL/蓝图、预设、敌方修士、绑定和存档的等价或隔离策略。只定义未来开发与候选验收，不声称规则已实现、可玩或浏览器体验已通过。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-bridge.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),plan=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")),t=plan.tasks.find(x=>x.id===\"mds-bridge\"),pred=JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-theory.json\",\"utf8\"));a.deepEqual(t.dependsOn,[\"mds-theory\"]);a.deepEqual(t.writePaths,[p+\"player-bridge-design.md\"]);a.equal(pred.status,\"completed\");for(const x of [\"S0-H/B/M1\",\"sourceLotId\",\"LoadTxId\",\"sealVersion\",\"Tx-H1\",\"C-H3\",\"Tx-H2\",\"Tx-B3a-c\",\"Tx-B4\",\"Tx-D1\",\"Tx-D2\",\"Tx-Ii\",\"Tx-attack\",\"Tx-K0\",\"LifeAssessment\",\"DeathBarrier\",\"欠费\",\"undeterminedMaterial\",\"missingMaterial\",\"deniedOrUnavailable\",\"capacityFull\",\"capacityUnknown\",\"queueFull\",\"空集合\",\"unknownPrice\",\"identityRelation=unknown\",\"unexpressible\",\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"敌方修士\",\"inputSequence\",\"不重放\",\"旧预设\",\"存档\",\"不构成可玩验收\"])a.ok(d.includes(x),x);for(const id of [\"mds-supply\",\"mds-ledger\",\"mds-life\",\"mds-capacity\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");console.log(\"PASS mds-bridge contract, direct predecessors, matrix facts, refusal cases, equivalence and compatibility\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-theory.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-capacity.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; $outside=@($actual | Where-Object {$_ -notin $expected -and $_ -ne 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-bridge.json'}); if($outside.Count){Write-Error \"Unexpected changed paths: $outside\"; exit 1}; if('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md' -notin $actual){throw 'Expected artifact missing'}; Write-Output 'PASS changes are limited to the two contract writePaths'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-bridge.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),plan=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")),t=plan.tasks.find(x=>x.id===\"mds-bridge\"),pred=JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-theory.json\",\"utf8\"));a.deepEqual(t.dependsOn,[\"mds-theory\"]);a.deepEqual(t.writePaths,[p+\"player-bridge-design.md\"]);a.equal(pred.status,\"completed\");for(const x of [\"S0-H/B/M1\",\"sourceLotId\",\"LoadTxId\",\"sealVersion\",\"Tx-H1\",\"C-H3\",\"Tx-H2\",\"Tx-B3a-c\",\"Tx-B4\",\"Tx-D1\",\"Tx-D2\",\"Tx-Ii\",\"Tx-attack\",\"Tx-K0\",\"LifeAssessment\",\"DeathBarrier\",\"insufficientFunds\",\"undeterminedMaterial\",\"missingMaterial\",\"deniedOrUnavailable\",\"capacityFull\",\"capacityUnknown\",\"queueFull\",\"空集合\",\"unknownPrice\",\"identityRelation=unknown\",\"unexpressible\",\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"敌方修士\",\"inputSequence\",\"不重放\",\"旧预设\",\"存档\",\"不构成可玩验收\"])a.ok(d.includes(x),x);for(const id of [\"mds-supply\",\"mds-ledger\",\"mds-life\",\"mds-capacity\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");console.log(\"PASS mds-bridge contract, direct predecessors, matrix facts, refusal cases, equivalence and compatibility\")'",
+      "exitCode": 1,
+      "output": "AssertionError: insufficientFunds",
+      "resolution": "The first check expected a specific English token absent from the contract wording. Re-ran using the contract's Chinese欠费 label; no document change was required for this assertion correction."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-bridge.json"
+  ]
+}
