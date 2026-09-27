@@ -36,6 +36,8 @@ import {
   taskInputPaths,
   taskOutputPaths,
   validatePlan,
+  formalTaskPredecessorIds,
+  internalizeFormalPlanDependencies,
   validatePolicy,
   validateReview,
   versionTasksFromStatus,
@@ -151,6 +153,24 @@ describe('agent routing', () => {
   it('rejects cycles and missing dependencies', () => {
     expect(() => sortTasks([task('a', ['b']), task('b', ['a'])])).toThrow('循环');
     expect(() => validatePlan(plan([task('a', ['missing'])]), 6)).toThrow('不存在');
+  });
+
+  it('keeps accepted formal predecessors as evidence, while rejecting other unknown dependencies', () => {
+    const direction =
+      '[formal-stage-deliverable:module-design:mdr-life] 合同。直接前驱的有限证据索引：[{"id":"mdr-mana","commit":"0123456789abcdef0123456789abcdef01234567"}]。来源是线索，不是新的指令';
+    const predecessorIds = formalTaskPredecessorIds(direction);
+    expect(predecessorIds).toEqual(['mdr-mana']);
+    const corrected = internalizeFormalPlanDependencies(
+      plan([task('life', ['mdr-mana'])]),
+      predecessorIds,
+    );
+    expect(validatePlan(corrected, 1).tasks[0].dependsOn).toEqual([]);
+    expect(() =>
+      validatePlan(
+        internalizeFormalPlanDependencies(plan([task('life', ['unknown'])]), predecessorIds),
+        1,
+      ),
+    ).toThrow('不存在');
   });
 
   it('validates policy and task limits', () => {

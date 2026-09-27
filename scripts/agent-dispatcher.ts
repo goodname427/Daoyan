@@ -19,6 +19,8 @@ import {
   fastGateCommandProgress,
   failedNpmCommandFromOutput,
   highestTier,
+  formalTaskPredecessorIds,
+  internalizeFormalPlanDependencies,
   isSafeRunId,
   optimizePlan,
   planTaskLimit,
@@ -933,7 +935,7 @@ async function askPlanner(
 把制作人方向转换为一个最小但完整的交付计划：
 - 写出可观察的验收标准与非目标。
 - 只在真正能降低上下文或需要不同专长时拆分，避免为了多 Agent 而拆分。
-- 任务顺序执行，使用 dependsOn 表达依赖；最多 4 个任务。
+- 任务顺序执行，使用 dependsOn 表达本次计划内任务之间的依赖；最多 4 个任务。若合同列出已完成的直接前驱，只把它当作只读输入，不要写进本计划的 dependsOn。
 - 不单独建立“阅读现状”“运行门禁”任务；这些是每个执行者和调度器的固定责任。同一模型可以连续完成的实现、测试和文档应保持为一个任务。
 - economy 用于检索、文档与机械工作；standard 用于常规 UI/功能/测试；advanced 用于 core、DSL、VM、并发、共享契约和困难调试；critical 只用于 ADR、不可逆架构和重大迁移。
 - 若缺少的是实现细节，请自行做保守决定；只有产品方向冲突、不可逆选择或大版本发布才设置 producerDecisionRequired=true。
@@ -968,7 +970,10 @@ ${direction}
   return {
     plan: optimizePlan(
       validatePlan(
-        parseJsonFile(await readFile(outputFile, 'utf8')),
+        internalizeFormalPlanDependencies(
+          parseJsonFile(await readFile(outputFile, 'utf8')) as TaskPlan,
+          formalTaskPredecessorIds(direction),
+        ),
         planTaskLimit(direction, policy.limits.maxTasks),
       ),
     ),

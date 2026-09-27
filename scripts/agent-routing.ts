@@ -823,6 +823,50 @@ export function validatePlan(value: unknown, maxTasks: number): TaskPlan {
   return plan as TaskPlan;
 }
 
+/** Formal task predecessors have already been accepted by the Version PM. */
+export function formalTaskPredecessorIds(direction: string): string[] {
+  if (!/^\[formal-stage-(?:deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.test(direction))
+    return [];
+  const match = direction.match(/直接前驱的有限证据索引：([^\n]*?)。来源是线索/u);
+  if (!match) return [];
+  try {
+    const evidence = JSON.parse(match[1]) as unknown;
+    if (!Array.isArray(evidence)) return [];
+    return evidence
+      .filter(
+        (entry): entry is { id: string; commit: string } =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          typeof entry.id === 'string' &&
+          /^[a-z0-9][a-z0-9-]*$/.test(entry.id) &&
+          typeof entry.commit === 'string' &&
+          /^[0-9a-f]{40}$/.test(entry.commit),
+      )
+      .map((entry) => entry.id);
+  } catch {
+    return [];
+  }
+}
+
+/** Remove only accepted external predecessors mistakenly copied into an internal plan. */
+export function internalizeFormalPlanDependencies(
+  plan: TaskPlan,
+  predecessorIds: readonly string[],
+): TaskPlan {
+  if (!Array.isArray(plan.tasks) || predecessorIds.length === 0) return plan;
+  const internalIds = new Set(plan.tasks.map((task) => task.id));
+  const predecessors = new Set(predecessorIds);
+  return {
+    ...plan,
+    tasks: plan.tasks.map((task) => ({
+      ...task,
+      dependsOn: Array.isArray(task.dependsOn)
+        ? task.dependsOn.filter((id) => internalIds.has(id) || !predecessors.has(id))
+        : task.dependsOn,
+    })),
+  };
+}
+
 export function sortTasks(tasks: PlannedTask[]): PlannedTask[] {
   const remaining = new Map(tasks.map((task) => [task.id, task]));
   const completed = new Set<string>();

@@ -28,10 +28,14 @@ import {
   buildLocalPlan,
   classifyAgentFailure,
   conventionalCommitOrFallback,
+  formalTaskPredecessorIds,
+  internalizeFormalPlanDependencies,
   isValidationTreePath,
   preferredWindowsExecutable,
   reviewFindingSignature,
   validateReview,
+  validatePlan,
+  type TaskPlan,
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
 import { findTaskCommitEvidence } from './task-commit-evidence';
@@ -3884,6 +3888,47 @@ export function isRetryablePlannerNetworkFailure(
   );
 }
 
+/** A completed formal predecessor is input evidence, not a dependency inside the new PM run. */
+export function isRetryableFormalPlannerDependencyFailure(
+  progress: Record<string, unknown> | null,
+  files: string[],
+  launchLog: string,
+  rawPlan: unknown,
+  direction: string,
+  acceptedPredecessors: ReadonlySet<string>,
+): boolean {
+  if (
+    progress?.phase !== '深度规划' ||
+    progress.status !== 'finished' ||
+    progress.code !== 0 ||
+    progress.workerPid !== 0 ||
+    progress.workerProcessIdentity !== '' ||
+    files.length === 0 ||
+    files.some(
+      (file) =>
+        !['planner.log', 'progress.json', 'public-events.jsonl', 'plan.json'].includes(file),
+    ) ||
+    !/任务 [a-z0-9-]+ 依赖不存在的任务 [a-z0-9-]+/u.test(launchLog) ||
+    typeof rawPlan !== 'object' ||
+    rawPlan === null ||
+    !Array.isArray((rawPlan as TaskPlan).tasks)
+  )
+    return false;
+  const predecessorIds = formalTaskPredecessorIds(direction).filter((id) =>
+    acceptedPredecessors.has(id),
+  );
+  if (predecessorIds.length === 0) return false;
+  try {
+    const plan = rawPlan as TaskPlan;
+    const corrected = internalizeFormalPlanDependencies(plan, predecessorIds);
+    if (JSON.stringify(corrected.tasks) === JSON.stringify(plan.tasks)) return false;
+    validatePlan(corrected, Math.max(1, plan.tasks.length));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function scheduleRetry(): void {
   if (retryTimer) clearTimeout(retryTimer);
   retryTimer = null;
@@ -5713,6 +5758,7 @@ async function coordinateOnce(): Promise<void> {
   });
   const emptyBootstrapFailures = new Set<string>();
   const networkPlannerFailures = new Set<string>();
+  const formalPlannerDependencyFailures = new Set<string>();
   if (activeFormalVersion && cleanWorktree.status === 0 && !cleanWorktree.stdout.trim()) {
     for (const item of state.items) {
       if (
@@ -5752,6 +5798,39 @@ async function coordinateOnce(): Promise<void> {
           networkPlannerFailures.add(item.id);
           continue;
         }
+        if (
+          !state.items.some(
+            (prior) =>
+              prior.id !== item.id &&
+              prior.orchestration?.formalVersionId === activeFormalVersion.id &&
+              prior.orchestration.formalStage === activeFormalVersion.currentStage &&
+              prior.orchestration.formalTaskId === item.orchestration?.formalTaskId &&
+              prior.status === 'superseded' &&
+              prior.summary.includes('规划前驱误写'),
+          )
+        ) {
+          const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
+            () => '',
+          );
+          const acceptedPredecessors = new Set(
+            stageTasksForCurrentNode(activeFormalVersion)
+              .filter((task) => task.status === 'accepted')
+              .map((task) => task.id),
+          );
+          if (
+            isRetryableFormalPlannerDependencyFailure(
+              progress,
+              runFiles,
+              launchLog,
+              await readJson(resolve(item.runDirectory, 'plan.json')),
+              item.idea,
+              acceptedPredecessors,
+            )
+          ) {
+            formalPlannerDependencyFailures.add(item.id);
+            continue;
+          }
+        }
       }
       if (runFiles.length > 0) continue;
       const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
@@ -5777,6 +5856,16 @@ async function coordinateOnce(): Promise<void> {
         new Date().toISOString(),
         networkPlannerFailures,
         '模型连接失败且未创建恢复快照；保留失败日志并重新派发一次。',
+      )
+    : false;
+  const retiredFormalPlannerDependency = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        formalPlannerDependencyFailures,
+        '规划前驱误写为内部任务依赖，未创建恢复快照；原尝试留档并按已接纳前驱重新派发一次。',
       )
     : false;
   const stoppedCollapsedItems = new Set(
@@ -6205,6 +6294,7 @@ async function coordinateOnce(): Promise<void> {
     supersededObsolete > 0 ||
     retiredEmptyBootstrap ||
     retiredNetworkPlanner ||
+    retiredFormalPlannerDependency ||
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||
