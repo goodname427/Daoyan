@@ -1195,6 +1195,9 @@ describe('formal version lifecycle', () => {
       summary: '六类规则待取舍',
       sourceRequestId: 'review-1',
     });
+    const designNode = version.nodes.find((node) => node.id === 'module-design')!;
+    designNode.summary = '该阶段已由秘书调度完成；上一轮交付。';
+    designNode.artifact = 'old-report.json';
     resolveDecisionGate(
       version,
       gate.id,
@@ -1206,12 +1209,35 @@ describe('formal version lifecycle', () => {
     expect(version.currentStage).toBe('module-design');
     expect(version.status).toBe('running');
     expect(version.nodes.find((node) => node.id === 'module-design')?.status).toBe('active');
+    expect(designNode.summary).toBe('');
+    expect(designNode.artifact).toBe('');
     expect(version.nodes.find((node) => node.id === 'design-review')?.status).toBe('pending');
     expect(gate.resolutionHistory?.at(-1)?.feedback).toContain('按模块重写');
     expect(
       version.todos.some((todo) => todo.status === 'open' && todo.decisionGateId === gate.id),
     ).toBe(false);
     expect(() => normalizeFormalVersion(structuredClone(version))).not.toThrow();
+  });
+
+  it('does not show a previous completion as the current active stage summary', () => {
+    const version = createFormalVersion({
+      id: 'stale-design-summary',
+      title: '设计修订',
+      direction: '统一规则',
+      documentRoot: 'docs/versions/stale-design-summary',
+      currentStage: 'module-design',
+    });
+    const node = version.nodes.find((entry) => entry.id === 'module-design')!;
+    node.summary = '该阶段已由秘书调度完成；上一轮报告。';
+    node.artifact = 'old-report.json';
+    expect(
+      effectiveVersionNodes(version).find((entry) => entry.id === 'module-design'),
+    ).toMatchObject({
+      status: 'active',
+      summary: '本轮正在执行；上一轮交付记录仅供历史追溯。',
+      artifact: '',
+    });
+    expect(node.artifact).toBe('old-report.json');
   });
 
   it('advances an approved, lead-designer-reviewed design after producer reapproval', () => {

@@ -1138,8 +1138,13 @@ describe('formal version stage dispatch', () => {
     expect(workflowHealthSignal(healthy)).toBeNull();
     expect(workflowHealthSignal({ ...healthy, reviewStallCount: 2 })).toBe('repeated-finding');
     expect(workflowHealthSignal({ ...healthy, recoveryAttempts: 2 })).toBeNull();
-    expect(workflowHealthSignal({ ...healthy, recoveryAttempts: 2,
-      progressUpdatedAt: '2026-09-23T13:37:00.000Z' })).toBe('repeated-recovery');
+    expect(
+      workflowHealthSignal({
+        ...healthy,
+        recoveryAttempts: 2,
+        progressUpdatedAt: '2026-09-23T13:37:00.000Z',
+      }),
+    ).toBe('repeated-recovery');
     expect(
       workflowHealthSignal({ ...healthy, progressUpdatedAt: '2026-09-23T13:00:00.000Z' }),
     ).toBe('stale-progress');

@@ -2013,8 +2013,11 @@ export function currentVersionStagePolicy(
 
 export function effectiveVersionNodes(version: FormalVersion): VersionNode[] {
   return version.nodes.map((node) => {
-    if (node.status === 'active' && node.completedAt === '' &&
-        /该阶段已由秘书调度完成/.test(node.summary)) {
+    if (
+      node.status === 'active' &&
+      node.completedAt === '' &&
+      /该阶段已由秘书调度完成/.test(node.summary)
+    ) {
       return { ...node, summary: '本轮正在执行；上一轮交付记录仅供历史追溯。', artifact: '' };
     }
     const policy = currentVersionStagePolicy(version, node.id);

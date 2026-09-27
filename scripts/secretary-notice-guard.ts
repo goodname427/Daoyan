@@ -288,8 +288,12 @@ export function workflowHealthSignal(input: {
   const lastProgress = Date.parse(input.progressUpdatedAt);
   const now = Date.parse(input.now);
   // A resumed process with fresh progress is not a live recovery failure.
-  if (input.recoveryAttempts >= 2 && Number.isFinite(lastProgress) &&
-      Number.isFinite(now) && now - lastProgress >= activeHealthIntervalMs) {
+  if (
+    input.recoveryAttempts >= 2 &&
+    Number.isFinite(lastProgress) &&
+    Number.isFinite(now) &&
+    now - lastProgress >= activeHealthIntervalMs
+  ) {
     return 'repeated-recovery';
   }
   if (Number.isFinite(lastProgress) && Number.isFinite(now) && now - lastProgress >= 30 * 60_000) {
@@ -580,14 +584,20 @@ async function deliverNotice(path: string): Promise<void> {
   const remaining = raw.pendingChannelIds.filter(
     (channelId) => !attempted.has(channelId) || failed.has(channelId),
   );
-  const acceptedChannelIds = result.attemptedChannelIds.filter((channelId) => !failed.has(channelId));
+  const acceptedChannelIds = result.attemptedChannelIds.filter(
+    (channelId) => !failed.has(channelId),
+  );
   if (acceptedChannelIds.length > 0) {
-    await appendFile(noticeReceiptsFile, `${JSON.stringify({
-      noticeId: raw.notice.id,
-      kind: raw.notice.kind,
-      acceptedChannelIds,
-      acceptedAt: new Date().toISOString(),
-    })}\n`, 'utf8');
+    await appendFile(
+      noticeReceiptsFile,
+      `${JSON.stringify({
+        noticeId: raw.notice.id,
+        kind: raw.notice.kind,
+        acceptedChannelIds,
+        acceptedAt: new Date().toISOString(),
+      })}\n`,
+      'utf8',
+    );
   }
   if (remaining.length === 0) {
     await rm(path, { force: true });
@@ -1817,9 +1827,14 @@ export function versionStageScheduleMessage(
   rejectionReason = '',
 ): string {
   const label = `【版本节点·${stageTitle}】`;
-  const work = step === 'planning' ? '节点任务规划' :
-    step === 'finalizing' ? '节点交付汇总' :
-      step === 'task' ? `工作项“${taskTitle}”` : '阶段工作';
+  const work =
+    step === 'planning'
+      ? '节点任务规划'
+      : step === 'finalizing'
+        ? '节点交付汇总'
+        : step === 'task'
+          ? `工作项“${taskTitle}”`
+          : '阶段工作';
   return rejectionReason
     ? `${label}${work}第 ${attempt} 次尝试；上一轮未接纳：${rejectionReason}。`
     : `${label}${work}已安排；本轮结果验收后继续推进。`;
@@ -5758,13 +5773,16 @@ async function driveFormalVersion(): Promise<boolean> {
       const step = queued.orchestration?.formalStageStep ?? 'primary';
       const taskId = queued.orchestration?.formalTaskId ?? '';
       const stageStartedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
-      const attempt = state.items.filter((candidate) =>
-        candidate !== queued && candidate.createdAt >= stageStartedAt &&
-        candidate.orchestration?.formalVersionId === version.id &&
-        candidate.orchestration.formalStage === stage &&
-        candidate.orchestration.formalStageStep === step &&
-        (step !== 'task' || candidate.orchestration.formalTaskId === taskId)
-      ).length + 1;
+      const attempt =
+        state.items.filter(
+          (candidate) =>
+            candidate !== queued &&
+            candidate.createdAt >= stageStartedAt &&
+            candidate.orchestration?.formalVersionId === version!.id &&
+            candidate.orchestration.formalStage === stage &&
+            candidate.orchestration.formalStageStep === step &&
+            (step !== 'task' || candidate.orchestration.formalTaskId === taskId),
+        ).length + 1;
       const taskTitle = version.stageTasks?.find((task) => task.id === taskId)?.title ?? taskId;
       await emitNotice(
         retryReason ? 'version-stage-retry' : 'version-stage-scheduled',
