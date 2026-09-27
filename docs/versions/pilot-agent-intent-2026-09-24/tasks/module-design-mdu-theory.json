@@ -1,0 +1,67 @@
+{
+  "taskId": "mdu-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "只读整合 mdu-source、mdu-ledger、mdu-life、mdu-program 四份完成判断，在唯一世界理论正文以统一重放键复算 H/B、普通起步与代谢、AT0、100/20 和同刻双响应；逐笔区分规则、条件报价、当前实扣与余态，补齐六入口矩阵、反例及 ADR/旧内容回退映射。定向结构、格式、差异和范围检查均通过；缺少现场四读、装载价、逐体容量、生命三链与攻击价，候选正向链仍不可执行。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-theory.json"
+  ],
+  "commands": [
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-source.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-ledger.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-program.json"
+      ],
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",s=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdu-theory\");a.ok(s.includes(\"### `mdu-theory`\"));a.deepEqual(t.writePaths,[p+\"world-theory-draft.md\",p+\"tasks/module-design-mdu-theory.json\"]);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"mdu-r13-S0-01\",\"Acquire-J1-01\",\"Acquire-B1-01\",\"Acquire-k0-01\",\"ASTVersion\",\"programHash\",\"structureVersion\",\"sealVersion\",\"priceVersion\",\"revocationVersion\",\"simTime\",\"worldSequence\",\"seed\",\"C-B1\",\"N-M1-F1\",\"Tx-H2↔A-H2\",\"Tx-B4↔A-B4↔X-B4\",\"AT0\",\"100/20\",\"同刻双响应\",\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"敌方修士\",\"DeathBarrier\",\"二次回收\",\"ADR-0017\",\"ADR-0018\",\"ADR-0019\",\"ADR-0020\",\"当前不可执行\"])a.ok(s.includes(k),k);const rows=s.split(\"**六入口 × 五种结果的逐格索引。**\")[1].split(\"每格还要记录\")[0].split(\"\\n\").filter(x=>/^\\| (鼠标|键盘|手柄|AI|实体事件|敌方修士)\\s*\\|/.test(x));a.equal(rows.length,6);for(const row of rows)a.equal(row.split(\"|\").length-1,7);console.log(\"PASS mdu-theory contract, predecessors, replay and six-entry matrix\")'",
+      "exitCode": 0,
+      "output": "PASS mdu-theory contract, predecessors, replay and six-entry matrix"
+    },
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ],
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ],
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "PASS git diff --check"
+    },
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-theory.json"
+      ],
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-theory.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw \"Changed paths differ from contract: $($actual -join ', ')\"}; Write-Output 'PASS only two mdu-theory writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdu-theory writePaths changed"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-theory.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-theory.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-theory.json",
+      "exitCode": 1,
+      "reason": "首次检查发现新写入的任务 JSON 格式不符合 Prettier；随后格式化 JSON，并以同一检查命令复查通过。"
+    }
+  ]
+}
