@@ -163,6 +163,7 @@ const stateFile = resolve(secretaryRoot, 'state.json');
 const channelsFile = resolve(secretaryRoot, 'channels.json');
 const lockFile = resolve(secretaryRoot, 'notice-guard.lock');
 const eventsFile = resolve(secretaryRoot, 'events.jsonl');
+const noticeReceiptsFile = resolve(secretaryRoot, 'notice-receipts.jsonl');
 const publicEventsFile = resolve(secretaryRoot, 'public-events.jsonl');
 const versionsRoot = resolve(agentRoot, 'versions');
 const runsRoot = resolve(agentRoot, 'runs');
@@ -284,9 +285,13 @@ export function workflowHealthSignal(input: {
   now: string;
 }): 'repeated-finding' | 'repeated-recovery' | 'stale-progress' | null {
   if (input.reviewStallCount >= 2) return 'repeated-finding';
-  if (input.recoveryAttempts >= 2) return 'repeated-recovery';
   const lastProgress = Date.parse(input.progressUpdatedAt);
   const now = Date.parse(input.now);
+  // A resumed process with fresh progress is not a live recovery failure.
+  if (input.recoveryAttempts >= 2 && Number.isFinite(lastProgress) &&
+      Number.isFinite(now) && now - lastProgress >= activeHealthIntervalMs) {
+    return 'repeated-recovery';
+  }
   if (Number.isFinite(lastProgress) && Number.isFinite(now) && now - lastProgress >= 30 * 60_000) {
     return 'stale-progress';
   }
@@ -575,6 +580,15 @@ async function deliverNotice(path: string): Promise<void> {
   const remaining = raw.pendingChannelIds.filter(
     (channelId) => !attempted.has(channelId) || failed.has(channelId),
   );
+  const acceptedChannelIds = result.attemptedChannelIds.filter((channelId) => !failed.has(channelId));
+  if (acceptedChannelIds.length > 0) {
+    await appendFile(noticeReceiptsFile, `${JSON.stringify({
+      noticeId: raw.notice.id,
+      kind: raw.notice.kind,
+      acceptedChannelIds,
+      acceptedAt: new Date().toISOString(),
+    })}\n`, 'utf8');
+  }
   if (remaining.length === 0) {
     await rm(path, { force: true });
     return;
@@ -1797,13 +1811,18 @@ export function publicProgressPhase(phase: string): string {
 
 export function versionStageScheduleMessage(
   stageTitle: string,
-  attempt: number,
+  step: string,
+  taskTitle = '',
+  attempt = 1,
   rejectionReason = '',
 ): string {
   const label = `【版本节点·${stageTitle}】`;
+  const work = step === 'planning' ? '节点任务规划' :
+    step === 'finalizing' ? '节点交付汇总' :
+      step === 'task' ? `工作项“${taskTitle}”` : '阶段工作';
   return rejectionReason
-    ? `${label}第 ${attempt} 轮重试；上一轮未接纳：${rejectionReason}。`
-    : `${label}开始；完成后自动推进。`;
+    ? `${label}${work}第 ${attempt} 次尝试；上一轮未接纳：${rejectionReason}。`
+    : `${label}${work}已安排；本轮结果验收后继续推进。`;
 }
 
 async function localActiveRunQuestionResponse(message: string): Promise<string | null> {
@@ -3309,8 +3328,8 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
   await emitNotice(
     health ? 'workflow-anomaly' : decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
     health
-      ? `${label}异常预警：${healthPhase}${elapsed}；秘书已核实进程，重复问题将停止自动重试并保留证据。`
-      : `${label}${decision.phase}${elapsed}；正常执行，无需你介入。`,
+      ? `${label}异常预警：${healthPhase}${elapsed}；当前进程存活，秘书将依据后续结果处理并保留证据。`
+      : `${label}${decision.phase}${elapsed}；进程仍在运行，本轮交付尚未验收。`,
     item,
   );
 }
@@ -5360,7 +5379,7 @@ async function finalizeDeliveredVersionStage(
   item.orchestration!.formalStageConsumedAt = new Date().toISOString();
   await emitNotice(
     'version-stage-complete',
-    `版本节点“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”已完成；接下来“${version.nodes.find((node) => node.id === target)?.title ?? target}”。详情见项目中枢。`,
+    `版本节点“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”的本轮任务已接纳；接下来“${version.nodes.find((node) => node.id === target)?.title ?? target}”${stage === 'module-design' ? '，主策审核仍可能退回修订；尚未批准开发' : ''}。详情见项目中枢。`,
     item,
   );
   return true;
@@ -5736,11 +5755,23 @@ async function driveFormalVersion(): Promise<boolean> {
         version.nodes.find((node) => node.id === stage)?.startedAt ?? '',
       );
       const retryReason = rejected?.summary.split('将自动安排修复：')[1]?.trim() ?? '';
-      const attempt = Number(/-(\d+)$/.exec(queued.id)?.[1] ?? 1);
+      const step = queued.orchestration?.formalStageStep ?? 'primary';
+      const taskId = queued.orchestration?.formalTaskId ?? '';
+      const stageStartedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
+      const attempt = state.items.filter((candidate) =>
+        candidate !== queued && candidate.createdAt >= stageStartedAt &&
+        candidate.orchestration?.formalVersionId === version.id &&
+        candidate.orchestration.formalStage === stage &&
+        candidate.orchestration.formalStageStep === step &&
+        (step !== 'task' || candidate.orchestration.formalTaskId === taskId)
+      ).length + 1;
+      const taskTitle = version.stageTasks?.find((task) => task.id === taskId)?.title ?? taskId;
       await emitNotice(
         retryReason ? 'version-stage-retry' : 'version-stage-scheduled',
         versionStageScheduleMessage(
           version.nodes.find((node) => node.id === stage)?.title ?? stage,
+          step,
+          taskTitle,
           attempt,
           retryReason,
         ),

@@ -1224,6 +1224,8 @@ export function resolveDecisionGate(
     design.status = 'active';
     design.startedAt = gate.resolvedAt;
     design.completedAt = '';
+    design.summary = '';
+    design.artifact = '';
     version.currentStage = 'module-design';
     version.scopeFrozen = false;
   }
@@ -1904,6 +1906,8 @@ export function recordApproval(
     fallbackNode.status = 'active';
     fallbackNode.startedAt = approval.createdAt;
     fallbackNode.completedAt = '';
+    fallbackNode.summary = '';
+    fallbackNode.artifact = '';
     version.currentStage = fallback;
     version.status = 'running';
     if (fallback === 'charter-draft')
@@ -2009,6 +2013,10 @@ export function currentVersionStagePolicy(
 
 export function effectiveVersionNodes(version: FormalVersion): VersionNode[] {
   return version.nodes.map((node) => {
+    if (node.status === 'active' && node.completedAt === '' &&
+        /该阶段已由秘书调度完成/.test(node.summary)) {
+      return { ...node, summary: '本轮正在执行；上一轮交付记录仅供历史追溯。', artifact: '' };
+    }
     const policy = currentVersionStagePolicy(version, node.id);
     if (policy.mode !== 'skip' || node.status === 'completed') return node;
     return {

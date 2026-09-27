@@ -1,0 +1,67 @@
+{
+  "taskId": "mdc-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "在唯一世界理论正文中收束共同报价描述符、单位、因果 ID、物理/账户/生命/程序唯一归属与失败余态；逐项核对指定反例及未闭合处，并将新增产品解释与 ADR 0017–0020 覆盖留为制作人待判断选项。本任务仅交付策划文档，不表示设计评审通过或批准游戏开发。本地提交因 .git/index.lock 写入权限不足未执行成功，原始失败另列。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),assert=require(\"node:assert/strict\");const s=fs.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"utf8\");const phases=[\"自然接触与默认演化\",\"事先获准的到期补源\",\"已到完成时刻的主动作用\",\"到期维持与继续失稳\",\"生命与身份判定、撤权和清理\",\"事件派发与响应\"];let last=-1;for(const p of phases){const at=s.indexOf(p);assert.ok(at>last,p);last=at}for(const p of [\"A/B/B/B/B/B\",\"共同报价与唯一因果记录\",\"指定场景的成立条件\",\"待升级的产品解释\",\"待定价\",\"不可表达\",\"身份未定\",\"接力护送\",\"B1–B4\",\"100/20\",\"连续碰撞\",\"无源/额外供能\",\"创建者死亡\",\"场外\",\"遗体再损\",\"回收循环\",\"Version PM\"]){assert.ok(s.includes(p),p)}console.log(\"PASS mdc-theory acceptance coverage and phase order\")'",
+      "exitCode": 0,
+      "output": "PASS mdc-theory acceptance coverage and phase order",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),path=require(\"node:path\"),assert=require(\"node:assert/strict\");const q=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",s=fs.readFileSync(q,\"utf8\");let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const target=m[1].split(\"#\")[0];if(target&&!target.includes(\"://\")){assert.ok(fs.existsSync(path.resolve(path.dirname(q),target)),target);n++}}console.log(\"PASS \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS 54 local links",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),assert=require(\"node:assert/strict\");const q=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json\",r=JSON.parse(fs.readFileSync(q,\"utf8\"));assert.equal(r.taskId,\"mdc-theory\");assert.equal(r.status,\"completed\");assert.ok(r.commands.length&&r.commands.every(x=>x.exitCode===0));assert.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const p of r.artifacts)assert.ok(fs.existsSync(p),p);console.log(\"PASS mdc-theory evidence JSON\")'",
+      "exitCode": 0,
+      "output": "PASS mdc-theory evidence JSON",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "$allowed=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json'); $changed=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if(@(Compare-Object $allowed $changed).Count -ne 0){throw ('Changed paths: ' + ($changed -join ', '))}; 'PASS only two task paths changed'",
+      "exitCode": 1,
+      "output": "Changed paths: docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md, scripts/version-lifecycle.ts, docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md"
+  ]
+}
