@@ -15,6 +15,7 @@ import {
   featureGateMatchesCurrent,
   retryTimeFromOutput,
   retryTransientRename,
+  emptyBootstrapRetryEligible,
   resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
@@ -85,6 +86,24 @@ import {
 import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
 describe('secretary worker process launch', () => {
+  it('requeues only a clean, abandoned pre-checkpoint formal task', () => {
+    const safe = {
+      runFiles: ['progress.json'],
+      progressStatus: 'running',
+      liveProcess: false,
+      worktreeClean: true,
+      baseMatches: true,
+      taskPending: true,
+    };
+    expect(emptyBootstrapRetryEligible(safe)).toBe(true);
+    expect(
+      emptyBootstrapRetryEligible({ ...safe, runFiles: ['progress.json', 'recovery.json'] }),
+    ).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, liveProcess: true })).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, worktreeClean: false })).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, baseMatches: false })).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, taskPending: false })).toBe(false);
+  });
   it('retries a transient Windows state rename and preserves permanent failures', async () => {
     let attempts = 0;
     const pauses: number[] = [];
