@@ -3,90 +3,87 @@
     {
       "id": "world-theory",
       "title": "统一世界理论",
-      "taskId": "mdr-world"
+      "taskId": "mdc-theory"
     },
     {
       "id": "physics-material",
-      "title": "默认物理与材料结构",
-      "taskId": "mdr-physics"
+      "title": "默认物理与材料",
+      "taskId": "mdc-physics"
     },
     {
       "id": "mana-ledger",
-      "title": "法力流、做功与账户",
-      "taskId": "mdr-mana"
+      "title": "法力流与账户",
+      "taskId": "mdc-mana"
     },
     {
       "id": "life-identity",
-      "title": "生命维持与身份",
-      "taskId": "mdr-life"
+      "title": "生命与身份",
+      "taskId": "mdc-life"
     },
     {
       "id": "programmable-spells",
       "title": "原子作用与实体程序",
-      "taskId": "mdr-spells"
+      "taskId": "mdc-spells"
     },
     {
       "id": "player-bridge",
       "title": "意图桥接与双场景体验",
-      "taskId": "mdr-experience"
+      "taskId": "mdc-bridge"
     }
   ],
   "crossModuleContracts": [
-    "mdr-world 独占公理、认识状态及跨模块反例总账；各模块只写本模块细则并引用唯一理论正文。细则推翻公理时退回理论修订，Version PM 最终核对一致性。",
-    "mdr-physics 持有自然演化、接触事实、结构及材料去向；mdr-mana 持有账户来源、可用性、转移和做功账。法术作用引用物理作用 ID 与法力交易 ID，同一接触或损伤不得重复结算。",
-    "mdr-life 依据结构、环境及有来源供能判生命、休眠、复苏、死亡和身份；余额归零或 HP 摘要不能单独决定生命与实体存在。死亡及结构失效向 mdr-spells 发布权能变化与终止事实。",
-    "mdr-spells 接收执行实体、程序、目标或方向、模拟时刻、授权和有限付款账户；校验能力与权限，按 mdr-mana 报价付款并向 mdr-physics/mdr-life 提交原子作用。事件只含获准字段，响应失败不回滚已提交自然事实或前笔交易。",
-    "共享法术书由 DSL/蓝图形成唯一 AST，分析器与 VM 共用作用和价格语义；神识计有限状态，tick 计工作，动态或无界预算明示。mdr-experience 不复制世界结算或赋予界面特权。",
-    "鼠标、键盘、手柄、AI 和实体事件经桥接成为同一世界请求；固定初态、执行者、权限、账户、目标、模拟时刻、事件先史和随机种子时，两场景同价、同效果、同失败余态。界面、配置、暂停和存档只传意图或展示获准事实。"
+    "mdc-theory 独占唯一世界理论、公理认识状态与跨模块反例总账；五份细则只维护各自模块的参数、接口和验收，并引用同一正文。各模块推翻共同原则时先标冲突，由 Version PM 收束。",
+    "mdc-physics 独占自然接触、有效质量、结构与材料事实及作用 ID；mdc-mana 独占法力来源、共同报价、交易 ID、环境可用量与去向。程序只按作用描述符请求，物理与账户逐笔关联，不重复结算同一碰撞或工作。",
+    "mdc-life 消费结构、供能及维持账，发布休眠、死亡、身份及撤权事实；mdc-spells 消费这些事实判能力、授权和事件执行，同刻按理论正文六阶段顺序处理。自然事实与已付交易不因后续事件失败回滚。",
+    "mdc-spells 给 mdc-bridge 唯一世界请求、报价/拒绝码及获准可见字段；桥接只转换玩家或 AI 意图与显示，不授予私有读取、免费效果或设备专属时序。同初态、授权、请求、事件先史和模拟时刻必须同价同余态。",
+    "Version PM 在任务收束时核对共同价函数、材料域、生命身份、授权字段、可见反馈和 ADR 覆盖清单；新产品解释或不可逆取舍留待主策和制作人，不由任务合同预先批准。"
   ],
   "tasks": [
     {
-      "id": "mdr-world",
-      "title": "退回修订：修订唯一世界理论与反例总账",
-      "objective": "在范围修订13与制作人 A/B/B/B/B/B 反馈内，从少量原则建立跨模块因果、认识状态和组合闭合判据，不批准游戏开发；在主策退回的同一版本内修订旧稿，不启动开发。",
+      "id": "mdc-theory",
+      "title": "闭合唯一世界理论的共同因果与反例",
+      "objective": "在已批准方向和主策复审内，将各模块可证的结论及剩余假设收束到唯一理论正文，维持跨实体可组合世界规则；不批准开发。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：唯一权威正文，含六项选择解释、公理与推导、共同术语、反例总账和未决假设。"
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：共同价函数、物理材料、生命身份、程序权能的统一推导与反例总账。"
       ],
       "acceptance": [
-        "闭合主策审核 F3/F4：在唯一正文中给出同刻自然接触、补源、维持、身份判定、撤权和事件派发的权威顺序；以逐笔反例标识可证明结论和仍待判断的规则，不把旧 A/B 重新交制作人选择。",
-        "区分制作人确认、此次选择、策划推断及仍待取舍；将有效质量/接触/材料 A、普通驱动 B、法力做功/环境/回收 B、生命/身份 B、元法术 B、载体/授权 B 融入同一模型，不能只转录字母或旧候选。",
-        "从默认演化和有来源的付费改变推导修士、法球、稳定物、机关与人工生命的存在、损伤、生命和施法；用接力护送、自修复信标、失供、注能、创建者死亡、场外、碰撞、100/20 储备及回收循环逐笔反证。",
-        "指出旧理论、整版设计、当前原型及 ADR 0017–0020 的冲突和重做影响；无法闭合的新解释或不可逆选择明确升级，不伪称理论定型。",
-        "以主策退回结论为本轮前驱，逐项记录哪些已在批准方向内闭合，哪些仍需新产品解释；不把上一轮模块交付状态当作本轮通过。"
+        "明确区分制作人已确认原则、A/B/B/B/B/B 已选方向、策划推导及仍需升级的解释；保持自然接触→预授权补源→主动作用→维持→身份撤权→事件派发的相对顺序，不重开已闭合边界。",
+        "给出共同报价描述符、单位、因果 ID 和失败余态在物理、账户、生命、程序间的唯一归属；对无报价、域外材料和未知身份保持待定价、不可表达或身份未定，不能暗作零价或成功。",
+        "用接力护送、信标 B1–B4、100/20 挪用、同刻连续碰撞、无源/额外供能、创建者死亡、场外、遗体再损及回收循环列出能成立的条件、反例和未闭合处；后续模块只引用同一正文，冲突交 Version PM 收束。",
+        "若推导要求新产品解释或覆盖 ADR 0017–0020 的不可逆选择，仅列通俗方案、玩家效果、优势、代价、推荐理由及待制作人判断项，不将其写成已定规则。"
       ],
       "dependsOn": [],
       "readPaths": [
         ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/product/vision.md",
         "docs/architecture/invariants.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
     },
     {
-      "id": "mdr-physics",
-      "title": "退回修订：设计默认物理、接触与材料结构",
-      "objective": "为各类实体定义自然运动、有效质量、双边接触和材料变化，并向资源、生命及术式提供明确接口；在主策退回的同一版本内修订旧稿，不启动开发。",
+      "id": "mdc-physics",
+      "title": "闭合默认物理与材料接触合同",
+      "objective": "只修订物理材料模块对有效质量、接触顺序、精度及材料作用域的可复核细则。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：物理与材料模块详细策划。"
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：自然接触、材料结构及作用描述符细则。"
       ],
       "acceptance": [
-        "闭合有效质量、接触容差、材料分区和自然致伤的可复核合同，给每次接触、结构变化及作用唯一 ID、单位和状态归属；对已采纳 ADR 0018 的覆盖影响只列待决，不静默废止。",
-        "按选择 A 展开有限形状、有效质量、接触、反作用、材料结构及可损边界，写明状态所有权、默认演化、自然接触与付费作用接口；不以 HP 或固定寿命替代。",
-        "给出稳定物、失供法球、修士起步、擦边、撞墙、撞活体或遗体、场外移交的成功、失败、空状态和可复核结算，定位 ADR 0018 冲突。",
-        "精度或材料域仍需新产品取舍时，以通俗文字列玩家效果、优点、代价、推荐选择及理由供升级，不自行定不可逆规则。"
+        "给有限形状、有效质量、接触容差、连续碰撞稳定排序、材料分区与结构损伤的单位、状态所有者、算法或明确待决尺度；自然损伤不借用独立伤害池。",
+        "对擦边、撞墙、两实体同刻接触、法球撞活体/遗体、失供后滑行和场外移交给出顺序无关的账本例子、成功与拒绝余态，保证一次接触和材料变化只有一个事实 ID。",
+        "写明物理向法力报价交付的作用量/材料差量及向生命交付的结构状态；窄域修复与域外关键回路的可表达边界不得冲突。",
+        "列现行 world/battle 行为和 ADR 0018 的冲突及后续 ADR 覆盖影响；精度无法在批准范围内确定时按通俗方案升级，不在此任务实现模拟。"
       ],
-      "dependsOn": ["mdr-world"],
+      "dependsOn": ["mdc-theory"],
       "readPaths": [
-        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/adr/0018-运动供能与命中守恒.md",
         "src/core/world.ts",
         "src/game/battle.ts",
@@ -95,26 +92,24 @@
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
     },
     {
-      "id": "mdr-mana",
-      "title": "退回修订：设计法力流、做功与账户账本",
-      "objective": "将普通驱动、法力转移、环境可用性、做功与回收归入同一可对账资源合同；在主策退回的同一版本内修订旧稿，不启动开发。",
+      "id": "mdc-mana",
+      "title": "闭合共同价格、来源与账户合同",
+      "objective": "将物理作用和程序合法尝试纳入同一可报价、可守恒、可拒绝的法力合同。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：资源与账户模块详细策划。"
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：来源、做功、环境可用性、尝试价与静态上界细则。"
       ],
       "acceptance": [
-        "闭合 M 到作用/结构的报价与工作量、普通驱动取源和补给、环境可用性及回收上界；对未知价格、自由回收和零余额请求给出明确的可表达域、拒绝余态及证据。",
-        "按普通驱动 B 和法力做功/环境/回收 B 展开玩家效果；明确法力、物理来源、材料、神识及 tick 的所有者与边界，每笔列付款方、来源、接收者、环境去向、已做工作、可用性及退款受益人。",
-        "给出起步、额外注能、零余额先从获准来源转入、100/20 全额支用、取消/死亡后结算及重复创建回收的流水与拒绝/空状态；未证明无套利上界则标明待定或禁止的表达域。",
-        "说明与物理作用 ID、生命维持、程序定价/授权及静态预算的接口，对照旧三池、自动回复、任意倍率和 ADR 0019，不用折扣或免费补给填洞。"
+        "给法力到做功与材料改变的共同报价函数或有证明的可表达域，定义输入单位、工作量、正价下界、动态项、静态上界和合法尝试价；未知价明确拒绝，不能用折扣、旧池换算或问号当价格。",
+        "普通驱动的身体/机关取源与补给须有授权、付款方、来源、接收者、耗散和失败余态；环境有限可用量 U 与可回收边界逐笔对账，证明开放域内重复创建回收不增可用余额，域外保持不可表达。",
+        "用起步、额外注能、零余额预授权补源、100/20 全额支用、取消/死亡清算和信标 B1–B4 列逐笔事务与双 ID 关联，说明先前自然事实和已付工作不因后续失败回滚。",
+        "明确给生命维持、程序定价/权限和玩家显示的上下游字段；对照 pricing、VM 与 ADR 0019，仅说明未来覆盖和原型重做影响。"
       ],
-      "dependsOn": ["mdr-physics"],
+      "dependsOn": ["mdc-physics"],
       "readPaths": [
-        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/adr/0019-属性探查与资源账本.md",
         "src/core/world.ts",
         "src/core/pricing.ts",
@@ -124,27 +119,25 @@
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
     },
     {
-      "id": "mdr-life",
-      "title": "退回修订：设计生命维持、死亡与身份",
-      "objective": "从结构和有来源的自维持过程定义生命临界、休眠复苏、死亡及身份连续性；在主策退回的同一版本内修订旧稿，不启动开发。",
+      "id": "mdc-life",
+      "title": "闭合生命临界、复苏与身份连续性",
+      "objective": "将生命判定建立在物理结构、供能和持续记录上，说明现有窄材料域能支持的体验边界。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：生命与身份模块详细策划。"
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：生命、休眠、复苏、死亡及 LifeId 判据细则。"
       ],
       "acceptance": [
-        "闭合生命临界、可逆休眠、复苏与同一身份的判据和必要连续记录；自修复信标若超出程序材料编辑域，只承诺域内修复并把余项列为理论缺口。",
-        "按生命/身份 B 展开人工造物自维持、失供退化、休眠、修复复苏和新生命身份边界；列回路、材料、供能及控制权的状态归属与接口。",
-        "用修士、人工生命、法球、稳定物、遗体区分存在、生命和可施法；覆盖100/20最后一击、及时补源、死亡后再损及信标修复的成功、失败和空状态。",
-        "向程序授权和界面给出死亡与身份事实；定位旧 HP、自动回复、固定寿命及 ADR 0017/0020 冲突，未决临界不得伪装已定型。"
+        "给实体存在与生命分离后的可复核临界条件、维持窗口、可逆休眠、不可逆损坏、死亡和同一 LifeId 所需连续结构/记忆/控制记录；人工生命与修士共用判据。",
+        "逐刻验证100/20 最后一击、及时补源、失供、遗体再损、信标修复与创建者死亡；明确结构修好何时仍不能复苏，窄域外关键回路坚持不可表达，不暗加复苏元法术。",
+        "向程序模块交付身份、死亡、撤权、容量和残余结构事实，向桥接交付可公开诊断；无身份连续证据时显示 unknown，不假定新或旧 LifeId。",
+        "对照旧 HP、自动回复、固定寿命及 ADR 0017/0020，标出后续覆盖与原型影响；若同一身份判据不能在既定方向内闭合，给制作人可理解的取舍及推荐理由。"
       ],
-      "dependsOn": ["mdr-mana"],
+      "dependsOn": ["mdc-mana"],
       "readPaths": [
-        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/adr/0017-统一实体控制属性模型.md",
         "docs/adr/0020-事件执行上下文与生命周期.md",
         "src/core/world.ts",
@@ -153,63 +146,58 @@
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
     },
     {
-      "id": "mdr-spells",
-      "title": "退回修订：设计最小原子作用与跨实体程序",
-      "objective": "使获准感知、计算、原子作用、有限记忆和事件再启动可组合且同价同权；在主策退回的同一版本内修订旧稿，不启动开发。",
+      "id": "mdc-spells",
+      "title": "闭合原子作用、程序载体和事件授权",
+      "objective": "证明最小原子集合与共同价格相容，并设计跨实体有限程序、事件及死亡后独立授权。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：法术语言、分析、VM、载体和事件模块详细策划。"
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：原子表达域、AST/分析/VM、事件与授权细则。"
       ],
       "acceptance": [
-        "证明最小原子作用相对已有组合的不可约性及材料编辑域；闭合有限载体记忆、获准事件字段、死亡后独立授权期限、合法尝试价及并发失败时的余态。",
-        "按元法术 B 与载体/授权 B 界定可编辑材料域、原子不可组合性、能力及结构容量；追踪、碰撞伤害和自修复等可组合行为保持普通程序，审计旧94项入口与十项属性的去留和价格工作量。",
-        "给出唯一 AST 到分析器、定价、VM 和事件订阅的接口；说明执行者、付款方、有限授权、神识状态、tick 工作、动态预算、原子提交、事件队列、死亡后授权及拒绝/空目标。",
-        "同一程序交修士、法球、机关、人工生命和残余遗体时，逐项核验成功、无能力、越权、欠费、缺材料及队列上限；定位 ADR 0017–0020、旧法术和存档的不等价影响，不以旧兼容约束设计。"
+        "列每个候选元法术的不可组合性证明、材料/状态作用域、报价输入和算法 tick；追踪、护送、碰撞伤害与域内修复能组合则保持普通程序，域外能力直报不可表达。",
+        "给修士、法球、机关、人工生命及残余结构同一程序载体条件：实际容量、有限记忆、感知和执行结构、执行者/付款方/受益人、授权签发者、期限、额度、字段及死亡后撤权顺序。",
+        "定义碰撞事件稳定顺序、获准载荷、因果重入和队列容量；同刻并发的合法尝试收费、原子提交与失败余态须与法力报价、生命临界和六阶段时序一致。",
+        "用同一程序跨载体的成功、无结构、越权、欠费、未知价格、缺材料、死亡后授权过期和队列满反例，列与旧94项入口及 ADR 0017–0020 的不等价影响；不实现法术或预设。"
       ],
-      "dependsOn": ["mdr-life"],
+      "dependsOn": ["mdc-life"],
       "readPaths": [
-        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
-        "docs/reference/meta-spells.md",
-        "docs/reference/spell-authoring.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/architecture/invariants.md",
+        "docs/reference/meta-spells.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md",
         "src/core/attributes.ts",
-        "src/core/vm.ts",
         "src/core/pricing.ts",
+        "src/core/vm.ts",
         "test/core.test.ts"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
     },
     {
-      "id": "mdr-experience",
-      "title": "退回修订：设计意图桥接与推演至实战体验",
-      "objective": "区分现实输入和世界请求，定义玩家在共享法术书、推演台、演武场中的完整往返；在主策退回的同一版本内修订旧稿，不启动开发。",
+      "id": "mdc-bridge",
+      "title": "闭合意图桥接与双场景验收合同",
+      "objective": "把新规则的账目、隐私、拒绝和旧原型隔离写成可执行的推演台与演武场策划验收。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：输入桥接、双场景玩家流程与反馈模块详细策划。"
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：统一意图、可见反馈、双场景流程与验收矩阵。"
       ],
       "acceptance": [
-        "将模块新结论映射到玩家可读的作用价、来源、临界/身份、越权和待定价诊断；用相同初态跨输入、推演台与演武场验证完整往返，不宣称新规则已可运行。",
-        "给出鼠标、键盘、手柄、AI、实体事件的统一意图字段及跨入口等价前提；审计瞄准、模拟时间、暂停、UI 探查、表现、配置和存档，入口及帧率不得成为世界特权。",
-        "写明 DSL/蓝图编辑、预算、单步推演、绑定实战、观察自然与付费响应、失败定位、返回同一法术书修改的流程；分别列成功、拒绝、空书/空目标、往返与旧原件诊断。",
-        "以同一程序交修士、法球、机关及敌方修士核验请求与反馈一致性；预设和敌方修士仅为后续验证对象，本节点不制作或排开发；区分现有入口能力与新规则缺口。",
-        "明确旧页面仅是现行原型证据；后续预设和敌方修士是验证目标，本任务只写策划验收情形。"
+        "定义鼠标、键盘、手柄、AI、实体事件的同一请求字段和跨入口等价前提；瞄准、暂停/恢复、模拟时刻、配置、表现及存档不得改变世界账序或泄漏私有字段。",
+        "写从推演台编辑/预算/单步推演到演武场绑定、观察，再返回同一法术书修订的成功、拒绝、空书、空目标和页签往返；每步可见共同报价、来源、材料、临界/身份、授权与事件事实或明确不可见原因。",
+        "用相同初态比较修士、法球、机关与敌方修士请求，列欠费、待定价、域外修复、身份 unknown、死后授权失效、旧法术/存档隔离的纸面可执行验收；实际可玩证据留给开发及候选。",
+        "把旧 LabView/CombatView/Battle/Test 仅作为现行入口证据，说明未来预设和敌方修士同规则验证目标；本任务不制作预设、不改游戏或测试。"
       ],
-      "dependsOn": ["mdr-spells"],
+      "dependsOn": ["mdc-spells"],
       "readPaths": [
-        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
-        "docs/product/vision.md",
         "docs/architecture/invariants.md",
-        "docs/reference/spell-authoring.md",
         "src/app/LabView.tsx",
         "src/app/CombatView.tsx",
         "src/game/battle.ts",
