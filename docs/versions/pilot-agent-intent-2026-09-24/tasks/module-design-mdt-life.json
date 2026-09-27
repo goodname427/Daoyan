@@ -1,0 +1,56 @@
+{
+  "taskId": "mdt-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "分别核定 M1/A1 的 k_m/k_a 关键位、反馈/保存量测、两次独立 N→X 的来源和候选前后读数、保守截止求法及三链唯一 LifeId 逐 tick 判读。physical-mdt-1 的自然梯度、摄取包与保存层缺上游实测，mdt-ledger 无成功 LoadTx/Tx/A；当前截止与生命身份保持 unknown。批准窄域的 D0 只修 k0，关键修复无获准包、价与到达界，暂不可恢复并待制作人取舍；100 M 攻击不属于 AT0 的 25/33 M 条件价。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdt-life.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdt-life\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const k of [\"source-M1-fallback-F1\",\"source-M1-fallback-F2\",\"source-A1-fallback-F1\",\"source-A1-fallback-F2\",\"recoveryDeadline_i=min\",\"T1_M⑥\",\"T1_A⑥\",\"T4_M\",\"T4_A\",\"T5_M\",\"T5_A\",\"暂不可恢复\"])a.ok(d.includes(k),k);console.log(\"PASS mdt-life contract and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdt-life contract and evidence",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdt-life writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdt-life writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前执行环境对 .git 只有读取权限，无法暂存或形成本地提交；两个任务路径的修改保留在工作区，须由具备 .git 写权限的宿主执行本地提交。"
+    }
+  ]
+}
