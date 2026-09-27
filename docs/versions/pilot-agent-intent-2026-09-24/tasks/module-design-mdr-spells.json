@@ -1,0 +1,102 @@
+{
+  "taskId": "mdr-spells",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接 mdr-life，修订最小原子及窄材料域的不可约反证、有限记忆/容量、AST 共用描述符、事件字段/死后有限授权、合法尝试费与并发余态；逐名归位 94 入口和十属性，核对五载体六类结果及 ADR/旧数据影响。仅策划候选与定向文档检查完成，价函数、材料白名单、身份阈值与 ADR 覆盖仍待整版审核，不授权游戏开发。本地暂存因沙盒拒绝写入 .git/index.lock 未成功，尚无本地提交。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"programmable-spells-design.md\",s=f.readFileSync(q,\"utf8\"),c=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),t=c.tasks.find(x=>x.id===\"mdr-spells\");a.deepEqual(t.dependsOn,[\"mdr-life\"]);for(const k of [\"材料编辑域 D\",\"不可约反证\",\"有限记忆\",\"attemptQuote\",\"expiresAt\",\"事件信封\",\"staleMemory\",\"修士\",\"法球\",\"固定机关\",\"人工生命\",\"残余遗体\",\"无能力\",\"越权\",\"欠费\",\"缺材料\",\"队列上限\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"定价与工作量评估\"])a.ok(s.includes(k),k);let active=false,names=[];for(const l of f.readFileSync(\"docs/reference/meta-spells.md\",\"utf8\").split(/\\r?\\n/)){if(l.startsWith(\"## \"))active=/^## (运算符|按键状态|状态探查|实体创建|实体控制|施法控制)/.test(l);if(active&&l.startsWith(\"| \")&&!l.startsWith(\"| ---\")&&!l.startsWith(\"| 元法术\"))names.push(l.split(\"|\")[1].trim())}a.equal(names.length,94);for(const n of names)a.ok(s.includes(n),\"missing entry \"+n);let links=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),\"broken \"+x);links++}}console.log(\"PASS mdr-spells contract, 94 named entries, \"+links+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-spells contract, 94 named entries, 18 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/reference/meta-spells.md"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",p=b+\"tasks/module-design-mdr-spells.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(r.taskId,\"mdr-spells\");a.equal(parseStageTaskResult(r,\"mdr-spells\").status,\"completed\");a.ok(r.summary&&r.commands.length&&r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const q of r.evidence)a.ok(f.existsSync(q),q);console.log(\"PASS mdr-spells task result and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-spells task result and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from contract' }; Write-Output 'PASS only two task paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two task paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"programmable-spells-design.md\",s=f.readFileSync(q,\"utf8\"),c=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),t=c.tasks.find(x=>x.id===\"mdr-spells\");a.deepEqual(t.dependsOn,[\"mdr-life\"]);for(const k of [\"材料编辑域 D\",\"不可约反证\",\"有限记忆\",\"attemptQuote\",\"expiresAt\",\"事件信封\",\"staleMemory\",\"修士\",\"法球\",\"固定机关\",\"人工生命\",\"残余遗体\",\"无能力\",\"越权\",\"欠费\",\"缺材料\",\"队列上限\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"价格工作量评估\"])a.ok(s.includes(k),k);const r=f.readFileSync(\"docs/reference/meta-spells.md\",\"utf8\"),names=[...r.matchAll(/^\\| ([^|]+) \\|/gm)].map(x=>x[1].trim()).filter(x=>x!==\"元法术\");a.equal(names.length,94);for(const n of names)a.ok(s.includes(n),\"missing entry \"+n);let links=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),\"broken \"+x);links++}}console.log(\"PASS mdr-spells contract, 94 named entries, \"+links+\" local links\")'",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: 价格工作量评估",
+      "resolution": "检查关键词与文档标题不一致；改为定价与工作量评估后继续核验。"
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"programmable-spells-design.md\",s=f.readFileSync(q,\"utf8\"),c=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),t=c.tasks.find(x=>x.id===\"mdr-spells\");a.deepEqual(t.dependsOn,[\"mdr-life\"]);for(const k of [\"材料编辑域 D\",\"不可约反证\",\"有限记忆\",\"attemptQuote\",\"expiresAt\",\"事件信封\",\"staleMemory\",\"修士\",\"法球\",\"固定机关\",\"人工生命\",\"残余遗体\",\"无能力\",\"越权\",\"欠费\",\"缺材料\",\"队列上限\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"定价与工作量评估\"])a.ok(s.includes(k),k);const r=f.readFileSync(\"docs/reference/meta-spells.md\",\"utf8\"),names=[...r.matchAll(/^\\| ([^|]+) \\|/gm)].map(x=>x[1].trim()).filter(x=>x!==\"元法术\");a.equal(names.length,94);for(const n of names)a.ok(s.includes(n),\"missing entry \"+n);let links=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),\"broken \"+x);links++}}console.log(\"PASS mdr-spells contract, 94 named entries, \"+links+\" local links\")'",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: 100 !== 94",
+      "resolution": "原目录表格外的行也被计入；只解析六个元法术分类后 94 项逐名核验通过。"
+    },
+    {
+      "command": "node -e 'JSON.parse(require(\"node:fs\").readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json\",\"utf8\"));console.log(\"PASS JSON syntax\")'",
+      "exitCode": 1,
+      "output": "SyntaxError: Expected ',' or ']' after array element in JSON at position 3712 (line 42 column 6)",
+      "resolution": "新增命令条目时多出两个 + 字符；已删除并复验 JSON。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前沙盒只允许读取 .git，无法暂存并形成本地提交；保留两个任务产物及检查证据，交由有 Git 写权限的秘书环境完成提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/reference/meta-spells.md",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ]
+}
