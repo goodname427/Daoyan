@@ -82,6 +82,38 @@ export function validationProfileForPlan(plan: TaskPlan): ValidationProfile {
     );
 }
 
+/** The version node contract, not a planner's label for a bookkeeping step, sets document checks. */
+export function applyFormalStageValidationProfile(plan: TaskPlan, direction: string): boolean {
+  const match = /^\[formal-stage-(deliverable|verification):([a-z-]+):[a-zA-Z0-9_-]+\]/u.exec(
+    direction,
+  );
+  if (!match) return false;
+  let changed = false;
+  if (
+    match[1] === 'deliverable' &&
+    ['charter-draft', 'module-design', 'design-review'].includes(match[2])
+  ) {
+    for (const task of plan.tasks) {
+      if (task.validationProfile === 'light') continue;
+      task.validationProfile = 'light';
+      changed = true;
+    }
+  }
+  // The design-review deliverable is the evidence and options for a decision.
+  // Pausing before it is written leaves the producer with nothing concrete to review.
+  // The stage result can still escalate through design-review.json after delivery.
+  if (match[1] === 'deliverable' && match[2] === 'design-review' && plan.producerDecisionRequired) {
+    plan.producerDecisionRequired = false;
+    changed = true;
+  }
+  const signal = `formal-stage-${match[1]}`;
+  if (!plan.riskSignals.includes(signal)) {
+    plan.riskSignals.push(signal);
+    changed = true;
+  }
+  return changed;
+}
+
 /**
  * This is the production execution contract consumed by the Feature PM.
  * Version work owns its own integration commands and only receives a report review;
@@ -91,9 +123,7 @@ export function validationStagesForPlan(plan: TaskPlan): FeatureValidationStage[
   const profile = validationProfileForPlan(plan);
   if (plan.riskSignals.includes('formal-stage-verification')) return ['independent-review'];
   if (plan.riskSignals.includes('formal-stage-deliverable')) {
-    return plan.tasks.every((task) => ['analysis', 'documentation'].includes(task.type))
-      ? ['independent-review']
-      : ['fast-gate', 'independent-review'];
+    return profile === 'light' ? [] : ['fast-gate', 'independent-review'];
   }
   if (profile === 'light') return [];
   if (profile === 'version') return ['independent-review'];
@@ -186,7 +216,7 @@ export interface TaskReuseEvidence {
 }
 
 const POST_FEATURE_GATE_REPORT =
-  /^(?:(?:qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:qa|bugfix|candidate|archived)-[^/]+\.json)$/;
+  /^(?:(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/;
 
 /**
  * Formal-version reports written after the Feature gate are not implementation
@@ -481,6 +511,14 @@ const FORMAL_STAGE_TASKS: Record<
     deliverables: ['逐项完成正式工作项及其验证证据'],
     verification: ['执行 Agent 运行类型检查与定向测试；Feature PM 汇总后运行快速门禁'],
   },
+  'design-acceptance': {
+    title: '按策划案体验验收游戏',
+    type: 'test',
+    tier: 'advanced',
+    paths: ['docs/versions/'],
+    deliverables: ['独立黑盒体验记录、逐项策划对照和偏差结论'],
+    verification: ['运行游戏并操作玩家流程，检查未列举的相邻情形'],
+  },
   qa: {
     title: '执行独立版本测试',
     type: 'test',
@@ -525,6 +563,7 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
     .replace(FORMAL_WORK_ITEMS_PATTERN, '\n')
     .trim();
   const versionValidation =
+    stage === 'design-acceptance' ||
     stage === 'qa' ||
     stage === 'candidate' ||
     (stage === 'bugfix' && summary.includes('本轮只做独立缺陷复验'));
@@ -791,6 +830,50 @@ export function validatePlan(value: unknown, maxTasks: number): TaskPlan {
   }
   sortTasks(plan.tasks);
   return plan as TaskPlan;
+}
+
+/** Formal task predecessors have already been accepted by the Version PM. */
+export function formalTaskPredecessorIds(direction: string): string[] {
+  if (!/^\[formal-stage-(?:deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.test(direction))
+    return [];
+  const match = direction.match(/直接前驱的有限证据索引：([^\n]*?)。来源是线索/u);
+  if (!match) return [];
+  try {
+    const evidence = JSON.parse(match[1]) as unknown;
+    if (!Array.isArray(evidence)) return [];
+    return evidence
+      .filter(
+        (entry): entry is { id: string; commit: string } =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          typeof entry.id === 'string' &&
+          /^[a-z0-9][a-z0-9-]*$/.test(entry.id) &&
+          typeof entry.commit === 'string' &&
+          /^[0-9a-f]{40}$/.test(entry.commit),
+      )
+      .map((entry) => entry.id);
+  } catch {
+    return [];
+  }
+}
+
+/** Remove only accepted external predecessors mistakenly copied into an internal plan. */
+export function internalizeFormalPlanDependencies(
+  plan: TaskPlan,
+  predecessorIds: readonly string[],
+): TaskPlan {
+  if (!Array.isArray(plan.tasks) || predecessorIds.length === 0) return plan;
+  const internalIds = new Set(plan.tasks.map((task) => task.id));
+  const predecessors = new Set(predecessorIds);
+  return {
+    ...plan,
+    tasks: plan.tasks.map((task) => ({
+      ...task,
+      dependsOn: Array.isArray(task.dependsOn)
+        ? task.dependsOn.filter((id) => internalIds.has(id) || !predecessors.has(id))
+        : task.dependsOn,
+    })),
+  };
 }
 
 export function sortTasks(tasks: PlannedTask[]): PlannedTask[] {

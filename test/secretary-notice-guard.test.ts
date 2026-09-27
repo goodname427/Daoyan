@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -14,6 +14,8 @@ import {
   featureTaskCompletions,
   featureGateMatchesCurrent,
   retryTimeFromOutput,
+  retryTransientRename,
+  emptyBootstrapRetryEligible,
   resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
@@ -24,6 +26,10 @@ import {
   versionStageScheduleMessage,
   qaEnvironmentBlockerReason,
   isBootstrapGraceActive,
+  rejectedStageAttemptFor,
+  requiresProducerDesignReapproval,
+  isRetryablePlannerNetworkFailure,
+  isRetryableFormalPlannerDependencyFailure,
   localQuestionResponse,
   ensureVersionStageItem,
   formalVersionBlocksDispatch,
@@ -31,6 +37,8 @@ import {
   isFormalVersionWriteConflict,
   parseBugfixResult,
   parseDesignReviewResult,
+  parseDesignAcceptanceResult,
+  assertDesignAcceptanceEvidence,
   parseDevelopmentResult,
   isTaskScopeCommand,
   latestReusableFeatureGate,
@@ -52,6 +60,8 @@ import {
   productImplementationChanges,
   replaceVersionWorkItems,
   versionStageDirection,
+  stageTaskPlanDirection,
+  repeatedModuleDesignTaskIds,
   versionMessageIsNewDirection,
   versionProducerDecision,
   validationTreeFingerprintForPaths,
@@ -67,13 +77,157 @@ import {
 } from '../scripts/secretary-state';
 import {
   createFormalVersion,
+  addDecisionGate,
   currentVersionStagePolicy,
+  recordScopeRevision,
   recordValidationEvidence,
   recordStagePolicy,
+  resolveDecisionGate,
   transitionVersionBug,
 } from '../scripts/version-lifecycle';
+import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
 describe('secretary worker process launch', () => {
+  it('requeues only a clean, abandoned pre-checkpoint formal task', () => {
+    const safe = {
+      runFiles: ['progress.json'],
+      progressStatus: 'running',
+      liveProcess: false,
+      worktreeClean: true,
+      baseMatches: true,
+      taskPending: true,
+    };
+    expect(emptyBootstrapRetryEligible(safe)).toBe(true);
+    expect(
+      emptyBootstrapRetryEligible({ ...safe, runFiles: ['progress.json', 'recovery.json'] }),
+    ).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, liveProcess: true })).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, worktreeClean: false })).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, baseMatches: false })).toBe(false);
+    expect(emptyBootstrapRetryEligible({ ...safe, taskPending: false })).toBe(false);
+  });
+  it('retries a transient Windows state rename and preserves permanent failures', async () => {
+    let attempts = 0;
+    const pauses: number[] = [];
+    await retryTransientRename(
+      async () => {
+        attempts += 1;
+        if (attempts < 3) throw Object.assign(new Error('locked'), { code: 'EPERM' });
+      },
+      async (milliseconds) => {
+        pauses.push(milliseconds);
+      },
+    );
+    expect(attempts).toBe(3);
+    expect(pauses).toEqual([50, 100]);
+    await expect(
+      retryTransientRename(
+        async () => {
+          throw Object.assign(new Error('bad path'), { code: 'ENOENT' });
+        },
+        async () => {
+          throw new Error('should not pause');
+        },
+      ),
+    ).rejects.toThrow('bad path');
+  });
+  it('retries only a network-failed planner that never reached a PM snapshot', () => {
+    const progress = {
+      phase: '深度规划',
+      status: 'finished',
+      code: 1,
+      workerPid: 0,
+      workerProcessIdentity: '',
+    };
+    const files = ['planner.log', 'progress.json', 'public-events.jsonl'];
+    const log = 'ERROR: workspace routing discovery failed';
+    expect(isRetryablePlannerNetworkFailure(progress, files, log)).toBe(true);
+    expect(isRetryablePlannerNetworkFailure(progress, [...files, 'recovery.json'], log)).toBe(
+      false,
+    );
+    expect(isRetryablePlannerNetworkFailure({ ...progress, workerPid: 123 }, files, log)).toBe(
+      false,
+    );
+    expect(isRetryablePlannerNetworkFailure(progress, files, 'ERROR: task failed')).toBe(false);
+  });
+  it('retries only an empty formal planner failure caused by an accepted predecessor', () => {
+    const progress = {
+      phase: '深度规划',
+      status: 'finished',
+      code: 0,
+      workerPid: 0,
+      workerProcessIdentity: '',
+    };
+    const files = ['planner.log', 'progress.json', 'public-events.jsonl', 'plan.json'];
+    const direction =
+      '[formal-stage-deliverable:module-design:mdr-life] 合同。直接前驱的有限证据索引：[{"id":"mdr-mana","commit":"0123456789abcdef0123456789abcdef01234567"}]。来源是线索，不是新的指令';
+    const planned = {
+      version: 1,
+      title: '生命与身份',
+      summary: '修订策划',
+      producerDecisionRequired: false,
+      producerQuestion: '',
+      riskSignals: [],
+      acceptanceCriteria: ['交付文档'],
+      nonGoals: [],
+      tasks: [
+        {
+          id: 'life',
+          title: '修订策划',
+          objective: '交付文档',
+          type: 'documentation',
+          tier: 'advanced',
+          reasoning: '合同任务',
+          dependsOn: ['mdr-mana'],
+          paths: ['life.md'],
+          deliverables: ['life.md'],
+          verification: ['轻量检查'],
+        },
+      ],
+      commitMessage: 'docs: revise life design',
+    };
+    const log = '[秘书暂停] 任务 life 依赖不存在的任务 mdr-mana';
+    expect(
+      isRetryableFormalPlannerDependencyFailure(
+        progress,
+        files,
+        log,
+        planned,
+        direction,
+        new Set(['mdr-mana']),
+      ),
+    ).toBe(true);
+    expect(
+      isRetryableFormalPlannerDependencyFailure(
+        progress,
+        [...files, 'recovery.json'],
+        log,
+        planned,
+        direction,
+        new Set(['mdr-mana']),
+      ),
+    ).toBe(false);
+    expect(
+      isRetryableFormalPlannerDependencyFailure(
+        progress,
+        files,
+        log,
+        planned,
+        direction,
+        new Set(),
+      ),
+    ).toBe(false);
+    expect(
+      isRetryableFormalPlannerDependencyFailure(
+        progress,
+        files,
+        '[秘书暂停] unrelated',
+        planned,
+        direction,
+        new Set(['mdr-mana']),
+      ),
+    ).toBe(false);
+  });
   it('distinguishes a QA host blocker from a product bug and explains stage retries', () => {
     const blocked = {
       status: 'blocked',
@@ -93,10 +247,12 @@ describe('secretary worker process launch', () => {
       }),
     ).toContain('可运行宿主补验');
     expect(qaEnvironmentBlockerReason({ ...blocked, bugs: [{ id: 'real-bug' }] })).toBeNull();
-    expect(versionStageScheduleMessage('版本测试', 3, '报告缺少回归证据')).toBe(
-      '【版本节点·版本测试】第 3 轮重试；上一轮未接纳：报告缺少回归证据。',
+    expect(versionStageScheduleMessage('版本测试', 'planning', '', 2, '报告缺少回归证据')).toBe(
+      '【版本节点·版本测试】节点任务规划第 2 次尝试；上一轮未接纳：报告缺少回归证据。',
     );
-    expect(versionStageScheduleMessage('版本测试', 1)).toContain('开始');
+    expect(versionStageScheduleMessage('详细策划', 'task', '生命规则')).toBe(
+      '【版本节点·详细策划】工作项“生命规则”已安排；本轮结果验收后继续推进。',
+    );
     expect(publicProgressPhase('执行 formal-qa / gpt-6-sol')).toBe('执行工作项');
     expect(publicProgressPhase('审查修复 / / gpt-6-astra')).toBe('修复审查问题');
   });
@@ -193,6 +349,12 @@ describe('secretary worker process launch', () => {
     const started = Date.parse('2026-09-21T00:00:00.000Z');
     expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 5_000)).toBe(true);
     expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 15_001)).toBe(false);
+    expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 60_000, 120_000)).toBe(
+      true,
+    );
+    expect(
+      isBootstrapGraceActive(new Date(started).toISOString(), started + 120_001, 120_000),
+    ).toBe(false);
   });
 
   it('rereads a delayed terminal snapshot after the launched PM wrapper exits', async () => {
@@ -717,14 +879,85 @@ describe('formal version stage dispatch', () => {
         formalStageStep: 'primary',
       }),
     );
-    expect(versionStageDirection(version, 'module-design')).toContain('补齐必要模块的详细策划');
+    expect(versionStageDirection(version, 'module-design')).toContain('按实际受影响模块分别给出');
+    expect(stageTaskPlanDirection(version)).toContain('真实受影响的模块');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
-    expect(versionStageDirection(version, 'design-review')).toContain('相邻情形');
+    expect(versionStageDirection(version, 'design-review')).toContain('未列举情形');
     expect(versionStageDirection(version, 'module-design')).toMatch(
       /^\[formal-stage:module-design\]/,
     );
     expect(ensureVersionStageItem(state, version, '2026-09-21T00:02:00.000Z')).toBeNull();
+  });
+
+  it('passes a rejected producer design choice into the next module plan', () => {
+    const version = createFormalVersion({
+      id: 'producer-design-feedback',
+      title: '制作人设计反馈',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/producer-design-feedback',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '六类规则待决定',
+      sourceRequestId: 'review',
+    });
+    resolveDecisionGate(
+      version,
+      gate.id,
+      'rejected',
+      undefined,
+      'reply',
+      'A、B、B、B、B、B；按模块详细展开',
+    );
+    expect(formalVersionBlocksDispatch(version)).toBe(false);
+    expect(stageTaskPlanDirection(version)).toContain('A、B、B、B、B、B');
+    expect(versionStageDirection(version, 'module-design')).toContain('按模块详细展开');
+    expect(versionStageDirection(version, 'design-review')).toContain('推荐选择和理由');
+  });
+
+  it('requires new module tasks after a design review returns the previous round', () => {
+    const version = createFormalVersion({
+      id: 'returned-module-design',
+      title: '模块设计返工',
+      direction: '闭合统一世界规则',
+      documentRoot: 'docs/versions/returned-module-design',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+    });
+    const old = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'old-life',
+            title: '旧生命设计',
+            objective: '旧模块交付',
+            deliverables: ['生命稿'],
+            acceptance: ['直接检查'],
+            dependsOn: [],
+            readPaths: ['docs/versions/returned-module-design/world.md'],
+            writePaths: ['docs/versions/returned-module-design/life.md'],
+          },
+        ],
+      },
+      'module-design',
+      1,
+      '2026-09-26T01:00:00.000Z',
+    )[0];
+    version.stageTasks = [old];
+    version.nodes.find((node) => node.id === 'design-review')!.summary = '生命同一性尚未闭合';
+    const direction = stageTaskPlanDirection(version);
+    expect(direction).toContain('生命同一性尚未闭合');
+    expect(direction).toContain('必须同时更新');
+    expect(direction).toContain('不能原样重派');
+    expect(repeatedModuleDesignTaskIds(version, [old])).toEqual(['old-life']);
+    expect(repeatedModuleDesignTaskIds(version, [{ ...old, id: 'new-life' }])).toEqual([]);
+    expect(versionStageDirection(version, 'design-review')).toContain(
+      '不以新规则尚未实际可玩为退回理由',
+    );
   });
 
   it('does not relaunch a stage after a technical review stall', () => {
@@ -763,6 +996,112 @@ describe('formal version stage dispatch', () => {
     expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2099-01-01T00:01:00.000Z')).toBe(
       true,
     );
+  });
+
+  it('keeps task-owned run ids unique when the same stage is entered again', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'reentered-review',
+      title: '复审',
+      direction: '完善模块策划',
+      documentRoot: 'docs/versions/reentered-review',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const prior = ensureVersionStageItem(state, version, '2026-09-21T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.orchestration!.formalStageConsumedAt = '2026-09-21T00:02:00.000Z';
+    version.nodes.find((node) => node.id === 'design-review')!.startedAt =
+      '2026-09-22T00:00:00.000Z';
+    const current = ensureVersionStageItem(state, version, '2026-09-22T00:01:00.000Z')!;
+    expect(current.id).not.toBe(prior.id);
+    expect(current.id).toMatch(/-design-review-2$/);
+  });
+
+  it('tells a Feature PM to create the exact current-round evidence file', () => {
+    const version = createFormalVersion({
+      id: 'new-module-round',
+      title: '模块设计',
+      direction: '补齐玩家桥接验收',
+      documentRoot: 'docs/versions/new-module-round',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'mdn-bridge',
+            title: '玩家桥接验收',
+            objective: '记录本轮验收',
+            deliverables: ['本轮策划稿'],
+            acceptance: ['轻量直接检查'],
+            dependsOn: [],
+            readPaths: ['docs/versions/new-module-round/previous.md'],
+            writePaths: ['docs/versions/new-module-round/player-bridge.md'],
+          },
+        ],
+      },
+      'module-design',
+      1,
+      '2026-09-21T00:00:00.000Z',
+    );
+    const item = ensureVersionStageItem(
+      createSecretaryState('2026-09-21T00:00:00.000Z'),
+      version,
+      '2026-09-21T00:01:00.000Z',
+    );
+    expect(item?.idea).toContain('tasks/module-design-mdn-bridge.json');
+    expect(item?.idea).toContain('若文件尚不存在，必须新建该文件');
+    expect(item?.idea).toContain('名称相近的旧轮次文件不是本轮合同');
+    expect(item?.idea).toContain('可复制执行的完整命令');
+  });
+
+  it('only repeats a rejection for the same stage task in the current round', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'task-retry',
+      title: '详细策划',
+      direction: '拆分模块',
+      documentRoot: 'docs/versions/task-retry',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const prior = ensureVersionStageItem(state, version, '2026-09-21T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.summary = '阶段交付未能写入正式版本，将自动安排修复：旧任务缺证据';
+    prior.orchestration!.formalStageConsumedAt = '2026-09-21T00:02:00.000Z';
+    prior.orchestration!.formalStageStep = 'task';
+    prior.orchestration!.formalTaskId = 'md-world';
+    const next = ensureVersionStageItem(state, version, '2026-09-21T00:03:00.000Z')!;
+    next.orchestration!.formalStageStep = 'task';
+    next.orchestration!.formalTaskId = 'md-life';
+    expect(rejectedStageAttemptFor(state.items, next, '2026-09-21T00:00:00.000Z')).toBeUndefined();
+    next.orchestration!.formalTaskId = 'md-world';
+    expect(rejectedStageAttemptFor(state.items, next, '2026-09-21T00:00:00.000Z')).toBe(prior);
+    expect(rejectedStageAttemptFor(state.items, next, '2026-09-22T00:00:00.000Z')).toBeUndefined();
+  });
+
+  it('requires producer reapproval after the producer returns detailed design', () => {
+    const version = createFormalVersion({
+      id: 'returned-design',
+      title: '重新策划',
+      direction: '补全模块',
+      documentRoot: 'docs/versions/returned-design',
+      currentStage: 'design-review',
+    });
+    expect(requiresProducerDesignReapproval(version)).toBe(false);
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '请制作人审阅',
+      sourceRequestId: 'prior-review',
+    });
+    resolveDecisionGate(version, gate.id, 'rejected', '2026-09-21T00:01:00.000Z');
+    expect(requiresProducerDesignReapproval(version)).toBe(true);
   });
 
   it('holds a candidate environment failure without scheduling another PM round', () => {
@@ -816,12 +1155,83 @@ describe('formal version stage dispatch', () => {
     expect(nextRunnableItem(secretary, '2026-09-23T00:03:00.000Z')?.status).toBe('queued');
   });
 
+  it('retires a dead writer from an older scope in the same stage', () => {
+    const secretary = createSecretaryState('2026-09-23T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'same-stage-scope-revision',
+      title: '范围修订',
+      direction: '统一实体',
+      documentRoot: 'docs/versions/same-stage-scope-revision',
+      currentStage: 'charter-draft',
+      now: '2026-09-23T00:00:00.000Z',
+    });
+    const item = ensureVersionStageItem(secretary, version, '2026-09-23T00:01:00.000Z')!;
+    item.status = 'tracking';
+    item.processPid = 1234;
+    item.processIdentity = 'old-run';
+    secretary.activeItemId = item.id;
+    recordScopeRevision(version, {
+      direction: '修订为统一事件与施法规则',
+      sourceRequestId: 'same-stage-scope-revision-2',
+      disposition: 'merged',
+      reason: '制作人在未冻结草案中纠正方向',
+      now: '2026-09-23T00:02:00.000Z',
+    });
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => true)).toBe(0);
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => false)).toBe(1);
+    expect(item.status).toBe('superseded');
+    expect(secretary.activeItemId).toBe('');
+    expect(ensureVersionStageItem(secretary, version, '2026-09-23T00:03:00.000Z')).toMatchObject({
+      status: 'queued',
+      orchestration: { formalScopeRevision: 2 },
+    });
+  });
+
+  it('retires an old record rebound to a reused current-round run id', () => {
+    const secretary = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'legacy-run-collision',
+      title: '旧编号碰撞',
+      direction: '修订策划',
+      documentRoot: 'docs/versions/legacy-run-collision',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const old = ensureVersionStageItem(secretary, version, '2026-09-21T00:01:00.000Z')!;
+    old.status = 'tracking';
+    old.runDirectory = 'runs/reused';
+    old.processPid = 1234;
+    old.processIdentity = String(Date.parse('2026-09-22T00:01:00.000Z'));
+    old.orchestration!.processOccupied = true;
+    version.nodes.find((node) => node.id === 'module-design')!.startedAt =
+      '2026-09-22T00:00:00.000Z';
+    const current = structuredClone(old);
+    current.createdAt = '2026-09-22T00:01:00.000Z';
+    current.processPid = 4321;
+    current.processIdentity = String(Date.parse('2026-09-22T00:01:00.000Z'));
+    secretary.items.push(current);
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => true)).toBe(0);
+    expect(
+      supersedeObsoleteFormalItems(secretary, version, undefined, (pid) => pid === old.processPid),
+    ).toBe(1);
+    expect(old.status).toBe('superseded');
+    expect(current.status).toBe('tracking');
+  });
+
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {
     const now = '2026-09-23T13:40:00.000Z';
     const healthy = { reviewStallCount: 0, recoveryAttempts: 0, progressUpdatedAt: now, now };
     expect(workflowHealthSignal(healthy)).toBeNull();
     expect(workflowHealthSignal({ ...healthy, reviewStallCount: 2 })).toBe('repeated-finding');
-    expect(workflowHealthSignal({ ...healthy, recoveryAttempts: 2 })).toBe('repeated-recovery');
+    expect(workflowHealthSignal({ ...healthy, recoveryAttempts: 2 })).toBeNull();
+    expect(
+      workflowHealthSignal({
+        ...healthy,
+        recoveryAttempts: 2,
+        progressUpdatedAt: '2026-09-23T13:37:00.000Z',
+      }),
+    ).toBe('repeated-recovery');
     expect(
       workflowHealthSignal({ ...healthy, progressUpdatedAt: '2026-09-23T13:00:00.000Z' }),
     ).toBe('stale-progress');
@@ -1075,6 +1485,116 @@ describe('formal version stage dispatch', () => {
     });
     expect(applyAutomaticStagePolicy(version, 'qa')).toBe(false);
     expect(currentVersionStagePolicy(version, 'qa').mode).toBe('execute');
+  });
+
+  it('requires black-box design acceptance to cover real work and adjacent gameplay', () => {
+    const workItems = parseVersionWorkItems(
+      {
+        workItems: [
+          {
+            id: 'spell',
+            title: '法术',
+            owner: 'Feature PM',
+            dependsOn: [],
+            summary: '实现法术',
+            affectedPaths: ['src/core/spell.ts'],
+            acceptanceCommands: ['npm test'],
+          },
+        ],
+      },
+      'development-tasks.json',
+    );
+    workItems[0].status = 'completed';
+    const scenario = {
+      id: 'adjacent-1',
+      workItemId: 'spell',
+      designPath: 'docs/versions/v1/module-design.md',
+      kind: 'adjacent',
+      entry: '演武场',
+      steps: ['启动游戏', '配置法术', '进入演武场并施放'],
+      expected: '按策划触发',
+      actual: '游戏中按策划触发',
+      result: 'passed',
+      evidence: ['docs/versions/v1/experience.png'],
+    };
+    const result = {
+      decision: 'approved',
+      summary: '实际体验与已批准策划一致',
+      codeRevision: 'dev-commit',
+      scenarios: [
+        { ...scenario, id: 'main-1', kind: 'main' },
+        { ...scenario, id: 'boundary-1', kind: 'boundary' },
+        scenario,
+      ],
+    };
+    expect(parseDesignAcceptanceResult(result, workItems, 'dev-commit').decision).toBe('approved');
+    expect(() => parseDesignAcceptanceResult(result, workItems, 'other-commit')).toThrow(
+      '开发修订',
+    );
+    expect(() =>
+      parseDesignAcceptanceResult(
+        { ...result, scenarios: [{ ...scenario, kind: 'main' }] },
+        workItems,
+        'dev-commit',
+      ),
+    ).toThrow('相邻情形');
+    expect(() =>
+      parseDesignAcceptanceResult(
+        {
+          ...result,
+          scenarios: [...result.scenarios.slice(0, 2), { ...scenario, result: 'failed' }],
+        },
+        workItems,
+        'dev-commit',
+      ),
+    ).toThrow('实测结果矛盾');
+    expect(() =>
+      parseDesignAcceptanceResult(
+        { ...result, scenarios: [...result.scenarios.slice(0, 2), { ...scenario, steps: [] }] },
+        workItems,
+        'dev-commit',
+      ),
+    ).toThrow('实际操作');
+  });
+
+  it('rejects stale or missing gameplay evidence even when the design document exists', async () => {
+    const fixture = await mkdtemp(resolve(tmpdir(), 'daoyan-design-play-'));
+    try {
+      const directory = resolve(fixture, 'docs/versions/v1');
+      await mkdir(directory, { recursive: true });
+      await writeFile(resolve(directory, 'module-design.md'), '# 已批准策划\n');
+      const screenshot = resolve(directory, 'experience.png');
+      await writeFile(screenshot, 'image evidence');
+      const scenarios: Parameters<typeof assertDesignAcceptanceEvidence>[2] = [
+        {
+          id: 'play-1',
+          workItemId: 'spell',
+          designPath: 'docs/versions/v1/module-design.md',
+          kind: 'main',
+          entry: '演武场',
+          steps: ['启动并施放'],
+          expected: '按策划生效',
+          actual: '生效',
+          result: 'passed',
+          evidence: ['docs/versions/v1/experience.png'],
+        },
+      ];
+      const startedAt = '2026-09-27T00:00:00.000Z';
+      await expect(
+        assertDesignAcceptanceEvidence(fixture, startedAt, scenarios),
+      ).resolves.toBeUndefined();
+      const old = new Date('2026-09-26T00:00:00.000Z');
+      await utimes(screenshot, old, old);
+      await expect(assertDesignAcceptanceEvidence(fixture, startedAt, scenarios)).rejects.toThrow(
+        '本轮开始前',
+      );
+      scenarios[0].evidence = ['docs/versions/v1/missing.png'];
+      await expect(assertDesignAcceptanceEvidence(fixture, startedAt, scenarios)).rejects.toThrow(
+        '证据不存在',
+      );
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
   });
 
   it('requires structured conclusions instead of inferring product success from task delivery', () => {
@@ -1487,9 +2007,23 @@ describe('formal version stage dispatch', () => {
 
       await writeFile(resolve(fixture, 'docs/versions/release/qa.json'), '{"status":"passed"}\n');
       await writeFile(resolve(fixture, 'docs/versions/release/qa.md'), '# QA\n\n通过。\n');
+      await writeFile(
+        resolve(fixture, 'docs/versions/release/design-acceptance.json'),
+        '{"decision":"approved"}\n',
+      );
+      await writeFile(
+        resolve(fixture, 'docs/versions/release/design-acceptance.md'),
+        '# 策划体验验收\n\n通过。\n',
+      );
 
       const qaTree = validationTreeFingerprintForPaths(
-        [...developmentPaths, 'docs/versions/release/qa.json', 'docs/versions/release/qa.md'],
+        [
+          ...developmentPaths,
+          'docs/versions/release/design-acceptance.json',
+          'docs/versions/release/design-acceptance.md',
+          'docs/versions/release/qa.json',
+          'docs/versions/release/qa.md',
+        ],
         fixture,
       );
       expect(qaTree).toBe(testedTree);

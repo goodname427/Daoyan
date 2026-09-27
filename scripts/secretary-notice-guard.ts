@@ -27,12 +27,27 @@ import { fileURLToPath } from 'node:url';
 import {
   buildLocalPlan,
   classifyAgentFailure,
+  conventionalCommitOrFallback,
+  formalTaskPredecessorIds,
+  internalizeFormalPlanDependencies,
   isValidationTreePath,
   preferredWindowsExecutable,
   reviewFindingSignature,
   validateReview,
+  validatePlan,
+  type TaskPlan,
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
+import {
+  areControlOnlyPredecessorPaths,
+  isOrphanEvidenceReferenceCorrection,
+  quarantineOrphanStageArtifact,
+} from './orphan-stage-artifact';
+import {
+  findCommitByMessage,
+  findTaskCommitEvidence,
+  taskCommitOutOfScopePaths,
+} from './task-commit-evidence';
 import { deliverArchivedVersionBranch } from './version-git-delivery';
 import {
   externalRequestId,
@@ -79,6 +94,9 @@ import {
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
+  reopenCorrectedStageTaskDelivery,
+  reopenVerifiedBlockedStageTaskDelivery,
+  repeatedFormalAcceptanceFailureCount,
   reopenEnvironmentBlockedQaDelivery,
   taskCompletionKey,
   supersedeCollapsedDevelopmentItems,
@@ -129,9 +147,12 @@ import {
   type VersionTodo,
 } from './version-lifecycle';
 import { parseInvocationTokens, versionStageUsage } from './version-usage';
+import { writeVersionRetrospective } from './version-retrospective';
 import {
+  assertModuleDesignTaskPlan,
   assertStageTaskPaths,
-  assertTaskWriteScope,
+  assertStageTaskDeliveryScope,
+  assertStageTaskPrestartScope,
   parseStageTaskManifest,
   parseStageTaskResult,
   readyStageTasks,
@@ -152,6 +173,7 @@ const stateFile = resolve(secretaryRoot, 'state.json');
 const channelsFile = resolve(secretaryRoot, 'channels.json');
 const lockFile = resolve(secretaryRoot, 'notice-guard.lock');
 const eventsFile = resolve(secretaryRoot, 'events.jsonl');
+const noticeReceiptsFile = resolve(secretaryRoot, 'notice-receipts.jsonl');
 const publicEventsFile = resolve(secretaryRoot, 'public-events.jsonl');
 const versionsRoot = resolve(agentRoot, 'versions');
 const runsRoot = resolve(agentRoot, 'runs');
@@ -273,9 +295,17 @@ export function workflowHealthSignal(input: {
   now: string;
 }): 'repeated-finding' | 'repeated-recovery' | 'stale-progress' | null {
   if (input.reviewStallCount >= 2) return 'repeated-finding';
-  if (input.recoveryAttempts >= 2) return 'repeated-recovery';
   const lastProgress = Date.parse(input.progressUpdatedAt);
   const now = Date.parse(input.now);
+  // A resumed process with fresh progress is not a live recovery failure.
+  if (
+    input.recoveryAttempts >= 2 &&
+    Number.isFinite(lastProgress) &&
+    Number.isFinite(now) &&
+    now - lastProgress >= activeHealthIntervalMs
+  ) {
+    return 'repeated-recovery';
+  }
   if (Number.isFinite(lastProgress) && Number.isFinite(now) && now - lastProgress >= 30 * 60_000) {
     return 'stale-progress';
   }
@@ -366,7 +396,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
-  await rename(temporary, path);
+  try {
+    await retryTransientRename(() => rename(temporary, path));
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
+export async function retryTransientRename(
+  operation: () => Promise<void>,
+  pause: (milliseconds: number) => Promise<void> = (milliseconds) =>
+    new Promise((resolveWait) => setTimeout(resolveWait, milliseconds)),
+): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await operation();
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (!['EPERM', 'EACCES', 'EBUSY'].includes(code ?? '') || attempt === 4) throw error;
+      await pause(50 * 2 ** attempt);
+    }
+  }
 }
 
 async function loadState(): Promise<SecretaryState> {
@@ -564,6 +615,23 @@ async function deliverNotice(path: string): Promise<void> {
   const remaining = raw.pendingChannelIds.filter(
     (channelId) => !attempted.has(channelId) || failed.has(channelId),
   );
+  const acceptedChannelIds = result.attemptedChannelIds.filter(
+    (channelId) => !failed.has(channelId),
+  );
+  if (acceptedChannelIds.length > 0) {
+    await appendFile(
+      noticeReceiptsFile,
+      `${JSON.stringify({
+        noticeId: raw.notice.id,
+        kind: raw.notice.kind,
+        acceptedChannelIds,
+        acceptedAt: new Date().toISOString(),
+      })}\n`,
+      'utf8',
+    ).catch((error) =>
+      console.error(`[notice guard] 通道已接受通知，但回执记录失败：${String(error)}`),
+    );
+  }
   if (remaining.length === 0) {
     await rm(path, { force: true });
     return;
@@ -581,8 +649,23 @@ async function processNoticeOutbox(): Promise<void> {
   await channelHub?.retryInactive();
   await writeChannelStatus();
   await queueNoticeDelivery(async () => {
-    const names = (await readdir(noticeOutboxRoot)).filter((name) => name.endsWith('.json')).sort();
-    for (const name of names) await deliverNotice(resolve(noticeOutboxRoot, name));
+    const entries = await Promise.all(
+      (await readdir(noticeOutboxRoot))
+        .filter((name) => name.endsWith('.json'))
+        .map(async (name) => {
+          const raw = await readJson(resolve(noticeOutboxRoot, name));
+          const notice = isRecord(raw?.notice) ? raw.notice : null;
+          return {
+            name,
+            createdAt: typeof notice?.createdAt === 'string' ? notice.createdAt : '',
+          };
+        }),
+    );
+    entries.sort(
+      (left, right) =>
+        left.createdAt.localeCompare(right.createdAt) || left.name.localeCompare(right.name),
+    );
+    for (const entry of entries) await deliverNotice(resolve(noticeOutboxRoot, entry.name));
   });
 }
 
@@ -1771,6 +1854,7 @@ const FORMAL_STAGE_NAMES: Record<string, string> = {
   'task-breakdown': '任务拆分',
   'version-planning': '版本排期',
   development: '开发执行',
+  'design-acceptance': '策划体验验收',
   qa: '版本测试',
   bugfix: '缺陷修复',
   candidate: '候选构建',
@@ -1786,13 +1870,23 @@ export function publicProgressPhase(phase: string): string {
 
 export function versionStageScheduleMessage(
   stageTitle: string,
-  attempt: number,
+  step: string,
+  taskTitle = '',
+  attempt = 1,
   rejectionReason = '',
 ): string {
   const label = `【版本节点·${stageTitle}】`;
+  const work =
+    step === 'planning'
+      ? '节点任务规划'
+      : step === 'finalizing'
+        ? '节点交付汇总'
+        : step === 'task'
+          ? `工作项“${taskTitle}”`
+          : '阶段工作';
   return rejectionReason
-    ? `${label}第 ${attempt} 轮重试；上一轮未接纳：${rejectionReason}。`
-    : `${label}开始；完成后自动推进。`;
+    ? `${label}${work}第 ${attempt} 次尝试；上一轮未接纳：${rejectionReason}。`
+    : `${label}${work}已安排；本轮结果验收后继续推进。`;
 }
 
 async function localActiveRunQuestionResponse(message: string): Promise<string | null> {
@@ -2120,12 +2214,15 @@ const PRODUCER_STAGES = new Set<VersionStage>(['charter-review', 'producer-accep
 
 const STAGE_DELIVERABLES: Partial<Record<VersionStage, string>> = {
   'charter-draft': '先提炼制作人例子背后的系统原则并提出完整体验，再形成版本策划案供制作人对齐。',
-  'module-design': '沿已批准的产品意图补齐必要模块的详细策划；不适用内容明确说明。',
+  'module-design':
+    '从版本策划识别实际受影响模块，逐模块完成详细策划及跨模块合同；不是扩写版本策划。',
   'design-review':
-    '以主策身份核对详细策划是否落实产品原则和未列举的相邻情形，修正遗漏或升级制作人。',
+    '以主策身份核对模块详细策划、跨模块闭合与未列举情形；如需制作人取舍，先给通俗比较与推荐理由。',
   'task-breakdown': '把已批准的产品原则和范围拆成可验证、带依赖和验收标准的工作项。',
   'version-planning': '按依赖和风险排序工作项，控制版本工作量并冻结可执行范围。',
   development: '完成当前版本全部开发工作、定向自测、文档、完整门禁、审查和 Git 交付。',
+  'design-acceptance':
+    '由未参与实现的主策或策划实际操作游戏，按批准的模块方案逐项核对玩家流程、边界与相邻情形；记录偏差并退回开发。',
   qa: '作为独立测试角色执行版本验收、集成和主线回归，不代替 Feature Agent 修代码。',
   bugfix: '修复版本测试登记的全部未关闭缺陷，并完成独立复验和必要回归。',
   candidate: '形成可供制作人体验的候选构建、版本说明、测试结论和遗留风险。',
@@ -2137,6 +2234,17 @@ function formalScopeRevision(version: FormalVersion): number {
       .filter((revision) => revision.status === 'approved')
       .at(-1)?.revision ?? 1
   );
+}
+
+function producerDesignFeedback(version: FormalVersion): string {
+  const feedback = version.orchestration?.decisionGates
+    .filter((gate) => gate.kind === 'producer-escalated-design' && gate.status === 'rejected')
+    .flatMap((gate) => gate.resolutionHistory ?? [])
+    .filter((entry) => entry.decision === 'rejected' && entry.feedback?.trim())
+    .map((entry) => ({ requestId: entry.requestId, feedback: entry.feedback }));
+  return feedback?.length
+    ? `制作人退回意见（优先于旧候选方案）：${JSON.stringify(feedback)}。`
+    : '';
 }
 
 export function versionStageItemId(
@@ -2177,6 +2285,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
       ? 'reverification'
       : 'primary';
   const taskManifest = `${version.documentRoot}/task-breakdown.json`.replace(/\\/g, '/');
+  const latestExperienceDecision = version.approvals
+    .filter((approval) => approval.stage === 'design-acceptance')
+    .at(-1)?.decision;
   const stageManifest = `${version.documentRoot}/${
     stage === 'bugfix' && bugfixStep === 'reverification' ? 'bugfix-reverification' : stage
   }.json`.replace(/\\/g, '/');
@@ -2184,24 +2295,27 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     stage === 'charter-draft'
       ? `同时写入 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}，JSON 格式为 {"schemaVersion":1,"versionId":"${version.id}","charterRevision":"${version.charterRevision}","producerSignals":["制作人的原始例子或观察"],"inferredPrinciple":"策划推断的共通系统原则","adjacentCases":[{"scenario":"制作人未逐项指定的相邻情形一","expectedBehavior":"按原则应如何运作"},{"scenario":"相邻情形二","expectedBehavior":"按原则应如何运作"}],"recommendedExperience":"补全后的玩家体验","scopeBoundary":"原则适用边界","openAssumptions":[]}。有待确认的策划推断才填入 openAssumptions；没有则保持空数组。先区分明确要求、举例和策划推断，不把例子直接抄成封闭任务清单；用至少两个未列举情形检验推断，再给出策划推荐，不把整理想法的工作推给制作人。策划案首页以简短文字呈现同一解释及待确认假设，供制作人先判断方向。若不能可靠推断原则，明确标记假设并建议退回对齐，不能把猜测写成已批准事实。`
       : stage === 'module-design'
-        ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT} 和已批准章程；详细规则必须体现推断的系统原则、相邻情形及边界。若设计只能覆盖原话中的例子，先修正策划，不继续缩成例子清单。`
+        ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}、已批准章程和本轮制作人意见。${producerDesignFeedback(version)} 详细策划须按实际受影响模块分别给出可独立审阅的设计，不得仅扩写版本策划。每个模块说明职责与边界、状态和资源归属、规则或算法、对外合同与其他模块交互、玩家可见流程、成功/失败/空状态、反例、验收情形和未决假设；跨模块整合进唯一世界理论正文，避免互相矛盾。若设计只能覆盖原话中的例子，先修正策划，不继续缩成例子清单。制作人已委托主策补全细节：可从已批方向推导的阈值、报价和边界应给出有反例支持的具体推荐，不能只将同一缺口重新标为待定。新规则的真实可玩验证属于开发及候选阶段；此处设计可执行的玩家流程与验收情形。`
         : stage === 'design-review'
-          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；检查详细策划能否自然处理其中未列举的相邻情形，以及任何未确认假设是否被擅自当作制作人决定。若原则被缩成例子补丁，decision=changes-requested；若需制作人取舍，decision=producer-escalation。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
+          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；逐模块检查具体设计、跨模块接口和唯一世界理论能否处理未列举情形，以及未确认假设是否被擅自当作制作人决定。对可从已批准方向推导的细节应由主策给出推荐，不把技术空白直接丢给制作人；若再次退回，逐项指出相比上一轮仍未完成的具体设计合同及可验收补全项，不用同一笼统缺口重复退回。策划阶段只审核纸面规则、玩家流程与后续可执行验收，不以新规则尚未实际可玩为退回理由。若缺模块设计或原则被缩成例子补丁，decision=changes-requested；只有真正需要制作人决定的产品取舍才用 producer-escalation。升级时必须附面向制作人的通俗决策说明：每项解释 A/B 的实际规则、玩家体验、优点、代价、跨模块影响、推荐选择和理由，并明确未决定会阻止什么；不能只列字母和专业术语。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
           : stage === 'task-breakdown'
             ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；在任务拆分报告中逐项说明工作如何兑现系统原则和相邻情形，不能只列制作人举过的例子。同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
             : stage === 'development'
-              ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
-              : stage === 'qa'
-                ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
-                : stage === 'bugfix' && bugfixStep === 'primary'
-                  ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
-                  : stage === 'bugfix' && bugfixStep === 'reverification'
-                    ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
-                    : stage === 'candidate'
-                      ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
-                      : '';
+              ? `${latestExperienceDecision === 'changes-requested' ? `这是策划体验退回后的开发修正轮次，先读 ${version.documentRoot}/design-acceptance.json 与报告中的失败场景，按可复现偏差定界修复；不得改写已批准策划以迁就现有实现，修正后仍须重新黑盒验收。` : ''}同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
+              : stage === 'design-acceptance'
+                ? `你是独立策划验收者，不读实现代码来推断是否正确，也不修改策划、产品实现或游戏测试。先从已批准的详细策划提取每项玩家可见承诺，启动当前开发构建并亲自完成从入口到结果的操作；覆盖每项实际开发工作、成功与失败/边界流程，以及至少一个制作人没有列出的相邻情形。记录入口、可复现步骤、策划预期、游戏实际表现和截图、录屏或可核查的运行证据。不能只引用单元测试、E2E 断言、开发自述或页面 HTTP 200。将结论写入 ${stageManifest}：{"decision":"approved|changes-requested","summary":"通俗结论","codeRevision":"开发提交修订","scenarios":[{"id":"稳定场景 ID","workItemId":"开发任务 ID","designPath":"已批准策划路径","kind":"main|boundary|adjacent","entry":"游戏入口","steps":["实际操作"],"expected":"策划预期","actual":"实际观察","result":"passed|failed","evidence":["可核查的体验证据路径"]}]}。不一致时列出具体偏差并 decision=changes-requested，退回开发；策划本身含未批准方向或无法判定时须升级主策/制作人，不得替策划改规则来使实现过关。任务成功不等于策划验收通过。`
+                : stage === 'qa'
+                  ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
+                  : stage === 'bugfix' && bugfixStep === 'primary'
+                    ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
+                    : stage === 'bugfix' && bugfixStep === 'reverification'
+                      ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
+                      : stage === 'candidate'
+                        ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
+                        : '';
   const formalWorkItems =
-    stage === 'development' && dispatchableFormalWorkItems(version)
+    (stage === 'development' || stage === 'design-acceptance') &&
+    dispatchableFormalWorkItems(version)
       ? `<formal-work-items>${JSON.stringify(version.workItems)}</formal-work-items>`
       : '';
   return [
@@ -2241,18 +2355,49 @@ function currentStageTaskLabel(version: FormalVersion): string {
     : version.currentStage;
 }
 
-function stageTaskPlanDirection(version: FormalVersion): string {
+export function stageTaskPlanDirection(version: FormalVersion): string {
   const stage = version.currentStage;
   const label = currentStageTaskLabel(version);
   const manifest = `${version.documentRoot}/${label}-tasks.json`;
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  const designPlan =
+    stage === 'module-design'
+      ? `\n先列出本版本真实受影响的模块与跨模块合同，再按可独立审阅的模块设计成果分派任务；资源、账户、市场这类不同职责不能因同属一个版本就合并成一份扩写稿。每个模块任务写明单独的策划交付物、上下游接口、具体设计内容与直接验收；基础世界理论可由一个任务负责，其他模块引用同一正文，Version PM 最终核对一致性。任务清单还必须有 modules:[{"id":"模块标识","title":"模块名称","taskId":"独占该模块设计的任务 ID"}] 和非空 crossModuleContracts:["模块间交互合同"]；每个模块使用不同任务 ID。若只有一个模块，增加非空 singleModuleReason 解释边界。${producerDesignFeedback(version)}`
+      : '';
+  const priorModuleTasks =
+    stage === 'module-design'
+      ? (version.stageTasks ?? []).filter((task) => task.stage === stage).map((task) => task.id)
+      : [];
+  const reentryGuidance =
+    priorModuleTasks.length > 0
+      ? `\n这是主策退回后的新轮次。上一轮任务 ${priorModuleTasks.join('、')} 已作为历史证据，不能原样重派或把旧清单视为本轮交付。先读最新 ${version.documentRoot}/design-review.md 与 design-review-findings.md，按尚未闭合的具体合同只建立必要的新任务；本轮任务 ID 必须与历史 ID 不同。必须同时更新 ${manifest} 和 ${version.documentRoot}/${label}-tasks.md，明确每项相对上轮新增的设计判断、反例和验收。已闭合模块只作只读前驱，不为凑数重做。主策所说的新规则实际可玩证据属于后续开发和候选验收，此节点只规划纸面设计与可执行验收。最新主策结论：${version.nodes.find((node) => node.id === 'design-review')?.summary ?? '见最新主策审核文档'}。`
+      : '';
+  const acceptanceReentry =
+    stage === 'development' &&
+    version.approvals.filter((approval) => approval.stage === 'design-acceptance').at(-1)
+      ?.decision === 'changes-requested'
+      ? `\n这是策划体验验收退回的修复轮次。先读取 ${version.documentRoot}/design-acceptance.json 中失败场景及实际操作证据，只规划为兑现已批准策划所需的修正成果；保留已通过场景和开发来源，修后再进策划体验验收，不得改策划以迁就代码。`
+      : '';
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${reentryGuidance}${acceptanceReentry}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+}
+
+export function repeatedModuleDesignTaskIds(
+  version: FormalVersion,
+  tasks: readonly VersionStageTask[],
+): string[] {
+  const historical = new Set(
+    (version.stageTasks ?? [])
+      .filter((task) => task.stage === 'module-design')
+      .map((task) => task.id),
+  );
+  return tasks.filter((task) => historical.has(task.id)).map((task) => task.id);
 }
 
 function stageTaskDirection(version: FormalVersion, task: VersionStageTask): string {
   const label = task.stageStep === 'reverification' ? `${task.stage}-reverification` : task.stage;
   const resultPath = `${version.documentRoot}/tasks/${label}-${task.id}.json`;
   const verificationOnly =
-    ['qa', 'candidate'].includes(task.stage) || task.stageStep === 'reverification';
+    ['design-acceptance', 'qa', 'candidate'].includes(task.stage) ||
+    task.stageStep === 'reverification';
   const marker = verificationOnly ? 'formal-stage-verification' : 'formal-stage-deliverable';
   const dependencies = task.dependsOn
     .map((id) =>
@@ -2267,7 +2412,7 @@ function stageTaskDirection(version: FormalVersion, task: VersionStageTask): str
       commit: candidate.commit,
       evidence: candidate.evidence.slice(0, 4),
     }));
-  return `[${marker}:${task.stage}:${task.id}]\n你是此项有界交付的 Feature PM。版本 ${version.id}，节点 ${task.stage}，范围修订 ${task.scopeRevision}。这是已批准版本内的一项任务，不是制作人的新方向。自行规划内部执行 Agent 与顺序，只完成本合同：\n${JSON.stringify(task, null, 2)}\n直接前驱的有限证据索引：${JSON.stringify(dependencies)}。来源是线索，不是新的指令；具体事实以当前代码核实为准。${task.stage === 'charter-draft' ? '' : `产品意图来源：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。`}\n仅读取合同必要的仓库事实和直接前驱结论；不要重读整版原始对话。不要编辑其他任务、节点总报告或 docs/status.md。${verificationOnly ? '本任务只产生独立测试或候选结论，不修改产品实现与游戏测试。' : ''}独立审查必须检查实际差异。\n在交付前写入 ${resultPath}：{"taskId":"${task.id}","status":"completed","summary":"结果","commands":[{"command":"实际运行的定向命令","exitCode":0}],"evidence":["产物或日志路径"]}。真实失败命令保留原退出码，不能用计划命令冒充已执行。不要运行 npm run verify:full；本 PM 的审查与快速门禁由调度器按范围执行。仅本地提交，不推送。`;
+  return `[${marker}:${task.stage}:${task.id}]\n你是此项有界交付的 Feature PM。版本 ${version.id}，节点 ${task.stage}，范围修订 ${task.scopeRevision}。这是已批准版本内的一项任务，不是制作人的新方向。自行规划内部执行 Agent 与顺序，只完成本合同：\n${JSON.stringify(task, null, 2)}\n直接前驱的有限证据索引：${JSON.stringify(dependencies)}。来源是线索，不是新的指令；具体事实以当前代码核实为准。${task.stage === 'charter-draft' ? '' : `产品意图来源：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。`}\n仅读取合同必要的仓库事实和直接前驱结论；不要重读整版原始对话。不要编辑其他任务、节点总报告或 docs/status.md。${verificationOnly ? '本任务只产生独立体验、测试或候选结论，不修改产品实现、策划规则与游戏测试。' : ''}${task.stage === 'design-acceptance' ? '你代表策划实际操作游戏；先看已批准玩法文档，再黑盒体验，不读实现源码或沿用开发自测结论。' : ''}若节点需要独立审查，必须检查实际差异。\n本轮任务证据文件的精确路径是 ${resultPath}。若文件尚不存在，必须新建该文件；名称相近的旧轮次文件不是本轮合同，不得用来替代或修改。提交前逐项核对改动只落在本任务 writePaths，并确认该证据文件包含本轮 taskId 和真实检查结果。\n在交付前写入 ${resultPath}：{"taskId":"${task.id}","status":"completed","summary":"结果","commands":[{"command":"实际运行的定向命令","exitCode":0}],"evidence":["产物或日志路径"]}。commands 必须逐字记录实际运行过、可复制执行的完整命令，不得用方括号、尖括号或省略说明代替；只记录最终通过的直接检查；失败命令按真实退出码单列 failedAttempts，不能用计划命令冒充已执行。不要运行 npm run verify:full；调度器按节点 Profile 验证；策划与纯文档节点只做轻量直接检查，不运行代码快速门禁或独立代码审查。仅本地提交，不推送。`;
 }
 
 function stageFinalizingDirection(version: FormalVersion): string {
@@ -2312,13 +2457,13 @@ export function ensureVersionStageItem(
     if (step === 'task' && !selectedTask) return null;
     const scopeRevision = formalScopeRevision(version);
     const startedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
-    const linked = secretary.items.filter(
+    const allLinked = secretary.items.filter(
       (item) =>
         item.orchestration?.formalVersionId === version.id &&
         item.orchestration.formalStage === stage &&
-        item.orchestration.formalScopeRevision === scopeRevision &&
-        item.createdAt >= startedAt,
+        item.orchestration.formalScopeRevision === scopeRevision,
     );
+    const linked = allLinked.filter((item) => item.createdAt >= startedAt);
     if (
       linked.some(
         (item) =>
@@ -2330,7 +2475,7 @@ export function ensureVersionStageItem(
       )
     )
       return null;
-    const attempt = linked.length + 1;
+    const attempt = allLinked.length + 1;
     const id = versionStageItemId(version.id, stage, scopeRevision, attempt);
     const direction =
       step === 'planning'
@@ -2643,7 +2788,8 @@ async function handleVersionProducerReply(
     current?.orchestration?.decisionGates.find((candidate) => candidate.status === 'open') ??
     (decision === 'approved'
       ? current?.orchestration?.decisionGates.find(
-          (candidate) => candidate.status === 'rejected' && candidate.kind !== 'scope-change',
+          (candidate) =>
+            candidate.status === 'rejected' && candidate.kind === 'irreversible-decision',
         )
       : undefined);
   if (current && decisionGate) {
@@ -2658,12 +2804,19 @@ async function handleVersionProducerReply(
       decision === 'approved' ? 'approved' : 'rejected',
       request.createdAt,
       request.id,
+      request.idea,
     );
     await writeFormalVersion(root, current);
     const response =
       decision === 'approved'
-        ? `已批准“${decisionGate.summary}”，内部流程可按新的范围修订继续。`
-        : `已退回“${decisionGate.summary}”，当前版本保持原承诺并暂停相关动作。`;
+        ? decisionGate.kind === 'producer-escalated-design'
+          ? current.currentStage === 'design-review'
+            ? '已记录你对详细策划的批准；主策将按取舍继续闭合设计。'
+            : '已记录你对完整详细策划的批准，版本将按后续节点推进。'
+          : `已批准“${decisionGate.summary}”，内部流程可按新的范围修订继续。`
+        : decisionGate.kind === 'producer-escalated-design'
+          ? `已记录你的取舍和修改意见，详细策划已退回重做；完成模块设计及主策复审前不会进入开发。`
+          : `已退回“${decisionGate.summary}”，当前版本保持原承诺并暂停相关动作。`;
     await writeInboxResponse(request, response, 'answered', 'reply');
     await emitNotice('version-decision-recorded', response, undefined, undefined, request.id);
     return true;
@@ -3211,6 +3364,107 @@ async function markMissingSnapshot(item: SecretaryItem, exitCode: number): Promi
   }
 }
 
+export function emptyBootstrapRetryEligible(input: {
+  runFiles: string[];
+  progressStatus: string;
+  liveProcess: boolean;
+  worktreeClean: boolean;
+  baseMatches: boolean;
+  taskPending: boolean;
+}): boolean {
+  return (
+    input.runFiles.length === 1 &&
+    input.runFiles[0] === 'progress.json' &&
+    ['running', 'planned'].includes(input.progressStatus) &&
+    !input.liveProcess &&
+    input.worktreeClean &&
+    input.baseMatches &&
+    input.taskPending
+  );
+}
+
+async function requeueEmptyBootstrap(item: SecretaryItem): Promise<boolean> {
+  const owner = item.orchestration;
+  if (
+    !owner?.formalVersionId ||
+    owner.formalStageStep !== 'task' ||
+    !owner.formalTaskId ||
+    !owner.formalTaskBaseRevision ||
+    !item.runDirectory
+  )
+    return false;
+  const version = await readFormalVersion(root);
+  if (
+    !version ||
+    version.id !== owner.formalVersionId ||
+    version.currentStage !== owner.formalStage ||
+    formalScopeRevision(version) !== owner.formalScopeRevision
+  )
+    return false;
+  const files = await readdir(item.runDirectory).catch(() => null);
+  if (!files) return false;
+  const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
+  const pmAlive = isOwnedProcessAlive(item.processPid, item.processIdentity, 0);
+  const worker = pmAlive ? null : await activeWorkerProcess(item, true);
+  const gitStatus = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  const task = stageTasksForCurrentNode(version).find(
+    (candidate) => candidate.id === owner.formalTaskId && candidate.status === 'pending',
+  );
+  let baseMatches = false;
+  if (task) {
+    try {
+      const head = currentGitRevision();
+      if (gitRevisionIsAncestor(owner.formalTaskBaseRevision, head)) {
+        assertStageTaskPrestartScope(task, changedFilesBetween(owner.formalTaskBaseRevision, head));
+        baseMatches = true;
+      }
+    } catch {
+      // Any task input or output change must remain blocked for manual evidence review.
+    }
+  }
+  const eligible = emptyBootstrapRetryEligible({
+    runFiles: files,
+    progressStatus: String(progress?.status ?? ''),
+    liveProcess: pmAlive || Boolean(worker),
+    worktreeClean: gitStatus.status === 0 && !gitStatus.stdout.trim(),
+    baseMatches,
+    taskPending: Boolean(task),
+  });
+  if (!eligible) return false;
+  normalizeSecretaryState(state);
+  clearOrphanRecovery(item.id);
+  item.status = 'superseded';
+  item.summary = '启动时中断且未形成恢复快照或仓库改动；空启动已核实，将重新派发同一节点任务。';
+  item.processPid = 0;
+  item.processIdentity = '';
+  item.retryAt = '';
+  item.updatedAt = new Date().toISOString();
+  owner.processOccupied = false;
+  owner.reconciliationOutcome = 'requeued-empty-bootstrap';
+  if (state.activeItemId === item.id) state.activeItemId = '';
+  state.orchestration!.reconciliations.push({
+    itemId: item.id,
+    runId: owner.runId,
+    attempt: owner.attempt,
+    snapshotStatus: 'missing',
+    outcome: 'requeued-empty-bootstrap',
+    reason: item.summary,
+    evidence: [item.runDirectory],
+    reconciledAt: item.updatedAt,
+  });
+  await saveState();
+  await emitNotice(
+    'unsafe-recovery-cleared',
+    `此前“${version.nodes.find((node) => node.id === version.currentStage)?.title ?? version.currentStage}”的恢复阻断已核实为空启动，未产生仓库改动；秘书重新派发原任务。`,
+    item,
+  );
+  return true;
+}
+
 async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise<void> {
   if (!['planned', 'running', 'active'].includes(run.status)) return;
   const pmAlive = isOwnedProcessAlive(run.processPid, run.processIdentity, 0);
@@ -3239,10 +3493,6 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
     healthPhase || publicProgressPhase(run.phase),
     now,
   );
-  if (!decision.notify) return;
-  orchestration.lastProgressPhase = decision.phase;
-  orchestration.lastProgressNoticeAt = now;
-  await saveState();
   const elapsedMinutes = Math.max(0, Math.floor(run.elapsedSeconds / 60));
   const elapsed = elapsedMinutes > 0 ? `，本轮已运行约 ${elapsedMinutes} 分钟` : '';
   const stage = item.orchestration?.formalStage;
@@ -3251,11 +3501,24 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
     : item.scope === 'version'
       ? '【版本任务】'
       : '【Feature】';
+  const message = health
+    ? `${label}异常预警：${healthPhase}${elapsed}；当前进程存活，秘书将依据后续结果处理并保留证据。`
+    : `${label}${decision.phase}${elapsed}；进程仍在运行，本轮交付尚未验收。`;
+  const summaryChanged = item.summary !== message;
+  if (summaryChanged) {
+    item.summary = message;
+    item.updatedAt = now;
+  }
+  if (!decision.notify) {
+    if (summaryChanged) await saveState();
+    return;
+  }
+  orchestration.lastProgressPhase = decision.phase;
+  orchestration.lastProgressNoticeAt = now;
+  await saveState();
   await emitNotice(
     health ? 'workflow-anomaly' : decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
-    health
-      ? `${label}异常预警：${healthPhase}${elapsed}；秘书已核实进程，重复问题将停止自动重试并保留证据。`
-      : `${label}${decision.phase}${elapsed}；正常执行，无需你介入。`,
+    message,
     item,
   );
 }
@@ -3289,7 +3552,17 @@ async function reconcileItem(
     isOwnedProcessAlive(item.processPid, item.processIdentity, 0)
       ? item.updatedAt
       : undefined);
-  if (!run && launchStartedAt && isBootstrapGraceActive(launchStartedAt)) {
+  if (
+    !run &&
+    !processEnded &&
+    launchStartedAt &&
+    isOwnedProcessAlive(item.processPid, item.processIdentity, 0) &&
+    isBootstrapGraceActive(
+      launchStartedAt,
+      Date.now(),
+      item.orchestration?.formalVersionId ? 120_000 : 15_000,
+    )
+  ) {
     normalizeSecretaryState(state);
     item.status = 'tracking';
     item.summary = 'PM 已登记运行目录，正在创建首个恢复快照。';
@@ -3330,6 +3603,7 @@ async function reconcileItem(
       'preview',
     ].includes(run.status)
   ) {
+    if (await requeueEmptyBootstrap(item)) return true;
     await markMissingSnapshot(item, 1);
     return false;
   }
@@ -3770,7 +4044,10 @@ async function launch(item: SecretaryItem): Promise<void> {
       activeLaunchStartedAt.delete(item.id);
       await saveState();
       await coordinate();
-    })().catch((error) => console.error(`[notice guard] PM 退出处理失败：${String(error)}`));
+    })().catch((error) => {
+      console.error(`[notice guard] PM 退出处理失败，重新协调：${String(error)}`);
+      requestCoordinate('PM 退出恢复');
+    });
   });
 }
 
@@ -3790,6 +4067,98 @@ export function isBootstrapGraceActive(
 ): boolean {
   const started = Date.parse(launchStartedAt);
   return Number.isFinite(started) && now >= started && now - started <= Math.max(0, graceMs);
+}
+
+export function rejectedStageAttemptFor(
+  items: SecretaryItem[],
+  queued: SecretaryItem,
+  stageStartedAt: string,
+): SecretaryItem | undefined {
+  const owner = queued.orchestration;
+  if (!owner?.formalVersionId) return undefined;
+  return [...items]
+    .reverse()
+    .find(
+      (candidate) =>
+        candidate.id !== queued.id &&
+        candidate.createdAt >= stageStartedAt &&
+        candidate.orchestration?.formalVersionId === owner?.formalVersionId &&
+        candidate.orchestration?.formalStage === owner?.formalStage &&
+        candidate.orchestration?.formalScopeRevision === owner?.formalScopeRevision &&
+        candidate.orchestration?.formalStageStep === owner?.formalStageStep &&
+        (owner?.formalStageStep !== 'task' ||
+          candidate.orchestration?.formalTaskId === owner.formalTaskId) &&
+        candidate.summary.startsWith('阶段交付未能写入正式版本'),
+    );
+}
+
+export function requiresProducerDesignReapproval(version: FormalVersion): boolean {
+  return Boolean(
+    version.orchestration?.decisionGates.some(
+      (gate) =>
+        gate.kind === 'producer-escalated-design' &&
+        gate.stage === 'design-review' &&
+        gate.status === 'rejected',
+    ),
+  );
+}
+
+export function isRetryablePlannerNetworkFailure(
+  progress: Record<string, unknown> | null,
+  files: string[],
+  log: string,
+): boolean {
+  return Boolean(
+    progress?.phase === '深度规划' &&
+    progress.status === 'finished' &&
+    progress.code === 1 &&
+    progress.workerPid === 0 &&
+    progress.workerProcessIdentity === '' &&
+    files.length > 0 &&
+    files.every((file) => ['planner.log', 'progress.json', 'public-events.jsonl'].includes(file)) &&
+    /ERROR: workspace routing discovery failed/.test(log),
+  );
+}
+
+/** A completed formal predecessor is input evidence, not a dependency inside the new PM run. */
+export function isRetryableFormalPlannerDependencyFailure(
+  progress: Record<string, unknown> | null,
+  files: string[],
+  launchLog: string,
+  rawPlan: unknown,
+  direction: string,
+  acceptedPredecessors: ReadonlySet<string>,
+): boolean {
+  if (
+    progress?.phase !== '深度规划' ||
+    progress.status !== 'finished' ||
+    progress.code !== 0 ||
+    progress.workerPid !== 0 ||
+    progress.workerProcessIdentity !== '' ||
+    files.length === 0 ||
+    files.some(
+      (file) =>
+        !['planner.log', 'progress.json', 'public-events.jsonl', 'plan.json'].includes(file),
+    ) ||
+    !/任务 [a-z0-9-]+ 依赖不存在的任务 [a-z0-9-]+/u.test(launchLog) ||
+    typeof rawPlan !== 'object' ||
+    rawPlan === null ||
+    !Array.isArray((rawPlan as TaskPlan).tasks)
+  )
+    return false;
+  const predecessorIds = formalTaskPredecessorIds(direction).filter((id) =>
+    acceptedPredecessors.has(id),
+  );
+  if (predecessorIds.length === 0) return false;
+  try {
+    const plan = rawPlan as TaskPlan;
+    const corrected = internalizeFormalPlanDependencies(plan, predecessorIds);
+    if (JSON.stringify(corrected.tasks) === JSON.stringify(plan.tasks)) return false;
+    validatePlan(corrected, Math.max(1, plan.tasks.length));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function scheduleRetry(): void {
@@ -3921,6 +4290,40 @@ function changedFilesBetween(baseRevision: string, headRevision: string): string
     throw new Error('无法核对阶段执行前后的代码树，不能登记版本交付证据');
   }
   return result.stdout.split('\0').filter(Boolean);
+}
+
+function gitRevisionIsAncestor(ancestor: string, revision: string): boolean {
+  const result = spawnSync('git', ['merge-base', '--is-ancestor', ancestor, revision], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (result.status === 0) return true;
+  if (result.status === 1) return false;
+  throw new Error('无法核对节点任务恢复前后的 Git 祖先关系');
+}
+
+async function stageTaskExecutionBase(
+  item: SecretaryItem,
+  task: VersionStageTask,
+  revision: string,
+): Promise<string> {
+  const dispatchedBase = item.orchestration?.formalTaskBaseRevision;
+  if (!dispatchedBase) throw new Error('节点任务缺少 Git 写入基线');
+  const checkpoint = item.runDirectory
+    ? await readJson(resolve(item.runDirectory, 'recovery.json'))
+    : null;
+  const executionBase = String(checkpoint?.baseline ?? '');
+  if (!executionBase || executionBase === dispatchedBase) return dispatchedBase;
+  if (
+    checkpoint?.status !== 'delivered' ||
+    !gitRevisionIsAncestor(dispatchedBase, executionBase) ||
+    !gitRevisionIsAncestor(executionBase, revision)
+  ) {
+    throw new Error('节点任务恢复基线无法证明处于原派发与交付提交之间');
+  }
+  assertStageTaskPrestartScope(task, changedFilesBetween(dispatchedBase, executionBase));
+  return executionBase;
 }
 
 function nextStage(version: FormalVersion): VersionStage | null {
@@ -4111,6 +4514,127 @@ export function parseDesignReviewResult(value: unknown): {
     decision: value.decision as 'approved' | 'changes-requested' | 'producer-escalation',
     summary: value.summary.trim(),
   };
+}
+
+export function parseDesignAcceptanceResult(
+  value: unknown,
+  workItems: VersionWorkItem[],
+  codeRevision: string,
+): {
+  decision: 'approved' | 'changes-requested';
+  summary: string;
+  scenarios: Array<{
+    id: string;
+    workItemId: string;
+    designPath: string;
+    kind: 'main' | 'boundary' | 'adjacent';
+    entry: string;
+    steps: string[];
+    expected: string;
+    actual: string;
+    result: 'passed' | 'failed';
+    evidence: string[];
+  }>;
+} {
+  if (
+    !isRecord(value) ||
+    !['approved', 'changes-requested'].includes(String(value.decision)) ||
+    typeof value.summary !== 'string' ||
+    !value.summary.trim() ||
+    value.codeRevision !== codeRevision ||
+    !Array.isArray(value.scenarios) ||
+    value.scenarios.length === 0
+  )
+    throw new Error('策划体验验收缺少结论、开发修订或真实场景');
+  const workIds = new Set(
+    workItems
+      .filter((item) => item.status === 'completed' && !documentationOnlyWorkItem(item))
+      .map((item) => item.id),
+  );
+  const ids = new Set<string>();
+  const scenarios = value.scenarios.map((entry) => {
+    if (
+      !isRecord(entry) ||
+      typeof entry.id !== 'string' ||
+      !entry.id.trim() ||
+      ids.has(entry.id) ||
+      typeof entry.workItemId !== 'string' ||
+      !workIds.has(entry.workItemId) ||
+      typeof entry.designPath !== 'string' ||
+      !entry.designPath.startsWith('docs/') ||
+      !['main', 'boundary', 'adjacent'].includes(String(entry.kind)) ||
+      typeof entry.entry !== 'string' ||
+      !entry.entry.trim() ||
+      !Array.isArray(entry.steps) ||
+      entry.steps.length === 0 ||
+      entry.steps.some((step) => typeof step !== 'string' || !step.trim()) ||
+      typeof entry.expected !== 'string' ||
+      !entry.expected.trim() ||
+      typeof entry.actual !== 'string' ||
+      !entry.actual.trim() ||
+      !['passed', 'failed'].includes(String(entry.result)) ||
+      !Array.isArray(entry.evidence) ||
+      entry.evidence.length === 0 ||
+      entry.evidence.some((path) => typeof path !== 'string' || !path.trim()) ||
+      !entry.evidence.some(
+        (path) => typeof path === 'string' && /\.(?:png|jpe?g|webp|webm|mp4|zip)$/i.test(path),
+      )
+    )
+      throw new Error('策划体验场景缺少已批准来源、实际操作或可核查证据');
+    ids.add(entry.id);
+    return entry as unknown as {
+      id: string;
+      workItemId: string;
+      designPath: string;
+      kind: 'main' | 'boundary' | 'adjacent';
+      entry: string;
+      steps: string[];
+      expected: string;
+      actual: string;
+      result: 'passed' | 'failed';
+      evidence: string[];
+    };
+  });
+  if (
+    [...workIds].some(
+      (id) =>
+        !scenarios.some((entry) => entry.workItemId === id && entry.kind === 'main') ||
+        !scenarios.some((entry) => entry.workItemId === id && entry.kind === 'boundary'),
+    ) ||
+    !scenarios.some((entry) => entry.kind === 'adjacent') ||
+    (value.decision === 'approved' && scenarios.some((entry) => entry.result !== 'passed')) ||
+    (value.decision === 'changes-requested' &&
+      !scenarios.some((entry) => entry.result === 'failed'))
+  )
+    throw new Error('策划体验结论未覆盖开发工作项、相邻情形或与实测结果矛盾');
+  return {
+    decision: value.decision as 'approved' | 'changes-requested',
+    summary: value.summary.trim(),
+    scenarios,
+  };
+}
+
+export async function assertDesignAcceptanceEvidence(
+  workspaceRoot: string,
+  startedAt: string,
+  scenarios: ReturnType<typeof parseDesignAcceptanceResult>['scenarios'],
+): Promise<void> {
+  for (const scenario of scenarios) {
+    for (const path of [scenario.designPath, ...scenario.evidence]) {
+      const absolute = resolve(workspaceRoot, path);
+      if (
+        isAbsolute(path) ||
+        relative(workspaceRoot, absolute).startsWith('..') ||
+        !existsSync(absolute)
+      )
+        throw new Error(`策划体验场景 ${scenario.id} 的证据不存在或越界：${path}`);
+      if (
+        path !== scenario.designPath &&
+        !evidenceAfterStageStart(startedAt, (await stat(absolute)).mtimeMs)
+      )
+        throw new Error(`策划体验场景 ${scenario.id} 使用了本轮开始前的运行证据：${path}`);
+    }
+  }
 }
 
 export function parseDevelopmentResult(
@@ -4603,6 +5127,13 @@ function reportValidationProfile(report: Record<string, unknown>): string {
     : 'task';
 }
 
+function stageTaskReviewRequired(stage: VersionStage, report: Record<string, unknown>): boolean {
+  return !(
+    ['charter-draft', 'module-design', 'design-review'].includes(stage) &&
+    reportValidationProfile(report) === 'light'
+  );
+}
+
 function reportExecutionRound(report: Record<string, unknown>): number {
   return isRecord(report.validation) &&
     Number.isInteger(report.validation.executionRound) &&
@@ -4613,7 +5144,7 @@ function reportExecutionRound(report: Record<string, unknown>): number {
 
 function assertVerificationDidNotChangeImplementation(
   report: Record<string, unknown>,
-  stage: 'qa' | 'bugfix-reverification' | 'candidate',
+  stage: 'design-acceptance' | 'qa' | 'bugfix-reverification' | 'candidate',
   testedRevision?: string,
   currentRevision?: string,
 ): void {
@@ -4644,6 +5175,7 @@ export function applyAutomaticStagePolicy(version: FormalVersion, stage: Version
     'module-design': '该版本只有文档交付，版本策划已覆盖所需规则，无需另写模块详细策划。',
     'design-review': '没有独立模块策划产物，无需增加主策复审轮次。',
     'version-planning': '只有一个文档交付工作项，无需单独排期。',
+    'design-acceptance': '只有文档交付，没有新增可玩流程，策划体验验收无需执行。',
     qa: '没有运行时代码或玩家流程变化，无需执行版本运行时测试。',
     candidate: '没有新增可执行构建，现有文档即为制作人可评审产物。',
   };
@@ -4674,14 +5206,36 @@ export function supersedeObsoleteFormalItems(
 ): number {
   if (!version) return 0;
   const startedAt = version.nodes.find((node) => node.id === version.currentStage)?.startedAt ?? '';
+  const scopeRevision = formalScopeRevision(version);
   let count = 0;
   for (const item of secretary.items) {
+    const currentWithReusedId =
+      item.createdAt < startedAt &&
+      Boolean(item.runDirectory) &&
+      secretary.items.find(
+        (candidate) =>
+          candidate !== item &&
+          candidate.id === item.id &&
+          candidate.runDirectory === item.runDirectory &&
+          candidate.createdAt >= startedAt &&
+          ['active', 'tracking'].includes(candidate.status) &&
+          candidate.orchestration?.formalVersionId === version.id &&
+          candidate.orchestration.formalStage === version.currentStage &&
+          candidate.orchestration.formalScopeRevision === scopeRevision,
+      );
+    const reboundToCurrentRun =
+      currentWithReusedId &&
+      Number(item.processIdentity) >= Date.parse(startedAt) &&
+      !processAlive(currentWithReusedId.processPid, currentWithReusedId.processIdentity);
     if (
       item.orchestration?.formalVersionId !== version.id ||
       !['queued', 'retry-wait', 'active', 'tracking'].includes(item.status) ||
-      (item.orchestration.formalStage === version.currentStage && item.createdAt >= startedAt) ||
-      processAlive(item.processPid, item.processIdentity) ||
-      item.orchestration.processOccupied
+      (item.orchestration.formalStage === version.currentStage &&
+        item.orchestration.formalScopeRevision === scopeRevision &&
+        item.createdAt >= startedAt) ||
+      ((processAlive(item.processPid, item.processIdentity) ||
+        item.orchestration.processOccupied) &&
+        !reboundToCurrentRun)
     ) {
       continue;
     }
@@ -4743,6 +5297,50 @@ async function finalizeDeliveredVersionStage(
       : `该阶段已由秘书调度完成；交付证据：${evidence}。`,
   });
 
+  if (stage === 'design-acceptance') {
+    const testedRevision = version.orchestration?.codeRevision;
+    if (!testedRevision) throw new Error('策划体验验收缺少已完成的开发修订');
+    assertVerificationDidNotChangeImplementation(
+      report,
+      'design-acceptance',
+      testedRevision,
+      revision,
+    );
+    const manifestPath = `${version.documentRoot}/design-acceptance.json`.replace(/\\/g, '/');
+    if (
+      !evidenceAfterStageStart(stageStartedAt, (await stat(resolve(root, manifestPath))).mtimeMs)
+    ) {
+      throw new Error('策划体验验收记录早于本轮节点启动');
+    }
+    const result = parseDesignAcceptanceResult(
+      await readJson(resolve(root, manifestPath)),
+      version.workItems,
+      testedRevision,
+    );
+    await assertDesignAcceptanceEvidence(root, stageStartedAt, result.scenarios);
+    setNodeEvidence(version, stage, {
+      artifact,
+      summary: `${result.summary}；${result.scenarios.length} 个实际体验场景；证据：${manifestPath}。`,
+    });
+    recordApproval(version, {
+      stage,
+      reviewer: 'lead-designer',
+      decision: result.decision,
+      documentRevision: version.charterRevision,
+      comment: `${result.summary}；证据：${manifestPath}、${evidence}`,
+    });
+    if (result.decision === 'changes-requested') {
+      await writeFormalVersion(root, version);
+      item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+      await emitNotice(
+        'version-design-acceptance-changes-requested',
+        `策划体验验收发现“${version.title}”与已批准策划不一致：${result.summary} 秘书将按偏差退回开发修正。`,
+        item,
+      );
+      return true;
+    }
+  }
+
   if (stage === 'design-review') {
     const manifestPath = `${version.documentRoot}/design-review.json`.replace(/\\/g, '/');
     const result = parseDesignReviewResult(await readJson(resolve(root, manifestPath)));
@@ -4764,18 +5362,31 @@ async function finalizeDeliveredVersionStage(
       );
       return true;
     }
-    if (result.decision === 'producer-escalation') {
+    const priorProducerRejection = requiresProducerDesignReapproval(version);
+    if (result.decision === 'producer-escalation' || priorProducerRejection) {
+      if (result.decision === 'approved') {
+        recordApproval(version, {
+          stage,
+          reviewer: 'lead-designer',
+          decision: 'approved',
+          documentRevision: version.charterRevision,
+          comment: `${result.summary}；证据：${evidence}`,
+        });
+      }
       addDecisionGate(version, {
         kind: 'producer-escalated-design',
         stage,
-        summary: result.summary,
+        summary:
+          priorProducerRejection && result.decision === 'approved'
+            ? `修订后的完整详细策划已通过主策复审，等待制作人审阅；${result.summary}`
+            : result.summary,
         sourceRequestId: item.id,
       });
       await writeFormalVersion(root, version);
       item.orchestration!.formalStageConsumedAt = new Date().toISOString();
       await emitNotice(
         'version-design-escalated',
-        `主策将“${version.title}”的详细策划升级给制作人：${result.summary}`,
+        `“${version.title}”的详细策划已提交制作人审阅：${result.summary}`,
         item,
       );
       return true;
@@ -5127,7 +5738,7 @@ async function finalizeDeliveredVersionStage(
   item.orchestration!.formalStageConsumedAt = new Date().toISOString();
   await emitNotice(
     'version-stage-complete',
-    `版本节点“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”已完成；接下来“${version.nodes.find((node) => node.id === target)?.title ?? target}”。详情见项目中枢。`,
+    `版本节点“${version.nodes.find((node) => node.id === stage)?.title ?? stage}”的本轮任务已接纳；接下来“${version.nodes.find((node) => node.id === target)?.title ?? target}”${stage === 'module-design' ? '，主策审核仍可能退回修订；尚未批准开发' : ''}。详情见项目中枢。`,
     item,
   );
   return true;
@@ -5159,8 +5770,25 @@ async function consumeTaskOwnedVersionItem(
     const base = item.orchestration?.formalTaskBaseRevision;
     if (!base) throw new Error('节点收束缺少代码基线');
     const revision = currentGitRevision();
-    if (revision === base) throw new Error('Version PM 节点收束未形成独立提交');
-    const productChanges = nonDocumentationChanges(changedFilesBetween(base, revision));
+    const runPlan = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'plan.validated.json'))
+      : null;
+    const expectedMessage = isRecord(runPlan)
+      ? conventionalCommitOrFallback(
+          String(runPlan.commitMessage ?? ''),
+          String(runPlan.title ?? ''),
+        )
+      : '';
+    const finalizingCommit = findCommitByMessage({
+      root,
+      baseline: base,
+      head: revision,
+      expectedMessage,
+    });
+    if (!finalizingCommit) throw new Error('Version PM 节点收束未形成可归属的独立提交');
+    const ownChanges = changedFilesBetween(finalizingCommit.parent, finalizingCommit.commit);
+    if (ownChanges.length === 0) throw new Error('Version PM 节点收束提交没有交付文件');
+    const productChanges = nonDocumentationChanges(ownChanges);
     if (productChanges.length > 0) {
       throw new Error(`Version PM 收束不得修改产品实现：${productChanges.join('、')}`);
     }
@@ -5205,7 +5833,26 @@ async function consumeTaskOwnedVersionItem(
     const summary = `${version.documentRoot}/${label}-tasks.md`.replace(/\\/g, '/');
     const revision = currentGitRevision();
     if (revision === base) throw new Error('Version PM 节点规划未形成独立提交');
-    const changed = changedFilesBetween(base, revision);
+    const runPlan = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'plan.validated.json'))
+      : null;
+    const expectedMessage =
+      isRecord(runPlan) && typeof runPlan.commitMessage === 'string'
+        ? conventionalCommitOrFallback(runPlan.commitMessage, String(runPlan.title ?? '节点规划'))
+        : '';
+    const planningCommit = expectedMessage
+      ? findTaskCommitEvidence({
+          root,
+          baseline: base,
+          head: revision,
+          expectedMessage,
+          writePaths: [manifest, summary],
+          readPaths: [version.documentRoot],
+        })
+      : null;
+    const changed = planningCommit
+      ? changedFilesBetween(planningCommit.parent, planningCommit.commit)
+      : changedFilesBetween(base, revision);
     if (
       !changed.includes(manifest) ||
       !changed.includes(summary) ||
@@ -5214,6 +5861,7 @@ async function consumeTaskOwnedVersionItem(
       throw new Error('Version PM 节点规划只能提交当前任务清单及其说明');
     }
     const raw = await readJson(resolve(root, manifest));
+    if (stage === 'module-design') assertModuleDesignTaskPlan(raw);
     const tasks = parseStageTaskManifest(
       raw,
       stage,
@@ -5221,6 +5869,12 @@ async function consumeTaskOwnedVersionItem(
       startedAt,
       expectedVersionStageStep(version, stage),
     );
+    if (stage === 'module-design') {
+      const repeated = repeatedModuleDesignTaskIds(version, tasks);
+      if (repeated.length > 0) {
+        throw new Error(`重入详细策划不得复用历史任务 ID：${repeated.join('、')}`);
+      }
+    }
     for (const task of tasks) {
       assertStageTaskPaths(task, version.documentRoot);
       task.writePaths.push(`${version.documentRoot}/tasks/${label}-${task.id}.json`);
@@ -5272,17 +5926,49 @@ async function consumeTaskOwnedVersionItem(
   ) {
     throw new Error(`节点任务 ${task.id} 把统一门禁记成了直接检查`);
   }
-  if (!isRecord(report.review) || report.review.verdict !== 'pass') {
+  if (
+    stageTaskReviewRequired(stage, report) &&
+    (!isRecord(report.review) || report.review.verdict !== 'pass')
+  ) {
     throw new Error(`节点任务 ${task.id} 缺少独立审查通过证据`);
   }
-  const base = item.orchestration?.formalTaskBaseRevision;
-  if (!base) throw new Error('节点任务缺少 Git 写入基线');
   const revision = currentGitRevision();
-  if (revision === base) throw new Error(`节点任务 ${task.id} 未形成独立提交`);
-  assertTaskWriteScope(task, changedFilesBetween(base, revision));
+  const checkpoint = item.runDirectory
+    ? await readJson(resolve(item.runDirectory, 'recovery.json'))
+    : null;
+  const plan = isRecord(checkpoint?.plan) ? checkpoint.plan : null;
+  const expectedMessage = plan
+    ? conventionalCommitOrFallback(String(plan.commitMessage ?? ''), String(plan.title ?? ''))
+    : '';
+  const mixedPaths = taskCommitOutOfScopePaths({
+    root,
+    baseline: item.orchestration?.formalTaskBaseRevision ?? '',
+    head: revision,
+    expectedMessage,
+    writePaths: task.writePaths,
+  });
+  if (mixedPaths.length > 0) {
+    throw new Error(`节点任务 ${task.id} 的交付提交混入合同外文件：${mixedPaths.join('、')}`);
+  }
+  const commitEvidence = plan
+    ? findTaskCommitEvidence({
+        root,
+        baseline: item.orchestration?.formalTaskBaseRevision ?? '',
+        head: revision,
+        expectedMessage,
+        writePaths: task.writePaths,
+        readPaths: task.readPaths,
+        allowReferenceOnlyPredecessorChanges: true,
+        allowPrecedingOwnedWriteChanges: true,
+      })
+    : null;
+  const base = commitEvidence?.parent ?? (await stageTaskExecutionBase(item, task, revision));
+  const deliveryRevision = commitEvidence?.commit ?? revision;
+  if (deliveryRevision === base) throw new Error(`节点任务 ${task.id} 未形成独立提交`);
+  assertStageTaskDeliveryScope(task, changedFilesBetween(base, deliveryRevision));
   task.status = 'accepted';
   task.pmItemId = item.id;
-  task.commit = revision;
+  task.commit = deliveryRevision;
   task.evidence = [resultPath, relative(root, reportPath).replace(/\\/g, '/'), ...result.evidence];
   if (stage === 'development') {
     const workItem = version.workItems.find((candidate) => candidate.id === task.id);
@@ -5403,6 +6089,17 @@ async function driveFormalVersion(): Promise<boolean> {
           }
         }
         delivered.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        if (repeatedFormalAcceptanceFailureCount(state, delivered) >= 3) {
+          delivered.status = 'failed';
+          delivered.summary = `技术阻断：同一正式节点交付连续三次未被接纳：${reason}`;
+          await emitNotice(
+            'version-stage-blocked',
+            `【版本节点·重复拒收】暂停：${reason} 三次交付未形成进展，主 Agent 将核查证据与接纳合同。`,
+            delivered,
+          );
+          changed = true;
+          break;
+        }
         if (/超出独占写入范围|只能写入当前版本证据目录|占用 Version PM 的共享文档/.test(reason)) {
           delivered.status = 'failed';
           delivered.summary = `技术阻断：节点任务边界被突破：${reason}`;
@@ -5440,22 +6137,32 @@ async function driveFormalVersion(): Promise<boolean> {
     }
     const queued = ensureVersionStageItem(state, version);
     if (queued) {
-      const rejected = [...state.items]
-        .reverse()
-        .find(
-          (item) =>
-            item.id !== queued.id &&
-            item.orchestration?.formalVersionId === version!.id &&
-            item.orchestration.formalStage === stage &&
-            item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
-            item.summary.startsWith('阶段交付未能写入正式版本'),
-        );
+      const rejected = rejectedStageAttemptFor(
+        state.items,
+        queued,
+        version.nodes.find((node) => node.id === stage)?.startedAt ?? '',
+      );
       const retryReason = rejected?.summary.split('将自动安排修复：')[1]?.trim() ?? '';
-      const attempt = Number(/-(\d+)$/.exec(queued.id)?.[1] ?? 1);
+      const step = queued.orchestration?.formalStageStep ?? 'primary';
+      const taskId = queued.orchestration?.formalTaskId ?? '';
+      const stageStartedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
+      const attempt =
+        state.items.filter(
+          (candidate) =>
+            candidate !== queued &&
+            candidate.createdAt >= stageStartedAt &&
+            candidate.orchestration?.formalVersionId === version!.id &&
+            candidate.orchestration.formalStage === stage &&
+            candidate.orchestration.formalStageStep === step &&
+            (step !== 'task' || candidate.orchestration.formalTaskId === taskId),
+        ).length + 1;
+      const taskTitle = version.stageTasks?.find((task) => task.id === taskId)?.title ?? taskId;
       await emitNotice(
         retryReason ? 'version-stage-retry' : 'version-stage-scheduled',
         versionStageScheduleMessage(
           version.nodes.find((node) => node.id === stage)?.title ?? stage,
+          step,
+          taskTitle,
           attempt,
           retryReason,
         ),
@@ -5492,13 +6199,106 @@ async function coordinateOnce(): Promise<void> {
   const stateBeforeNormalization = JSON.stringify(state);
   const normalized = normalizeSecretaryState(state);
   const activeFormalVersion = await readFormalVersion(root);
+  if (activeFormalVersion) {
+    const scopeRevision = formalScopeRevision(activeFormalVersion);
+    for (const item of state.items) {
+      if (
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        !['queued', 'retry-wait', 'active', 'tracking'].includes(item.status) ||
+        !item.orchestration.processOccupied ||
+        (item.orchestration.formalStage === activeFormalVersion.currentStage &&
+          item.orchestration.formalScopeRevision === scopeRevision)
+      )
+        continue;
+      if (
+        !isOwnedProcessAlive(item.processPid, item.processIdentity, 0) &&
+        !(await activeWorkerProcess(item, true))
+      )
+        item.orchestration.processOccupied = false;
+    }
+  }
   const supersededObsolete = supersedeObsoleteFormalItems(state, activeFormalVersion);
+  const quarantinedBootstrapIds = new Set<string>();
+  if (activeFormalVersion) {
+    for (const item of state.items) {
+      if (
+        item.status !== 'tracking' ||
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        item.orchestration.formalStage !== activeFormalVersion.currentStage ||
+        item.orchestration.formalScopeRevision !== formalScopeRevision(activeFormalVersion) ||
+        item.orchestration.reconciliationOutcome !== 'missing' ||
+        !item.runDirectory ||
+        isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+        item.orchestration.processOccupied ||
+        (await activeWorkerProcess(item, true))
+      )
+        continue;
+      const bootstrapBase = item.orchestration.formalTaskBaseRevision ?? '';
+      const currentRevision = currentGitRevision();
+      if (!bootstrapBase || !gitRevisionIsAncestor(bootstrapBase, currentRevision)) continue;
+      const interveningPaths = changedFilesBetween(bootstrapBase, currentRevision);
+      const findingsPath = `${activeFormalVersion.documentRoot}/design-review-findings.md`;
+      const evidenceReferenceCorrection =
+        activeFormalVersion.currentStage === 'design-review' &&
+        interveningPaths.includes(findingsPath) &&
+        isOrphanEvidenceReferenceCorrection({
+          root,
+          baseline: bootstrapBase,
+          head: currentRevision,
+          path: findingsPath,
+        });
+      const controlOnlyPredecessors = areControlOnlyPredecessorPaths(
+        interveningPaths.filter((path) => !(evidenceReferenceCorrection && path === findingsPath)),
+      );
+      if (!controlOnlyPredecessors) continue;
+      const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
+        () => '',
+      );
+      if (!launchLog.includes('完整执行要求 Git 工作区干净')) continue;
+      const previous = state.items
+        .slice(0, state.items.indexOf(item))
+        .reverse()
+        .find(
+          (candidate) =>
+            candidate.status === 'delivered' &&
+            candidate.runDirectory &&
+            candidate.orchestration?.formalVersionId === activeFormalVersion.id &&
+            candidate.orchestration.formalStage === activeFormalVersion.currentStage &&
+            candidate.orchestration.formalScopeRevision ===
+              formalScopeRevision(activeFormalVersion) &&
+            candidate.orchestration.formalStageStep === 'task' &&
+            stageTasksForCurrentNode(activeFormalVersion).some(
+              (task) =>
+                task.id === candidate.orchestration?.formalTaskId &&
+                task.status === 'accepted' &&
+                task.commit === bootstrapBase,
+            ),
+        );
+      if (!previous?.runDirectory) continue;
+      try {
+        const artifact = await quarantineOrphanStageArtifact({
+          root,
+          versionDocumentRoot: activeFormalVersion.documentRoot,
+          stage: activeFormalVersion.currentStage,
+          approvedTaskIds: stageTasksForCurrentNode(activeFormalVersion).map((task) => task.id),
+          previousRunDirectory: previous.runDirectory,
+          previousRunStartedAt: previous.createdAt,
+          blockedRunDirectory: item.runDirectory,
+        });
+        if (artifact) quarantinedBootstrapIds.add(item.id);
+      } catch (error) {
+        console.error(`[秘书恢复] 合同外草稿隔离失败：${String(error)}`);
+      }
+    }
+  }
   const cleanWorktree = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
     cwd: root,
     encoding: 'utf8',
     windowsHide: true,
   });
   const emptyBootstrapFailures = new Set<string>();
+  const networkPlannerFailures = new Set<string>();
+  const formalPlannerDependencyFailures = new Set<string>();
   if (activeFormalVersion && cleanWorktree.status === 0 && !cleanWorktree.stdout.trim()) {
     for (const item of state.items) {
       if (
@@ -5513,13 +6313,82 @@ async function coordinateOnce(): Promise<void> {
         continue;
       }
       const runFiles = await readdir(item.runDirectory).catch(() => null);
-      if (!runFiles || runFiles.length > 0 || (await activeWorkerProcess(item, true))) continue;
+      if (!runFiles || (await activeWorkerProcess(item, true))) continue;
+      if (
+        item.orchestration.formalStageStep === 'task' &&
+        item.orchestration.formalTaskId &&
+        stageTasksForCurrentNode(activeFormalVersion).some(
+          (task) => task.id === item.orchestration?.formalTaskId && task.status === 'pending',
+        ) &&
+        !state.items.some(
+          (prior) =>
+            prior.id !== item.id &&
+            prior.orchestration?.formalVersionId === activeFormalVersion.id &&
+            prior.orchestration.formalStage === activeFormalVersion.currentStage &&
+            prior.orchestration.formalTaskId === item.orchestration?.formalTaskId &&
+            prior.status === 'superseded' &&
+            prior.summary.includes('模型连接失败'),
+        )
+      ) {
+        const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
+        const plannerLog = await readFile(resolve(item.runDirectory, 'planner.log'), 'utf8').catch(
+          () => '',
+        );
+        if (isRetryablePlannerNetworkFailure(progress, runFiles, plannerLog)) {
+          networkPlannerFailures.add(item.id);
+          continue;
+        }
+        if (
+          !state.items.some(
+            (prior) =>
+              prior.id !== item.id &&
+              prior.orchestration?.formalVersionId === activeFormalVersion.id &&
+              prior.orchestration.formalStage === activeFormalVersion.currentStage &&
+              prior.orchestration.formalTaskId === item.orchestration?.formalTaskId &&
+              prior.status === 'superseded' &&
+              prior.summary.includes('规划前驱误写'),
+          )
+        ) {
+          const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
+            () => '',
+          );
+          const acceptedPredecessors = new Set(
+            stageTasksForCurrentNode(activeFormalVersion)
+              .filter((task) => task.status === 'accepted')
+              .map((task) => task.id),
+          );
+          if (
+            isRetryableFormalPlannerDependencyFailure(
+              progress,
+              runFiles,
+              launchLog,
+              await readJson(resolve(item.runDirectory, 'plan.json')),
+              item.idea,
+              acceptedPredecessors,
+            )
+          ) {
+            formalPlannerDependencyFailures.add(item.id);
+            continue;
+          }
+        }
+      }
+      if (runFiles.length > 0) continue;
       const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
         () => '',
       );
       if (launchLog.includes('完整执行要求 Git 工作区干净')) emptyBootstrapFailures.add(item.id);
     }
   }
+  const retiredQuarantinedBootstrap = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        new Set([...emptyBootstrapFailures].filter((id) => quarantinedBootstrapIds.has(id))),
+        '已核实上次交付遗留的未跟踪合同外任务 JSON，原样隔离到上次运行目录并留存审计；空启动留档后自动重派。',
+      )
+    : false;
   const retiredEmptyBootstrap = activeFormalVersion
     ? supersedeEmptyFormalBootstrapFailures(
         state,
@@ -5527,6 +6396,26 @@ async function coordinateOnce(): Promise<void> {
         activeFormalVersion.currentStage,
         new Date().toISOString(),
         emptyBootstrapFailures,
+      )
+    : false;
+  const retiredNetworkPlanner = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        networkPlannerFailures,
+        '模型连接失败且未创建恢复快照；保留失败日志并重新派发一次。',
+      )
+    : false;
+  const retiredFormalPlannerDependency = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        formalPlannerDependencyFailures,
+        '规划前驱误写为内部任务依赖，未创建恢复快照；原尝试留档并按已接纳前驱重新派发一次。',
       )
     : false;
   const stoppedCollapsedItems = new Set(
@@ -5767,6 +6656,81 @@ async function coordinateOnce(): Promise<void> {
       }
     }
   }
+  let reopenedBlockedStageTask = false;
+  if (
+    activeFormalVersion?.workflowRevision === 2 &&
+    cleanWorktree.status === 0 &&
+    !cleanWorktree.stdout.trim()
+  ) {
+    const blocked = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'failed' &&
+          item.summary.startsWith('技术阻断：节点任务边界被突破：') &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === activeFormalVersion.currentStage &&
+          item.orchestration.formalScopeRevision === formalScopeRevision(activeFormalVersion) &&
+          item.orchestration.formalStageStep === 'task' &&
+          item.orchestration.formalTaskId &&
+          item.orchestration.formalStageConsumedAt &&
+          !isOwnedProcessAlive(item.processPid, item.processIdentity),
+      );
+    const task = stageTasksForCurrentNode(activeFormalVersion).find(
+      (candidate) => candidate.id === blocked?.orchestration?.formalTaskId,
+    );
+    if (blocked?.runDirectory && task?.status === 'pending') {
+      try {
+        const report = await readJson(resolve(blocked.runDirectory, 'report.json'));
+        const checkpoint = await readJson(resolve(blocked.runDirectory, 'recovery.json'));
+        const resultPath = `${activeFormalVersion.documentRoot}/tasks/${currentStageTaskLabel(activeFormalVersion)}-${task.id}.json`;
+        const result = parseStageTaskResult(await readJson(resolve(root, resultPath)), task.id);
+        if (
+          report?.status !== '已交付' ||
+          checkpoint?.status !== 'delivered' ||
+          (stageTaskReviewRequired(activeFormalVersion.currentStage, report) &&
+            (!isRecord(report.review) || report.review.verdict !== 'pass')) ||
+          result.commands.some((command) => command.exitCode !== 0) ||
+          !evidenceAfterStageStart(
+            activeFormalVersion.nodes.find((node) => node.id === activeFormalVersion.currentStage)
+              ?.startedAt ?? '',
+            String(report.finishedAt ?? ''),
+          )
+        )
+          throw new Error('原节点任务尚无可信交付证据');
+        const revision = currentGitRevision();
+        const plan = isRecord(checkpoint.plan) ? checkpoint.plan : null;
+        const expectedMessage = plan
+          ? conventionalCommitOrFallback(String(plan.commitMessage ?? ''), String(plan.title ?? ''))
+          : '';
+        const commitEvidence = plan
+          ? findTaskCommitEvidence({
+              root,
+              baseline: blocked.orchestration?.formalTaskBaseRevision ?? '',
+              head: revision,
+              expectedMessage,
+              writePaths: task.writePaths,
+              readPaths: task.readPaths,
+              allowReferenceOnlyPredecessorChanges: true,
+              allowPrecedingOwnedWriteChanges: true,
+            })
+          : null;
+        const base =
+          commitEvidence?.parent ?? (await stageTaskExecutionBase(blocked, task, revision));
+        assertStageTaskDeliveryScope(
+          task,
+          changedFilesBetween(base, commitEvidence?.commit ?? revision),
+        );
+        reopenedBlockedStageTask = reopenVerifiedBlockedStageTaskDelivery(
+          state,
+          blocked.id,
+          new Date().toISOString(),
+        );
+      } catch {
+        // Keep the technical block until the existing delivery can be proven valid.
+      }
+    }
+  }
   const persistedCorrections = await persistScheduleCorrections(
     state,
     async (correction) => {
@@ -5796,6 +6760,88 @@ async function coordinateOnce(): Promise<void> {
       attachProcessExitNotice(item);
     }
   }
+  let reopenedCorrectedTask = false;
+  if (
+    activeFormalVersion?.workflowRevision === 2 &&
+    cleanWorktree.status === 0 &&
+    !cleanWorktree.stdout.trim()
+  ) {
+    const delivered = [...state.items]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'delivered' &&
+          item.orchestration?.formalVersionId === activeFormalVersion.id &&
+          item.orchestration.formalStage === activeFormalVersion.currentStage &&
+          item.orchestration.formalScopeRevision === formalScopeRevision(activeFormalVersion) &&
+          item.orchestration.formalTaskId &&
+          item.orchestration.formalStageConsumedAt &&
+          /(缺少实际检查或交付证据|仍有失败的直接检查)/.test(item.summary),
+      );
+    const task = stageTasksForCurrentNode(activeFormalVersion).find(
+      (candidate) => candidate.id === delivered?.orchestration?.formalTaskId,
+    );
+    if (delivered?.runDirectory && task?.status === 'pending') {
+      const unwrittenRetryIds = new Set<string>();
+      for (const item of state.items) {
+        if (
+          item.orchestration?.formalTaskId !== task.id ||
+          item.orchestration.formalVersionId !== activeFormalVersion.id ||
+          item.orchestration.formalScopeRevision !== formalScopeRevision(activeFormalVersion) ||
+          !['active', 'tracking', 'retry-wait'].includes(item.status) ||
+          isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+          (await activeWorkerProcess(item, true)) ||
+          !item.runDirectory
+        )
+          continue;
+        const checkpoint = await readJson(resolve(item.runDirectory, 'recovery.json'));
+        if (
+          Array.isArray(checkpoint?.taskRuns) &&
+          checkpoint.taskRuns.every(
+            (run: unknown) =>
+              isRecord(run) && Array.isArray(run.changedFiles) && run.changedFiles.length === 0,
+          )
+        ) {
+          unwrittenRetryIds.add(item.id);
+        }
+      }
+      if (unwrittenRetryIds.size > 0) {
+        try {
+          const report = await readJson(resolve(delivered.runDirectory, 'report.json'));
+          const resultPath = `${activeFormalVersion.documentRoot}/tasks/${currentStageTaskLabel(activeFormalVersion)}-${task.id}.json`;
+          const result = parseStageTaskResult(await readJson(resolve(root, resultPath)), task.id);
+          if (
+            report?.status !== '已交付' ||
+            (stageTaskReviewRequired(activeFormalVersion.currentStage, report) &&
+              (!isRecord(report.review) || report.review.verdict !== 'pass')) ||
+            result.commands.some((command) => command.exitCode !== 0) ||
+            !evidenceAfterStageStart(
+              activeFormalVersion.nodes.find((node) => node.id === activeFormalVersion.currentStage)
+                ?.startedAt ?? '',
+              String(report.finishedAt ?? ''),
+            ) ||
+            !delivered.orchestration?.formalTaskBaseRevision
+          )
+            throw new Error('原任务报告或直接检查尚未满足接纳条件');
+          assertStageTaskDeliveryScope(
+            task,
+            changedFilesBetween(
+              delivered.orchestration.formalTaskBaseRevision,
+              currentGitRevision(),
+            ),
+          );
+          reopenedCorrectedTask = reopenCorrectedStageTaskDelivery(
+            state,
+            delivered.id,
+            unwrittenRetryIds,
+            new Date().toISOString(),
+          );
+        } catch {
+          // Preserve the retry until the corrected result and original delivery can be audited.
+        }
+      }
+    }
+  }
   const waiting = state.items.find((item) => item.status === 'waiting-producer');
   const occupiedItems = state.items.filter(
     (item) =>
@@ -5816,13 +6862,18 @@ async function coordinateOnce(): Promise<void> {
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
     supersededObsolete > 0 ||
+    retiredQuarantinedBootstrap ||
     retiredEmptyBootstrap ||
+    retiredNetworkPlanner ||
+    retiredFormalPlannerDependency ||
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||
     reopenedDeliveredDevelopment ||
     reopenedDeliveredQa ||
     reopenedDeliveredBugfix ||
+    reopenedBlockedStageTask ||
+    reopenedCorrectedTask ||
     (normalized &&
       persistedCorrections === 0 &&
       stateBeforeNormalization !== JSON.stringify(state)) ||
@@ -5870,7 +6921,8 @@ export function formalVersionBlocksDispatch(version: FormalVersion | null): bool
       version.todos.some((todo) => todo.assignee === 'producer' && todo.status === 'open') ||
       version.orchestration?.decisionGates.some(
         (gate) =>
-          gate.status === 'open' || (gate.status === 'rejected' && gate.kind !== 'scope-change'),
+          gate.status === 'open' ||
+          (gate.status === 'rejected' && gate.kind === 'irreversible-decision'),
       )),
   );
 }
@@ -6202,8 +7254,36 @@ async function synchronizeArchivedVersion(): Promise<void> {
   if (JSON.stringify(version) !== before) await writeFormalVersion(root, version);
   closeArchivedVersionItems(state, version.id, new Date().toISOString());
   const messageId = `version-archived-${version.id}`;
-  if (state.messages.some((message) => message.id === messageId)) return;
   if (version.workflowRevision === 2 && process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
+  let retrospective = '';
+  const retrospectiveBlockedId = `version-retrospective-blocked-${version.id}`;
+  const retrospectiveReadyId = `version-retrospective-ready-${version.id}`;
+  try {
+    retrospective = await writeVersionRetrospective(root, version, state.items);
+    if (
+      state.messages.some((message) => message.id === retrospectiveBlockedId) &&
+      !state.messages.some((message) => message.id === retrospectiveReadyId)
+    ) {
+      state.messages.push({
+        id: retrospectiveReadyId,
+        role: 'secretary',
+        content: `版本“${version.title}”的流程复盘已恢复生成：${retrospective}。`,
+        intent: 'reply',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    if (!state.messages.some((message) => message.id === retrospectiveBlockedId)) {
+      state.messages.push({
+        id: retrospectiveBlockedId,
+        role: 'secretary',
+        content: `版本“${version.title}”的流程复盘生成受阻：${error instanceof Error ? error.message : String(error)}。主 Agent 将核查，版本交付继续。`,
+        intent: 'reply',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+  if (state.messages.some((message) => message.id === messageId)) return;
   let deliveredRevision = '';
   if (version.workflowRevision === 2 && process.env.DAOYAN_SECRETARY_NO_DISPATCH !== '1') {
     try {
@@ -6235,8 +7315,8 @@ async function synchronizeArchivedVersion(): Promise<void> {
     id: messageId,
     role: 'secretary',
     content: deliveredRevision
-      ? `版本“${version.title}”已归档并合回主干，提交 ${deliveredRevision.slice(0, 7)} 已推送。`
-      : `版本“${version.title}”归档已完成，当前没有归档 Agent 在运行。`,
+      ? `版本“${version.title}”已归档并合回主干，提交 ${deliveredRevision.slice(0, 7)} 已推送。${retrospective ? `流程复盘：${retrospective}。` : '流程复盘待主 Agent 修复。'}`
+      : `版本“${version.title}”归档已完成，当前没有归档 Agent 在运行。${retrospective ? `流程复盘：${retrospective}。` : '流程复盘待主 Agent 修复。'}`,
     intent: 'reply',
     createdAt: new Date().toISOString(),
   });

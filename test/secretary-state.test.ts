@@ -26,6 +26,9 @@ import {
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
+  reopenCorrectedStageTaskDelivery,
+  reopenVerifiedBlockedStageTaskDelivery,
+  repeatedFormalAcceptanceFailureCount,
   reopenEnvironmentBlockedQaDelivery,
   supersedeCollapsedDevelopmentItems,
   supersedeDevelopmentMigrationBootstrapFailures,
@@ -51,6 +54,93 @@ const status = `
 `;
 
 describe('persistent secretary state', () => {
+  it('reopens a corrected stage task only when its matching retry did no work', () => {
+    const state = createSecretaryState('2026-09-26T00:00:00.000Z');
+    const delivered = itemFromIntake(
+      { id: 'old-task', idea: '策划', createdAt: state.initializedAt },
+      [],
+    ).item;
+    delivered.status = 'delivered';
+    delivered.summary = '阶段交付未能写入正式版本：缺少实际检查或交付证据';
+    delivered.orchestration = {
+      ...delivered.orchestration!,
+      formalVersionId: 'v2',
+      formalStage: 'charter-draft',
+      formalScopeRevision: 13,
+      formalTaskId: 'charter',
+      formalStageConsumedAt: state.initializedAt,
+    };
+    const retry = itemFromIntake(
+      { id: 'empty-retry', idea: '重试策划', createdAt: state.initializedAt },
+      [],
+    ).item;
+    retry.status = 'tracking';
+    retry.orchestration = {
+      ...retry.orchestration!,
+      formalVersionId: 'v2',
+      formalStage: 'charter-draft',
+      formalScopeRevision: 13,
+      formalTaskId: 'charter',
+      processOccupied: true,
+    };
+    state.items.push(delivered, retry);
+    state.activeItemId = retry.id;
+    expect(
+      reopenCorrectedStageTaskDelivery(state, delivered.id, new Set(), state.initializedAt),
+    ).toBe(false);
+    expect(
+      reopenCorrectedStageTaskDelivery(
+        state,
+        delivered.id,
+        new Set([retry.id]),
+        state.initializedAt,
+      ),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(delivered.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(state.activeItemId).toBe('');
+  });
+
+  it('counts only identical formal task rejections and reopens a repaired failed-check report', () => {
+    const state = createSecretaryState('2026-09-26T00:00:00.000Z');
+    const rejected = Array.from({ length: 3 }, (_, index) => {
+      const item = itemFromIntake(
+        { id: `rejected-${index}`, idea: '策划', createdAt: state.initializedAt },
+        [],
+      ).item;
+      item.status = 'delivered';
+      item.summary =
+        '阶段交付未能写入正式版本，将自动安排修复：节点任务 charter 仍有失败的直接检查';
+      item.orchestration = {
+        ...item.orchestration!,
+        formalVersionId: 'v2',
+        formalStage: 'charter-draft',
+        formalScopeRevision: 13,
+        formalStageStep: 'task',
+        formalTaskId: 'charter',
+        formalStageConsumedAt: state.initializedAt,
+      };
+      return item;
+    });
+    const retry = itemFromIntake(
+      { id: 'read-only-retry', idea: '复核', createdAt: state.initializedAt },
+      [],
+    ).item;
+    retry.status = 'retry-wait';
+    retry.orchestration = { ...rejected[2].orchestration!, processOccupied: false };
+    state.items.push(...rejected, retry);
+    expect(repeatedFormalAcceptanceFailureCount(state, rejected[2])).toBe(3);
+    expect(
+      reopenCorrectedStageTaskDelivery(
+        state,
+        rejected[2].id,
+        new Set([retry.id]),
+        state.initializedAt,
+      ),
+    ).toBe(true);
+    expect(retry.status).toBe('superseded');
+    expect(rejected[2].orchestration?.formalStageConsumedAt).toBeUndefined();
+  });
   it('merges only explicitly named backlog candidates and records correction evidence', () => {
     const state = createSecretaryState('2026-09-23T00:00:00.000Z');
     for (const id of ['old-a', 'old-b']) {
@@ -243,6 +333,29 @@ describe('persistent secretary state', () => {
     expect(reopenEnvironmentBlockedQaDelivery(state, 'version-1', state.initializedAt)).toBe(true);
     expect(item.status).toBe('delivered');
     expect(item.orchestration.formalStageConsumedAt).toBeUndefined();
+  });
+
+  it('reopens only a verified task scope false positive for original delivery acceptance', () => {
+    const state = createSecretaryState('2026-09-27T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'review-task', idea: '主策审核', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'failed';
+    item.summary = '技术阻断：节点任务边界被突破：执行前任务说明被改动';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'design-review',
+      formalTaskId: 'review',
+      formalStageConsumedAt: state.initializedAt,
+    };
+    state.items.push(item);
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, 'other', state.initializedAt)).toBe(false);
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(true);
+    expect(item.status).toBe('delivered');
+    expect(item.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(false);
   });
 
   it('retires stale formal-stage work when its control-plane version is archived', () => {
@@ -993,6 +1106,28 @@ describe('persistent secretary state', () => {
     (state.orchestration.intakes[0] as { disposition: string }).disposition = 'invalid';
 
     expect(() => normalizeSecretaryState(state)).toThrow('嵌套记录损坏');
+  });
+
+  it('loads an audited empty-bootstrap requeue after restarting the guard', () => {
+    const state = createSecretaryState('2026-09-27T08:45:00.000Z');
+    const item = itemFromIntake(
+      { id: 'preflight', idea: '主策复审', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'superseded';
+    item.orchestration!.reconciliationOutcome = 'requeued-empty-bootstrap';
+    state.items.push(item);
+    state.orchestration!.reconciliations.push({
+      itemId: item.id,
+      runId: 'run-preflight',
+      attempt: 1,
+      snapshotStatus: 'missing',
+      outcome: 'requeued-empty-bootstrap',
+      reason: '核实为空启动',
+      evidence: ['progress.json'],
+      reconciledAt: state.initializedAt,
+    });
+    expect(() => normalizeSecretaryState(structuredClone(state))).not.toThrow();
   });
 
   it.each(['waitingSnapshot', 'acknowledgedWaitingSnapshot'] as const)(

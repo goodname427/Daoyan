@@ -72,6 +72,7 @@ export interface SecretaryReconciliation {
     | 'retry-wait'
     | 'blocked'
     | 'bootstrapping'
+    | 'requeued-empty-bootstrap'
     | 'missing';
   reason: string;
   evidence: string[];
@@ -268,6 +269,7 @@ function validateSecretaryOrchestration(value: unknown): asserts value is Secret
         'retry-wait',
         'blocked',
         'bootstrapping',
+        'requeued-empty-bootstrap',
         'missing',
       ].includes(String(entry.outcome)) ||
       !isStringArray(entry.evidence) ||
@@ -297,6 +299,7 @@ function validateItemOrchestration(item: SecretaryItem): void {
       'retry-wait',
       'blocked',
       'bootstrapping',
+      'requeued-empty-bootstrap',
       'missing',
     ].includes(value.reconciliationOutcome) ||
     typeof value.awaitingReview !== 'boolean' ||
@@ -1070,6 +1073,7 @@ export function supersedeEmptyFormalBootstrapFailures(
   stage: string,
   now: string,
   eligibleItemIds: ReadonlySet<string>,
+  reason = '启动前因未提交的文档退出，未产生恢复快照；现场已清理，原尝试留档并重新派发。',
 ): boolean {
   let changed = false;
   for (const item of state.items) {
@@ -1083,7 +1087,7 @@ export function supersedeEmptyFormalBootstrapFailures(
       continue;
     }
     item.status = 'superseded';
-    item.summary = '启动前因未提交的文档退出，未产生恢复快照；现场已清理，原尝试留档并重新派发。';
+    item.summary = reason;
     item.completedAt ||= now;
     item.updatedAt = now;
     item.retryAt = '';
@@ -1125,6 +1129,91 @@ export function reopenVerifiedBugfixDelivery(
   now: string,
 ): boolean {
   return reopenVerifiedStageDelivery(state, versionId, 'bugfix', emptyStoppedAttemptIds, now);
+}
+
+/** Reuse a task report after its structured evidence was repaired and an unwritten retry stopped. */
+export function reopenCorrectedStageTaskDelivery(
+  state: SecretaryState,
+  deliveredId: string,
+  emptyRetryIds: ReadonlySet<string>,
+  now: string,
+): boolean {
+  const delivered = state.items.find((item) => item.id === deliveredId);
+  if (
+    delivered?.status !== 'delivered' ||
+    !delivered.orchestration?.formalTaskId ||
+    !delivered.orchestration.formalStageConsumedAt ||
+    !/(缺少实际检查或交付证据|仍有失败的直接检查)/.test(delivered.summary)
+  )
+    return false;
+  const retries = state.items.filter(
+    (item) =>
+      emptyRetryIds.has(item.id) &&
+      ['active', 'tracking', 'retry-wait'].includes(item.status) &&
+      item.orchestration?.formalVersionId === delivered.orchestration?.formalVersionId &&
+      item.orchestration?.formalStage === delivered.orchestration?.formalStage &&
+      item.orchestration?.formalScopeRevision === delivered.orchestration?.formalScopeRevision &&
+      item.orchestration?.formalTaskId === delivered.orchestration?.formalTaskId,
+  );
+  if (retries.length === 0) return false;
+  for (const item of retries) {
+    item.status = 'superseded';
+    item.summary = '重试未产生写入；结构化证据已修正，回到原 Feature PM 交付验收。';
+    item.completedAt ||= now;
+    item.updatedAt = now;
+    item.retryAt = '';
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.orchestration!.processOccupied = false;
+    item.orchestration!.awaitingReview = false;
+    item.orchestration!.reconciliationOutcome = 'delivered';
+    if (state.activeItemId === item.id) state.activeItemId = '';
+  }
+  delete delivered.orchestration.formalStageConsumedAt;
+  delivered.summary = '结构化证据已修正，等待正式版本重新验收原 Feature PM 交付。';
+  delivered.updatedAt = now;
+  return true;
+}
+
+/** The guard calls this only after revalidating a delivered report and its Git scope. */
+export function reopenVerifiedBlockedStageTaskDelivery(
+  state: SecretaryState,
+  itemId: string,
+  now: string,
+): boolean {
+  const item = state.items.find((candidate) => candidate.id === itemId);
+  if (
+    item?.status !== 'failed' ||
+    !item.summary.startsWith('技术阻断：节点任务边界被突破：') ||
+    !item.orchestration?.formalTaskId ||
+    !item.orchestration.formalStageConsumedAt
+  )
+    return false;
+  item.status = 'delivered';
+  item.summary = '执行前提交已与本任务隔离，等待重新验收原 Feature PM 交付。';
+  item.updatedAt = now;
+  delete item.orchestration.formalStageConsumedAt;
+  return true;
+}
+
+export function repeatedFormalAcceptanceFailureCount(
+  state: SecretaryState,
+  failed: SecretaryItem,
+): number {
+  const owner = failed.orchestration;
+  if (!owner?.formalVersionId || !failed.summary.startsWith('阶段交付未能写入正式版本')) {
+    return 0;
+  }
+  return state.items.filter(
+    (item) =>
+      item.status === 'delivered' &&
+      item.summary === failed.summary &&
+      item.orchestration?.formalVersionId === owner.formalVersionId &&
+      item.orchestration?.formalStage === owner.formalStage &&
+      item.orchestration?.formalScopeRevision === owner.formalScopeRevision &&
+      item.orchestration?.formalStageStep === owner.formalStageStep &&
+      item.orchestration?.formalTaskId === owner.formalTaskId,
+  ).length;
 }
 
 /** Recheck an environment-blocked QA report only after separate host evidence is supplied. */

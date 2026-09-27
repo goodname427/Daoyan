@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { advanceVersion, createFormalVersion, recordApproval } from '../scripts/version-lifecycle';
-import { buildLocalPlan, validationStagesForPlan } from '../scripts/agent-routing';
+import {
+  applyFormalStageValidationProfile,
+  buildLocalPlan,
+  validationStagesForPlan,
+} from '../scripts/agent-routing';
 import { ensureVersionStageItem } from '../scripts/secretary-notice-guard';
 import { createSecretaryState } from '../scripts/secretary-state';
 import {
+  assertModuleDesignTaskPlan,
   assertStageTaskPaths,
+  assertStageTaskDeliveryScope,
+  assertStageTaskPrestartScope,
   assertTaskWriteScope,
   parseStageTaskManifest,
   readyStageTasks,
@@ -22,6 +29,82 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('requires one detailed-design owner per declared module', () => {
+    const tasks = [task('resources'), task('market')];
+    const modules = [
+      { id: 'resources', title: '资源', taskId: 'resources' },
+      { id: 'market', title: '市场', taskId: 'market' },
+    ];
+    const plan = { tasks, modules, crossModuleContracts: ['市场交易转移资源归属'] };
+    expect(() => assertModuleDesignTaskPlan(plan)).not.toThrow();
+    expect(() => assertModuleDesignTaskPlan({ tasks })).toThrow('模块清单');
+    expect(() =>
+      assertModuleDesignTaskPlan({
+        ...plan,
+        modules: modules.map((module) => ({ ...module, taskId: 'resources' })),
+      }),
+    ).toThrow('独立');
+    expect(() => assertModuleDesignTaskPlan({ ...plan, modules: modules.slice(0, 1) })).toThrow(
+      '解释边界',
+    );
+  });
+  it('ignores separate Main Agent control-plane fixes but rejects game changes outside a task', () => {
+    const [charter] = parseStageTaskManifest(
+      { tasks: [task('charter', [], ['docs/versions/v2/charter-draft.md'])] },
+      'charter-draft',
+      1,
+      '2026-09-26T00:00:00.000Z',
+    );
+    expect(() =>
+      assertStageTaskDeliveryScope(charter, [
+        'scripts/agent-dispatcher.ts',
+        'test/version-stage-tasks.test.ts',
+        'docs/status.md',
+        'docs/workflow.md',
+        'docs/dev/2026-09-26.md',
+        'docs/versions/v2/charter-draft.md',
+      ]),
+    ).not.toThrow();
+    expect(() => assertStageTaskDeliveryScope(charter, ['scripts/agent-dispatcher.ts'])).toThrow(
+      '未提交合同内',
+    );
+    expect(() =>
+      assertStageTaskDeliveryScope(charter, [
+        'docs/versions/v2/charter-draft.md',
+        'src/core/world.ts',
+      ]),
+    ).toThrow('超出');
+  });
+  it('separates a rebased empty run from commits that changed its contract', () => {
+    const [review] = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            ...task('review', [], ['docs/versions/v2/design-review-findings.md']),
+            readPaths: ['docs/versions/v2/world-rule-design.md'],
+          },
+        ],
+      },
+      'design-review',
+      1,
+      '2026-09-26T00:00:00.000Z',
+    );
+    expect(() =>
+      assertStageTaskPrestartScope(review, [
+        'scripts/agent-routing.ts',
+        'docs/versions/v2/design-review-tasks.md',
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertStageTaskPrestartScope(review, ['docs/versions/v2/world-rule-design.md']),
+    ).toThrow('合同输入或输出');
+    expect(() =>
+      assertStageTaskPrestartScope(review, ['docs/versions/v2/design-review-findings.md']),
+    ).toThrow('合同输入或输出');
+    expect(() =>
+      assertStageTaskDeliveryScope(review, ['docs/versions/v2/design-review-findings.md']),
+    ).not.toThrow();
+  });
   it('creates new versions without the up-front breakdown and planning nodes', () => {
     const version = createFormalVersion({
       id: 'v2',
@@ -105,6 +188,12 @@ describe('stage-owned task contracts', () => {
     expect(() => assertStageTaskPaths(qa, 'docs/versions/v2')).not.toThrow();
     qa.writePaths = ['docs/versions/v2/qa-tasks.json'];
     expect(() => assertStageTaskPaths(qa, 'docs/versions/v2')).toThrow('共享文档');
+    const designAcceptance = {
+      ...qa,
+      stage: 'design-acceptance' as const,
+      writePaths: ['src/game'],
+    };
+    expect(() => assertStageTaskPaths(designAcceptance, 'docs/versions/v2')).toThrow('证据目录');
   });
 
   it('dispatches planning, one PM per deliverable, then stage finalization', () => {
@@ -186,6 +275,16 @@ describe('stage-owned task contracts', () => {
   });
 
   it('keeps task PM checks separate from the final full gate', () => {
+    const charterPlan = buildLocalPlan('实现任务记录交付');
+    charterPlan.tasks[0].type = 'implementation';
+    expect(
+      applyFormalStageValidationProfile(
+        charterPlan,
+        '[formal-stage-deliverable:charter-draft:game-intent-charter]',
+      ),
+    ).toBe(true);
+    expect(charterPlan.tasks[0].validationProfile).toBe('light');
+    expect(validationStagesForPlan(charterPlan)).toEqual([]);
     const taskPlan = buildLocalPlan('实现测试功能');
     taskPlan.riskSignals.push('formal-stage-deliverable');
     expect(validationStagesForPlan(taskPlan)).not.toContain('full-gate');
@@ -193,5 +292,28 @@ describe('stage-owned task contracts', () => {
       '[formal-stage:development]\n[formal-stage-finalizing]\n汇总结果',
     );
     expect(validationStagesForPlan(finalPlan)).toContain('full-gate');
+  });
+
+  it('lets design review produce evidence before escalating a producer decision', () => {
+    const reviewPlan = buildLocalPlan('审核统一世界规则');
+    reviewPlan.producerDecisionRequired = true;
+    reviewPlan.producerQuestion = '请先选择物理规则';
+    expect(
+      applyFormalStageValidationProfile(
+        reviewPlan,
+        '[formal-stage-deliverable:design-review:unified-world-review]',
+      ),
+    ).toBe(true);
+    expect(reviewPlan.producerDecisionRequired).toBe(false);
+    expect(reviewPlan.producerQuestion).toBe('请先选择物理规则');
+    expect(validationStagesForPlan(reviewPlan)).toEqual([]);
+
+    const developmentPlan = buildLocalPlan('实现物理规则');
+    developmentPlan.producerDecisionRequired = true;
+    applyFormalStageValidationProfile(
+      developmentPlan,
+      '[formal-stage-deliverable:development:physics]',
+    );
+    expect(developmentPlan.producerDecisionRequired).toBe(true);
   });
 });

@@ -39,6 +39,123 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('formal version lifecycle', () => {
+  it('adds design acceptance to an active v2 version without rewriting archived history', async () => {
+    const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-design-acceptance-'));
+    try {
+      const active = createFormalVersion({
+        id: 'design-gate-migration',
+        title: '策划验收迁移',
+        direction: '新增可玩法术',
+        documentRoot: 'docs/versions/design-gate-migration',
+        currentStage: 'module-design',
+        workflowRevision: 2,
+      });
+      active.nodes = active.nodes.filter((node) => node.id !== 'design-acceptance');
+      active.orchestration!.stagePolicies = active.orchestration!.stagePolicies.filter(
+        (policy) => policy.stage !== 'design-acceptance',
+      );
+      const stateRoot = resolve(temporary, '.daoyan-agent/releases');
+      await mkdir(stateRoot, { recursive: true });
+      await writeFile(resolve(stateRoot, 'current.json'), JSON.stringify(active));
+      const migrated = await readFormalVersion(temporary);
+      expect(migrated?.nodes.map((node) => node.id)).toContain('design-acceptance');
+      expect(migrated?.nodes.find((node) => node.id === 'design-acceptance')?.status).toBe(
+        'pending',
+      );
+      expect(currentVersionStagePolicy(migrated!, 'design-acceptance').mode).toBe('execute');
+      expect(migrated?.currentStage).toBe('module-design');
+      active.currentStage = 'archived';
+      active.status = 'archived';
+      await writeFile(resolve(stateRoot, 'current.json'), JSON.stringify(active));
+      expect((await readFormalVersion(temporary))?.nodes.map((node) => node.id)).not.toContain(
+        'design-acceptance',
+      );
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it('requires an independent design acceptance and returns a mismatch to development', () => {
+    const version = createFormalVersion({
+      id: 'design-acceptance-flow',
+      title: '策划验收',
+      direction: '可玩法术',
+      documentRoot: 'docs/versions/design-acceptance-flow',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-09-27T00:00:00.000Z',
+    });
+    version.workItems.push({
+      id: 'spell',
+      title: '法术',
+      owner: 'Feature PM',
+      status: 'completed',
+      dependsOn: [],
+      summary: '完成法术',
+      affectedPaths: ['src/core/spell.ts'],
+      acceptanceCommands: ['npm test'],
+      evidence: 'development.json',
+    });
+    recordStagePolicy(version, {
+      stage: 'design-acceptance',
+      mode: 'skip',
+      reason: '错误地跳过',
+      evidence: [],
+      decidedBy: 'test',
+      scopeRevision: 1,
+    });
+    expect(() => advanceVersion(version, 'qa')).toThrow('不能跳过');
+    recordStagePolicy(version, {
+      stage: 'design-acceptance',
+      mode: 'execute',
+      reason: '必须体验',
+      evidence: [],
+      decidedBy: 'test',
+      scopeRevision: 1,
+    });
+    const task = {
+      id: 'play-spell',
+      stage: 'design-acceptance' as const,
+      stageStep: 'primary' as const,
+      scopeRevision: 1,
+      stageStartedAt: version.nodes.find((node) => node.id === 'design-acceptance')!.startedAt,
+      title: '黑盒体验',
+      objective: '操作游戏',
+      deliverables: ['验收记录'],
+      acceptance: ['实际体验'],
+      dependsOn: [],
+      readPaths: ['docs/versions/design-acceptance-flow/module-design.md'],
+      writePaths: ['docs/versions/design-acceptance-flow/tasks/design-acceptance-play-spell.json'],
+      status: 'accepted' as const,
+      pmItemId: 'pm-1',
+      commit: 'abc',
+      evidence: ['experience.png'],
+    };
+    version.stageTasks!.push(task);
+    expect(() => advanceVersion(version, 'qa')).toThrow('尚未取得有效批准');
+    const approved = structuredClone(version);
+    recordApproval(approved, {
+      stage: 'design-acceptance',
+      reviewer: 'lead-designer',
+      decision: 'approved',
+      documentRevision: approved.charterRevision,
+      comment: '实际体验与策划一致',
+      now: '2026-09-27T00:01:00.000Z',
+    });
+    expect(() => advanceVersion(approved, 'qa', '2026-09-27T00:02:00.000Z')).not.toThrow();
+    expect(approved.currentStage).toBe('qa');
+    recordApproval(version, {
+      stage: 'design-acceptance',
+      reviewer: 'lead-designer',
+      decision: 'changes-requested',
+      documentRevision: version.charterRevision,
+      comment: '法球行为与策划不符',
+      now: '2026-09-27T00:01:00.000Z',
+    });
+    expect(version.currentStage).toBe('development');
+    expect(version.nodes.find((node) => node.id === 'design-acceptance')?.status).toBe('pending');
+  });
+
   it('returns a repaired candidate to independent QA with an auditable defect', () => {
     const version = createFormalVersion({
       id: 'candidate-repair',
@@ -1138,7 +1255,7 @@ describe('formal version lifecycle', () => {
     expect(() => advanceVersion(missingBug, 'bugfix')).toThrow('独立验收');
   });
 
-  it.each(['irreversible-decision', 'producer-escalated-design'] as const)(
+  it.each(['irreversible-decision'] as const)(
     'blocks rejected %s until explicit approval',
     (kind) => {
       const version = createFormalVersion({
@@ -1178,6 +1295,97 @@ describe('formal version lifecycle', () => {
       expect(() => advanceVersion(version, 'charter-draft')).not.toThrow();
     },
   );
+
+  it('returns a rejected design escalation to module design with producer feedback', () => {
+    const version = createFormalVersion({
+      id: 'design-feedback',
+      title: '设计反馈',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/design-feedback',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '六类规则待取舍',
+      sourceRequestId: 'review-1',
+    });
+    const designNode = version.nodes.find((node) => node.id === 'module-design')!;
+    designNode.summary = '该阶段已由秘书调度完成；上一轮交付。';
+    designNode.artifact = 'old-report.json';
+    resolveDecisionGate(
+      version,
+      gate.id,
+      'rejected',
+      '2026-09-21T01:00:00.000Z',
+      'reply-1',
+      'A、B、B、B、B、B；按模块重写',
+    );
+    expect(version.currentStage).toBe('module-design');
+    expect(version.status).toBe('running');
+    expect(version.nodes.find((node) => node.id === 'module-design')?.status).toBe('active');
+    expect(designNode.summary).toBe('');
+    expect(designNode.artifact).toBe('');
+    expect(version.nodes.find((node) => node.id === 'design-review')?.status).toBe('pending');
+    expect(gate.resolutionHistory?.at(-1)?.feedback).toContain('按模块重写');
+    expect(
+      version.todos.some((todo) => todo.status === 'open' && todo.decisionGateId === gate.id),
+    ).toBe(false);
+    expect(() => normalizeFormalVersion(structuredClone(version))).not.toThrow();
+  });
+
+  it('does not show a previous completion as the current active stage summary', () => {
+    const version = createFormalVersion({
+      id: 'stale-design-summary',
+      title: '设计修订',
+      direction: '统一规则',
+      documentRoot: 'docs/versions/stale-design-summary',
+      currentStage: 'module-design',
+    });
+    const node = version.nodes.find((entry) => entry.id === 'module-design')!;
+    node.summary = '该阶段已由秘书调度完成；上一轮报告。';
+    node.artifact = 'old-report.json';
+    expect(
+      effectiveVersionNodes(version).find((entry) => entry.id === 'module-design'),
+    ).toMatchObject({
+      status: 'active',
+      summary: '本轮正在执行；上一轮交付记录仅供历史追溯。',
+      artifact: '',
+    });
+    expect(node.artifact).toBe('old-report.json');
+  });
+
+  it('advances an approved, lead-designer-reviewed design after producer reapproval', () => {
+    const version = createFormalVersion({
+      id: 'reviewed-design',
+      title: '完整策划复审',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/reviewed-design',
+      currentStage: 'design-review',
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    recordApproval(version, {
+      stage: 'design-review',
+      reviewer: 'lead-designer',
+      decision: 'approved',
+      documentRevision: version.charterRevision,
+      comment: '模块细则已闭合',
+      now: '2026-09-21T00:01:00.000Z',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '请制作人审阅完整策划',
+      sourceRequestId: 'review-final',
+      now: '2026-09-21T00:02:00.000Z',
+    });
+    expect(version.currentStage).toBe('design-review');
+    resolveDecisionGate(version, gate.id, 'approved', '2026-09-21T00:03:00.000Z');
+    expect(version.currentStage).not.toBe('design-review');
+    expect(version.nodes.find((node) => node.id === 'design-review')?.status).toBe('completed');
+  });
 
   it('persists producer decision request ids and replays them idempotently', () => {
     const version = createFormalVersion({

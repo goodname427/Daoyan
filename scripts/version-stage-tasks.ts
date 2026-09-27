@@ -155,6 +155,46 @@ export function parseStageTaskManifest(
   }));
 }
 
+/** Require concrete module ownership before dispatching detailed design. */
+export function assertModuleDesignTaskPlan(value: unknown): void {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.modules) ||
+    value.modules.length === 0 ||
+    !Array.isArray(value.tasks) ||
+    !isStrings(value.crossModuleContracts) ||
+    value.crossModuleContracts.length === 0
+  ) {
+    throw new Error('详细策划任务清单缺少模块清单或跨模块合同');
+  }
+  const taskIds = new Set(value.tasks.filter(isRecord).map((task) => task.id));
+  const moduleIds = new Set<string>();
+  const owners = new Set<string>();
+  for (const module of value.modules) {
+    if (
+      !isRecord(module) ||
+      typeof module.id !== 'string' ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(module.id) ||
+      typeof module.title !== 'string' ||
+      !module.title.trim() ||
+      typeof module.taskId !== 'string' ||
+      !taskIds.has(module.taskId) ||
+      moduleIds.has(module.id) ||
+      owners.has(module.taskId)
+    ) {
+      throw new Error('详细策划模块必须有唯一标识、名称和独立的 Feature PM 任务');
+    }
+    moduleIds.add(module.id);
+    owners.add(module.taskId);
+  }
+  if (
+    value.modules.length === 1 &&
+    (typeof value.singleModuleReason !== 'string' || !value.singleModuleReason.trim())
+  ) {
+    throw new Error('详细策划只有一个模块时须解释边界');
+  }
+}
+
 export function readyStageTasks(tasks: VersionStageTask[]): VersionStageTask[] {
   const accepted = new Set(
     tasks.filter((task) => task.status === 'accepted').map((task) => task.id),
@@ -167,7 +207,8 @@ export function readyStageTasks(tasks: VersionStageTask[]): VersionStageTask[] {
 export function assertStageTaskPaths(task: VersionStageTask, documentRoot: string): void {
   const root = normalizedPath(documentRoot);
   const verificationOnly =
-    ['qa', 'candidate'].includes(task.stage) || task.stageStep === 'reverification';
+    ['design-acceptance', 'qa', 'candidate'].includes(task.stage) ||
+    task.stageStep === 'reverification';
   if (verificationOnly && task.writePaths.some((path) => !path.startsWith(`${root}/`))) {
     throw new Error(`独立验证任务 ${task.id} 只能写入当前版本证据目录`);
   }
@@ -218,6 +259,32 @@ export function assertTaskWriteScope(task: VersionStageTask, changedFiles: strin
     .filter((path) => !task.writePaths.some((scope) => overlaps(path, scope)));
   if (outOfScope.length > 0) {
     throw new Error(`任务 ${task.id} 改动超出独占写入范围：${outOfScope.join('、')}`);
+  }
+}
+
+/** Main Agent control-plane commits may land while a game task is being delivered. */
+export function assertStageTaskDeliveryScope(task: VersionStageTask, changedFiles: string[]): void {
+  const controlPlane = (path: string): boolean =>
+    /^(?:scripts|test)\/(?:agent-|secretary-|version-)[^/]+\.ts$/.test(path) ||
+    ['docs/status.md', 'docs/workflow.md', 'docs/agent-workflow.md'].includes(path) ||
+    /^docs\/dev\/\d{4}-\d{2}-\d{2}\.md$/.test(path);
+  const taskChanges = changedFiles.filter((path) => !controlPlane(normalizedPath(path)));
+  if (taskChanges.length === 0) throw new Error(`节点任务 ${task.id} 未提交合同内交付文件`);
+  assertTaskWriteScope(task, taskChanges);
+}
+
+/** A resumed, previously empty run may start after a separate commit. Its earlier
+ * changes must not alter the task's declared inputs or outputs. */
+export function assertStageTaskPrestartScope(task: VersionStageTask, changedFiles: string[]): void {
+  const touched = changedFiles
+    .map(normalizedPath)
+    .filter((path) =>
+      [...task.readPaths, ...task.writePaths].some((scope) =>
+        overlaps(path, normalizedPath(scope)),
+      ),
+    );
+  if (touched.length > 0) {
+    throw new Error(`节点任务 ${task.id} 的执行前基线改动了合同输入或输出：${touched.join('、')}`);
   }
 }
 

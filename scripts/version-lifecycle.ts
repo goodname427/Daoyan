@@ -14,6 +14,7 @@ export const VERSION_STAGES = [
   'task-breakdown',
   'version-planning',
   'development',
+  'design-acceptance',
   'qa',
   'bugfix',
   'candidate',
@@ -96,6 +97,13 @@ export const VERSION_STAGE_DEFINITIONS: VersionStageDefinition[] = [
     producerGate: false,
   },
   {
+    id: 'design-acceptance',
+    title: '策划体验验收',
+    owner: '主策 / 策划',
+    description: '独立运行游戏，逐项核对已批准策划的玩家流程与相邻情形；偏差退回开发。',
+    producerGate: false,
+  },
+  {
     id: 'qa',
     title: '版本测试',
     owner: '测试',
@@ -158,7 +166,7 @@ export interface VersionApproval {
 
 function expectedReviewer(stage: VersionStage): VersionApproval['reviewer'] | null {
   if (stage === 'charter-review' || stage === 'producer-acceptance') return 'producer';
-  if (stage === 'design-review') return 'lead-designer';
+  if (stage === 'design-review' || stage === 'design-acceptance') return 'lead-designer';
   return null;
 }
 
@@ -255,6 +263,7 @@ export interface VersionDecisionGate {
     requestId: string;
     decision: 'approved' | 'rejected';
     resolvedAt: string;
+    feedback?: string;
   }>;
 }
 
@@ -522,7 +531,10 @@ function isPositiveInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && Number(value) > 0;
 }
 
-function validateOrchestrationRecords(value: unknown): asserts value is FormalVersionOrchestration {
+function validateOrchestrationRecords(
+  value: unknown,
+  stages: readonly VersionStage[],
+): asserts value is FormalVersionOrchestration {
   if (!isRecord(value) || value.schemaVersion !== 1) {
     throw new Error('正式版本编排扩展损坏；已停止自动写入和派发');
   }
@@ -621,7 +633,8 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
               typeof resolution.requestId !== 'string' ||
               !resolution.requestId.trim() ||
               !['approved', 'rejected'].includes(String(resolution.decision)) ||
-              typeof resolution.resolvedAt !== 'string',
+              typeof resolution.resolvedAt !== 'string' ||
+              (resolution.feedback !== undefined && typeof resolution.feedback !== 'string'),
           ))) ||
       [entry.id, entry.summary, entry.sourceRequestId, entry.createdAt, entry.resolvedAt].some(
         (field) => typeof field !== 'string',
@@ -687,7 +700,7 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
     : 0;
   const missingCurrentPolicy =
     approvedScope <= 0 ||
-    VERSION_STAGES.some(
+    stages.some(
       (stage) =>
         !stagePolicies.some(
           (entry) =>
@@ -721,8 +734,9 @@ function defaultStagePolicies(
   scopeRevision: number,
   decidedAt: string,
   migrated: boolean,
+  stages: readonly VersionStage[],
 ): VersionStagePolicy[] {
-  return VERSION_STAGES.map((stage) => ({
+  return stages.map((stage) => ({
     stage,
     mode: 'execute',
     reason: migrated
@@ -741,6 +755,7 @@ function createOrchestration(
   createdAt: string,
   sourceRequestId = '',
   migrated = false,
+  stages: readonly VersionStage[] = VERSION_STAGES,
 ): FormalVersionOrchestration {
   return {
     schemaVersion: 1,
@@ -761,7 +776,7 @@ function createOrchestration(
         evaluatedAt: createdAt,
       },
     ],
-    stagePolicies: defaultStagePolicies(1, createdAt, migrated),
+    stagePolicies: defaultStagePolicies(1, createdAt, migrated, stages),
     scopeRevisions: [
       {
         revision: 1,
@@ -876,8 +891,10 @@ export function createFormalVersion(input: {
   const createdAt = nowIso(input.now);
   const currentStage = input.currentStage ?? 'direction';
   const workflowRevision = input.workflowRevision ?? 1;
-  const stageDefinitions = VERSION_STAGE_DEFINITIONS.filter(
-    (definition) => workflowRevision === 1 || TASK_OWNED_VERSION_STAGES.includes(definition.id),
+  const stageDefinitions = VERSION_STAGE_DEFINITIONS.filter((definition) =>
+    workflowRevision === 1
+      ? definition.id !== 'design-acceptance'
+      : TASK_OWNED_VERSION_STAGES.includes(definition.id),
   );
   if (!stageDefinitions.some((definition) => definition.id === currentStage)) {
     throw new Error(`新版本不包含阶段：${currentStage}`);
@@ -926,7 +943,13 @@ export function createFormalVersion(input: {
     createdAt,
     updatedAt: createdAt,
     completedAt: currentStage === 'archived' ? createdAt : '',
-    orchestration: createOrchestration(input.direction, createdAt, input.sourceRequestId, false),
+    orchestration: createOrchestration(
+      input.direction,
+      createdAt,
+      input.sourceRequestId,
+      false,
+      stageDefinitions.map((stage) => stage.id),
+    ),
   };
   ensureProducerTodo(version, currentStage, createdAt);
   return version;
@@ -1091,7 +1114,7 @@ export function recordScopeRevision(
     createdAt: nowIso(input.now),
   };
   orchestration.scopeRevisions.push(revision);
-  for (const stage of VERSION_STAGES) {
+  for (const stage of version.nodes.map((node) => node.id)) {
     const previous = orchestration.stagePolicies
       .filter((candidate) => candidate.stage === stage)
       .at(-1);
@@ -1161,6 +1184,7 @@ export function resolveDecisionGate(
   decision: 'approved' | 'rejected',
   now?: string,
   sourceRequestId = '',
+  feedback = '',
 ): void {
   const gate = requireOrchestration(version).decisionGates.find(
     (candidate) => candidate.id === gateId,
@@ -1186,6 +1210,7 @@ export function resolveDecisionGate(
       requestId: sourceRequestId,
       decision,
       resolvedAt: gate.resolvedAt,
+      ...(feedback ? { feedback } : {}),
     });
   }
   for (const todo of version.todos.filter(
@@ -1208,11 +1233,27 @@ export function resolveDecisionGate(
     );
     if (revision) revision.status = 'rejected';
   }
-  if (decision === 'rejected' && gate.kind !== 'scope-change') {
+  if (
+    decision === 'rejected' &&
+    gate.kind === 'producer-escalated-design' &&
+    version.currentStage === 'design-review'
+  ) {
+    const review = version.nodes.find((node) => node.id === 'design-review');
+    const design = version.nodes.find((node) => node.id === 'module-design');
+    if (!design) throw new Error('找不到详细策划阶段');
+    if (review) review.status = 'pending';
+    design.status = 'active';
+    design.startedAt = gate.resolvedAt;
+    design.completedAt = '';
+    design.summary = '';
+    design.artifact = '';
+    version.currentStage = 'module-design';
+    version.scopeFrozen = false;
+  }
+  if (decision === 'rejected' && gate.kind === 'irreversible-decision') {
     addVersionTodo(version, {
       decisionGateId: gate.id,
-      title:
-        gate.kind === 'producer-escalated-design' ? '重新评审升级策划' : '重新审批不可逆架构决策',
+      title: '重新审批不可逆架构决策',
       detail: `${gate.summary}（上次已退回；明确批准后才会恢复推进）`,
       stage: gate.stage,
       assignee: 'producer',
@@ -1221,7 +1262,7 @@ export function resolveDecisionGate(
   }
   const gates = requireOrchestration(version).decisionGates;
   version.status = gates.some(
-    (entry) => entry.status === 'rejected' && entry.kind !== 'scope-change',
+    (entry) => entry.status === 'rejected' && entry.kind === 'irreversible-decision',
   )
     ? 'paused'
     : gates.some((entry) => entry.status === 'open') ||
@@ -1229,6 +1270,26 @@ export function resolveDecisionGate(
       ? 'waiting-producer'
       : 'running';
   version.updatedAt = gate.resolvedAt;
+  if (
+    decision === 'approved' &&
+    gate.kind === 'producer-escalated-design' &&
+    gate.stage === 'design-review' &&
+    version.currentStage === 'design-review' &&
+    version.status === 'running'
+  ) {
+    const currentIndex = version.nodes.findIndex((node) => node.id === 'design-review');
+    const startedAt = version.nodes[currentIndex]?.startedAt ?? '';
+    const leadDesignerApproved = version.approvals.some(
+      (approval) =>
+        approval.stage === 'design-review' &&
+        approval.reviewer === 'lead-designer' &&
+        approval.decision === 'approved' &&
+        approval.documentRevision === version.charterRevision &&
+        approval.createdAt >= startedAt,
+    );
+    const next = version.nodes[currentIndex + 1]?.id;
+    if (leadDesignerApproved && next) advanceVersion(version, next, gate.resolvedAt);
+  }
 }
 
 export function decisionResolutionForRequest(
@@ -1640,7 +1701,8 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
   const orchestration = requireOrchestration(version);
   const unresolvedGate = orchestration.decisionGates.find(
     (gate) =>
-      (gate.status === 'open' || (gate.status === 'rejected' && gate.kind !== 'scope-change')) &&
+      (gate.status === 'open' ||
+        (gate.status === 'rejected' && gate.kind === 'irreversible-decision')) &&
       stageIndex(gate.stage) <= currentIndex,
   );
   if (unresolvedGate) throw new Error(`尚未通过制作人决策门禁：${unresolvedGate.summary}`);
@@ -1655,6 +1717,15 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
   if (!policy) throw new Error(`${version.currentStage} 缺少当前范围的阶段策略`);
   if (policy.mode === 'skip' && UNSKIPPABLE_STAGES.has(version.currentStage)) {
     throw new Error(`${version.currentStage} 是固定门禁，不能跳过`);
+  }
+  if (
+    version.currentStage === 'design-acceptance' &&
+    policy.mode === 'skip' &&
+    version.workItems.some((item) =>
+      (item.affectedPaths ?? []).some((path) => !path.replaceAll('\\', '/').startsWith('docs/')),
+    )
+  ) {
+    throw new Error('存在游戏实现工作项，策划体验验收不能跳过');
   }
   if (
     version.workflowRevision === 2 &&
@@ -1798,6 +1869,7 @@ export function recordApproval(
   if (
     input.stage !== 'charter-review' &&
     input.stage !== 'design-review' &&
+    input.stage !== 'design-acceptance' &&
     input.stage !== 'producer-acceptance'
   ) {
     throw new Error(`${input.stage} 不是评审阶段`);
@@ -1857,7 +1929,9 @@ export function recordApproval(
         ? 'charter-draft'
         : input.stage === 'design-review'
           ? 'module-design'
-          : 'bugfix';
+          : input.stage === 'design-acceptance'
+            ? 'development'
+            : 'bugfix';
     const current = version.nodes.find((node) => node.id === version.currentStage);
     if (current) current.status = 'pending';
     const fallbackNode = version.nodes.find((node) => node.id === fallback);
@@ -1865,6 +1939,8 @@ export function recordApproval(
     fallbackNode.status = 'active';
     fallbackNode.startedAt = approval.createdAt;
     fallbackNode.completedAt = '';
+    fallbackNode.summary = '';
+    fallbackNode.artifact = '';
     version.currentStage = fallback;
     version.status = 'running';
     if (fallback === 'charter-draft')
@@ -1895,7 +1971,7 @@ export function applyVersionTodoDecision(
     );
     if (!gate) throw new Error('决策门禁已经处理或不存在');
     const approved = action === 'approve';
-    resolveDecisionGate(version, gate.id, approved ? 'approved' : 'rejected');
+    resolveDecisionGate(version, gate.id, approved ? 'approved' : 'rejected', undefined, '', note);
     const message = approved
       ? `已批准“${gate.summary}”，当前阶段的其他门禁仍需分别完成。`
       : `已退回“${gate.summary}”，相关决策已记录。`;
@@ -1970,6 +2046,13 @@ export function currentVersionStagePolicy(
 
 export function effectiveVersionNodes(version: FormalVersion): VersionNode[] {
   return version.nodes.map((node) => {
+    if (
+      node.status === 'active' &&
+      node.completedAt === '' &&
+      /该阶段已由秘书调度完成/.test(node.summary)
+    ) {
+      return { ...node, summary: '本轮正在执行；上一轮交付记录仅供历史追溯。', artifact: '' };
+    }
     const policy = currentVersionStagePolicy(version, node.id);
     if (policy.mode !== 'skip' || node.status === 'completed') return node;
     return {
@@ -2014,7 +2097,11 @@ export function publicVersionState(version: FormalVersion): object {
 
 export function normalizeFormalVersion(version: FormalVersion): boolean {
   const hasOrchestration = Object.prototype.hasOwnProperty.call(version, 'orchestration');
-  if (hasOrchestration) validateOrchestrationRecords(version.orchestration);
+  if (hasOrchestration)
+    validateOrchestrationRecords(
+      version.orchestration,
+      version.nodes.map((node) => node.id),
+    );
   if (
     version.bugs.some((bug) =>
       [bug.fixAttemptId, bug.fixCodeRevision].some(
@@ -2030,6 +2117,7 @@ export function normalizeFormalVersion(version: FormalVersion): boolean {
       version.createdAt || version.updatedAt || new Date().toISOString(),
       '',
       true,
+      version.nodes.map((node) => node.id),
     );
     orchestrationChanged = true;
   }
@@ -2101,6 +2189,50 @@ function releaseStateRoot(root: string): string {
   return resolve(root, process.env.DAOYAN_RELEASE_STATE_DIR ?? '.daoyan-agent/releases');
 }
 
+/** Insert the new gate only for versions that have not passed development. */
+function upgradePendingDesignAcceptance(version: FormalVersion): void {
+  if (
+    version.workflowRevision !== 2 ||
+    version.nodes.some((node) => node.id === 'design-acceptance') ||
+    stageIndex(version.currentStage) > stageIndex('development') ||
+    version.status === 'archived'
+  )
+    return;
+  const definition = VERSION_STAGE_DEFINITIONS.find((stage) => stage.id === 'design-acceptance')!;
+  const qaIndex = version.nodes.findIndex((node) => node.id === 'qa');
+  if (qaIndex < 0) throw new Error('正式版本缺少 QA 节点，无法安全添加策划验收');
+  version.nodes.splice(qaIndex, 0, {
+    ...definition,
+    status: 'pending',
+    summary: '',
+    artifact: '',
+    startedAt: '',
+    completedAt: '',
+  });
+  const orchestration = version.orchestration;
+  if (!orchestration) throw new Error('正式版本缺少编排证据，无法安全添加策划验收');
+  const scopeRevision = orchestration.scopeRevisions
+    .filter((scope) => scope.status === 'approved')
+    .at(-1)?.revision;
+  if (!scopeRevision) throw new Error('正式版本缺少已批准范围，无法安全添加策划验收');
+  if (
+    !orchestration.stagePolicies.some(
+      (policy) => policy.stage === 'design-acceptance' && policy.scopeRevision === scopeRevision,
+    )
+  ) {
+    orchestration.stagePolicies.push({
+      stage: 'design-acceptance',
+      mode: 'execute',
+      reason: '开发完成后须由主策按已批准策划独立体验验收。',
+      evidence: [],
+      decidedBy: 'workflow-migration',
+      decidedAt: version.updatedAt,
+      policyRevision: 1,
+      scopeRevision,
+    });
+  }
+}
+
 async function readVersionFile(path: string): Promise<FormalVersion | null> {
   try {
     const parsed = JSON.parse(await readFile(path, 'utf8')) as FormalVersion;
@@ -2113,12 +2245,18 @@ async function readVersionFile(path: string): Promise<FormalVersion | null> {
     if (parsed.workflowRevision !== undefined && parsed.workflowRevision !== 2) {
       throw new Error(`正式版本工作流修订无效：${path}`);
     }
+    upgradePendingDesignAcceptance(parsed);
+    const legacyTaskOwnedStages = TASK_OWNED_VERSION_STAGES.filter(
+      (stage) => stage !== 'design-acceptance',
+    );
     if (
       parsed.workflowRevision === 2 &&
       (typeof parsed.integrationBranch !== 'string' ||
         !parsed.integrationBranch.startsWith('codex/version-') ||
         !validateStageTaskState(parsed.stageTasks) ||
-        parsed.nodes.map((node) => node.id).join('|') !== TASK_OWNED_VERSION_STAGES.join('|'))
+        ![TASK_OWNED_VERSION_STAGES.join('|'), legacyTaskOwnedStages.join('|')].includes(
+          parsed.nodes.map((node) => node.id).join('|'),
+        ))
     ) {
       throw new Error(`正式版本节点任务状态损坏：${path}`);
     }
