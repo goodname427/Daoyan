@@ -95,6 +95,105 @@ describe('task commit evidence', () => {
     }
   });
 
+  it('accepts only path-preserving local evidence link cleanup before a task commit', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'daoyan-reference-commit-'));
+    try {
+      git(root, 'init');
+      git(root, 'config', 'user.name', 'Test');
+      git(root, 'config', 'user.email', 'test@example.com');
+      await mkdir(resolve(root, 'docs'), { recursive: true });
+      await writeFile(
+        resolve(root, 'docs', 'source.md'),
+        '读取[运行报告](../../../.daoyan-agent/runs/example/report.json)。\n',
+      );
+      await writeFile(resolve(root, 'docs', 'world.md'), 'old\n');
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'chore: baseline');
+      const baseline = git(root, 'rev-parse', 'HEAD');
+      await writeFile(
+        resolve(root, 'docs', 'source.md'),
+        '读取运行报告（本机证据：`../../../.daoyan-agent/runs/example/report.json`）。\n',
+      );
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'docs: clean local evidence link');
+      await writeFile(resolve(root, 'docs', 'world.md'), 'new\n');
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'docs: world task');
+      const input = {
+        root,
+        baseline,
+        head: git(root, 'rev-parse', 'HEAD'),
+        expectedMessage: 'docs: world task',
+        writePaths: ['docs/world.md'],
+        readPaths: ['docs/source.md', 'docs/world.md'],
+      };
+      expect(findTaskCommitEvidence(input)).toBeNull();
+      expect(
+        findTaskCommitEvidence({ ...input, allowReferenceOnlyPredecessorChanges: true })?.commit,
+      ).toBe(input.head);
+
+      await writeFile(resolve(root, 'docs', 'source.md'), '新的世界规则\n');
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'docs: change design input');
+      await writeFile(resolve(root, 'docs', 'world.md'), 'later\n');
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'docs: later task');
+      expect(
+        findTaskCommitEvidence({
+          ...input,
+          head: git(root, 'rev-parse', 'HEAD'),
+          expectedMessage: 'docs: later task',
+          allowReferenceOnlyPredecessorChanges: true,
+        }),
+      ).toBeNull();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts a predecessor draft only when the task finalizes that same owned file', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'daoyan-owned-draft-'));
+    try {
+      git(root, 'init');
+      git(root, 'config', 'user.name', 'Test');
+      git(root, 'config', 'user.email', 'test@example.com');
+      await mkdir(resolve(root, 'docs'), { recursive: true });
+      await writeFile(resolve(root, 'docs', 'world.md'), 'old\n');
+      await writeFile(
+        resolve(root, 'docs', 'source.md'),
+        'See [report](../../../.daoyan-agent/runs/example/report.json).\n',
+      );
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'chore: baseline');
+      const baseline = git(root, 'rev-parse', 'HEAD');
+      await writeFile(resolve(root, 'docs', 'world.md'), 'draft\n');
+      await writeFile(
+        resolve(root, 'docs', 'source.md'),
+        'See report（本机证据：`../../../.daoyan-agent/runs/example/report.json`）.\n',
+      );
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'docs: concurrent cleanup');
+      await writeFile(resolve(root, 'docs', 'world.md'), 'final\n');
+      git(root, 'add', '.');
+      git(root, 'commit', '-m', 'docs: world task');
+      const input = {
+        root,
+        baseline,
+        head: git(root, 'rev-parse', 'HEAD'),
+        expectedMessage: 'docs: world task',
+        writePaths: ['docs/world.md'],
+        readPaths: ['docs/world.md', 'docs/source.md'],
+        allowReferenceOnlyPredecessorChanges: true,
+      };
+      expect(findTaskCommitEvidence(input)).toBeNull();
+      expect(
+        findTaskCommitEvidence({ ...input, allowPrecedingOwnedWriteChanges: true })?.commit,
+      ).toBe(input.head);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('isolates a version plan commit from an earlier control-plane repair', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'daoyan-stage-plan-'));
     try {

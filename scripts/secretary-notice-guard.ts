@@ -5953,6 +5953,8 @@ async function consumeTaskOwnedVersionItem(
         expectedMessage,
         writePaths: task.writePaths,
         readPaths: task.readPaths,
+        allowReferenceOnlyPredecessorChanges: true,
+        allowPrecedingOwnedWriteChanges: true,
       })
     : null;
   const base = commitEvidence?.parent ?? (await stageTaskExecutionBase(item, task, revision));
@@ -6609,8 +6611,28 @@ async function coordinateOnce(): Promise<void> {
         )
           throw new Error('原节点任务尚无可信交付证据');
         const revision = currentGitRevision();
-        const base = await stageTaskExecutionBase(blocked, task, revision);
-        assertStageTaskDeliveryScope(task, changedFilesBetween(base, revision));
+        const plan = isRecord(checkpoint.plan) ? checkpoint.plan : null;
+        const expectedMessage = plan
+          ? conventionalCommitOrFallback(String(plan.commitMessage ?? ''), String(plan.title ?? ''))
+          : '';
+        const commitEvidence = plan
+          ? findTaskCommitEvidence({
+              root,
+              baseline: blocked.orchestration?.formalTaskBaseRevision ?? '',
+              head: revision,
+              expectedMessage,
+              writePaths: task.writePaths,
+              readPaths: task.readPaths,
+              allowReferenceOnlyPredecessorChanges: true,
+              allowPrecedingOwnedWriteChanges: true,
+            })
+          : null;
+        const base =
+          commitEvidence?.parent ?? (await stageTaskExecutionBase(blocked, task, revision));
+        assertStageTaskDeliveryScope(
+          task,
+          changedFilesBetween(base, commitEvidence?.commit ?? revision),
+        );
         reopenedBlockedStageTask = reopenVerifiedBlockedStageTaskDelivery(
           state,
           blocked.id,

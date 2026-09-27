@@ -72,6 +72,37 @@ function inScope(path: string, scope: string): boolean {
   );
 }
 
+function normalizedLocalEvidenceLinks(content: string): string {
+  return content
+    .replace(
+      /\[([^\]]+)\]\(((?:\.\.\/){3}\.daoyan-agent\/[^)\r\n]+)\)/g,
+      (_whole, label: string, target: string) => `${label}（本机证据：\`${target}\`）`,
+    )
+    .replace(/） (?=[\u3400-\u9fff])/g, '）');
+}
+
+/** A local runtime link becoming a plain path does not change planning rules. */
+function referenceOnlyPredecessorChange(
+  root: string,
+  baseline: string,
+  parent: string,
+  taskCommit: string,
+  path: string,
+): boolean {
+  if (!path.endsWith('.md')) return false;
+  const before = git(root, ['show', `${baseline}:${path}`]);
+  const after = git(root, ['show', `${parent}:${path}`]);
+  const delivered = git(root, ['show', `${taskCommit}:${path}`]);
+  if (before.code !== 0 || after.code !== 0 || delivered.code !== 0) return false;
+  if (normalizedLocalEvidenceLinks(before.output) !== normalizedLocalEvidenceLinks(after.output)) {
+    return false;
+  }
+  const references = [...after.output.matchAll(/(?:\.\.\/){3}\.daoyan-agent\/[^`\s)]+/g)].map(
+    (match) => match[0],
+  );
+  return references.every((reference) => delivered.output.includes(reference));
+}
+
 export function findTaskCommitEvidence(input: {
   root: string;
   baseline: string;
@@ -79,8 +110,19 @@ export function findTaskCommitEvidence(input: {
   expectedMessage: string;
   writePaths: string[];
   readPaths: string[];
+  allowReferenceOnlyPredecessorChanges?: boolean;
+  allowPrecedingOwnedWriteChanges?: boolean;
 }): TaskCommitEvidence | null {
-  const { root, baseline, head, expectedMessage, writePaths, readPaths } = input;
+  const {
+    root,
+    baseline,
+    head,
+    expectedMessage,
+    writePaths,
+    readPaths,
+    allowReferenceOnlyPredecessorChanges = false,
+    allowPrecedingOwnedWriteChanges = false,
+  } = input;
   if (!baseline || !head || !expectedMessage || writePaths.length === 0) return null;
   if (git(root, ['merge-base', '--is-ancestor', baseline, head]).code !== 0) return null;
   const history = git(root, ['rev-list', '--first-parent', '--reverse', `${baseline}..${head}`]);
@@ -98,12 +140,23 @@ export function findTaskCommitEvidence(input: {
       changedPaths(root, parentRevision, commit),
       changedPaths(root, commit, head),
     ];
+    const relevantBefore = before?.filter((path) => scopes.some((scope) => inScope(path, scope)));
+    const predecessorSafe =
+      relevantBefore?.length === 0 ||
+      relevantBefore?.every((path) =>
+        allowPrecedingOwnedWriteChanges &&
+        own?.includes(path) &&
+        writePaths.some((scope) => inScope(path, scope))
+          ? true
+          : allowReferenceOnlyPredecessorChanges &&
+            referenceOnlyPredecessorChange(root, baseline, parentRevision, commit, path),
+      );
     if (
       before === null ||
       own === null ||
       after === null ||
       own.length === 0 ||
-      before.some((path) => scopes.some((scope) => inScope(path, scope))) ||
+      !predecessorSafe ||
       own.some((path) => !writePaths.some((scope) => inScope(path, scope))) ||
       after.some((path) => scopes.some((scope) => inScope(path, scope)))
     )

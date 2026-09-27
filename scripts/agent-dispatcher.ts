@@ -1837,7 +1837,8 @@ async function commitAndPush(
     }
     if (formalTask && stagePaths.length === 0) throw new Error('正式节点任务没有可提交的计划路径');
     const add = await git(formalTask ? ['add', '-A', '--', ...stagePaths] : ['add', '-A'], true);
-    if (add.code !== 0) throw new Error('git add 失败');
+    if (add.code !== 0)
+      throw new Error(`git add 失败：${failureText(add) || `退出码 ${add.code}`}`);
     const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
     const staged = await git(['diff', '--cached', '--name-only', '-z']);
     if (staged.code !== 0) throw new Error('Git 暂存文件检查失败');
