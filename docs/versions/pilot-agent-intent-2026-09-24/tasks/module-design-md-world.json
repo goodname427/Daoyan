@@ -1,0 +1,63 @@
+{
+  "taskId": "md-world",
+  "status": "blocked",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "在制作人 A/B/B/B/B/B 选择边界内重写唯一世界理论的认识状态、跨模块因果、五类实体推导、逐笔反例与旧材料冲突；直接轻量检查通过。数值、无套利证明、复苏身份和不可逆 ADR 仍待论证或升级，未批准游戏开发。本地提交因 .git/index.lock 写入权限不足受阻，两个产物留在工作区。",
+  "blocker": "git add 无法创建 .git/index.lock（Permission denied）；当前沙盒对 .git 仅有读取权限，未生成本地提交，也没有推送。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"fs\");const d=\"docs/versions/pilot-agent-intent-2026-09-24/\";const w=f.readFileSync(d+\"world-theory-draft.md\",\"utf8\");const a=JSON.parse(f.readFileSync(d+\"intent-alignment.json\",\"utf8\"));const v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));if(a.scopeRevision!==13||a.charterRevision!==\"2\"||v.orchestration.scopeRevisions.at(-1).revision!==13||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"scope or approval mismatch\");for(const x of [\"制作人明确确认\",\"此次制作人选择\",\"策划推断\",\"待取舍或待证明\",\"有效质量/接触/材料 A\",\"普通驱动 B\",\"法力做功/环境/回收 B\",\"生命/身份 B\",\"元法术 B\",\"载体/授权 B\",\"接力护送\",\"自修复信标\",\"创建者死亡\",\"场外\",\"擦边\",\"L1 最后一击\",\"L2 下一维持窗口\",\"R1 创建并试图回收\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"不得据此开始游戏开发\"]){if(!w.includes(x))throw Error(\"missing \"+x)}console.log(\"scope, choices, counterexamples and conflict coverage OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\"),p=require(\"path\");const file=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",s=f.readFileSync(file,\"utf8\");for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")&&!f.existsSync(p.resolve(p.dirname(file),t)))throw Error(\"broken link \"+t)}console.log(\"world theory relative links OK\")'",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node -e 'const r=require(\"./docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json\");if(r.taskId!==\"md-world\"||r.status!==\"blocked\"||r.scopeRevision!==13||r.charterRevision!==\"2\"||r.artifacts.length!==2||r.commands.some(x=>x.exitCode!==0)||r.failedAttempts.some(x=>x.exitCode!==1))throw Error(\"task evidence mismatch\");console.log(\"md-world evidence JSON OK\")'",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "exitCode": 1,
+      "evidence": "首次检查指出 world-theory-draft.md 表格格式不符；定向格式化后复查通过。"
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\");const d=\"docs/versions/pilot-agent-intent-2026-09-24/\";const w=f.readFileSync(d+\"world-theory-draft.md\",\"utf8\");const a=JSON.parse(f.readFileSync(d+\"intent-alignment.json\",\"utf8\"));const v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));if(a.scopeRevision!==13||a.charterRevision!==\"2\"||v.orchestration.scopeRevisions.at(-1).revision!==13||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"scope or approval mismatch\");for(const x of [\"制作人明确确认\",\"此次制作人选择\",\"策划推断\",\"待取舍或待证明\",\"有效质量/接触/材料 A\",\"普通驱动 B\",\"法力做功/环境/回收 B\",\"生命/身份 B\",\"元法术 B\",\"载体/授权 B\",\"接力护送\",\"自修复信标\",\"创建者死亡\",\"场外\",\"擦边\",\"L1 最后一击\",\"L2 下一维持窗口\",\"R1 创建并试图回收\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"未批准游戏开发\"]){if(!w.includes(x))throw Error(\"missing \"+x)}console.log(\"scope, choices, counterexamples and conflict coverage OK\")'",
+      "exitCode": 1,
+      "evidence": "覆盖脚本要求的字面短语“未批准游戏开发”与正文“不得据此开始游戏开发”不一致；修正脚本断言后退出 0，正文开发边界未改变。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "exitCode": 1,
+      "evidence": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；因此未执行 git commit。"
+    }
+  ]
+}
