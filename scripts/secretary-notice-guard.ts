@@ -3370,15 +3370,28 @@ async function requeueEmptyBootstrap(item: SecretaryItem): Promise<boolean> {
     encoding: 'utf8',
     windowsHide: true,
   });
+  const task = stageTasksForCurrentNode(version).find(
+    (candidate) => candidate.id === owner.formalTaskId && candidate.status === 'pending',
+  );
+  let baseMatches = false;
+  if (task) {
+    try {
+      const head = currentGitRevision();
+      if (gitRevisionIsAncestor(owner.formalTaskBaseRevision, head)) {
+        assertStageTaskPrestartScope(task, changedFilesBetween(owner.formalTaskBaseRevision, head));
+        baseMatches = true;
+      }
+    } catch {
+      // Any task input or output change must remain blocked for manual evidence review.
+    }
+  }
   const eligible = emptyBootstrapRetryEligible({
     runFiles: files,
     progressStatus: String(progress?.status ?? ''),
     liveProcess: pmAlive || Boolean(worker),
     worktreeClean: gitStatus.status === 0 && !gitStatus.stdout.trim(),
-    baseMatches: currentGitRevision() === owner.formalTaskBaseRevision,
-    taskPending: stageTasksForCurrentNode(version).some(
-      (task) => task.id === owner.formalTaskId && task.status === 'pending',
-    ),
+    baseMatches,
+    taskPending: Boolean(task),
   });
   if (!eligible) return false;
   normalizeSecretaryState(state);
