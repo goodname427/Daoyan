@@ -1,0 +1,95 @@
+{
+  "taskId": "mdp-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "reviewConclusion": "changes-requested",
+  "summary": "整合两份前序复审，汇总范围修订 13/A-B-B-B-B-B 方向下六项 mdp-*、唯一理论、有限资源算式、M1/A1、程序载体、桥接纸面脚本及现行实现/测试/ADR 对照。候选条件域内账目和顺序可复算，但正功来源、逐体材料/容量和生命截止身份实证未闭合；列出详细补全合同。仅纸面复审，未运行新规则或声称真实体验。",
+  "results": {
+    "covered": [
+      "direction, scope revision 13, intent alignment, prior return findings, module overview and all six completed mdp task records were cross-referenced; task completion was not treated as approval",
+      "finite quotes and ledgers, H/B/ordinary-action conditional scripts, two-time authorization, AST identity, failed/empty/out-of-domain residual states and bridge return path are recorded with counterexamples",
+      "current Lab/Combat entry points, directly related core/game code and tests, and adopted ADR 0017-0020 are treated as legacy evidence rather than proof of new rules"
+    ],
+    "gaps": [
+      "bounded conversion from an authorized M source to positive E0 work and per-entity material certificates",
+      "M1/A1 per-entity critical-circuit, recovery deadline, irreversible X and LifeId evidence",
+      "per-carrier code, queue, memory, event, mana and cognition peak-capacity certificates; candidate capacity values are not measurements",
+      "paper bridge matrix has no real interactive execution or playable acceptance"
+    ],
+    "producerJudgment": "Keep the approved direction and finite unknown/reject boundaries. If direct M-to-work conversion, open U/recovery, or post-death independent grants are proposed, present player effects, benefits, costs and recommendation to the producer and explicitly resolve affected ADRs before treating the theory as closed.",
+    "disposition": "Return detailed design for the six-item completion contract in design-review-findings.md. Recommend producer review only after those contracts are evidenced and no new product interpretation remains; do not select development slices or claim playable validation."
+  },
+  "workspaceScopeAudit": {
+    "thisTaskWrittenPaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json"
+    ],
+    "bothAreInCurrentContractWritePaths": true,
+    "preExistingWorkspaceException": "At task start, docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-program-bridge-review.json was already untracked from the preceding review. The current mdp-world-review contract writePaths does not list that path. It was preserved and not edited or deleted; therefore the aggregate workspace is not claimed to contain only this contract's paths."
+  },
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",t=JSON.parse(f.readFileSync(b+\"design-review-tasks.json\",\"utf8\")).tasks[0],d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\"),ids=[\"physics\",\"mana\",\"life\",\"program\",\"theory\",\"bridge\"];a.ok(t.writePaths.includes(b+\"design-review-findings.md\"));a.ok(t.writePaths.includes(b+\"tasks/design-review-mdp-world-review.json\"));for(const id of ids){a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-mdp-\"+id+\".json\",\"utf8\")).status,\"completed\");a.ok(d.includes(\"mdp-\"+id))}for(const x of [\"已覆盖\",\"存在缺口\",\"仍需制作人判断\",\"changes-requested\",\"正功合同\",\"容量证书\",\"真实可玩验收\",\"ADR 0017–0020\"])a.ok(d.includes(x),x);console.log(\"PASS contract paths, six mdp inputs, review classes and completion conditions\")'",
+      "exitCode": 0,
+      "output": "PASS contract paths, six mdp inputs, review classes and completion conditions"
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"design-review-findings.md\",s=f.readFileSync(q,\"utf8\");let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const h=m[1].split(\"#\")[0];if(h&&!h.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),h)),h);n++}}console.log(\"PASS local links \"+n)'",
+      "exitCode": 0,
+      "output": "PASS local links 307"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json",
+      "exitCode": 1,
+      "output": "[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "Ran Prettier --write on the task JSON and reran the two-file formatting check."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 1,
+      "output": "[warn] docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "Ran Prettier --write on design-review-findings.md, then the recorded check passed."
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",t=JSON.parse(f.readFileSync(b+\"design-review-tasks.json\",\"utf8\")).tasks[0],d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\"),ids=[\"physics\",\"mana\",\"life\",\"program\",\"theory\",\"bridge\"];a.ok(t.writePaths.includes(b+\"design-review-findings.md\"));a.ok(t.writePaths.includes(b+\"tasks/design-review-mdp-world-review.json\"));for(const id of ids){a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-mdp-\"+id+\".json\",\"utf8\")).status,\"completed\");a.ok(d.includes(\"mdp-\"+id))}for(const x of [\"已覆盖\",\"存在缺口\",\"仍需制作人判断\",\"changes-requested\",\"正功合同\",\"容量证书\",\"未声称体验完成\",\"ADR 0017–0020\"])a.ok(d.includes(x),x)'",
+      "exitCode": 1,
+      "output": "AssertionError: expected review text to include 未声称体验完成; the actual wording was 真实可玩验收.",
+      "resolution": "Changed the assertion to the document's actual 真实可玩验收 wording and reran the full assertion successfully."
+    }
+  ],
+  "gameTestsRun": false,
+  "actualPlayableExperience": false,
+  "gitCommitCreated": false,
+  "pushCreated": false,
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json"
+  ]
+}
