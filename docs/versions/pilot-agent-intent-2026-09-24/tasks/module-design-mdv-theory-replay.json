@@ -1,0 +1,53 @@
+{
+  "taskId": "mdv-theory-replay",
+  "status": "completed",
+  "summary": "在唯一世界理论正文汇合五份 mdv 前驱，按统一 S0/版本/序号复算 H/B、普通行动、AT0、100/20 和同刻争源；修正 H2/B4 只耗切片后的封印余量及暂停有效边沿缓存，补九格反例、六入口同书往返、ADR/旧资产影响和未批准选项。现场原读、装载价、攻击价、容量与生命连续证仍未知，正向流水只作条件账。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-theory-replay.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-theory-replay.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-theory-replay.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$d=Get-Content docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md -Raw; $keys=@('mdv-theory-replay','S0=mdu-r13-S0-01','AcquireId','readError','programHash','sealVersion','priceVersion','grantVersion','simTime','worldSequence','seed','4/12 E0','8/12','[2/12,6/12]','[6/12,10/12]','capacityUnknown','≥120 M','AT0','100/20','鼠标、键盘、手柄、妖兽 AI、球上事件回路、敌方修士','推演台编写','演武场绑定与重放','返回同书修改','ADR-0017','ADR-0018','ADR-0019','ADR-0020'); foreach($k in $keys){if(-not $d.Contains($k)){throw \"missing: $k\"}}; $m=[regex]::Match($d,'(?s)#### 九类反例矩阵.*?(?=#### 六入口)'); if(([regex]::Matches($m.Value,'(?m)^\\| (无源 H2/B4|断锚 H2/B4/D1|场外球|连续碰撞/遗体再损|创建者死亡|身份分叉|攻击无价|容量未知|二次回收)\\s+\\|')).Count -ne 9){throw 'counterexample count'}; 'PASS mdv replay coverage and nine counterexamples'",
+      "exitCode": 0,
+      "output": "PASS mdv replay coverage and nine counterexamples"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-theory-replay.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; 'PASS only two mdv-theory-replay writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdv-theory-replay writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 1,
+      "reason": "新增 Markdown 表格首次检查不符合格式；随后仅格式化正文并复查。"
+    },
+    {
+      "command": "$d=Get-Content docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md -Raw; $keys=@('mdv-theory-replay','S0=mdu-r13-S0-01','AcquireId','readError','programHash','sealVersion','priceVersion','grantVersion','simTime','worldSequence','seed','4/12 E0','8/12','[2/12,6/12]','[6/12,10/12]','capacityUnknown','≥120 M','AT0','100/20','鼠标、键盘、手柄、妖兽 AI、球上事件回路、敌方修士','推演台编写','演武场绑定与重放','返回同书修改','ADR-0017','ADR-0018','ADR-0019','ADR-0020'); foreach($k in $keys){if(-not $d.Contains($k)){throw \"missing: $k\"}}; if(([regex]::Matches($d,'(?m)^\\| (无源 H2/B4|断锚 H2/B4/D1|场外球|连续碰撞/遗体再损|创建者死亡|身份分叉|攻击无价|容量未知|二次回收) \\|')).Count -ne 9){throw 'counterexample count'}; 'PASS mdv replay coverage and nine counterexamples'",
+      "exitCode": 1,
+      "reason": "反例标题在旧表也出现，未限定 mdv 小节导致总数超过九；随后限定矩阵区间。"
+    },
+    {
+      "command": "$d=Get-Content docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md -Raw; $keys=@('mdv-theory-replay','S0=mdu-r13-S0-01','AcquireId','readError','programHash','sealVersion','priceVersion','grantVersion','simTime','worldSequence','seed','4/12 E0','8/12','[2/12,6/12]','[6/12,10/12]','capacityUnknown','≥120 M','AT0','100/20','鼠标、键盘、手柄、妖兽 AI、球上事件回路、敌方修士','推演台编写','演武场绑定与重放','返回同书修改','ADR-0017','ADR-0018','ADR-0019','ADR-0020'); foreach($k in $keys){if(-not $d.Contains($k)){throw \"missing: $k\"}}; if(([regex]::Matches($d,'(?m)^\\| (无源 H2/B4|断锚 H2/B4/D1|场外球|连续碰撞/遗体再损|创建者死亡|身份分叉|攻击无价|容量未知|二次回收)\\s+\\|')).Count -ne 9){throw 'counterexample count'}; 'PASS mdv replay coverage and nine counterexamples'",
+      "exitCode": 1,
+      "reason": "Prettier 表格对齐含多空格，但仍未限定 mdv 小节；随后限定矩阵区间。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-theory-replay.json",
+      "exitCode": 1,
+      "reason": "当前环境对 .git 仅有读权限，Git 无法创建 .git/index.lock（Permission denied）；未暂存或形成本地提交。"
+    }
+  ]
+}
