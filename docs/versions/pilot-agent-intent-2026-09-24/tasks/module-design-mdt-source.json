@@ -1,0 +1,47 @@
+{
+  "taskId": "mdt-source",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "核对范围修订 13 的条件物理包，逐项记录 H2、B4、D1/D2、A1 驱动、K0/V0 和攻击的来源实体与批次、取得/授权缺口、装载辅源与损耗、四次两侧及封印读数要求、材料和反作用去向、有限耗尽及反证；M1/A1 两次独立失供与保存承载分级裁定。现有证据无合法上游实测，所有正功与摄取成功 LoadTx 均不得签发；向资源、生命、程序给同版接口。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdt-source.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mdt-source\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const s of [\"physical-mdt-1\",\"OriginCertificate\",\"R0=(上游,空载体)\",\"E0/12\",\"0q\",\"EL-J1-H2\",\"EL-B1-B4\",\"EL-M1-D1\",\"EL-M1-D2\",\"EL-A1-D1\",\"EL-Z-Ii\",\"EL-attack-01\",\"EL-M1-F1/F2\",\"EL-A1-F1/F2\",\"undeterminedAnchor\",\"capacityInvalidation\",\"LoadTx=∅\"])a.ok(d.includes(s),s);console.log(\"PASS mdt-source contract and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdt-source contract and evidence",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前工作区的 Git 元数据只有读取权限；暂存失败，未形成本地提交。保留两个指定路径的工作区改动，由具备 .git 写权限的宿主完成本地提交。"
+    }
+  ]
+}
