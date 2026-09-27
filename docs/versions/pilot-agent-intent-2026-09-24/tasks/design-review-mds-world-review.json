@@ -1,0 +1,94 @@
+{
+  "taskId": "mds-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "六项 mds 逐项复审与跨模块复算已写入审核记录。共同顺序和条件账可推导，但 source-* 上游装载/封印实证、关键修复与 LifeId 正证、逐体容量和攻击整链未闭合；结论 changes-requested，暂不建议交制作人审阅，未改游戏代码或测试。本地暂存因 .git 索引写权限不足失败，未提交或推送，须由秘书在可写宿主处理。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\"),s=d.split(\"# `mds-world-review`\")[1],v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mds-world-review\");a.equal(t.scopeRevision,13);a.ok(s);for(const id of [\"supply\",\"ledger\",\"life\",\"capacity\",\"theory\",\"bridge\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const x of [\"六项逐项裁定\",\"同版因果\",\"玩家往返\",\"changes-requested\",\"unknownPrice\",\"LoadTx\",\"DeathBarrier\",\"100/20\",\"21/20/21/21 S\",\"ADR-0018\",\"实际可玩\"])a.ok(s.includes(x),x);for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const link=m[1].split(\"#\")[0];if(link&&!link.includes(\"://\"))a.ok(f.existsSync(path.resolve(p,link)),link)}console.log(\"PASS mds review contract, six inputs, decisions and local links\")'",
+      "exitCode": 0,
+      "output": "PASS mds review contract, six inputs, decisions and local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-supply.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-capacity.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-theory.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-bridge.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json\",x=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(x.taskId,\"mds-world-review\");a.equal(x.status,\"completed\");a.ok(x.summary.includes(\"changes-requested\"));a.ok(x.evidence.every(y=>f.existsSync(y)));a.ok(x.commands.every(y=>y.exitCode===0));a.ok(x.failedAttempts.every(y=>y.exitCode!==0));console.log(\"PASS mds review evidence JSON\")'",
+      "exitCode": 0,
+      "output": "PASS mds review evidence JSON",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two contract writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two contract writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "Get-Content docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json",
+      "exitCode": 1,
+      "output": "Cannot find path: task evidence file did not exist before this review.",
+      "resolution": "Created the contracted evidence JSON."
+    },
+    {
+      "command": "rg -n \"mds-world-review|mds-|writePaths|design-review-mds\" .daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json docs/versions/pilot-agent-intent-2026-09-24/module-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/*.json",
+      "exitCode": 1,
+      "output": "rg: tasks/*.json: 文件名、目录名或卷标语法不正确。 (os error 123)",
+      "resolution": "Used targeted file reads and PowerShell enumeration."
+    },
+    {
+      "command": "rg -n '^#|^##|mds-|反例|阻断|未知|待实测|待开发' docs/versions/pilot-agent-intent-2026-09-24/{physics-material-design,mana-ledger-design,life-identity-design,programmable-spells-design,world-theory-draft,player-bridge-design}.md",
+      "exitCode": 1,
+      "output": "PowerShell ParserError: Missing argument in parameter list.",
+      "resolution": "Read the six named files directly."
+    },
+    {
+      "command": "node -e 'const x=require(\"./docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json\");console.log(x.commands.length,x.failedAttempts.length)'",
+      "exitCode": 1,
+      "output": "SyntaxError: Unexpected token ']' after a trailing comma in commands.",
+      "resolution": "Removed the trailing comma and parsed the JSON again."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mds-world-review.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "Confirmed .git/index.lock does not exist; the current sandbox grants read access to .git only. Both contracted deliverables remain in the working tree for the secretary to commit from a writable host."
+    }
+  ]
+}
