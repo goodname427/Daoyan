@@ -1,0 +1,46 @@
+{
+  "taskId": "mdq-physics",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "scopeNote": "合同 writePaths 仅列物理设计正文；本轮任务另明确要求此精确路径的交付证据文件。实际变更只有这两处。",
+  "summary": "在 physical-mdq-1 的有限纸面域登记 M1/A1/J1/B1 的逐体材料、承力与预存梯度；将起步、续步、K0/V0、H/B 接触及修壳的双边冲量、能量和 Q[k] 去向接到既有资源价与六阶段事实。无落脚、推杆、梯度、锚链、材料或场外接收证时拒绝或未裁定，已提交自然事实保留。交付资源物理供能描述符、生命 N→X/保存承载输入和程序结构容量输入。仅为策划候选，未运行游戏或批准新 ADR。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),fs=require(\"node:fs\");const p=\"docs/versions/pilot-agent-intent-2026-09-24/\";const d=fs.readFileSync(p+\"physics-material-design.md\",\"utf8\");const e=JSON.parse(fs.readFileSync(p+\"tasks/module-design-mdq-physics.json\",\"utf8\"));a.equal(e.taskId,\"mdq-physics\");a.equal(e.status,\"completed\");for(const s of [\"physical-mdq-1\",\"M1@Xm0\",\"A1@Xa0\",\"PhysicalSupplyDescriptor\",\"MaterialTransition\",\"N-m1→X-m1\",\"N-a1→X-a1\"])a.ok(d.includes(s),s);a.equal(512+256+128+128,1024);a.equal(3-1-2,0);console.log(\"PASS mdq-physics focused contract and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-physics focused contract and arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "已按文档轻量 Profile 格式化并复检通过。"
+    }
+  ]
+}
