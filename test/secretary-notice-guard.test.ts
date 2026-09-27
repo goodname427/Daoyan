@@ -1017,6 +1017,45 @@ describe('formal version stage dispatch', () => {
     expect(current.id).toMatch(/-design-review-2$/);
   });
 
+  it('tells a Feature PM to create the exact current-round evidence file', () => {
+    const version = createFormalVersion({
+      id: 'new-module-round',
+      title: '模块设计',
+      direction: '补齐玩家桥接验收',
+      documentRoot: 'docs/versions/new-module-round',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'mdn-bridge',
+            title: '玩家桥接验收',
+            objective: '记录本轮验收',
+            deliverables: ['本轮策划稿'],
+            acceptance: ['轻量直接检查'],
+            dependsOn: [],
+            readPaths: ['docs/versions/new-module-round/previous.md'],
+            writePaths: ['docs/versions/new-module-round/player-bridge.md'],
+          },
+        ],
+      },
+      'module-design',
+      1,
+      '2026-09-21T00:00:00.000Z',
+    );
+    const item = ensureVersionStageItem(
+      createSecretaryState('2026-09-21T00:00:00.000Z'),
+      version,
+      '2026-09-21T00:01:00.000Z',
+    );
+    expect(item?.idea).toContain('tasks/module-design-mdn-bridge.json');
+    expect(item?.idea).toContain('若文件尚不存在，必须新建该文件');
+    expect(item?.idea).toContain('名称相近的旧轮次文件不是本轮合同');
+  });
+
   it('only repeats a rejection for the same stage task in the current round', () => {
     const state = createSecretaryState('2026-09-21T00:00:00.000Z');
     const version = createFormalVersion({
