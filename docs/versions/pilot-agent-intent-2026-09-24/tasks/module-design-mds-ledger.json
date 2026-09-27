@@ -1,0 +1,65 @@
+{
+  "taskId": "mds-ledger",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "按 physical-mds-1 将 H2、B4、A0、K0/V0 的条件毛价接至逐包装载、授权、材料和热分区；当前上游未实测，正向成功交易保持拒绝。重放指定失败余态、次数耗尽、竞争与封闭回收毛界。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),h=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mds-ledger\");a.deepEqual(t.dependsOn,[\"mds-supply\"]);a.deepEqual(t.writePaths,[p+\"mana-ledger-design.md\",p+\"tasks/module-design-mds-ledger.json\"]);for(const s of [\"逐批装载、付款与回收交叉账\",\"physical-mds-1\",\"EL-J1-H2\",\"EL-B1-B4\",\"EL-M1-D1\",\"EL-M1-D2\",\"EL-M1-Ii\",\"EL-A1-Ii\",\"LoadTx\",\"unknownPrice\",\"0q\",\"同刻两请求\",\"70 M\",\"Tx-attempt\",\"需升级的产品取舍\"])a.ok(d.includes(s),s);for(const s of [\"EL-J1-H2\",\"EL-B1-B4\",\"EL-M1-D1\",\"EL-M1-D2\",\"EL-M1-Ii\",\"EL-A1-Ii\"])a.ok(h.includes(s),s);a.equal(2*23+2*12,70);a.equal(12+8+30,50);a.equal(2*20,40);a.equal(6*8,48);console.log(\"PASS mds-ledger contract, supply IDs and finite balances\")'",
+      "exitCode": 0,
+      "output": "PASS mds-ledger contract, supply IDs and finite balances",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-ledger.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mds-ledger\");a.equal(e.taskId,\"mds-ledger\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.ok(e.commands.length>0&&e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.every(x=>x.exitCode!==0));for(const x of e.evidence)a.ok(f.existsSync(x),x);for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\"))a.ok(f.existsSync(path.resolve(p,x)),x)}console.log(\"PASS mds-ledger evidence and local links\")'",
+      "exitCode": 0,
+      "output": "PASS mds-ledger evidence and local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from contract' }; Write-Output 'PASS only two formal contract paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two formal contract paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-ledger.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),h=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),t=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mds-ledger\");a.deepEqual(t.dependsOn,[\"mds-supply\"]);a.deepEqual(t.writePaths,[p+\"mana-ledger-design.md\",p+\"tasks/module-design-mds-ledger.json\"]);for(const s of [\"逐批装载、付款与回收交叉账\",\"physical-mds-1\",\"EL-J1-H2\",\"EL-B1-B4\",\"EL-M1-D1\",\"EL-M1-D2\",\"EL-M1-Ii\",\"EL-A1-Ii\",\"LoadTx\",\"unknownPrice\",\"0q\",\"同刻两请求\",\"70 M\",\"Tx-attempt\",\"需升级的产品取舍\"])a.ok(d.includes(s),s);for(const s of [\"EL-J1-H2\",\"EL-B1-B4\",\"EL-M1-D1\",\"EL-M1-D2\",\"EL-M1-Ii\",\"EL-A1-Ii\"])a.ok(h.includes(s),s);a.equal(2*23+2*12,70);a.equal(12+8+30,50);a.equal(2*20,40);a.equal(6*8,48);console.log(\"PASS mds-ledger contract, supply IDs and finite balances\")'",
+      "exitCode": 1,
+      "output": "AssertionError ERR_ASSERTION: module-design-tasks.json writePaths only lists mana-ledger-design.md, while formal stage contract also lists module-design-mds-ledger.json.",
+      "resolution": "Use the formal stageTasks mds-ledger writePaths from .daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json."
+    }
+  ]
+}
