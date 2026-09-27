@@ -1,0 +1,56 @@
+{
+  "taskId": "mdn-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接已完成的 mdn-mana 有限报价与实际到账合同，在 mdc-life 上限定首批关键回路功能、维持与保存窗口、不可逆损坏及结构/记忆/控制三类最低连续证据；用 X 与 Tx 逐刻复算最后一击、及时补源、遗体修壳、复制分叉和人工生命失供，给出身份及撤权余态。仍待主策/制作人判断生命阈值、损失容限、复制归属与关键回路编辑域；本项仅为策划候选。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),path=require(\"node:path\"),assert=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",s=fs.readFileSync(b+\"life-identity-design.md\",\"utf8\"),p=JSON.parse(fs.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdn-life\"),m=JSON.parse(fs.readFileSync(b+\"tasks/module-design-mdn-mana.json\",\"utf8\")),r=JSON.parse(fs.readFileSync(b+\"tasks/module-design-mdn-life.json\",\"utf8\"));assert.deepEqual(p.dependsOn,[\"mdn-mana\"]);assert.equal(m.status,\"completed\");assert.equal(r.taskId,\"mdn-life\");assert.equal(r.status,\"completed\");for(const x of [\"CircuitCertificate\",\"Quote(maintain\",\"Quote(preserve\",\"DeathBarrier\",\"LifeAssessment\",\"ResidualStructure\",\"100/20\",\"及时补源\",\"遗体修壳\",\"复制分叉\",\"人工生命失供\",\"identityRelation=unknown\",\"ADR 0017\",\"ADR 0020\"])assert.ok(s.includes(x),x);assert.equal(100+30,0+7+123);let n=0;for(const a of s.matchAll(/\\]\\(([^)]+)\\)/g)){const h=a[1].split(\"#\")[0];if(h&&!h.includes(\"://\")){assert.ok(fs.existsSync(path.resolve(b,h)),h);n++}}assert.ok(r.commands.every(x=>x.exitCode===0));assert.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const x of r.evidence)assert.ok(fs.existsSync(x),x);console.log(\"PASS mdn-life contract, task evidence, arithmetic and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdn-life contract, task evidence, arithmetic and 16 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json"
+      ]
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ]
+}
