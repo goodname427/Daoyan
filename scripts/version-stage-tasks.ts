@@ -289,6 +289,13 @@ export function assertStageTaskPrestartScope(task: VersionStageTask, changedFile
 }
 
 export function parseStageTaskResult(value: unknown, expectedTaskId: string): StageTaskResult {
+  // Older Feature PM reports call the same repository paths `artifacts`.
+  // Accept that spelling only when the contracted `evidence` field is absent.
+  const evidence = isRecord(value)
+    ? value.evidence === undefined
+      ? value.artifacts
+      : value.evidence
+    : undefined;
   if (
     !isRecord(value) ||
     value.taskId !== expectedTaskId ||
@@ -304,8 +311,8 @@ export function parseStageTaskResult(value: unknown, expectedTaskId: string): St
         !entry.command.trim() ||
         !Number.isSafeInteger(entry.exitCode),
     ) ||
-    !isStrings(value.evidence) ||
-    value.evidence.length === 0
+    !isStrings(evidence) ||
+    evidence.length === 0
   ) {
     throw new Error(`节点任务 ${expectedTaskId} 缺少实际检查或交付证据`);
   }
@@ -314,6 +321,6 @@ export function parseStageTaskResult(value: unknown, expectedTaskId: string): St
     status: 'completed',
     summary: value.summary.trim(),
     commands: value.commands.map((entry) => ({ command: entry.command, exitCode: entry.exitCode })),
-    evidence: [...value.evidence],
+    evidence: [...evidence],
   };
 }
