@@ -1,0 +1,76 @@
+{
+  "taskId": "md-mana",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "普通驱动 B 与法力做功/环境/回收 B 的候选资源合同已形成：分清法力来源和环境可用性、物理与材料所有权、神识和 tick；列出逐类账目、七段流水、拒绝/空状态、跨模块接口和旧规则冲突。未证明的做功换算、开放吸收与回收保留待定或不可表达；completed 仅指本模块策划及轻量直接检查，不批准游戏开发或覆盖 ADR。本地提交因 .git/index.lock 写权限受阻，见 delivery。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\");const file=\"docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md\",s=f.readFileSync(file,\"utf8\"),d=JSON.parse(f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json\",\"utf8\")),t=d.tasks.find(x=>x.id===\"md-mana\");a.deepEqual(t.dependsOn,[\"md-world\",\"md-physics\"]);for(const x of [\"普通驱动 B\",\"法力做功/环境/回收 B\",\"付款方\",\"来源\",\"接收者\",\"环境去向\",\"已做工作\",\"可用性\",\"退款受益人\",\"神识\",\"tick\",\"起步\",\"额外注能\",\"零余额\",\"100/20\",\"取消或死亡\",\"重复创建\",\"拒绝\",\"空状态\",\"不可表达\",\"物理\",\"生命\",\"授权\",\"静态\",\"三池\",\"自动\",\"倍率\",\"ADR 0019\"])a.ok(s.includes(x),\"missing \"+x);for(const id of [\"S1\",\"I1\",\"Z1\",\"L1\",\"L2\",\"F1\",\"R1/R2\"])a.ok(s.includes(\"`\"+id+\"`\"),\"missing flow \"+id);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const q=m[1].split(\"#\")[0];if(q&&!q.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(file),q)),\"broken link \"+q);n++}}console.log(\"PASS md-mana contract topics, 7 flows and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS md-mana contract topics, 7 flows and 10 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/\";for(const id of [\"md-world\",\"md-physics\",\"md-mana\"]){const r=JSON.parse(f.readFileSync(d+\"module-design-\"+id+\".json\",\"utf8\"));a.equal(parseStageTaskResult(r,id).status,\"completed\");for(const q of r.evidence)a.ok(f.existsSync(q),\"missing evidence \"+q)}const m=JSON.parse(f.readFileSync(d+\"module-design-md-mana.json\",\"utf8\"));a.ok(m.commands.length&&m.commands.every(x=>x.exitCode===0));a.ok(m.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));console.log(\"PASS 3 stage-task results, md-mana evidence and command status\")'",
+      "exitCode": 0,
+      "output": "PASS 3 stage-task results, md-mana evidence and command status",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-physics.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json'); $actual = @(git status --porcelain | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from contract' }; Write-Output 'PASS only two contract paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two contract paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json"
+      ]
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ],
+  "delivery": {
+    "status": "blocked",
+    "intendedCommitMessage": "docs: design mana flow and resource ledger",
+    "commit": null,
+    "blocker": "git add exits 1: cannot create .git/index.lock (Permission denied); .git is read-only in this workspace.",
+    "pushed": false
+  }
+}
