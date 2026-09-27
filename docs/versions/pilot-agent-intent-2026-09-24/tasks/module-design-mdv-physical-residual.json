@@ -1,0 +1,44 @@
+{
+  "taskId": "mdv-physical-residual",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "修订 H2/B4 封印总额、可预留份额、实耗与作用后残量的分账及双端读；复算 12/12、24/12 实耗和仅为中心值的 4/12、8/12 E0 余量并传播 ±2/12 差量误差。补齐合法取得先史、主辅源 grant、四次原读、装载功/材料/热/反作用/作用后量测步骤；当前无原读的正向行为仍为条件证，D1/D2、K0/V0、A1 驱动、AT0 不可执行或未知。记录 B4 未授权 2q、七类反证及 M1/A1 独立 F1/F2 自然输入和保存承载待测项。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-physical-residual.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),d=f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\",\"utf8\");for(const k of [\"mdv-physical-residual\",\"sealedTotal\",\"readError\",\"reservableSlice\",\"spentSlice\",\"residualMeasured\",\"residualDisposition\",\"sealRetired\",\"4/12 E0\",\"8/12 E0\",\"单读 `±1/12`\",\"差量 `±2/12`\",\"[2/12,6/12]\",\"[6/12,10/12]\",\"quarantined/unauthorized\",\"R0/R1/R2/R3\",\"D1/D2\",\"K0\",\"V0\",\"A1 驱动\",\"AT0\",\"残量二次领用\",\"两轮回收\",\"断锚\",\"缺料\",\"破损换版\",\"同刻争源\",\"连续碰撞\",\"N-M1-F1\",\"N-M1-F2\",\"N-A1-F1\",\"N-A1-F2\",\"m-store/a-store\",\"|J|≤J0\"])a.ok(d.includes(k),k);a.equal(Math.min(18-6,14,15),12);a.equal(16-12,4);a.equal(Math.min(42-14,30,31),28);a.equal(32-24,8);console.log(\"PASS mdv physical content, fractions, uncertainty and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdv physical content, fractions, uncertainty and arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-physical-residual.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-physical-residual.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-physical-residual.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdv-physical-residual writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdv-physical-residual writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 1,
+      "reason": "新增 Markdown 表格格式不符合 Prettier。随后仅对该文档运行 prettier --write 并重跑 --check，通过。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-physical-residual.json; git commit -m \"docs: certify physical material residuals\"",
+      "exitCode": 128,
+      "reason": "Git 无法创建 .git/index.lock，返回 Permission denied；暂存及本地提交均未完成。"
+    }
+  ]
+}
