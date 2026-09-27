@@ -38,7 +38,7 @@ import {
   type TaskPlan,
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
-import { findTaskCommitEvidence } from './task-commit-evidence';
+import { findTaskCommitEvidence, taskCommitOutOfScopePaths } from './task-commit-evidence';
 import { deliverArchivedVersionBranch } from './version-git-delivery';
 import {
   externalRequestId,
@@ -5600,15 +5600,25 @@ async function consumeTaskOwnedVersionItem(
     ? await readJson(resolve(item.runDirectory, 'recovery.json'))
     : null;
   const plan = isRecord(checkpoint?.plan) ? checkpoint.plan : null;
+  const expectedMessage = plan
+    ? conventionalCommitOrFallback(String(plan.commitMessage ?? ''), String(plan.title ?? ''))
+    : '';
+  const mixedPaths = taskCommitOutOfScopePaths({
+    root,
+    baseline: item.orchestration?.formalTaskBaseRevision ?? '',
+    head: revision,
+    expectedMessage,
+    writePaths: task.writePaths,
+  });
+  if (mixedPaths.length > 0) {
+    throw new Error(`节点任务 ${task.id} 的交付提交混入合同外文件：${mixedPaths.join('、')}`);
+  }
   const commitEvidence = plan
     ? findTaskCommitEvidence({
         root,
         baseline: item.orchestration?.formalTaskBaseRevision ?? '',
         head: revision,
-        expectedMessage: conventionalCommitOrFallback(
-          String(plan.commitMessage ?? ''),
-          String(plan.title ?? ''),
-        ),
+        expectedMessage,
         writePaths: task.writePaths,
         readPaths: task.readPaths,
       })

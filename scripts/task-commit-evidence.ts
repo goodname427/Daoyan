@@ -5,6 +5,33 @@ export interface TaskCommitEvidence {
   parent: string;
 }
 
+export function taskCommitOutOfScopePaths(input: {
+  root: string;
+  baseline: string;
+  head: string;
+  expectedMessage: string;
+  writePaths: string[];
+}): string[] {
+  const { root, baseline, head, expectedMessage, writePaths } = input;
+  if (!baseline || !head || !expectedMessage || writePaths.length === 0) return [];
+  if (git(root, ['merge-base', '--is-ancestor', baseline, head]).code !== 0) return [];
+  const history = git(root, ['rev-list', '--first-parent', `${baseline}..${head}`]);
+  if (history.code !== 0) return [];
+  const violations = new Set<string>();
+  for (const commit of history.output.trim().split(/\s+/).filter(Boolean)) {
+    const message = git(root, ['show', '-s', '--format=%s', commit]);
+    if (message.code !== 0 || message.output.trim() !== expectedMessage) continue;
+    const parent = git(root, ['rev-parse', `${commit}^`]);
+    if (parent.code !== 0) continue;
+    const files = changedPaths(root, parent.output.trim(), commit);
+    if (!files?.some((path) => writePaths.some((scope) => inScope(path, scope)))) continue;
+    for (const path of files) {
+      if (!writePaths.some((scope) => inScope(path, scope))) violations.add(path);
+    }
+  }
+  return [...violations];
+}
+
 function git(root: string, args: string[]): { code: number | null; output: string } {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true });
   return { code: result.status, output: result.stdout };
