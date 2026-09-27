@@ -216,7 +216,7 @@ export interface TaskReuseEvidence {
 }
 
 const POST_FEATURE_GATE_REPORT =
-  /^(?:(?:qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:qa|bugfix|candidate|archived)-[^/]+\.json)$/;
+  /^(?:(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/;
 
 /**
  * Formal-version reports written after the Feature gate are not implementation
@@ -511,6 +511,14 @@ const FORMAL_STAGE_TASKS: Record<
     deliverables: ['逐项完成正式工作项及其验证证据'],
     verification: ['执行 Agent 运行类型检查与定向测试；Feature PM 汇总后运行快速门禁'],
   },
+  'design-acceptance': {
+    title: '按策划案体验验收游戏',
+    type: 'test',
+    tier: 'advanced',
+    paths: ['docs/versions/'],
+    deliverables: ['独立黑盒体验记录、逐项策划对照和偏差结论'],
+    verification: ['运行游戏并操作玩家流程，检查未列举的相邻情形'],
+  },
   qa: {
     title: '执行独立版本测试',
     type: 'test',
@@ -555,6 +563,7 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
     .replace(FORMAL_WORK_ITEMS_PATTERN, '\n')
     .trim();
   const versionValidation =
+    stage === 'design-acceptance' ||
     stage === 'qa' ||
     stage === 'candidate' ||
     (stage === 'bugfix' && summary.includes('本轮只做独立缺陷复验'));

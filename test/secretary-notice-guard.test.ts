@@ -37,6 +37,7 @@ import {
   isFormalVersionWriteConflict,
   parseBugfixResult,
   parseDesignReviewResult,
+  parseDesignAcceptanceResult,
   parseDevelopmentResult,
   isTaskScopeCommand,
   latestReusableFeatureGate,
@@ -1485,6 +1486,76 @@ describe('formal version stage dispatch', () => {
     expect(currentVersionStagePolicy(version, 'qa').mode).toBe('execute');
   });
 
+  it('requires black-box design acceptance to cover real work and adjacent gameplay', () => {
+    const workItems = parseVersionWorkItems(
+      {
+        workItems: [
+          {
+            id: 'spell',
+            title: '法术',
+            owner: 'Feature PM',
+            dependsOn: [],
+            summary: '实现法术',
+            affectedPaths: ['src/core/spell.ts'],
+            acceptanceCommands: ['npm test'],
+          },
+        ],
+      },
+      'development-tasks.json',
+    );
+    workItems[0].status = 'completed';
+    const scenario = {
+      id: 'adjacent-1',
+      workItemId: 'spell',
+      designPath: 'docs/versions/v1/module-design.md',
+      kind: 'adjacent',
+      entry: '演武场',
+      steps: ['启动游戏', '配置法术', '进入演武场并施放'],
+      expected: '按策划触发',
+      actual: '游戏中按策划触发',
+      result: 'passed',
+      evidence: ['docs/versions/v1/experience.png'],
+    };
+    const result = {
+      decision: 'approved',
+      summary: '实际体验与已批准策划一致',
+      codeRevision: 'dev-commit',
+      scenarios: [
+        { ...scenario, id: 'main-1', kind: 'main' },
+        { ...scenario, id: 'boundary-1', kind: 'boundary' },
+        scenario,
+      ],
+    };
+    expect(parseDesignAcceptanceResult(result, workItems, 'dev-commit').decision).toBe('approved');
+    expect(() => parseDesignAcceptanceResult(result, workItems, 'other-commit')).toThrow(
+      '开发修订',
+    );
+    expect(() =>
+      parseDesignAcceptanceResult(
+        { ...result, scenarios: [{ ...scenario, kind: 'main' }] },
+        workItems,
+        'dev-commit',
+      ),
+    ).toThrow('相邻情形');
+    expect(() =>
+      parseDesignAcceptanceResult(
+        {
+          ...result,
+          scenarios: [...result.scenarios.slice(0, 2), { ...scenario, result: 'failed' }],
+        },
+        workItems,
+        'dev-commit',
+      ),
+    ).toThrow('实测结果矛盾');
+    expect(() =>
+      parseDesignAcceptanceResult(
+        { ...result, scenarios: [...result.scenarios.slice(0, 2), { ...scenario, steps: [] }] },
+        workItems,
+        'dev-commit',
+      ),
+    ).toThrow('实际操作');
+  });
+
   it('requires structured conclusions instead of inferring product success from task delivery', () => {
     const workItems = parseVersionWorkItems(
       {
@@ -1895,9 +1966,23 @@ describe('formal version stage dispatch', () => {
 
       await writeFile(resolve(fixture, 'docs/versions/release/qa.json'), '{"status":"passed"}\n');
       await writeFile(resolve(fixture, 'docs/versions/release/qa.md'), '# QA\n\n通过。\n');
+      await writeFile(
+        resolve(fixture, 'docs/versions/release/design-acceptance.json'),
+        '{"decision":"approved"}\n',
+      );
+      await writeFile(
+        resolve(fixture, 'docs/versions/release/design-acceptance.md'),
+        '# 策划体验验收\n\n通过。\n',
+      );
 
       const qaTree = validationTreeFingerprintForPaths(
-        [...developmentPaths, 'docs/versions/release/qa.json', 'docs/versions/release/qa.md'],
+        [
+          ...developmentPaths,
+          'docs/versions/release/design-acceptance.json',
+          'docs/versions/release/design-acceptance.md',
+          'docs/versions/release/qa.json',
+          'docs/versions/release/qa.md',
+        ],
         fixture,
       );
       expect(qaTree).toBe(testedTree);
