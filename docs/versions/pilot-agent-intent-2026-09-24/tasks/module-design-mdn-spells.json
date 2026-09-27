@@ -1,0 +1,77 @@
+{
+  "taskId": "mdn-spells",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接 mdn-life、mdn-mana 和 mdn-physics，在原程序设计稿补齐四原子相对 mdc-spells 的 D0/P0 纸面报价、容量与并发、合法尝试、共享余额和失败余态；独立死后 grant 因签发域与最长期限未闭合，首批执行域明确关闭，并向桥接移交规范请求、拒绝码与字段裁剪。仅为详细策划候选，不实现游戏能力。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\"),p=require(\"path\"),a=require(\"assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",s=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\"),tasks=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),t=tasks.tasks.find(x=>x.id===\"mdn-spells\"),pred=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdn-life.json\",\"utf8\"));a.deepEqual(t.dependsOn,[\"mdn-life\"]);a.equal(pred.status,\"completed\");for(const k of [\"read\",\"transfer\",\"applyForce\",\"editMaterial\",\"D0/P0\",\"pAttempt=1 M\",\"1024\",\"postDeathGrantUnavailable\",\"queueFull\",\"insufficientFunds\",\"missingMaterial\",\"unauthorized\",\"Tx-attempt\",\"ADR 0020\",\"mdn-bridge\"])a.ok(s.includes(k),k);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const q=m[1].split(\"#\")[0];if(q&&!q.includes(\"://\")){a.ok(f.existsSync(p.resolve(b,q)),q);n++}}console.log(\"PASS mdn-spells predecessor, coverage markers and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdn-spells predecessor, coverage markers and 24 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdn-spells.json\",\"utf8\"));a.equal(r.taskId,\"mdn-spells\");a.equal(r.status,\"completed\");a.ok(r.commands.length>0);a.ok(r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const p of r.evidence)a.ok(f.existsSync(p),p);console.log(\"PASS mdn-spells task result and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdn-spells task result and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+      "exitCode": 1,
+      "output": "Code style issues found in module-design-mdn-spells.json after appending command evidence.",
+      "resolution": "Formatted the task JSON and reran the same direct check."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "This host exposes .git as read-only. The two contract files remain in the working tree for the secretary to commit from a Git-writable host; no commit, push or tag was created."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ]
+}
