@@ -5,6 +5,27 @@ export interface TaskCommitEvidence {
   parent: string;
 }
 
+export function findCommitByMessage(input: {
+  root: string;
+  baseline: string;
+  head: string;
+  expectedMessage: string;
+}): TaskCommitEvidence | null {
+  const { root, baseline, head, expectedMessage } = input;
+  if (!baseline || !head || !expectedMessage) return null;
+  if (git(root, ['merge-base', '--is-ancestor', baseline, head]).code !== 0) return null;
+  const history = git(root, ['rev-list', '--first-parent', `${baseline}..${head}`]);
+  if (history.code !== 0) return null;
+  const matches: TaskCommitEvidence[] = [];
+  for (const commit of history.output.trim().split(/\s+/).filter(Boolean)) {
+    const message = git(root, ['show', '-s', '--format=%s', commit]);
+    if (message.code !== 0 || message.output.trim() !== expectedMessage) continue;
+    const parent = git(root, ['rev-parse', `${commit}^`]);
+    if (parent.code === 0) matches.push({ commit, parent: parent.output.trim() });
+  }
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function taskCommitOutOfScopePaths(input: {
   root: string;
   baseline: string;
