@@ -1,0 +1,73 @@
+{
+  "taskId": "mdp-program",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接 mdn-spells 与 mdp-physics/mdp-mana/mdp-life，补四类载体的条件式有限容量证书、H/B/普通行动逐体装载与拒绝、四原子报价和双时点授权、死亡撤权及先前已付余态；交桥接程序 hash、可见字段、失败码和可表达域。容量夹具仍须逐体实测签发，本文不批准游戏实现或独立死后 grant。.git/index.lock 无写权限，本地提交未创建。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\"),t=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdp-program\");a.deepEqual(t.dependsOn,[\"mdp-physics\",\"mdp-mana\",\"mdp-life\"]);a.deepEqual(t.writePaths,[b+\"programmable-spells-design.md\"]);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const s of [\"CarrierCapacityCertificate\",\"capacityUnknown\",\"capacityFull\",\"H、B 与普通行动\",\"SHA-256\",\"postDeathGrantUnavailable\",\"deniedOrUnavailable\",\"unexpressible\"])a.ok(d.includes(s),s);console.log(\"PASS mdp-program contract, predecessors and design coverage\")'",
+      "exitCode": 0,
+      "output": "PASS mdp-program contract, predecessors and design coverage",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-life.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdp-program.json\",\"utf8\"));a.equal(e.taskId,\"mdp-program\");a.equal(e.status,\"completed\");for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdp-program evidence identity and paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdp-program evidence identity and paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 1,
+      "output": "Code style issues found after the per-response tick wording correction.",
+      "resolution": "Formatted the design document again; the final two-file check is recorded in commands."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "The Git metadata path is read-only in this execution environment; the two contract files remain unstaged and no local commit was created."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md"
+  ]
+}
