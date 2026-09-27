@@ -1,0 +1,64 @@
+{
+  "taskId": "mdo-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接 mdo-theory 已完成的只读共同因果结论，增补 R0 空读实价/隐藏目标不可区分拒绝、unknownPrice、LifeAssessment/LifeId unknown、DeathBarrier 首批死后关闭到可见字段的映射；补齐接力护送 H 与活跃信标 B 在推演台到同书演武场再回修订的成功、失败、空、越权/域外纸面矩阵及敌方修士同规则请求、五类输入同价同裁剪同余态要求。仅为合同范围内文档策划，不表示代码实现、实机可玩或整版通过。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json"
+  ],
+  "dependsOn": ["mdo-theory"],
+  "readOnlyInputs": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+  ],
+  "commands": [
+    {
+      "exitCode": 0,
+      "command": "node -e 'const fs=require(\"node:fs\"),path=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"player-bridge-design.md\",s=fs.readFileSync(q,\"utf8\"),plan=JSON.parse(fs.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),t=plan.tasks.find(x=>x.id===\"mdo-bridge\"),m=JSON.parse(fs.readFileSync(b+\"tasks/module-design-mdo-theory.json\",\"utf8\")),r=JSON.parse(fs.readFileSync(b+\"tasks/module-design-mdo-bridge.json\",\"utf8\"));a.deepEqual(t.dependsOn,[\"mdo-theory\"]);a.deepEqual(t.writePaths,[q]);a.equal(m.status,\"completed\");for(const x of [\"mdo-bridge\",\"mdn-bridge\",\"9 M / 10 tick / S=8\",\"deniedOrUnavailable\",\"unknownPrice\",\"LifeAssessment\",\"identityRelation\",\"postDeathGrantUnavailable\",\"接力护送 H 成功\",\"接力护送 H 欠费\",\"接力护送 H 空\",\"活跃信标 B 成功\",\"活跃信标 B 欠费\",\"活跃信标 B 缺料\",\"活跃信标 B 空\",\"活跃信标 B 域外复苏\",\"敌方修士同规则\",\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"同价\",\"同裁剪\",\"同余态\",\"模拟序和种子\"])a.ok(s.includes(x),x);let n=0;for(const z of s.matchAll(/\\]\\(([^)]+)\\)/g)){const h=z[1].split(\"#\")[0];if(h&&!h.includes(\"://\")){a.ok(fs.existsSync(path.resolve(path.dirname(q),h)),h);n++}}a.equal(r.taskId,\"mdo-bridge\");a.equal(r.status,\"completed\");a.deepEqual(r.dependsOn,[\"mdo-theory\"]);a.ok(r.evidence.every(x=>fs.existsSync(x)));console.log(\"PASS mdo-bridge contract, predecessor, matrix markers and \"+n+\" local links\")'",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json"
+      ],
+      "output": "PASS mdo-bridge contract, predecessor, matrix markers and 7 local links"
+    },
+    {
+      "exitCode": 0,
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json"
+      ],
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "exitCode": 0,
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json"
+      ],
+      "output": ""
+    },
+    {
+      "exitCode": 0,
+      "command": "$expected = @(''docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md'', ''docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json''); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace(''\\'',''/'') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw (''Changed paths differ from task contract: '' + ($actual -join '', '')) }; Write-Output ''PASS only contract writePaths changed''",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json"
+      ],
+      "output": "PASS only contract writePaths changed"
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-bridge.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+  ]
+}
