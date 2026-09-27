@@ -1,22 +1,21 @@
 {
   "tasks": [
     {
-      "id": "unified-world-review",
-      "title": "退回修订后的统一世界设计复审",
-      "objective": "承接上一轮 changes-requested 结论与本轮六项 mdr-* 交付，在范围修订 13、策划修订 2 及制作人已选 A/B/B/B/B/B 方向内，审核唯一世界理论、五份模块细则及其玩家体验是否跨模块闭合；修正可由已批准方向推出的遗漏，对真正新增的产品解释或不可逆取舍形成可审阅的升级材料。",
+      "id": "mdc-world-review",
+      "title": "六模块补全后的统一世界规则主策复审",
+      "objective": "以范围修订 13 和已批准的 A/B/B/B/B/B 方向为边界，独立核对本轮六项 mdc-* 细则、唯一世界理论、跨模块因果和完整玩家体验，形成可供制作人审阅的设计结论；不批准开发。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：逐项设计审核记录，含意图对照、反例与账本核验、旧实现证据、未决取舍、修订结果及需制作人判断的问题。",
-        "如审核发现可在已批准方向内修正的遗漏，修订 docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md 及受影响的五份模块细则；世界公理和跨模块反例只写入唯一理论正文，模块细则只引用并落实它。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：本轮逐项审核记录，列出闭合、缺口或待制作人判断的结论、定位证据、反例、处理及通俗取舍建议。",
+        "仅在已批准方向内能闭合遗漏时，修订 docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md 与受影响的五份模块细则；共同公理、因果和反例只维护在唯一理论正文。"
       ],
       "acceptance": [
-        "以范围修订 13、策划修订 2、制作人六项 A/B/B/B/B/B 选择、上一轮 design-review.md 的 changes-requested 结论及本轮 module-design.md 和六项 mdr-* 任务结果为输入；逐项核对退回原因是否闭合，不要求制作人重选既定方向，也不把模块任务 completed 视为设计通过。",
-        "区分制作人已确认原则、探索方向、已选方向、策划推断及新待取舍问题；新模块稿若与唯一理论正文、前驱模块或版本范围相矛盾，定位冲突并在已批准方向内修正或明确升级，不以代理验收、旧实现和未报价的条件式描述推定规则成立。",
-        "逐条核对默认物理、稳定结构与衰减、实体存在和生命、自然损伤、法力守恒与有来源的做功、神识/耗时、不可组合的元法术、感知/授权、有限记忆、事件及原子失败能否从同一规则推导；修士、法球、稳定物体、机关和人工生命不得靠实体专名或免费效果获得例外。",
-        "用接力护送、自修复信标等至少两个未逐项指定的相邻玩法和 100/20 储备挪用、无源/额外供能、创建者死亡、场外/擦边/连续碰撞、遗体再损、回收套利等反例核对触发、执行者、付款方、来源与去向、作用和反作用、工作、耗尽与失败；找出无法组合的新行为时标成理论缺口，不直接增加专名玩法或元法术。",
-        "核对推演台编写、预算与失败检查、沙盒推演、演武场绑定与观察、返回同一法术书修改的成功、拒绝和空状态；鼠标、键盘、手柄、AI、实体事件、瞄准、时间、界面探查、表现及配置仅经统一意图桥接，相同初态、权限、请求及模拟时序须同价同结果。",
-        "对上一轮退回的共同价格及资源、生命/材料与表达域、事件/授权与完整体验逐项给出已闭合、需修正或仍需制作人判断的结论及定位证据；特别检查本轮六阶段同刻顺序与五份细则是否一致，未知价、材料域外及信标复苏是否保持明确拒绝或理论缺口。",
-        "对照旧策划、现行代码、测试、可体验入口及 ADR 0017–0020，明确局部已覆盖、存在缺口或待判断，并说明原型重做、旧法术和存档影响；兼容不作为新规则的设计约束。",
-        "审核记录给出可复核的设计结论及每项发现的证据、处理或升级问题；仅将已批准方向内的修正写回唯一理论正文及受影响模块细则，旧整版 world-rule-design.md 仅作历史对照。新产品解释、不可逆架构或仍不能闭合的资源/生命/物理规则以通俗选项、玩家效果、代价、推荐及理由升级制作人，在其判断前不宣称规则定型、不选开发切片、不制作预设或敌方修士，也不改游戏代码、测试或已采纳 ADR。"
+        "以本版 direction、范围修订 13、charter-draft.md、intent-alignment.json、上一轮 design-review.md 的 changes-requested 结论、本轮 module-design.md 和六项已完成 mdc-* 结果为前驱证据；核对实际内容而非以 completed 推定设计通过。旧版策划、归档、现行实现与代理验收只作为待复核事实，不冒充制作人意图。",
+        "逐项复核共同价函数与合法尝试价、环境可用量及回收上界、接触容差与材料精度、生命临界与 LifeId 连续性、原子不可约性、同刻事件顺序、死亡后独立授权及可见反馈；每项给出已闭合、存在缺口或仍需制作人判断的结论和文件或行为证据。未知价格、域外材料及身份无证据分别保持待定价、不可表达或身份未定，不默许零价或成功。",
+        "核对统一因果是否从默认物理、法力转移与做功、结构变化、存在和生命、感知、有限记忆、程序能力与授权推出修士、法球、稳定物、机关和人工生命的行为；神识、法力、耗时及静态上界与原子效果和算法工作量相符，不用实体专名、固定寿命、旧伤害池或折扣填补理论缺口。",
+        "用接力护送和遗体旁自修复信标至少两个未列举玩法，以及 100/20 储备、失供和额外供能、创建者死亡、场外、擦边与连续碰撞、遗体再损、回收套利等反例，追踪触发、执行者、付款方、授权、来源去向、自然事实、作用与反作用、耗尽及失败余态；不为无法组合的行为直接增加专名玩法或元法术。",
+        "核对推演台编辑、预算和拒绝检查、沙盒推演、演武场绑定与观察、返回同一法术书修改的成功、失败、空状态及往返验收；鼠标、键盘、手柄、AI 和实体事件只经统一意图桥接，同初态、授权、请求、事件先史与模拟时序同价同结果，不由界面、墙钟、表现或配置产生世界特权。纸面合同与现行实际可玩证据明确区分。",
+        "对照现行代码、直接相关测试、可体验入口和 ADR 0017–0020，逐条标出已覆盖、缺口或待判断，并说明新规则若获准时的原型重做、旧法术与存档影响；兼容不约束本轮设计，已采纳 ADR 不由本任务默默覆盖。",
+        "每项发现有可定位证据、已批准范围内的修订或明确升级去向；若确需新产品解释或不可逆取舍，给制作人通俗的可比较方案、玩家效果、优势、代价、推荐及理由，不写成既定规则。不选开发切片、不制作预设、不改敌方修士、游戏代码或测试；完整方案获制作人审阅前不宣称规则定型或进入开发。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -28,19 +27,19 @@
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-mana.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-spells.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-theory.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-bridge.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
         "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/charter-draft.md",
         "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/module-design.md",
         "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/archived.md",
