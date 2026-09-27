@@ -618,6 +618,8 @@ async function deliverNotice(path: string): Promise<void> {
         acceptedAt: new Date().toISOString(),
       })}\n`,
       'utf8',
+    ).catch((error) =>
+      console.error(`[notice guard] 通道已接受通知，但回执记录失败：${String(error)}`),
     );
   }
   if (remaining.length === 0) {
