@@ -1,0 +1,64 @@
+{
+  "taskId": "mdt-ledger",
+  "status": "completed",
+  "scopeRevision": 13,
+  "predecessor": {
+    "taskId": "mdt-source",
+    "commit": "ed86e82",
+    "evidence": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json",
+    "physicalPackage": "physical-mdt-1",
+    "finding": "同版源证据已交付；正功、摄取和攻击包尚无可签上游与四读，LoadTx=∅。"
+  },
+  "summary": "完成 H2/B4/D1/D2/K0/V0 与攻击的付款、包、装载、报价和不可取交叉账；独立推导 AT0 单接触攻击 25/33 M 条件毛价及 9/11 tick、S6，复算失败、竞争、封闭循环和攻击/维持余态。前驱缺实测，所有相关成功价仍为条件式，当前 unknownPrice、undeterminedEnergy、LoadTx=∅、Tx/A=∅。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdt-ledger.json\",\"utf8\")),s=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdt-source.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mdt-ledger\");a.equal(s.status,\"completed\");a.equal(s.taskId,\"mdt-source\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const k of [\"physical-mdt-1\",\"EL-J1-H2\",\"EL-B1-B4\",\"EL-M1-D1\",\"EL-M1-D2\",\"EL-Z-Ii\",\"EL-attack-01\",\"AT0\",\"25 M\",\"33 M\",\"LoadTx=∅\",\"Tx/A=∅\",\"unknownPrice\",\"undeterminedEnergy\",\"Tx-attempt\",\"累计毛流出 70 M\"])a.ok(d.includes(k),k);a.equal(4+8+4+6+3,25);a.equal(4+16+4+6+3,33);a.equal(2+2+2+2+1,9);a.equal(2+2+2+4+1,11);console.log(\"PASS mdt-ledger source, contract, coverage and attack arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdt-ledger source, contract, coverage and attack arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdt-ledger writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdt-ledger writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前执行环境对 .git 只有读取权限，无法暂存或形成本地提交；两个合同路径的内容保留在工作区，待有 .git 写权限的宿主本地提交。"
+    }
+  ]
+}
