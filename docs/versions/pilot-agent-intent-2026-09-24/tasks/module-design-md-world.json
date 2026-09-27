@@ -1,63 +1,143 @@
 {
   "taskId": "md-world",
-  "status": "blocked",
+  "status": "completed",
   "scopeRevision": 13,
   "charterRevision": "2",
-  "summary": "在制作人 A/B/B/B/B/B 选择边界内重写唯一世界理论的认识状态、跨模块因果、五类实体推导、逐笔反例与旧材料冲突；直接轻量检查通过。数值、无套利证明、复苏身份和不可逆 ADR 仍待论证或升级，未批准游戏开发。本地提交因 .git/index.lock 写入权限不足受阻，两个产物留在工作区。",
-  "blocker": "git add 无法创建 .git/index.lock（Permission denied）；当前沙盒对 .git 仅有读取权限，未生成本地提交，也没有推送。",
+  "summary": "唯一世界理论与文档直接检查已完成：核实前轮 69797dd 已含两项产物，修正过期 blocked 状态和缺少顶层 evidence 的合同缺口，澄清物理 Δt 与程序 tick。真实解析器及正文、链接、格式、范围检查通过。completed 仅指文档成果；本轮本地提交仍因 .git/index.lock 写权限受阻，完整交付尚缺提交，详见 delivery。价格、回收、身份和 ADR 覆盖仍待证明或升级，不授权游戏开发。",
   "artifacts": [
     "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
   ],
   "commands": [
     {
-      "command": "node -e 'const f=require(\"fs\");const d=\"docs/versions/pilot-agent-intent-2026-09-24/\";const w=f.readFileSync(d+\"world-theory-draft.md\",\"utf8\");const a=JSON.parse(f.readFileSync(d+\"intent-alignment.json\",\"utf8\"));const v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));if(a.scopeRevision!==13||a.charterRevision!==\"2\"||v.orchestration.scopeRevisions.at(-1).revision!==13||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"scope or approval mismatch\");for(const x of [\"制作人明确确认\",\"此次制作人选择\",\"策划推断\",\"待取舍或待证明\",\"有效质量/接触/材料 A\",\"普通驱动 B\",\"法力做功/环境/回收 B\",\"生命/身份 B\",\"元法术 B\",\"载体/授权 B\",\"接力护送\",\"自修复信标\",\"创建者死亡\",\"场外\",\"擦边\",\"L1 最后一击\",\"L2 下一维持窗口\",\"R1 创建并试图回收\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"不得据此开始游戏开发\"]){if(!w.includes(x))throw Error(\"missing \"+x)}console.log(\"scope, choices, counterexamples and conflict coverage OK\")'",
-      "exitCode": 0,
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\");const w=f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"utf8\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/\";const i=JSON.parse(f.readFileSync(d+\"intent-alignment.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));a.equal(i.scopeRevision,13);a.equal(i.charterRevision,\"2\");a.equal(v.orchestration.scopeRevisions.at(-1).revision,13);a.ok(v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"));for(const x of [\"唯一可编辑的世界理论正文\",\"制作人明确确认\",\"此次制作人选择\",\"策划推断\",\"待取舍或待证明\",\"候选公理组\",\"组合闭合判据\",\"有效质量/接触/材料 A\",\"普通驱动 B\",\"法力做功/环境/回收 B\",\"生命/身份 B\",\"元法术 B\",\"载体/授权 B\",\"修士\",\"法球\",\"稳定物\",\"固定机关\",\"人工生命\",\"接力护送\",\"自修复信标\",\"创建者死亡\",\"场外\",\"擦边\",\"100\",\"20\",\"旧理论和整版\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"另行升级\",\"不得据此开始游戏开发\",\"物理求解步长记为 `Δt`\",\"默认演化不向角色收取 VM tick\"])a.ok(w.includes(x),\"missing \"+x);const ledger=w.split(\"### 跨实体与边界反例的交易明细\")[1].split(\"这些流水中的\")[0];for(const id of [\"H1\",\"H2\",\"H3\",\"B1\",\"B2\",\"B3\",\"B4\",\"E1\",\"E2\",\"C1\",\"C2\",\"C3\",\"L1\",\"L2\",\"R1\"]){const row=ledger.split(\"\\n\").find(x=>x.startsWith(\"| \"+id+\" \"));a.ok(row,\"missing ledger \"+id);a.equal(row.split(\"|\").length,5,\"ledger columns \"+id);a.ok(row.split(\"|\").slice(1,-1).every(x=>x.trim().length>10));}a.ok(ledger.includes(\"零余额路径在 B2\"));a.ok(ledger.includes(\"暂不在可表达域\"));a.ok(!w.includes(\"`tick` 是求解这些规律的数值步长\"));console.log(\"PASS scope 13 / charter 2; six choices; five entities; 15 ledger entries; conflicts, unresolved limits and time units\");'",
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
-        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+      ],
+      "exitCode": 0,
+      "output": "PASS scope 13 / charter 2; six choices; five entities; 15 ledger entries; conflicts, unresolved limits and time units"
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\");const file=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",s=f.readFileSync(file,\"utf8\");let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(file),t)),\"broken link \"+t);n++;}}console.log(\"PASS \"+n+\" local document/source links\");'",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
+      "exitCode": 0,
+      "output": "PASS 50 local document/source links"
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\");const p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(parseStageTaskResult(r,\"md-world\").status,\"completed\");a.ok(r.commands.length>0&&r.commands.every(x=>x.exitCode===0&&x.output));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const p of [...r.evidence,...r.commands.flatMap(x=>x.evidence)])a.ok(f.existsSync(p),\"missing evidence \"+p);for(const bad of [{...r,status:\"blocked\"},{...r,evidence:undefined},{...r,evidence:[]}])a.throws(()=>parseStageTaskResult(bad,\"md-world\"));console.log(\"PASS real stage-task parser; completed status; evidence paths; successful commands; separate failures; 3 rejection controls\");'",
+      "exitCode": 0,
+      "output": "PASS real stage-task parser; completed status; evidence paths; successful commands; separate failures; 3 rejection controls",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+        "scripts/version-stage-tasks.ts"
       ]
     },
     {
-      "command": "node -e 'const f=require(\"fs\"),p=require(\"path\");const file=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",s=f.readFileSync(file,\"utf8\");for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")&&!f.existsSync(p.resolve(p.dirname(file),t)))throw Error(\"broken link \"+t)}console.log(\"world theory relative links OK\")'",
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+      ],
       "exitCode": 0,
-      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
     },
     {
-      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+      ],
       "exitCode": 0,
+      "output": "No whitespace errors (exit 0)."
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json'); $changed = @(git diff --name-only HEAD); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $changed).Count -ne 0) { throw 'Changed paths differ from contract' }; $untracked = @(git ls-files --others --exclude-standard); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if ($untracked.Count -ne 0) { throw 'Unexpected untracked paths' }; $previous = @(git show --format= --name-only 69797dd | Where-Object { $_ }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $previous).Count -ne 0) { throw 'Previous commit paths differ from contract' }; Write-Output 'PASS only two contract paths changed; no untracked files; previous commit 69797dd contains both deliverables'",
+      "exitCode": 0,
+      "output": "PASS only two contract paths changed; no untracked files; previous commit 69797dd contains both deliverables",
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
       ]
-    },
-    {
-      "command": "git diff --check",
-      "exitCode": 0,
-      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
-    },
-    {
-      "command": "node -e 'const r=require(\"./docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json\");if(r.taskId!==\"md-world\"||r.status!==\"blocked\"||r.scopeRevision!==13||r.charterRevision!==\"2\"||r.artifacts.length!==2||r.commands.some(x=>x.exitCode!==0)||r.failedAttempts.some(x=>x.exitCode!==1))throw Error(\"task evidence mismatch\");console.log(\"md-world evidence JSON OK\")'",
-      "exitCode": 0,
-      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"]
     }
   ],
   "failedAttempts": [
     {
       "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
       "exitCode": 1,
-      "evidence": "首次检查指出 world-theory-draft.md 表格格式不符；定向格式化后复查通过。"
+      "evidence": "首次检查指出 world-theory-draft.md 表格格式不符；定向格式化后复查通过。",
+      "evidencePaths": [
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-2/revise-world-theory-gpt-6-sol-attempt-1.log"
+      ],
+      "phase": "previous-run"
     },
     {
       "command": "node -e 'const f=require(\"fs\");const d=\"docs/versions/pilot-agent-intent-2026-09-24/\";const w=f.readFileSync(d+\"world-theory-draft.md\",\"utf8\");const a=JSON.parse(f.readFileSync(d+\"intent-alignment.json\",\"utf8\"));const v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\"));if(a.scopeRevision!==13||a.charterRevision!==\"2\"||v.orchestration.scopeRevisions.at(-1).revision!==13||!v.approvals.some(x=>x.stage===\"charter-review\"&&x.decision===\"approved\"&&x.documentRevision===\"2\"))throw Error(\"scope or approval mismatch\");for(const x of [\"制作人明确确认\",\"此次制作人选择\",\"策划推断\",\"待取舍或待证明\",\"有效质量/接触/材料 A\",\"普通驱动 B\",\"法力做功/环境/回收 B\",\"生命/身份 B\",\"元法术 B\",\"载体/授权 B\",\"接力护送\",\"自修复信标\",\"创建者死亡\",\"场外\",\"擦边\",\"L1 最后一击\",\"L2 下一维持窗口\",\"R1 创建并试图回收\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"未批准游戏开发\"]){if(!w.includes(x))throw Error(\"missing \"+x)}console.log(\"scope, choices, counterexamples and conflict coverage OK\")'",
       "exitCode": 1,
-      "evidence": "覆盖脚本要求的字面短语“未批准游戏开发”与正文“不得据此开始游戏开发”不一致；修正脚本断言后退出 0，正文开发边界未改变。"
+      "evidence": "覆盖脚本要求的字面短语“未批准游戏开发”与正文“不得据此开始游戏开发”不一致；修正脚本断言后退出 0，正文开发边界未改变。",
+      "evidencePaths": [
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-2/revise-world-theory-gpt-6-sol-attempt-1.log"
+      ],
+      "phase": "previous-run"
     },
     {
       "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
       "exitCode": 1,
-      "evidence": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；因此未执行 git commit。"
+      "evidence": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；因此未执行 git commit。",
+      "evidencePaths": [
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-2/revise-world-theory-gpt-6-sol-attempt-1.log"
+      ],
+      "phase": "previous-run"
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\");const {parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\");parseStageTaskResult(JSON.parse(f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json\",\"utf8\")),\"md-world\")'",
+      "exitCode": 1,
+      "output": "E:\\CGL\\Programs\\Daoyan\\scripts\\version-stage-tasks.ts:309\r\n    throw new Error(`节点任务 ${expectedTaskId} 缺少实际检查或交付证据`);\r\n    ^\r\n\r\nError: 节点任务 md-world 缺少实际检查或交付证据\r\n    at parseStageTaskResult (E:\\CGL\\Programs\\Daoyan\\scripts\\version-stage-tasks.ts:309:11)\r\n    at [eval]:1:101\r\n    at runScriptInThisContext (node:internal/vm:219:10)\r\n    at node:internal/process/execution:451:12\r\n    at [eval]-wrapper:6:24\r\n    at runScriptInContext (node:internal/process/execution:449:60)\r\n    at evalFunction (node:internal/process/execution:283:30)\r\n    at evalTypeScript (node:internal/process/execution:295:3)\r\n    at node:internal/main/eval_string:71:3\r\n\r\nNode.js v24.18.0\r\n",
+      "evidence": [
+        "scripts/version-stage-tasks.ts",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),allowed=[\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json\"];const changed=c.execFileSync(\"git\",[\"diff\",\"--name-only\",\"HEAD\"],{encoding:\"utf8\"}).trim().split(\"\\n\").filter(Boolean);a.deepEqual(changed.sort(),[...allowed].sort());const untracked=c.execFileSync(\"git\",[\"ls-files\",\"--others\",\"--exclude-standard\"],{encoding:\"utf8\"}).trim();a.equal(untracked,\"\");const previous=c.execFileSync(\"git\",[\"show\",\"--format=\",\"--name-only\",\"69797dd\"],{encoding:\"utf8\"}).trim().split(\"\\n\");a.deepEqual(previous.sort(),[...allowed].sort());console.log(\"PASS only two contract paths changed; no untracked files; previous commit 69797dd contains both deliverables\");'",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+      ],
+      "exitCode": 1,
+      "output": "<ref *1> node:child_process:964\r\n    throw err;\r\n    ^\r\n\r\nError: spawnSync git EPERM\r\n    at Object.spawnSync (node:internal/child_process:1143:20)\r\n    at spawnSync (node:child_process:911:24)\r\n    at Object.execFileSync (node:child_process:954:15)\r\n    at [eval]:1:245\r\n    at runScriptInThisContext (node:internal/vm:219:10)\r\n    at node:internal/process/execution:451:12\r\n    at [eval]-wrapper:6:24\r\n    at runScriptInContext (node:internal/process/execution:449:60)\r\n    at evalFunction (node:internal/process/execution:283:30)\r\n    at evalTypeScript (node:internal/process/execution:295:3) {\r\n  errno: -4048,\r\n  code: 'EPERM',\r\n  syscall: 'spawnSync git',\r\n  path: 'git',\r\n  spawnargs: [ 'diff', '--name-only', 'HEAD' ],\r\n  error: [Circular *1],\r\n  status: null,\r\n  signal: null,\r\n  output: null,\r\n  pid: 0,\r\n  stdout: undefined,\r\n  stderr: undefined\r\n}\r\n\r\nNode.js v24.18.0"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json"
+      ]
     }
-  ]
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-2/report.json"
+  ],
+  "reconciliation": {
+    "previousCommit": "69797dd",
+    "previousRun": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-2",
+    "findings": [
+      "运行 report.json 的 extra 记录提交 69797dd，git show 确认只含本合同两项产物；旧任务摘要仍称未提交，属于过期状态。",
+      "parseStageTaskResult 要求 status=completed 且顶层 evidence 非空；旧记录两项均不满足，artifacts 与命令内 evidence 不能代替。",
+      "原检查仅断言 blocked，未调用实际合同解析器；本轮改用真实解析器并检验缺字段与错误状态均被拒绝。"
+    ],
+    "contentReview": "逐节复核唯一正文：六项 A/B/B/B/B/B、候选公理与术语、五类实体、H1-H3/B1-B4/E1-E2/C1-C3/L1-L2/R1、旧理论及整版设计与原型和 ADR 0017-0020 冲突均在。唯一内容修订为 Δt 与 tick 去歧义；定量价格、回收上界、材料域、复苏身份及死亡后授权仍待证明或升级。"
+  },
+  "delivery": {
+    "status": "blocked",
+    "previousCommit": "69797dd",
+    "currentRepairCommit": null,
+    "intendedCommitMessage": "docs: reconcile md-world theory and delivery evidence",
+    "blocker": "git add exits 1: cannot create .git/index.lock (Permission denied). Current sandbox grants read-only access to .git; no commit attempted after staging failure.",
+    "pushed": false
+  }
 }
