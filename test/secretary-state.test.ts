@@ -358,6 +358,29 @@ describe('persistent secretary state', () => {
     expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(false);
   });
 
+  it('reopens a thrice rejected result only after its evidence has been revalidated', () => {
+    const state = createSecretaryState('2026-09-27T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'physics-task', idea: '物理证书', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'failed';
+    item.summary =
+      '技术阻断：同一正式节点交付连续三次未被接纳：节点任务 physics 缺少实际检查或交付证据';
+    item.orchestration = {
+      ...item.orchestration!,
+      formalVersionId: 'version-1',
+      formalStage: 'module-design',
+      formalTaskId: 'physics',
+      formalStageConsumedAt: state.initializedAt,
+    };
+    state.items.push(item);
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(true);
+    expect(item.status).toBe('delivered');
+    expect(item.orchestration.formalStageConsumedAt).toBeUndefined();
+    expect(reopenVerifiedBlockedStageTaskDelivery(state, item.id, state.initializedAt)).toBe(false);
+  });
+
   it('retires stale formal-stage work when its control-plane version is archived', () => {
     const state = createSecretaryState('2026-09-21T00:00:00.000Z');
     const item = itemFromIntake(

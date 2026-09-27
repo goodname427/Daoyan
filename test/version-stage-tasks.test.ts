@@ -14,6 +14,7 @@ import {
   assertStageTaskPrestartScope,
   assertTaskWriteScope,
   parseStageTaskManifest,
+  parseStageTaskResult,
   readyStageTasks,
 } from '../scripts/version-stage-tasks';
 
@@ -29,6 +30,22 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('recovers a delivered result whose paths were recorded as artifacts', () => {
+    const result = {
+      taskId: 'physics',
+      status: 'completed',
+      summary: '有限证书已提交',
+      commands: [{ command: 'node scripts/check-docs.mjs', exitCode: 0 }],
+      artifacts: ['docs/versions/v2/physics.md'],
+    };
+    expect(parseStageTaskResult(result, 'physics').evidence).toEqual(result.artifacts);
+    expect(() => parseStageTaskResult({ ...result, evidence: [] }, 'physics')).toThrow(
+      '缺少实际检查',
+    );
+    expect(() => parseStageTaskResult({ ...result, artifacts: [] }, 'physics')).toThrow(
+      '缺少实际检查',
+    );
+  });
   it('requires one detailed-design owner per declared module', () => {
     const tasks = [task('resources'), task('market')];
     const modules = [

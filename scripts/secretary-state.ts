@@ -1184,13 +1184,17 @@ export function reopenVerifiedBlockedStageTaskDelivery(
   const item = state.items.find((candidate) => candidate.id === itemId);
   if (
     item?.status !== 'failed' ||
-    !item.summary.startsWith('技术阻断：节点任务边界被突破：') ||
+    !(
+      item.summary.startsWith('技术阻断：节点任务边界被突破：') ||
+      (item.summary.startsWith('技术阻断：同一正式节点交付连续三次未被接纳：') &&
+        item.summary.includes('缺少实际检查或交付证据'))
+    ) ||
     !item.orchestration?.formalTaskId ||
     !item.orchestration.formalStageConsumedAt
   )
     return false;
   item.status = 'delivered';
-  item.summary = '执行前提交已与本任务隔离，等待重新验收原 Feature PM 交付。';
+  item.summary = '原交付证据与提交范围已重新核实，等待重新验收 Feature PM 交付。';
   item.updatedAt = now;
   delete item.orchestration.formalStageConsumedAt;
   return true;

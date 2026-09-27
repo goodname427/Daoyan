@@ -6667,7 +6667,9 @@ async function coordinateOnce(): Promise<void> {
       .find(
         (item) =>
           item.status === 'failed' &&
-          item.summary.startsWith('技术阻断：节点任务边界被突破：') &&
+          (item.summary.startsWith('技术阻断：节点任务边界被突破：') ||
+            (item.summary.startsWith('技术阻断：同一正式节点交付连续三次未被接纳：') &&
+              item.summary.includes('缺少实际检查或交付证据'))) &&
           item.orchestration?.formalVersionId === activeFormalVersion.id &&
           item.orchestration.formalStage === activeFormalVersion.currentStage &&
           item.orchestration.formalScopeRevision === formalScopeRevision(activeFormalVersion) &&
