@@ -38,7 +38,11 @@ import {
   type TaskPlan,
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
-import { findTaskCommitEvidence, taskCommitOutOfScopePaths } from './task-commit-evidence';
+import {
+  findCommitByMessage,
+  findTaskCommitEvidence,
+  taskCommitOutOfScopePaths,
+} from './task-commit-evidence';
 import { deliverArchivedVersionBranch } from './version-git-delivery';
 import {
   externalRequestId,
@@ -5572,8 +5576,25 @@ async function consumeTaskOwnedVersionItem(
     const base = item.orchestration?.formalTaskBaseRevision;
     if (!base) throw new Error('节点收束缺少代码基线');
     const revision = currentGitRevision();
-    if (revision === base) throw new Error('Version PM 节点收束未形成独立提交');
-    const productChanges = nonDocumentationChanges(changedFilesBetween(base, revision));
+    const runPlan = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'plan.validated.json'))
+      : null;
+    const expectedMessage = isRecord(runPlan)
+      ? conventionalCommitOrFallback(
+          String(runPlan.commitMessage ?? ''),
+          String(runPlan.title ?? ''),
+        )
+      : '';
+    const finalizingCommit = findCommitByMessage({
+      root,
+      baseline: base,
+      head: revision,
+      expectedMessage,
+    });
+    if (!finalizingCommit) throw new Error('Version PM 节点收束未形成可归属的独立提交');
+    const ownChanges = changedFilesBetween(finalizingCommit.parent, finalizingCommit.commit);
+    if (ownChanges.length === 0) throw new Error('Version PM 节点收束提交没有交付文件');
+    const productChanges = nonDocumentationChanges(ownChanges);
     if (productChanges.length > 0) {
       throw new Error(`Version PM 收束不得修改产品实现：${productChanges.join('、')}`);
     }

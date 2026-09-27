@@ -3,7 +3,11 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findTaskCommitEvidence, taskCommitOutOfScopePaths } from '../scripts/task-commit-evidence';
+import {
+  findCommitByMessage,
+  findTaskCommitEvidence,
+  taskCommitOutOfScopePaths,
+} from '../scripts/task-commit-evidence';
 
 function git(root: string, ...args: string[]): string {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true });
@@ -45,6 +49,7 @@ describe('task commit evidence', () => {
         readPaths: ['docs/world.md'],
       };
       expect(findTaskCommitEvidence(input)?.commit).toBe(taskCommit);
+      expect(findCommitByMessage(input)?.commit).toBe(taskCommit);
       expect(taskCommitOutOfScopePaths(input)).toEqual([]);
       expect(
         findTaskCommitEvidence({ ...input, expectedMessage: 'docs: another task' }),
