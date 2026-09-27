@@ -27,3 +27,7 @@
 本节点只整合 [mdc-world-review 任务结果](./tasks/design-review-mdc-world-review.json)、[主策审核记录](./design-review-findings.md)及提交 2c936a8be15210fc082d98d80653dcdb9267b4f8。[运行报告](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-design-review-12/report.json)记录任务已交付；任务 JSON 记录 **3 项**退出码为 0 的直接检查，以及因 JSON 语法错误产生的 **2 次**失败尝试，随后已修正。其 delivery.committed=false 与可见提交不一致，保留此证据差异，不改写任务记录。本次 Version PM 未重跑 Feature PM 命令、代码完整门禁或新规则页面体验。
 
 结构化结论见 [design-review.json](./design-review.json)。notice guard 根据阶段报告登记证据并处理后续节点；本报告不修改 .daoyan-agent 运行状态。
+
+## 阶段登记重入记录
+
+本报告和结构化结论已在文档提交 `235bbee` 中形成；该提交只含本节点的两份审核结论和当日开发日志。其后两次 Version PM 收束均未使正式版本登记本节点：[第 13 次运行](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-design-review-13/report.json)的提交差异包含相邻的 `scripts/secretary-notice-guard.ts` 控制面改动，被接纳检查按收束越界拒绝；[第 14 次运行](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-design-review-14/report.json)没有新的文件改动，因此未形成该次收束所需的独立提交。两次运行均不改变 `changes-requested` 的纸面审核结论，也不构成制作人批准或游戏开发许可。阶段是否登记仍以 notice guard 对本次可审计交付的接纳结果为准。
