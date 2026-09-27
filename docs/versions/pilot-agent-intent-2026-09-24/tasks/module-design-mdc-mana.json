@@ -1,0 +1,73 @@
+{
+  "taskId": "mdc-mana",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "核对上轮未接纳原因：3d4ce0a 将本轮证据写入旧 module-design-md-mana.json，正式 mdc-mana 结果文件缺失。复用其共同报价、有限来源及九笔流水，校正 U 不是 M 的第二份存量、封闭授权域内重复创建回收的不增余额证明，以及信标 B1 接触、B3 补源、B2 读取、B4 修复的理论标签与双 ID；补齐本轮任务证据。可执行的新物理兑换系数、材料价和开放环境回收上界仍待证明，未知域拒绝；仅完成策划，不批准实现或 ADR 覆盖。本地提交尝试受 .git/index.lock 权限阻断，未生成新提交。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md\",s=f.readFileSync(q,\"utf8\");for(const x of [\"mdc-mana\",\"Quote(x)\",\"pFloor_D>0\",\"pAttempt\",\"静态上界\",\"Quote=unknown\",\"grantId\",\"U_j\",\"m=n+fee+loss\",\"B_after≤B_before\",\"S1-a\",\"I1-b\",\"Z1-a\",\"L1\",\"L2\",\"F1\",\"T.actionId ↔ A.resourceTransactionId\",\"pricing.ts\",\"vm.ts\",\"ADR 0019\",\"玩家界面显示\"])a.ok(s.includes(x),x);for(const [id,word] of [[\"B1\",\"自然接触\"],[\"B3\",\"预授权来源转入\"],[\"B2\",\"获准读取\"],[\"B4\",\"域内修复\"]])a.ok(s.includes(\"`\"+id+\"` \"+word),id);a.ok(!s.includes(\"Σ(M+U) 守恒式\"));let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const link=m[1].split(\"#\")[0];if(link&&!link.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),link)),link);n++}}console.log(\"PASS mana contract clauses and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mana contract clauses and 13 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),r=JSON.parse(f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json\",\"utf8\"));a.equal(r.taskId,\"mdc-mana\");a.equal(r.status,\"completed\");a.ok(r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>x.exitCode!==0));for(const x of r.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdc-mana task result and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdc-mana task result and evidence",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+      "exitCode": 1,
+      "output": "Code style issues found in mana-ledger-design.md",
+      "resolution": "将本轮最后一处正文修订用 Prettier 格式化后重跑同一检查。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+      "exitCode": 1,
+      "output": "Code style issues found in module-design-mdc-mana.json",
+      "resolution": "将新增任务记录用 Prettier 格式化后重跑同一检查。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前工作区的 .git 元数据只读；保留两个合同文件，待具有 .git 写权限的宿主完成本地提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-28/report.json"
+  ]
+}
