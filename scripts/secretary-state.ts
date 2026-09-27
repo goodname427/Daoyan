@@ -1070,6 +1070,7 @@ export function supersedeEmptyFormalBootstrapFailures(
   stage: string,
   now: string,
   eligibleItemIds: ReadonlySet<string>,
+  reason = '启动前因未提交的文档退出，未产生恢复快照；现场已清理，原尝试留档并重新派发。',
 ): boolean {
   let changed = false;
   for (const item of state.items) {
@@ -1083,7 +1084,7 @@ export function supersedeEmptyFormalBootstrapFailures(
       continue;
     }
     item.status = 'superseded';
-    item.summary = '启动前因未提交的文档退出，未产生恢复快照；现场已清理，原尝试留档并重新派发。';
+    item.summary = reason;
     item.completedAt ||= now;
     item.updatedAt = now;
     item.retryAt = '';

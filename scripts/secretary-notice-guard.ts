@@ -3817,6 +3817,23 @@ export function isBootstrapGraceActive(
   return Number.isFinite(started) && now >= started && now - started <= Math.max(0, graceMs);
 }
 
+export function isRetryablePlannerNetworkFailure(
+  progress: Record<string, unknown> | null,
+  files: string[],
+  log: string,
+): boolean {
+  return Boolean(
+    progress?.phase === '深度规划' &&
+    progress.status === 'finished' &&
+    progress.code === 1 &&
+    progress.workerPid === 0 &&
+    progress.workerProcessIdentity === '' &&
+    files.length > 0 &&
+    files.every((file) => ['planner.log', 'progress.json', 'public-events.jsonl'].includes(file)) &&
+    /ERROR: workspace routing discovery failed/.test(log),
+  );
+}
+
 function scheduleRetry(): void {
   if (retryTimer) clearTimeout(retryTimer);
   retryTimer = null;
@@ -5600,6 +5617,7 @@ async function coordinateOnce(): Promise<void> {
     windowsHide: true,
   });
   const emptyBootstrapFailures = new Set<string>();
+  const networkPlannerFailures = new Set<string>();
   if (activeFormalVersion && cleanWorktree.status === 0 && !cleanWorktree.stdout.trim()) {
     for (const item of state.items) {
       if (
@@ -5614,7 +5632,33 @@ async function coordinateOnce(): Promise<void> {
         continue;
       }
       const runFiles = await readdir(item.runDirectory).catch(() => null);
-      if (!runFiles || runFiles.length > 0 || (await activeWorkerProcess(item, true))) continue;
+      if (!runFiles || (await activeWorkerProcess(item, true))) continue;
+      if (
+        item.orchestration.formalStageStep === 'task' &&
+        item.orchestration.formalTaskId &&
+        stageTasksForCurrentNode(activeFormalVersion).some(
+          (task) => task.id === item.orchestration?.formalTaskId && task.status === 'pending',
+        ) &&
+        !state.items.some(
+          (prior) =>
+            prior.id !== item.id &&
+            prior.orchestration?.formalVersionId === activeFormalVersion.id &&
+            prior.orchestration.formalStage === activeFormalVersion.currentStage &&
+            prior.orchestration.formalTaskId === item.orchestration?.formalTaskId &&
+            prior.status === 'superseded' &&
+            prior.summary.includes('模型连接失败'),
+        )
+      ) {
+        const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
+        const plannerLog = await readFile(resolve(item.runDirectory, 'planner.log'), 'utf8').catch(
+          () => '',
+        );
+        if (isRetryablePlannerNetworkFailure(progress, runFiles, plannerLog)) {
+          networkPlannerFailures.add(item.id);
+          continue;
+        }
+      }
+      if (runFiles.length > 0) continue;
       const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
         () => '',
       );
@@ -5628,6 +5672,16 @@ async function coordinateOnce(): Promise<void> {
         activeFormalVersion.currentStage,
         new Date().toISOString(),
         emptyBootstrapFailures,
+      )
+    : false;
+  const retiredNetworkPlanner = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        networkPlannerFailures,
+        '模型连接失败且未创建恢复快照；保留失败日志并重新派发一次。',
       )
     : false;
   const stoppedCollapsedItems = new Set(
@@ -6055,6 +6109,7 @@ async function coordinateOnce(): Promise<void> {
   const stateChanged =
     supersededObsolete > 0 ||
     retiredEmptyBootstrap ||
+    retiredNetworkPlanner ||
     migratedCollapsedDevelopment ||
     migratedRedundantDevelopment ||
     migratedBootstrapFailure ||

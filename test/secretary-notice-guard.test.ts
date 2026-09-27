@@ -24,6 +24,7 @@ import {
   versionStageScheduleMessage,
   qaEnvironmentBlockerReason,
   isBootstrapGraceActive,
+  isRetryablePlannerNetworkFailure,
   localQuestionResponse,
   ensureVersionStageItem,
   formalVersionBlocksDispatch,
@@ -78,6 +79,25 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('secretary worker process launch', () => {
+  it('retries only a network-failed planner that never reached a PM snapshot', () => {
+    const progress = {
+      phase: '深度规划',
+      status: 'finished',
+      code: 1,
+      workerPid: 0,
+      workerProcessIdentity: '',
+    };
+    const files = ['planner.log', 'progress.json', 'public-events.jsonl'];
+    const log = 'ERROR: workspace routing discovery failed';
+    expect(isRetryablePlannerNetworkFailure(progress, files, log)).toBe(true);
+    expect(isRetryablePlannerNetworkFailure(progress, [...files, 'recovery.json'], log)).toBe(
+      false,
+    );
+    expect(isRetryablePlannerNetworkFailure({ ...progress, workerPid: 123 }, files, log)).toBe(
+      false,
+    );
+    expect(isRetryablePlannerNetworkFailure(progress, files, 'ERROR: task failed')).toBe(false);
+  });
   it('distinguishes a QA host blocker from a product bug and explains stage retries', () => {
     const blocked = {
       status: 'blocked',
