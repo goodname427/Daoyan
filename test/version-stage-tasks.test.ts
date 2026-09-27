@@ -188,6 +188,12 @@ describe('stage-owned task contracts', () => {
     expect(() => assertStageTaskPaths(qa, 'docs/versions/v2')).not.toThrow();
     qa.writePaths = ['docs/versions/v2/qa-tasks.json'];
     expect(() => assertStageTaskPaths(qa, 'docs/versions/v2')).toThrow('共享文档');
+    const designAcceptance = {
+      ...qa,
+      stage: 'design-acceptance' as const,
+      writePaths: ['src/game'],
+    };
+    expect(() => assertStageTaskPaths(designAcceptance, 'docs/versions/v2')).toThrow('证据目录');
   });
 
   it('dispatches planning, one PM per deliverable, then stage finalization', () => {

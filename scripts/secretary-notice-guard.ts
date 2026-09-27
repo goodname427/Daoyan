@@ -1848,6 +1848,7 @@ const FORMAL_STAGE_NAMES: Record<string, string> = {
   'task-breakdown': '任务拆分',
   'version-planning': '版本排期',
   development: '开发执行',
+  'design-acceptance': '策划体验验收',
   qa: '版本测试',
   bugfix: '缺陷修复',
   candidate: '候选构建',
@@ -2214,6 +2215,8 @@ const STAGE_DELIVERABLES: Partial<Record<VersionStage, string>> = {
   'task-breakdown': '把已批准的产品原则和范围拆成可验证、带依赖和验收标准的工作项。',
   'version-planning': '按依赖和风险排序工作项，控制版本工作量并冻结可执行范围。',
   development: '完成当前版本全部开发工作、定向自测、文档、完整门禁、审查和 Git 交付。',
+  'design-acceptance':
+    '由未参与实现的主策或策划实际操作游戏，按批准的模块方案逐项核对玩家流程、边界与相邻情形；记录偏差并退回开发。',
   qa: '作为独立测试角色执行版本验收、集成和主线回归，不代替 Feature Agent 修代码。',
   bugfix: '修复版本测试登记的全部未关闭缺陷，并完成独立复验和必要回归。',
   candidate: '形成可供制作人体验的候选构建、版本说明、测试结论和遗留风险。',
@@ -2276,6 +2279,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
       ? 'reverification'
       : 'primary';
   const taskManifest = `${version.documentRoot}/task-breakdown.json`.replace(/\\/g, '/');
+  const latestExperienceDecision = version.approvals
+    .filter((approval) => approval.stage === 'design-acceptance')
+    .at(-1)?.decision;
   const stageManifest = `${version.documentRoot}/${
     stage === 'bugfix' && bugfixStep === 'reverification' ? 'bugfix-reverification' : stage
   }.json`.replace(/\\/g, '/');
@@ -2289,18 +2295,21 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
           : stage === 'task-breakdown'
             ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；在任务拆分报告中逐项说明工作如何兑现系统原则和相邻情形，不能只列制作人举过的例子。同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
             : stage === 'development'
-              ? `同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
-              : stage === 'qa'
-                ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
-                : stage === 'bugfix' && bugfixStep === 'primary'
-                  ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
-                  : stage === 'bugfix' && bugfixStep === 'reverification'
-                    ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
-                    : stage === 'candidate'
-                      ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
-                      : '';
+              ? `${latestExperienceDecision === 'changes-requested' ? `这是策划体验退回后的开发修正轮次，先读 ${version.documentRoot}/design-acceptance.json 与报告中的失败场景，按可复现偏差定界修复；不得改写已批准策划以迁就现有实现，修正后仍须重新黑盒验收。` : ''}同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
+              : stage === 'design-acceptance'
+                ? `你是独立策划验收者，不读实现代码来推断是否正确，也不修改策划、产品实现或游戏测试。先从已批准的详细策划提取每项玩家可见承诺，启动当前开发构建并亲自完成从入口到结果的操作；覆盖每项实际开发工作、成功与失败/边界流程，以及至少一个制作人没有列出的相邻情形。记录入口、可复现步骤、策划预期、游戏实际表现和截图、录屏或可核查的运行证据。不能只引用单元测试、E2E 断言、开发自述或页面 HTTP 200。将结论写入 ${stageManifest}：{"decision":"approved|changes-requested","summary":"通俗结论","codeRevision":"开发提交修订","scenarios":[{"id":"稳定场景 ID","workItemId":"开发任务 ID","designPath":"已批准策划路径","kind":"main|boundary|adjacent","entry":"游戏入口","steps":["实际操作"],"expected":"策划预期","actual":"实际观察","result":"passed|failed","evidence":["可核查的体验证据路径"]}]}。不一致时列出具体偏差并 decision=changes-requested，退回开发；策划本身含未批准方向或无法判定时须升级主策/制作人，不得替策划改规则来使实现过关。任务成功不等于策划验收通过。`
+                : stage === 'qa'
+                  ? `同时写入 ${stageManifest}，格式为 {"status":"passed|failed|blocked","suites":["acceptance","integration","regression"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"],"bugs":[{"id":"稳定缺陷 id","title":"标题","severity":"blocker|high|medium|low","expected":"预期","actual":"实际","evidence":"证据","linkedWorkItemId":"相关工作项 id"}],"blocker":"环境阻断原因（仅 blocked 时）"}。发现产品缺陷时 status=failed 且完整登记 bugs；若测试/浏览器/构建因执行环境而未运行且无产品缺陷，status=blocked、bugs=[]、blocker 写明原因并保留失败命令，不得伪造产品 Bug 或宣称通过。只运行和记录测试，不修改产品实现。`
+                  : stage === 'bugfix' && bugfixStep === 'primary'
+                    ? `同时写入 ${stageManifest}，格式为 {"fixes":[{"bugId":"缺陷 id","evidence":["修复与定向测试证据"]}]}。必须逐项覆盖本轮所有待修缺陷，不得把未修缺陷送入复验。`
+                    : stage === 'bugfix' && bugfixStep === 'reverification'
+                      ? `本轮只做独立缺陷复验，不修改产品代码；同时写入 ${stageManifest}，格式为 {"status":"passed|failed","bugIds":["逐项复验的缺陷 id"],"suites":["acceptance","integration","regression","defect-reverification"],"commands":[{"command":"实际命令","exitCode":0}],"evidence":["公开证据"]}。`
+                      : stage === 'candidate'
+                        ? `同时写入 ${stageManifest}。若当前宿主无法构建或操作候选页面，写 {"schemaVersion":1,"status":"blocked","blocker":"具体环境错误","evidence":["公开日志路径"]} 并结束本轮；不要反复审查或修改文档试图消除环境错误。通过时必须使用 npx tsx scripts/verify-candidate.ts ${version.id} 生成 status=passed 的真实构建及浏览器证据；不得手工宣称通过。`
+                        : '';
   const formalWorkItems =
-    stage === 'development' && dispatchableFormalWorkItems(version)
+    (stage === 'development' || stage === 'design-acceptance') &&
+    dispatchableFormalWorkItems(version)
       ? `<formal-work-items>${JSON.stringify(version.workItems)}</formal-work-items>`
       : '';
   return [
@@ -2356,7 +2365,13 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
     priorModuleTasks.length > 0
       ? `\n这是主策退回后的新轮次。上一轮任务 ${priorModuleTasks.join('、')} 已作为历史证据，不能原样重派或把旧清单视为本轮交付。先读最新 ${version.documentRoot}/design-review.md 与 design-review-findings.md，按尚未闭合的具体合同只建立必要的新任务；本轮任务 ID 必须与历史 ID 不同。必须同时更新 ${manifest} 和 ${version.documentRoot}/${label}-tasks.md，明确每项相对上轮新增的设计判断、反例和验收。已闭合模块只作只读前驱，不为凑数重做。主策所说的新规则实际可玩证据属于后续开发和候选验收，此节点只规划纸面设计与可执行验收。最新主策结论：${version.nodes.find((node) => node.id === 'design-review')?.summary ?? '见最新主策审核文档'}。`
       : '';
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${designPlan}${reentryGuidance}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  const acceptanceReentry =
+    stage === 'development' &&
+    version.approvals.filter((approval) => approval.stage === 'design-acceptance').at(-1)
+      ?.decision === 'changes-requested'
+      ? `\n这是策划体验验收退回的修复轮次。先读取 ${version.documentRoot}/design-acceptance.json 中失败场景及实际操作证据，只规划为兑现已批准策划所需的修正成果；保留已通过场景和开发来源，修后再进策划体验验收，不得改策划以迁就代码。`
+      : '';
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${reentryGuidance}${acceptanceReentry}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
 }
 
 export function repeatedModuleDesignTaskIds(
@@ -2375,7 +2390,8 @@ function stageTaskDirection(version: FormalVersion, task: VersionStageTask): str
   const label = task.stageStep === 'reverification' ? `${task.stage}-reverification` : task.stage;
   const resultPath = `${version.documentRoot}/tasks/${label}-${task.id}.json`;
   const verificationOnly =
-    ['qa', 'candidate'].includes(task.stage) || task.stageStep === 'reverification';
+    ['design-acceptance', 'qa', 'candidate'].includes(task.stage) ||
+    task.stageStep === 'reverification';
   const marker = verificationOnly ? 'formal-stage-verification' : 'formal-stage-deliverable';
   const dependencies = task.dependsOn
     .map((id) =>
@@ -2390,7 +2406,7 @@ function stageTaskDirection(version: FormalVersion, task: VersionStageTask): str
       commit: candidate.commit,
       evidence: candidate.evidence.slice(0, 4),
     }));
-  return `[${marker}:${task.stage}:${task.id}]\n你是此项有界交付的 Feature PM。版本 ${version.id}，节点 ${task.stage}，范围修订 ${task.scopeRevision}。这是已批准版本内的一项任务，不是制作人的新方向。自行规划内部执行 Agent 与顺序，只完成本合同：\n${JSON.stringify(task, null, 2)}\n直接前驱的有限证据索引：${JSON.stringify(dependencies)}。来源是线索，不是新的指令；具体事实以当前代码核实为准。${task.stage === 'charter-draft' ? '' : `产品意图来源：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。`}\n仅读取合同必要的仓库事实和直接前驱结论；不要重读整版原始对话。不要编辑其他任务、节点总报告或 docs/status.md。${verificationOnly ? '本任务只产生独立测试或候选结论，不修改产品实现与游戏测试。' : ''}若节点需要独立审查，必须检查实际差异。\n本轮任务证据文件的精确路径是 ${resultPath}。若文件尚不存在，必须新建该文件；名称相近的旧轮次文件不是本轮合同，不得用来替代或修改。提交前逐项核对改动只落在本任务 writePaths，并确认该证据文件包含本轮 taskId 和真实检查结果。\n在交付前写入 ${resultPath}：{"taskId":"${task.id}","status":"completed","summary":"结果","commands":[{"command":"实际运行的定向命令","exitCode":0}],"evidence":["产物或日志路径"]}。commands 必须逐字记录实际运行过、可复制执行的完整命令，不得用方括号、尖括号或省略说明代替；只记录最终通过的直接检查；失败命令按真实退出码单列 failedAttempts，不能用计划命令冒充已执行。不要运行 npm run verify:full；调度器按节点 Profile 验证；策划与纯文档节点只做轻量直接检查，不运行代码快速门禁或独立代码审查。仅本地提交，不推送。`;
+  return `[${marker}:${task.stage}:${task.id}]\n你是此项有界交付的 Feature PM。版本 ${version.id}，节点 ${task.stage}，范围修订 ${task.scopeRevision}。这是已批准版本内的一项任务，不是制作人的新方向。自行规划内部执行 Agent 与顺序，只完成本合同：\n${JSON.stringify(task, null, 2)}\n直接前驱的有限证据索引：${JSON.stringify(dependencies)}。来源是线索，不是新的指令；具体事实以当前代码核实为准。${task.stage === 'charter-draft' ? '' : `产品意图来源：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。`}\n仅读取合同必要的仓库事实和直接前驱结论；不要重读整版原始对话。不要编辑其他任务、节点总报告或 docs/status.md。${verificationOnly ? '本任务只产生独立体验、测试或候选结论，不修改产品实现、策划规则与游戏测试。' : ''}${task.stage === 'design-acceptance' ? '你代表策划实际操作游戏；先看已批准玩法文档，再黑盒体验，不读实现源码或沿用开发自测结论。' : ''}若节点需要独立审查，必须检查实际差异。\n本轮任务证据文件的精确路径是 ${resultPath}。若文件尚不存在，必须新建该文件；名称相近的旧轮次文件不是本轮合同，不得用来替代或修改。提交前逐项核对改动只落在本任务 writePaths，并确认该证据文件包含本轮 taskId 和真实检查结果。\n在交付前写入 ${resultPath}：{"taskId":"${task.id}","status":"completed","summary":"结果","commands":[{"command":"实际运行的定向命令","exitCode":0}],"evidence":["产物或日志路径"]}。commands 必须逐字记录实际运行过、可复制执行的完整命令，不得用方括号、尖括号或省略说明代替；只记录最终通过的直接检查；失败命令按真实退出码单列 failedAttempts，不能用计划命令冒充已执行。不要运行 npm run verify:full；调度器按节点 Profile 验证；策划与纯文档节点只做轻量直接检查，不运行代码快速门禁或独立代码审查。仅本地提交，不推送。`;
 }
 
 function stageFinalizingDirection(version: FormalVersion): string {
@@ -4494,6 +4510,104 @@ export function parseDesignReviewResult(value: unknown): {
   };
 }
 
+export function parseDesignAcceptanceResult(
+  value: unknown,
+  workItems: VersionWorkItem[],
+  codeRevision: string,
+): {
+  decision: 'approved' | 'changes-requested';
+  summary: string;
+  scenarios: Array<{
+    id: string;
+    workItemId: string;
+    designPath: string;
+    kind: 'main' | 'boundary' | 'adjacent';
+    entry: string;
+    steps: string[];
+    expected: string;
+    actual: string;
+    result: 'passed' | 'failed';
+    evidence: string[];
+  }>;
+} {
+  if (
+    !isRecord(value) ||
+    !['approved', 'changes-requested'].includes(String(value.decision)) ||
+    typeof value.summary !== 'string' ||
+    !value.summary.trim() ||
+    value.codeRevision !== codeRevision ||
+    !Array.isArray(value.scenarios) ||
+    value.scenarios.length === 0
+  )
+    throw new Error('策划体验验收缺少结论、开发修订或真实场景');
+  const workIds = new Set(
+    workItems
+      .filter((item) => item.status === 'completed' && !documentationOnlyWorkItem(item))
+      .map((item) => item.id),
+  );
+  const ids = new Set<string>();
+  const scenarios = value.scenarios.map((entry) => {
+    if (
+      !isRecord(entry) ||
+      typeof entry.id !== 'string' ||
+      !entry.id.trim() ||
+      ids.has(entry.id) ||
+      typeof entry.workItemId !== 'string' ||
+      !workIds.has(entry.workItemId) ||
+      typeof entry.designPath !== 'string' ||
+      !entry.designPath.startsWith('docs/') ||
+      !['main', 'boundary', 'adjacent'].includes(String(entry.kind)) ||
+      typeof entry.entry !== 'string' ||
+      !entry.entry.trim() ||
+      !Array.isArray(entry.steps) ||
+      entry.steps.length === 0 ||
+      entry.steps.some((step) => typeof step !== 'string' || !step.trim()) ||
+      typeof entry.expected !== 'string' ||
+      !entry.expected.trim() ||
+      typeof entry.actual !== 'string' ||
+      !entry.actual.trim() ||
+      !['passed', 'failed'].includes(String(entry.result)) ||
+      !Array.isArray(entry.evidence) ||
+      entry.evidence.length === 0 ||
+      entry.evidence.some((path) => typeof path !== 'string' || !path.trim()) ||
+      !entry.evidence.some(
+        (path) => typeof path === 'string' && /\.(?:png|jpe?g|webp|webm|mp4|zip)$/i.test(path),
+      )
+    )
+      throw new Error('策划体验场景缺少已批准来源、实际操作或可核查证据');
+    ids.add(entry.id);
+    return entry as unknown as {
+      id: string;
+      workItemId: string;
+      designPath: string;
+      kind: 'main' | 'boundary' | 'adjacent';
+      entry: string;
+      steps: string[];
+      expected: string;
+      actual: string;
+      result: 'passed' | 'failed';
+      evidence: string[];
+    };
+  });
+  if (
+    [...workIds].some(
+      (id) =>
+        !scenarios.some((entry) => entry.workItemId === id && entry.kind === 'main') ||
+        !scenarios.some((entry) => entry.workItemId === id && entry.kind === 'boundary'),
+    ) ||
+    !scenarios.some((entry) => entry.kind === 'adjacent') ||
+    (value.decision === 'approved' && scenarios.some((entry) => entry.result !== 'passed')) ||
+    (value.decision === 'changes-requested' &&
+      !scenarios.some((entry) => entry.result === 'failed'))
+  )
+    throw new Error('策划体验结论未覆盖开发工作项、相邻情形或与实测结果矛盾');
+  return {
+    decision: value.decision as 'approved' | 'changes-requested',
+    summary: value.summary.trim(),
+    scenarios,
+  };
+}
+
 export function parseDevelopmentResult(
   value: unknown,
   workItems: VersionWorkItem[],
@@ -5001,7 +5115,7 @@ function reportExecutionRound(report: Record<string, unknown>): number {
 
 function assertVerificationDidNotChangeImplementation(
   report: Record<string, unknown>,
-  stage: 'qa' | 'bugfix-reverification' | 'candidate',
+  stage: 'design-acceptance' | 'qa' | 'bugfix-reverification' | 'candidate',
   testedRevision?: string,
   currentRevision?: string,
 ): void {
@@ -5032,6 +5146,7 @@ export function applyAutomaticStagePolicy(version: FormalVersion, stage: Version
     'module-design': '该版本只有文档交付，版本策划已覆盖所需规则，无需另写模块详细策划。',
     'design-review': '没有独立模块策划产物，无需增加主策复审轮次。',
     'version-planning': '只有一个文档交付工作项，无需单独排期。',
+    'design-acceptance': '只有文档交付，没有新增可玩流程，策划体验验收无需执行。',
     qa: '没有运行时代码或玩家流程变化，无需执行版本运行时测试。',
     candidate: '没有新增可执行构建，现有文档即为制作人可评审产物。',
   };
@@ -5152,6 +5267,56 @@ async function finalizeDeliveredVersionStage(
       ? `${productIntentReviewSummary(alignment)} 对齐记录：${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}。交付证据：${evidence}。`
       : `该阶段已由秘书调度完成；交付证据：${evidence}。`,
   });
+
+  if (stage === 'design-acceptance') {
+    const testedRevision = version.orchestration?.codeRevision;
+    if (!testedRevision) throw new Error('策划体验验收缺少已完成的开发修订');
+    assertVerificationDidNotChangeImplementation(
+      report,
+      'design-acceptance',
+      testedRevision,
+      revision,
+    );
+    const manifestPath = `${version.documentRoot}/design-acceptance.json`.replace(/\\/g, '/');
+    if (
+      !evidenceAfterStageStart(stageStartedAt, (await stat(resolve(root, manifestPath))).mtimeMs)
+    ) {
+      throw new Error('策划体验验收记录早于本轮节点启动');
+    }
+    const result = parseDesignAcceptanceResult(
+      await readJson(resolve(root, manifestPath)),
+      version.workItems,
+      testedRevision,
+    );
+    for (const scenario of result.scenarios) {
+      for (const path of [scenario.designPath, ...scenario.evidence]) {
+        const absolute = resolve(root, path);
+        if (isAbsolute(path) || relative(root, absolute).startsWith('..') || !existsSync(absolute))
+          throw new Error(`策划体验场景 ${scenario.id} 的证据不存在或越界：${path}`);
+      }
+    }
+    setNodeEvidence(version, stage, {
+      artifact,
+      summary: `${result.summary}；${result.scenarios.length} 个实际体验场景；证据：${manifestPath}。`,
+    });
+    recordApproval(version, {
+      stage,
+      reviewer: 'lead-designer',
+      decision: result.decision,
+      documentRevision: version.charterRevision,
+      comment: `${result.summary}；证据：${manifestPath}、${evidence}`,
+    });
+    if (result.decision === 'changes-requested') {
+      await writeFormalVersion(root, version);
+      item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+      await emitNotice(
+        'version-design-acceptance-changes-requested',
+        `策划体验验收发现“${version.title}”与已批准策划不一致：${result.summary} 秘书将按偏差退回开发修正。`,
+        item,
+      );
+      return true;
+    }
+  }
 
   if (stage === 'design-review') {
     const manifestPath = `${version.documentRoot}/design-review.json`.replace(/\\/g, '/');
