@@ -1,0 +1,74 @@
+{
+  "taskId": "mdp-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "dependsOn": ["mdp-theory"],
+  "summary": "承接 mdp-theory 与 mdp-program，补齐 H/B/普通行动在推演台编辑预算单步、同书演武绑定观察、返回源位置修订的条件式纸面验收；固定同初态、程序 hash、授权、事件先史、模拟时刻/序号和种子，覆盖成功、欠费、空结果、越权、接触未裁定及域外拒绝。定义暂停/恢复保持、新按下、释放与事件排队边沿，统一鼠标、键盘、手柄、AI、实体事件及敌方修士的请求、报价/实扣、字段裁剪和余态规则；补齐已付不回滚、unknownPrice、身份 unknown、死亡关闭、容量不足、旧 DSL/蓝图/绑定/预设/存档隔离的可见反馈与定位。仅承诺前驱证书内纸面结果，不声称实际可玩，不改游戏测试。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",s=fs.readFileSync(b+\"player-bridge-design.md\",\"utf8\"),c=JSON.parse(fs.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdp-bridge\"),p=JSON.parse(fs.readFileSync(b+\"tasks/module-design-mdp-theory.json\",\"utf8\"));a.deepEqual(c.writePaths,[b+\"player-bridge-design.md\"]);a.deepEqual(c.dependsOn,[\"mdp-theory\"]);a.equal(p.status,\"completed\");for(const k of [\"mdp-bridge 双场景验收基准与条件域\",\"H 成功\",\"H 欠费\",\"H 空结果\",\"H 越权/隐藏目标\",\"H 接触未裁定\",\"H 域外拒绝\",\"B 成功\",\"B 欠费\",\"B 空结果\",\"B 越权\",\"B 接触未裁定\",\"B 域外拒绝\",\"普通行动成功\",\"普通行动欠费\",\"普通行动空结果\",\"普通行动越权\",\"普通行动接触未裁定\",\"普通行动域外拒绝\",\"暂停/恢复合同\",\"held\",\"inputSequence\",\"capacityFull\",\"unknownPrice\",\"identityRelation=unknown\",\"postDeathGrantUnavailable\",\"旧 DSL、蓝图、绑定、预设和存档\",\"不改游戏测试\",\"不是实际可玩\"])a.ok(s.includes(k),k);for(const k of [\"9 M/10 tick/S=8\",\"12 M/6 tick/S=4\",\"19 M/6 tick/S=4\",\"20 M/13 tick/S=8\",\"8 M/7 tick/S=5\",\"sourceSpan\",\"worldSequence\",\"随机种子\",\"已提交\"] )a.ok(s.includes(k),k);console.log(\"PASS mdp-bridge scenario, edge, feedback and paper-boundary coverage\")'",
+      "exitCode": 0,
+      "output": "PASS mdp-bridge scenario, edge, feedback and paper-boundary coverage",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw ('outside contract before evidence: '+($actual -join ', '))}; Write-Output 'PASS design diff is limited to contract writePath; evidence output not yet created'",
+      "exitCode": 0,
+      "output": "PASS design diff is limited to contract writePath; evidence output not yet created",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json"
+      ]
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),a=require(\"node:assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json\",j=JSON.parse(fs.readFileSync(p,\"utf8\"));a.equal(j.taskId,\"mdp-bridge\");a.equal(j.status,\"completed\");a.ok(j.commands.length>=3);for(const c of j.commands){a.equal(c.exitCode,0);a.ok(c.command.length>0)}for(const x of j.evidence)a.ok(fs.existsSync(x),x);console.log(\"PASS mdp-bridge evidence JSON, command exit codes and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdp-bridge evidence JSON, command exit codes and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw ('outside contract: '+($actual -join ', '))}; Write-Output 'PASS only player bridge design and mdp-bridge task evidence are changed'",
+      "exitCode": 0,
+      "output": "PASS only player bridge design and mdp-bridge task evidence are changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json"
+      ]
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json"
+  ]
+}
