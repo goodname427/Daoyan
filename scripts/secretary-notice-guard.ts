@@ -142,6 +142,7 @@ import {
   type VersionTodo,
 } from './version-lifecycle';
 import { parseInvocationTokens, versionStageUsage } from './version-usage';
+import { writeVersionRetrospective } from './version-retrospective';
 import {
   assertModuleDesignTaskPlan,
   assertStageTaskPaths,
@@ -7142,8 +7143,36 @@ async function synchronizeArchivedVersion(): Promise<void> {
   if (JSON.stringify(version) !== before) await writeFormalVersion(root, version);
   closeArchivedVersionItems(state, version.id, new Date().toISOString());
   const messageId = `version-archived-${version.id}`;
-  if (state.messages.some((message) => message.id === messageId)) return;
   if (version.workflowRevision === 2 && process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
+  let retrospective = '';
+  const retrospectiveBlockedId = `version-retrospective-blocked-${version.id}`;
+  const retrospectiveReadyId = `version-retrospective-ready-${version.id}`;
+  try {
+    retrospective = await writeVersionRetrospective(root, version, state.items);
+    if (
+      state.messages.some((message) => message.id === retrospectiveBlockedId) &&
+      !state.messages.some((message) => message.id === retrospectiveReadyId)
+    ) {
+      state.messages.push({
+        id: retrospectiveReadyId,
+        role: 'secretary',
+        content: `版本“${version.title}”的流程复盘已恢复生成：${retrospective}。`,
+        intent: 'reply',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    if (!state.messages.some((message) => message.id === retrospectiveBlockedId)) {
+      state.messages.push({
+        id: retrospectiveBlockedId,
+        role: 'secretary',
+        content: `版本“${version.title}”的流程复盘生成受阻：${error instanceof Error ? error.message : String(error)}。主 Agent 将核查，版本交付继续。`,
+        intent: 'reply',
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+  if (state.messages.some((message) => message.id === messageId)) return;
   let deliveredRevision = '';
   if (version.workflowRevision === 2 && process.env.DAOYAN_SECRETARY_NO_DISPATCH !== '1') {
     try {
@@ -7175,8 +7204,8 @@ async function synchronizeArchivedVersion(): Promise<void> {
     id: messageId,
     role: 'secretary',
     content: deliveredRevision
-      ? `版本“${version.title}”已归档并合回主干，提交 ${deliveredRevision.slice(0, 7)} 已推送。`
-      : `版本“${version.title}”归档已完成，当前没有归档 Agent 在运行。`,
+      ? `版本“${version.title}”已归档并合回主干，提交 ${deliveredRevision.slice(0, 7)} 已推送。${retrospective ? `流程复盘：${retrospective}。` : '流程复盘待主 Agent 修复。'}`
+      : `版本“${version.title}”归档已完成，当前没有归档 Agent 在运行。${retrospective ? `流程复盘：${retrospective}。` : '流程复盘待主 Agent 修复。'}`,
     intent: 'reply',
     createdAt: new Date().toISOString(),
   });
