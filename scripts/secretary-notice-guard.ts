@@ -639,8 +639,23 @@ async function processNoticeOutbox(): Promise<void> {
   await channelHub?.retryInactive();
   await writeChannelStatus();
   await queueNoticeDelivery(async () => {
-    const names = (await readdir(noticeOutboxRoot)).filter((name) => name.endsWith('.json')).sort();
-    for (const name of names) await deliverNotice(resolve(noticeOutboxRoot, name));
+    const entries = await Promise.all(
+      (await readdir(noticeOutboxRoot))
+        .filter((name) => name.endsWith('.json'))
+        .map(async (name) => {
+          const raw = await readJson(resolve(noticeOutboxRoot, name));
+          const notice = isRecord(raw?.notice) ? raw.notice : null;
+          return {
+            name,
+            createdAt: typeof notice?.createdAt === 'string' ? notice.createdAt : '',
+          };
+        }),
+    );
+    entries.sort(
+      (left, right) =>
+        left.createdAt.localeCompare(right.createdAt) || left.name.localeCompare(right.name),
+    );
+    for (const entry of entries) await deliverNotice(resolve(noticeOutboxRoot, entry.name));
   });
 }
 
