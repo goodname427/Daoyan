@@ -2,7 +2,7 @@
 
 - 状态：持续开发
 - 当前版本：0.2.0
-- 最后更新：2026-09-26
+- 最后更新：2026-09-27
 - 主分支：`master`
 
 ## 已具备
@@ -32,7 +32,7 @@
 
 ## 当前迭代
 
-- 正式试运行版本 `pilot-agent-intent-2026-09-24` 的策划修订 `2`、范围修订 `13` 已获立项评审批准；唯一[世界理论正文](./versions/pilot-agent-intent-2026-09-24/world-theory-draft.md)和[模块详细策划](./versions/pilot-agent-intent-2026-09-24/world-rule-design.md)已交付。[主策审核记录](./versions/pilot-agent-intent-2026-09-24/design-review-findings.md)列出六类尚未闭合的基础规则，[阶段结论](./versions/pilot-agent-intent-2026-09-24/design-review.md)已升级为制作人待办；正式版本现处于 `design-review / waiting-producer`。游戏开发未获准也未启动。主 Agent 已修复审核过早等待和恢复基线误报，原交付经秘书重新接纳；纯策划节点只做轻量检查，未验证新规则的游戏体验。现有材料仍要求制作人逐项选择六类取舍，是否满足此前“策划先补全完整推荐方案”的要求有待评审；见[开发记录](./dev/2026-09-27.md)。
+- 正式试运行版本 `pilot-agent-intent-2026-09-24` 的策划修订 `2`、范围修订 `13` 已获立项评审批准；唯一[世界理论正文](./versions/pilot-agent-intent-2026-09-24/world-theory-draft.md)和旧的整版[详细策划](./versions/pilot-agent-intent-2026-09-24/world-rule-design.md)已交付。[主策审核记录](./versions/pilot-agent-intent-2026-09-24/design-review-findings.md)列出六类未闭合规则，但选项没有充分解释玩家效果、优缺点和推荐理由。制作人现已给出 A/B/B/B/B/B 的取舍，并要求按真实模块重写详细策划；主 Agent 正修正秘书控制面与退回路径。游戏开发仍未获准也未启动；现有旧稿不是可供开发的完整模块策划。后续由秘书接收原话、Version PM 重新拆模块、策划 Feature PM 写作、主策复审，纯文档只做轻量检查。见[ADR-0022](./adr/0022-模块详细策划与制作人取舍回退.md)与[开发记录](./dev/2026-09-27.md)。
 
 - 工作流控制面已实现 [ADR-0021](./adr/0021-版本节点任务与PM分层.md) 的版本节点任务制：新正式版本由一个逻辑 Version PM 在每个节点建立任务合同，一项交付对应一个 Feature PM；取消独立的任务拆分与版本排期节点，旧归档版本不迁移。开发集成树使用一次完整门禁，候选经制作人批准后再合回主干。代码与合成看板体验已验证，真实多 PM 成本和返工要在下一次由制作人立项的正式版本中观察；本次不立项或发布游戏版本。
 

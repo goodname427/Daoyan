@@ -1138,7 +1138,7 @@ describe('formal version lifecycle', () => {
     expect(() => advanceVersion(missingBug, 'bugfix')).toThrow('独立验收');
   });
 
-  it.each(['irreversible-decision', 'producer-escalated-design'] as const)(
+  it.each(['irreversible-decision'] as const)(
     'blocks rejected %s until explicit approval',
     (kind) => {
       const version = createFormalVersion({
@@ -1178,6 +1178,41 @@ describe('formal version lifecycle', () => {
       expect(() => advanceVersion(version, 'charter-draft')).not.toThrow();
     },
   );
+
+  it('returns a rejected design escalation to module design with producer feedback', () => {
+    const version = createFormalVersion({
+      id: 'design-feedback',
+      title: '设计反馈',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/design-feedback',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '六类规则待取舍',
+      sourceRequestId: 'review-1',
+    });
+    resolveDecisionGate(
+      version,
+      gate.id,
+      'rejected',
+      '2026-09-21T01:00:00.000Z',
+      'reply-1',
+      'A、B、B、B、B、B；按模块重写',
+    );
+    expect(version.currentStage).toBe('module-design');
+    expect(version.status).toBe('running');
+    expect(version.nodes.find((node) => node.id === 'module-design')?.status).toBe('active');
+    expect(version.nodes.find((node) => node.id === 'design-review')?.status).toBe('pending');
+    expect(gate.resolutionHistory?.at(-1)?.feedback).toContain('按模块重写');
+    expect(
+      version.todos.some((todo) => todo.status === 'open' && todo.decisionGateId === gate.id),
+    ).toBe(false);
+    expect(() => normalizeFormalVersion(structuredClone(version))).not.toThrow();
+  });
 
   it('persists producer decision request ids and replays them idempotently', () => {
     const version = createFormalVersion({

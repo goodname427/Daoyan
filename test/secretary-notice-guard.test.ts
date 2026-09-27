@@ -52,6 +52,7 @@ import {
   productImplementationChanges,
   replaceVersionWorkItems,
   versionStageDirection,
+  stageTaskPlanDirection,
   versionMessageIsNewDirection,
   versionProducerDecision,
   validationTreeFingerprintForPaths,
@@ -67,10 +68,12 @@ import {
 } from '../scripts/secretary-state';
 import {
   createFormalVersion,
+  addDecisionGate,
   currentVersionStagePolicy,
   recordScopeRevision,
   recordValidationEvidence,
   recordStagePolicy,
+  resolveDecisionGate,
   transitionVersionBug,
 } from '../scripts/version-lifecycle';
 
@@ -718,14 +721,44 @@ describe('formal version stage dispatch', () => {
         formalStageStep: 'primary',
       }),
     );
-    expect(versionStageDirection(version, 'module-design')).toContain('补齐必要模块的详细策划');
+    expect(versionStageDirection(version, 'module-design')).toContain('按实际受影响模块分别给出');
+    expect(stageTaskPlanDirection(version)).toContain('真实受影响的模块');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
-    expect(versionStageDirection(version, 'design-review')).toContain('相邻情形');
+    expect(versionStageDirection(version, 'design-review')).toContain('未列举情形');
     expect(versionStageDirection(version, 'module-design')).toMatch(
       /^\[formal-stage:module-design\]/,
     );
     expect(ensureVersionStageItem(state, version, '2026-09-21T00:02:00.000Z')).toBeNull();
+  });
+
+  it('passes a rejected producer design choice into the next module plan', () => {
+    const version = createFormalVersion({
+      id: 'producer-design-feedback',
+      title: '制作人设计反馈',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/producer-design-feedback',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '六类规则待决定',
+      sourceRequestId: 'review',
+    });
+    resolveDecisionGate(
+      version,
+      gate.id,
+      'rejected',
+      undefined,
+      'reply',
+      'A、B、B、B、B、B；按模块详细展开',
+    );
+    expect(formalVersionBlocksDispatch(version)).toBe(false);
+    expect(stageTaskPlanDirection(version)).toContain('A、B、B、B、B、B');
+    expect(versionStageDirection(version, 'module-design')).toContain('按模块详细展开');
+    expect(versionStageDirection(version, 'design-review')).toContain('推荐选择和理由');
   });
 
   it('does not relaunch a stage after a technical review stall', () => {

@@ -8,6 +8,7 @@ import {
 import { ensureVersionStageItem } from '../scripts/secretary-notice-guard';
 import { createSecretaryState } from '../scripts/secretary-state';
 import {
+  assertModuleDesignTaskPlan,
   assertStageTaskPaths,
   assertStageTaskDeliveryScope,
   assertStageTaskPrestartScope,
@@ -28,6 +29,25 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('requires one detailed-design owner per declared module', () => {
+    const tasks = [task('resources'), task('market')];
+    const modules = [
+      { id: 'resources', title: '资源', taskId: 'resources' },
+      { id: 'market', title: '市场', taskId: 'market' },
+    ];
+    const plan = { tasks, modules, crossModuleContracts: ['市场交易转移资源归属'] };
+    expect(() => assertModuleDesignTaskPlan(plan)).not.toThrow();
+    expect(() => assertModuleDesignTaskPlan({ tasks })).toThrow('模块清单');
+    expect(() =>
+      assertModuleDesignTaskPlan({
+        ...plan,
+        modules: modules.map((module) => ({ ...module, taskId: 'resources' })),
+      }),
+    ).toThrow('独立');
+    expect(() => assertModuleDesignTaskPlan({ ...plan, modules: modules.slice(0, 1) })).toThrow(
+      '解释边界',
+    );
+  });
   it('ignores separate Main Agent control-plane fixes but rejects game changes outside a task', () => {
     const [charter] = parseStageTaskManifest(
       { tasks: [task('charter', [], ['docs/versions/v2/charter-draft.md'])] },

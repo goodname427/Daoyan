@@ -255,6 +255,7 @@ export interface VersionDecisionGate {
     requestId: string;
     decision: 'approved' | 'rejected';
     resolvedAt: string;
+    feedback?: string;
   }>;
 }
 
@@ -621,7 +622,8 @@ function validateOrchestrationRecords(value: unknown): asserts value is FormalVe
               typeof resolution.requestId !== 'string' ||
               !resolution.requestId.trim() ||
               !['approved', 'rejected'].includes(String(resolution.decision)) ||
-              typeof resolution.resolvedAt !== 'string',
+              typeof resolution.resolvedAt !== 'string' ||
+              (resolution.feedback !== undefined && typeof resolution.feedback !== 'string'),
           ))) ||
       [entry.id, entry.summary, entry.sourceRequestId, entry.createdAt, entry.resolvedAt].some(
         (field) => typeof field !== 'string',
@@ -1161,6 +1163,7 @@ export function resolveDecisionGate(
   decision: 'approved' | 'rejected',
   now?: string,
   sourceRequestId = '',
+  feedback = '',
 ): void {
   const gate = requireOrchestration(version).decisionGates.find(
     (candidate) => candidate.id === gateId,
@@ -1186,6 +1189,7 @@ export function resolveDecisionGate(
       requestId: sourceRequestId,
       decision,
       resolvedAt: gate.resolvedAt,
+      ...(feedback ? { feedback } : {}),
     });
   }
   for (const todo of version.todos.filter(
@@ -1208,11 +1212,25 @@ export function resolveDecisionGate(
     );
     if (revision) revision.status = 'rejected';
   }
-  if (decision === 'rejected' && gate.kind !== 'scope-change') {
+  if (
+    decision === 'rejected' &&
+    gate.kind === 'producer-escalated-design' &&
+    version.currentStage === 'design-review'
+  ) {
+    const review = version.nodes.find((node) => node.id === 'design-review');
+    const design = version.nodes.find((node) => node.id === 'module-design');
+    if (!design) throw new Error('找不到详细策划阶段');
+    if (review) review.status = 'pending';
+    design.status = 'active';
+    design.startedAt = gate.resolvedAt;
+    design.completedAt = '';
+    version.currentStage = 'module-design';
+    version.scopeFrozen = false;
+  }
+  if (decision === 'rejected' && gate.kind === 'irreversible-decision') {
     addVersionTodo(version, {
       decisionGateId: gate.id,
-      title:
-        gate.kind === 'producer-escalated-design' ? '重新评审升级策划' : '重新审批不可逆架构决策',
+      title: '重新审批不可逆架构决策',
       detail: `${gate.summary}（上次已退回；明确批准后才会恢复推进）`,
       stage: gate.stage,
       assignee: 'producer',
@@ -1221,7 +1239,7 @@ export function resolveDecisionGate(
   }
   const gates = requireOrchestration(version).decisionGates;
   version.status = gates.some(
-    (entry) => entry.status === 'rejected' && entry.kind !== 'scope-change',
+    (entry) => entry.status === 'rejected' && entry.kind === 'irreversible-decision',
   )
     ? 'paused'
     : gates.some((entry) => entry.status === 'open') ||
@@ -1640,7 +1658,8 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
   const orchestration = requireOrchestration(version);
   const unresolvedGate = orchestration.decisionGates.find(
     (gate) =>
-      (gate.status === 'open' || (gate.status === 'rejected' && gate.kind !== 'scope-change')) &&
+      (gate.status === 'open' ||
+        (gate.status === 'rejected' && gate.kind === 'irreversible-decision')) &&
       stageIndex(gate.stage) <= currentIndex,
   );
   if (unresolvedGate) throw new Error(`尚未通过制作人决策门禁：${unresolvedGate.summary}`);
@@ -1895,7 +1914,7 @@ export function applyVersionTodoDecision(
     );
     if (!gate) throw new Error('决策门禁已经处理或不存在');
     const approved = action === 'approve';
-    resolveDecisionGate(version, gate.id, approved ? 'approved' : 'rejected');
+    resolveDecisionGate(version, gate.id, approved ? 'approved' : 'rejected', undefined, '', note);
     const message = approved
       ? `已批准“${gate.summary}”，当前阶段的其他门禁仍需分别完成。`
       : `已退回“${gate.summary}”，相关决策已记录。`;

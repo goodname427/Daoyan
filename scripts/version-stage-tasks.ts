@@ -155,6 +155,46 @@ export function parseStageTaskManifest(
   }));
 }
 
+/** Require concrete module ownership before dispatching detailed design. */
+export function assertModuleDesignTaskPlan(value: unknown): void {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.modules) ||
+    value.modules.length === 0 ||
+    !Array.isArray(value.tasks) ||
+    !isStrings(value.crossModuleContracts) ||
+    value.crossModuleContracts.length === 0
+  ) {
+    throw new Error('详细策划任务清单缺少模块清单或跨模块合同');
+  }
+  const taskIds = new Set(value.tasks.filter(isRecord).map((task) => task.id));
+  const moduleIds = new Set<string>();
+  const owners = new Set<string>();
+  for (const module of value.modules) {
+    if (
+      !isRecord(module) ||
+      typeof module.id !== 'string' ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(module.id) ||
+      typeof module.title !== 'string' ||
+      !module.title.trim() ||
+      typeof module.taskId !== 'string' ||
+      !taskIds.has(module.taskId) ||
+      moduleIds.has(module.id) ||
+      owners.has(module.taskId)
+    ) {
+      throw new Error('详细策划模块必须有唯一标识、名称和独立的 Feature PM 任务');
+    }
+    moduleIds.add(module.id);
+    owners.add(module.taskId);
+  }
+  if (
+    value.modules.length === 1 &&
+    (typeof value.singleModuleReason !== 'string' || !value.singleModuleReason.trim())
+  ) {
+    throw new Error('详细策划只有一个模块时须解释边界');
+  }
+}
+
 export function readyStageTasks(tasks: VersionStageTask[]): VersionStageTask[] {
   const accepted = new Set(
     tasks.filter((task) => task.status === 'accepted').map((task) => task.id),
