@@ -4808,14 +4808,33 @@ export function supersedeObsoleteFormalItems(
   const scopeRevision = formalScopeRevision(version);
   let count = 0;
   for (const item of secretary.items) {
+    const currentWithReusedId =
+      item.createdAt < startedAt &&
+      Boolean(item.runDirectory) &&
+      secretary.items.find(
+        (candidate) =>
+          candidate !== item &&
+          candidate.id === item.id &&
+          candidate.runDirectory === item.runDirectory &&
+          candidate.createdAt >= startedAt &&
+          ['active', 'tracking'].includes(candidate.status) &&
+          candidate.orchestration?.formalVersionId === version.id &&
+          candidate.orchestration.formalStage === version.currentStage &&
+          candidate.orchestration.formalScopeRevision === scopeRevision,
+      );
+    const reboundToCurrentRun =
+      currentWithReusedId &&
+      Number(item.processIdentity) >= Date.parse(startedAt) &&
+      !processAlive(currentWithReusedId.processPid, currentWithReusedId.processIdentity);
     if (
       item.orchestration?.formalVersionId !== version.id ||
       !['queued', 'retry-wait', 'active', 'tracking'].includes(item.status) ||
       (item.orchestration.formalStage === version.currentStage &&
         item.orchestration.formalScopeRevision === scopeRevision &&
         item.createdAt >= startedAt) ||
-      processAlive(item.processPid, item.processIdentity) ||
-      item.orchestration.processOccupied
+      ((processAlive(item.processPid, item.processIdentity) ||
+        item.orchestration.processOccupied) &&
+        !reboundToCurrentRun)
     ) {
       continue;
     }

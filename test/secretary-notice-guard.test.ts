@@ -976,6 +976,38 @@ describe('formal version stage dispatch', () => {
     });
   });
 
+  it('retires an old record rebound to a reused current-round run id', () => {
+    const secretary = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'legacy-run-collision',
+      title: '旧编号碰撞',
+      direction: '修订策划',
+      documentRoot: 'docs/versions/legacy-run-collision',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const old = ensureVersionStageItem(secretary, version, '2026-09-21T00:01:00.000Z')!;
+    old.status = 'tracking';
+    old.runDirectory = 'runs/reused';
+    old.processPid = 1234;
+    old.processIdentity = String(Date.parse('2026-09-22T00:01:00.000Z'));
+    old.orchestration!.processOccupied = true;
+    version.nodes.find((node) => node.id === 'module-design')!.startedAt =
+      '2026-09-22T00:00:00.000Z';
+    const current = structuredClone(old);
+    current.createdAt = '2026-09-22T00:01:00.000Z';
+    current.processPid = 4321;
+    current.processIdentity = String(Date.parse('2026-09-22T00:01:00.000Z'));
+    secretary.items.push(current);
+    expect(supersedeObsoleteFormalItems(secretary, version, undefined, () => true)).toBe(0);
+    expect(
+      supersedeObsoleteFormalItems(secretary, version, undefined, (pid) => pid === old.processPid),
+    ).toBe(1);
+    expect(old.status).toBe('superseded');
+    expect(current.status).toBe('tracking');
+  });
+
   it('detects repeated findings, recovery loops, and stale progress without model polling', () => {
     const now = '2026-09-23T13:40:00.000Z';
     const healthy = { reviewStallCount: 0, recoveryAttempts: 0, progressUpdatedAt: now, now };
