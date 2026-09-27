@@ -3471,9 +3471,6 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
     healthPhase || publicProgressPhase(run.phase),
     now,
   );
-  if (!decision.notify) return;
-  orchestration.lastProgressPhase = decision.phase;
-  orchestration.lastProgressNoticeAt = now;
   const elapsedMinutes = Math.max(0, Math.floor(run.elapsedSeconds / 60));
   const elapsed = elapsedMinutes > 0 ? `，本轮已运行约 ${elapsedMinutes} 分钟` : '';
   const stage = item.orchestration?.formalStage;
@@ -3485,8 +3482,17 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
   const message = health
     ? `${label}异常预警：${healthPhase}${elapsed}；当前进程存活，秘书将依据后续结果处理并保留证据。`
     : `${label}${decision.phase}${elapsed}；进程仍在运行，本轮交付尚未验收。`;
-  item.summary = message;
-  item.updatedAt = now;
+  const summaryChanged = item.summary !== message;
+  if (summaryChanged) {
+    item.summary = message;
+    item.updatedAt = now;
+  }
+  if (!decision.notify) {
+    if (summaryChanged) await saveState();
+    return;
+  }
+  orchestration.lastProgressPhase = decision.phase;
+  orchestration.lastProgressNoticeAt = now;
   await saveState();
   await emitNotice(
     health ? 'workflow-anomaly' : decision.heartbeat ? 'progress-heartbeat' : 'progress-transition',
