@@ -2333,13 +2333,13 @@ export function ensureVersionStageItem(
     if (step === 'task' && !selectedTask) return null;
     const scopeRevision = formalScopeRevision(version);
     const startedAt = version.nodes.find((node) => node.id === stage)?.startedAt ?? '';
-    const linked = secretary.items.filter(
+    const allLinked = secretary.items.filter(
       (item) =>
         item.orchestration?.formalVersionId === version.id &&
         item.orchestration.formalStage === stage &&
-        item.orchestration.formalScopeRevision === scopeRevision &&
-        item.createdAt >= startedAt,
+        item.orchestration.formalScopeRevision === scopeRevision,
     );
+    const linked = allLinked.filter((item) => item.createdAt >= startedAt);
     if (
       linked.some(
         (item) =>
@@ -2351,7 +2351,7 @@ export function ensureVersionStageItem(
       )
     )
       return null;
-    const attempt = linked.length + 1;
+    const attempt = allLinked.length + 1;
     const id = versionStageItemId(version.id, stage, scopeRevision, attempt);
     const direction =
       step === 'planning'
@@ -2685,7 +2685,11 @@ async function handleVersionProducerReply(
     await writeFormalVersion(root, current);
     const response =
       decision === 'approved'
-        ? `已批准“${decisionGate.summary}”，内部流程可按新的范围修订继续。`
+        ? decisionGate.kind === 'producer-escalated-design'
+          ? current.currentStage === 'design-review'
+            ? '已记录你对详细策划的批准；主策将按取舍继续闭合设计。'
+            : '已记录你对完整详细策划的批准，版本将按后续节点推进。'
+          : `已批准“${decisionGate.summary}”，内部流程可按新的范围修订继续。`
         : decisionGate.kind === 'producer-escalated-design'
           ? `已记录你的取舍和修改意见，详细策划已退回重做；完成模块设计及主策复审前不会进入开发。`
           : `已退回“${decisionGate.summary}”，当前版本保持原承诺并暂停相关动作。`;
@@ -3314,7 +3318,17 @@ async function reconcileItem(
     isOwnedProcessAlive(item.processPid, item.processIdentity, 0)
       ? item.updatedAt
       : undefined);
-  if (!run && launchStartedAt && isBootstrapGraceActive(launchStartedAt)) {
+  if (
+    !run &&
+    !processEnded &&
+    launchStartedAt &&
+    isOwnedProcessAlive(item.processPid, item.processIdentity, 0) &&
+    isBootstrapGraceActive(
+      launchStartedAt,
+      Date.now(),
+      item.orchestration?.formalVersionId ? 120_000 : 15_000,
+    )
+  ) {
     normalizeSecretaryState(state);
     item.status = 'tracking';
     item.summary = 'PM 已登记运行目录，正在创建首个恢复快照。';
@@ -3815,6 +3829,40 @@ export function isBootstrapGraceActive(
 ): boolean {
   const started = Date.parse(launchStartedAt);
   return Number.isFinite(started) && now >= started && now - started <= Math.max(0, graceMs);
+}
+
+export function rejectedStageAttemptFor(
+  items: SecretaryItem[],
+  queued: SecretaryItem,
+  stageStartedAt: string,
+): SecretaryItem | undefined {
+  const owner = queued.orchestration;
+  if (!owner?.formalVersionId) return undefined;
+  return [...items]
+    .reverse()
+    .find(
+      (candidate) =>
+        candidate.id !== queued.id &&
+        candidate.createdAt >= stageStartedAt &&
+        candidate.orchestration?.formalVersionId === owner?.formalVersionId &&
+        candidate.orchestration?.formalStage === owner?.formalStage &&
+        candidate.orchestration?.formalScopeRevision === owner?.formalScopeRevision &&
+        candidate.orchestration?.formalStageStep === owner?.formalStageStep &&
+        (owner?.formalStageStep !== 'task' ||
+          candidate.orchestration?.formalTaskId === owner.formalTaskId) &&
+        candidate.summary.startsWith('阶段交付未能写入正式版本'),
+    );
+}
+
+export function requiresProducerDesignReapproval(version: FormalVersion): boolean {
+  return Boolean(
+    version.orchestration?.decisionGates.some(
+      (gate) =>
+        gate.kind === 'producer-escalated-design' &&
+        gate.stage === 'design-review' &&
+        gate.status === 'rejected',
+    ),
+  );
 }
 
 export function isRetryablePlannerNetworkFailure(
@@ -4850,18 +4898,31 @@ async function finalizeDeliveredVersionStage(
       );
       return true;
     }
-    if (result.decision === 'producer-escalation') {
+    const priorProducerRejection = requiresProducerDesignReapproval(version);
+    if (result.decision === 'producer-escalation' || priorProducerRejection) {
+      if (result.decision === 'approved') {
+        recordApproval(version, {
+          stage,
+          reviewer: 'lead-designer',
+          decision: 'approved',
+          documentRevision: version.charterRevision,
+          comment: `${result.summary}；证据：${evidence}`,
+        });
+      }
       addDecisionGate(version, {
         kind: 'producer-escalated-design',
         stage,
-        summary: result.summary,
+        summary:
+          priorProducerRejection && result.decision === 'approved'
+            ? `修订后的完整详细策划已通过主策复审，等待制作人审阅；${result.summary}`
+            : result.summary,
         sourceRequestId: item.id,
       });
       await writeFormalVersion(root, version);
       item.orchestration!.formalStageConsumedAt = new Date().toISOString();
       await emitNotice(
         'version-design-escalated',
-        `主策将“${version.title}”的详细策划升级给制作人：${result.summary}`,
+        `“${version.title}”的详细策划已提交制作人审阅：${result.summary}`,
         item,
       );
       return true;
@@ -5540,16 +5601,11 @@ async function driveFormalVersion(): Promise<boolean> {
     }
     const queued = ensureVersionStageItem(state, version);
     if (queued) {
-      const rejected = [...state.items]
-        .reverse()
-        .find(
-          (item) =>
-            item.id !== queued.id &&
-            item.orchestration?.formalVersionId === version!.id &&
-            item.orchestration.formalStage === stage &&
-            item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
-            item.summary.startsWith('阶段交付未能写入正式版本'),
-        );
+      const rejected = rejectedStageAttemptFor(
+        state.items,
+        queued,
+        version.nodes.find((node) => node.id === stage)?.startedAt ?? '',
+      );
       const retryReason = rejected?.summary.split('将自动安排修复：')[1]?.trim() ?? '';
       const attempt = Number(/-(\d+)$/.exec(queued.id)?.[1] ?? 1);
       await emitNotice(

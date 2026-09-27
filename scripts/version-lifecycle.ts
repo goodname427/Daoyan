@@ -1247,6 +1247,26 @@ export function resolveDecisionGate(
       ? 'waiting-producer'
       : 'running';
   version.updatedAt = gate.resolvedAt;
+  if (
+    decision === 'approved' &&
+    gate.kind === 'producer-escalated-design' &&
+    gate.stage === 'design-review' &&
+    version.currentStage === 'design-review' &&
+    version.status === 'running'
+  ) {
+    const currentIndex = version.nodes.findIndex((node) => node.id === 'design-review');
+    const startedAt = version.nodes[currentIndex]?.startedAt ?? '';
+    const leadDesignerApproved = version.approvals.some(
+      (approval) =>
+        approval.stage === 'design-review' &&
+        approval.reviewer === 'lead-designer' &&
+        approval.decision === 'approved' &&
+        approval.documentRevision === version.charterRevision &&
+        approval.createdAt >= startedAt,
+    );
+    const next = version.nodes[currentIndex + 1]?.id;
+    if (leadDesignerApproved && next) advanceVersion(version, next, gate.resolvedAt);
+  }
 }
 
 export function decisionResolutionForRequest(

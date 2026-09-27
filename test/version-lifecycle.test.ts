@@ -1214,6 +1214,36 @@ describe('formal version lifecycle', () => {
     expect(() => normalizeFormalVersion(structuredClone(version))).not.toThrow();
   });
 
+  it('advances an approved, lead-designer-reviewed design after producer reapproval', () => {
+    const version = createFormalVersion({
+      id: 'reviewed-design',
+      title: '完整策划复审',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/reviewed-design',
+      currentStage: 'design-review',
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    recordApproval(version, {
+      stage: 'design-review',
+      reviewer: 'lead-designer',
+      decision: 'approved',
+      documentRevision: version.charterRevision,
+      comment: '模块细则已闭合',
+      now: '2026-09-21T00:01:00.000Z',
+    });
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '请制作人审阅完整策划',
+      sourceRequestId: 'review-final',
+      now: '2026-09-21T00:02:00.000Z',
+    });
+    expect(version.currentStage).toBe('design-review');
+    resolveDecisionGate(version, gate.id, 'approved', '2026-09-21T00:03:00.000Z');
+    expect(version.currentStage).not.toBe('design-review');
+    expect(version.nodes.find((node) => node.id === 'design-review')?.status).toBe('completed');
+  });
+
   it('persists producer decision request ids and replays them idempotently', () => {
     const version = createFormalVersion({
       id: 'decision-replay',

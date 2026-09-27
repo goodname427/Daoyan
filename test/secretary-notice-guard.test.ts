@@ -24,6 +24,8 @@ import {
   versionStageScheduleMessage,
   qaEnvironmentBlockerReason,
   isBootstrapGraceActive,
+  rejectedStageAttemptFor,
+  requiresProducerDesignReapproval,
   isRetryablePlannerNetworkFailure,
   localQuestionResponse,
   ensureVersionStageItem,
@@ -217,6 +219,12 @@ describe('secretary worker process launch', () => {
     const started = Date.parse('2026-09-21T00:00:00.000Z');
     expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 5_000)).toBe(true);
     expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 15_001)).toBe(false);
+    expect(isBootstrapGraceActive(new Date(started).toISOString(), started + 60_000, 120_000)).toBe(
+      true,
+    );
+    expect(
+      isBootstrapGraceActive(new Date(started).toISOString(), started + 120_001, 120_000),
+    ).toBe(false);
   });
 
   it('rereads a delayed terminal snapshot after the launched PM wrapper exits', async () => {
@@ -817,6 +825,72 @@ describe('formal version stage dispatch', () => {
     expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2099-01-01T00:01:00.000Z')).toBe(
       true,
     );
+  });
+
+  it('keeps task-owned run ids unique when the same stage is entered again', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'reentered-review',
+      title: '复审',
+      direction: '完善模块策划',
+      documentRoot: 'docs/versions/reentered-review',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const prior = ensureVersionStageItem(state, version, '2026-09-21T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.orchestration!.formalStageConsumedAt = '2026-09-21T00:02:00.000Z';
+    version.nodes.find((node) => node.id === 'design-review')!.startedAt =
+      '2026-09-22T00:00:00.000Z';
+    const current = ensureVersionStageItem(state, version, '2026-09-22T00:01:00.000Z')!;
+    expect(current.id).not.toBe(prior.id);
+    expect(current.id).toMatch(/-design-review-2$/);
+  });
+
+  it('only repeats a rejection for the same stage task in the current round', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'task-retry',
+      title: '详细策划',
+      direction: '拆分模块',
+      documentRoot: 'docs/versions/task-retry',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    const prior = ensureVersionStageItem(state, version, '2026-09-21T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.summary = '阶段交付未能写入正式版本，将自动安排修复：旧任务缺证据';
+    prior.orchestration!.formalStageConsumedAt = '2026-09-21T00:02:00.000Z';
+    prior.orchestration!.formalStageStep = 'task';
+    prior.orchestration!.formalTaskId = 'md-world';
+    const next = ensureVersionStageItem(state, version, '2026-09-21T00:03:00.000Z')!;
+    next.orchestration!.formalStageStep = 'task';
+    next.orchestration!.formalTaskId = 'md-life';
+    expect(rejectedStageAttemptFor(state.items, next, '2026-09-21T00:00:00.000Z')).toBeUndefined();
+    next.orchestration!.formalTaskId = 'md-world';
+    expect(rejectedStageAttemptFor(state.items, next, '2026-09-21T00:00:00.000Z')).toBe(prior);
+    expect(rejectedStageAttemptFor(state.items, next, '2026-09-22T00:00:00.000Z')).toBeUndefined();
+  });
+
+  it('requires producer reapproval after the producer returns detailed design', () => {
+    const version = createFormalVersion({
+      id: 'returned-design',
+      title: '重新策划',
+      direction: '补全模块',
+      documentRoot: 'docs/versions/returned-design',
+      currentStage: 'design-review',
+    });
+    expect(requiresProducerDesignReapproval(version)).toBe(false);
+    const gate = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '请制作人审阅',
+      sourceRequestId: 'prior-review',
+    });
+    resolveDecisionGate(version, gate.id, 'rejected', '2026-09-21T00:01:00.000Z');
+    expect(requiresProducerDesignReapproval(version)).toBe(true);
   });
 
   it('holds a candidate environment failure without scheduling another PM round', () => {
