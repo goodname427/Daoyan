@@ -881,9 +881,14 @@ describe('formal version stage dispatch', () => {
     );
     expect(versionStageDirection(version, 'module-design')).toContain('按实际受影响模块分别给出');
     expect(stageTaskPlanDirection(version)).toContain('真实受影响的模块');
+    expect(stageTaskPlanDirection(version)).toContain('不得要求尚未实现的运行读数');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
     expect(versionStageDirection(version, 'design-review')).toContain('未列举情形');
+    expect(versionStageDirection(version, 'design-review')).toContain(
+      '不得要求开发后才可能取得的真实运行读数',
+    );
+    expect(versionStageDirection(version, 'design-review')).toContain('连续退回时逐项比较新旧证据');
     expect(versionStageDirection(version, 'module-design')).toMatch(
       /^\[formal-stage:module-design\]/,
     );
