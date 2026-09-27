@@ -1,0 +1,80 @@
+{
+  "taskId": "mdn-mana",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "基于 mdn-physics 有限物理描述符，为惰性壳材改接与正功施力给出统一 P0 纸面候选 Quote、正价下界、合法尝试、tick/神识/静态毛界和有限来源 U；逐笔重算成功、欠费、未知价、材料不足、合法尝试失败、创建使用退款再创建及 100/20 同刻补源。开放回收、生命关键回路和实际代码采用仍在域外；这是策划候选，不是游戏运行价格或 ADR 覆盖。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e '... quote arithmetic, required coverage and local-link check ...'",
+      "exitCode": 0,
+      "output": "PASS mdn-mana quote arithmetic, coverage and 14 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json"
+      ]
+    },
+    {
+      "command": "node -e '... taskId/status, passing command codes and evidence path check ...'",
+      "exitCode": 0,
+      "output": "PASS mdn-mana task result and evidence",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+      "exitCode": 1,
+      "output": "Code style issues found in mana-ledger-design.md after the reservation wording update.",
+      "resolution": "Formatted the changed design document with Prettier --write; the final direct check is rerun on both deliverables."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+      "exitCode": 1,
+      "output": "Code style issues found in the task JSON after recording final direct-check commands.",
+      "resolution": "Formatted the task JSON with Prettier --write, then reran the same check successfully."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+      "exitCode": 1,
+      "output": "Code style issues found after appending the failed-attempt record.",
+      "resolution": "Reformatted the complete task JSON before the final formatting check."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+      "exitCode": 128,
+      "output": "fatal: Unable to create E:/CGL/Programs/Daoyan/.git/index.lock: Permission denied",
+      "resolution": "The workspace allows document writes but the Git index is read-only in this host; no commit or push was created. Leave the two contract files for the secretary to commit in a writable Git host."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ]
+}
