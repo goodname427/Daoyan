@@ -27,12 +27,14 @@ import { fileURLToPath } from 'node:url';
 import {
   buildLocalPlan,
   classifyAgentFailure,
+  conventionalCommitOrFallback,
   isValidationTreePath,
   preferredWindowsExecutable,
   reviewFindingSignature,
   validateReview,
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
+import { findTaskCommitEvidence } from './task-commit-evidence';
 import { deliverArchivedVersionBranch } from './version-git-delivery';
 import {
   externalRequestId,
@@ -5446,12 +5448,30 @@ async function consumeTaskOwnedVersionItem(
     throw new Error(`节点任务 ${task.id} 缺少独立审查通过证据`);
   }
   const revision = currentGitRevision();
-  const base = await stageTaskExecutionBase(item, task, revision);
-  if (revision === base) throw new Error(`节点任务 ${task.id} 未形成独立提交`);
-  assertStageTaskDeliveryScope(task, changedFilesBetween(base, revision));
+  const checkpoint = item.runDirectory
+    ? await readJson(resolve(item.runDirectory, 'recovery.json'))
+    : null;
+  const plan = isRecord(checkpoint?.plan) ? checkpoint.plan : null;
+  const commitEvidence = plan
+    ? findTaskCommitEvidence({
+        root,
+        baseline: item.orchestration?.formalTaskBaseRevision ?? '',
+        head: revision,
+        expectedMessage: conventionalCommitOrFallback(
+          String(plan.commitMessage ?? ''),
+          String(plan.title ?? ''),
+        ),
+        writePaths: task.writePaths,
+        readPaths: task.readPaths,
+      })
+    : null;
+  const base = commitEvidence?.parent ?? (await stageTaskExecutionBase(item, task, revision));
+  const deliveryRevision = commitEvidence?.commit ?? revision;
+  if (deliveryRevision === base) throw new Error(`节点任务 ${task.id} 未形成独立提交`);
+  assertStageTaskDeliveryScope(task, changedFilesBetween(base, deliveryRevision));
   task.status = 'accepted';
   task.pmItemId = item.id;
-  task.commit = revision;
+  task.commit = deliveryRevision;
   task.evidence = [resultPath, relative(root, reportPath).replace(/\\/g, '/'), ...result.evidence];
   if (stage === 'development') {
     const workItem = version.workItems.find((candidate) => candidate.id === task.id);

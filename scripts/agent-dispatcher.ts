@@ -51,6 +51,7 @@ import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
 import { taskDependencyContext } from './task-context';
+import { findTaskCommitEvidence } from './task-commit-evidence';
 import { runInvocationUsage } from './version-usage';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1800,7 +1801,12 @@ async function ensureCleanWorktree(runDirectory: string, takeover: boolean) {
   }
 }
 
-async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string): Promise<string> {
+async function commitAndPush(
+  plan: TaskPlan,
+  noPush: boolean,
+  baseline: string,
+  recoveredCommit = '',
+): Promise<string> {
   const status = await git(['status', '--porcelain']);
   let createdCommit = false;
   if (status.stdout.trim()) {
@@ -1823,7 +1829,9 @@ async function commitAndPush(plan: TaskPlan, noPush: boolean, baseline: string):
     createdCommit = true;
   }
   const head = (await git(['rev-parse', 'HEAD'])).stdout.trim();
-  const sha = (await git(['rev-parse', '--short', 'HEAD'])).stdout.trim();
+  const sha = recoveredCommit
+    ? recoveredCommit.slice(0, 7)
+    : (await git(['rev-parse', '--short', 'HEAD'])).stdout.trim();
   if (!createdCommit && head === baseline) return '没有产生文件改动，无需提交。';
 
   if (noPush || !policy.git.autoPush) {
@@ -1899,6 +1907,7 @@ let activeRepairerTokens: number | null = null;
 let activeNoPush = options.noPush;
 let activeTakeover = options.takeover;
 let activeCompletedDeliveryCommit = false;
+let activeDeliveryCommit = '';
 let activeActualLaunchCount: number | null = 1;
 let activeAbnormalRecoveryCount: number | null = 0;
 let activeLocalRepairRoundCount: number | null = 0;
@@ -2025,7 +2034,7 @@ try {
       checkpoint.plan.commitMessage,
       checkpoint.plan.title,
     );
-    const completedCommitCanResume =
+    let completedCommitCanResume =
       currentHead.code === 0 &&
       currentStatus.code === 0 &&
       currentParent.code === 0 &&
@@ -2039,7 +2048,6 @@ try {
         expectedMessage: expectedCommitMessage,
         worktreeClean: currentStatus.stdout.trim().length === 0,
       });
-    activeCompletedDeliveryCommit = completedCommitCanResume;
     const emptyRecoveryCanRebase = canRebaseEmptyRecovery({
       status: checkpoint.status,
       taskRunCount: checkpoint.taskRuns.length,
@@ -2074,6 +2082,27 @@ try {
         ...taskOutputPaths(run.task.paths, run.changedFiles),
       ]),
     ];
+    if (
+      !completedCommitCanResume &&
+      checkpoint.phase === 'Git 交付' &&
+      currentStatus.code === 0 &&
+      !currentStatus.stdout.trim() &&
+      currentHead.code === 0
+    ) {
+      const committedTask = findTaskCommitEvidence({
+        root,
+        baseline: checkpoint.baseline,
+        head: currentHead.stdout.trim(),
+        expectedMessage: expectedCommitMessage,
+        writePaths: checkpoint.plan.tasks.flatMap((task) => task.paths),
+        readPaths: taskScopes,
+      });
+      if (committedTask) {
+        completedCommitCanResume = true;
+        activeDeliveryCommit = committedTask.commit;
+      }
+    }
+    activeCompletedDeliveryCommit = completedCommitCanResume;
     const committedAdvancePaths =
       committedAdvance?.code === 0 ? committedAdvance.stdout.split('\0').filter(Boolean) : [];
     const currentConfigFingerprint = await verificationConfigFingerprint();
@@ -2607,7 +2636,7 @@ try {
     throw new Error('pre-push 前完整门禁证据与当前代码树或配置指纹不匹配');
   }
   const gitResult = policy.git.autoCommit
-    ? await commitAndPush(plan, activeNoPush, activeBaseline)
+    ? await commitAndPush(plan, activeNoPush, activeBaseline, activeDeliveryCommit)
     : '策略已关闭自动提交。';
   await writeReport(
     runDirectory,
