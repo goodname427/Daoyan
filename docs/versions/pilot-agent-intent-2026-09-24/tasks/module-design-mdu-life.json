@@ -1,0 +1,61 @@
+{
+  "taskId": "mdu-life",
+  "status": "completed",
+  "summary": "分别整理 M1/A1 的 F1/F2 独立来源与候选原读、功能阈值、保存证据、保守截止和逐 tick 修复可达性；三链唯一 LifeId 与早到/迟到、100/20、零余额、修壳、复制、创建者死亡、遗体再损反证齐列。纸面数值不是现场实证；当前取得、装载、自然响应及三链缺失，LifeAssessment/identityRelation=unknown，旧私权冻结，DeathBarrier=∅。D0 只修 k0 时保存态不能在窄域醒回，交主策取舍。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),s=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdu-source.json\",\"utf8\")),l=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdu-ledger.json\",\"utf8\")),t=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")).stageTasks.find(x=>x.id===\"mdu-life\");a.equal(s.status,\"completed\");a.equal(l.status,\"completed\");a.equal(t.writePaths.length,2);for(const k of [\"N-M1-F1@T1\",\"N-M1-F2@T2\",\"N-A1-F1@T1A\",\"N-A1-F2@T2A\",\"source-M1-fallback-F1\",\"source-M1-fallback-F2\",\"source-A1-fallback-F1\",\"source-A1-fallback-F2\",\"reg\",\"link\",\"store\",\"dueAt_M=10\",\"dueAt_A=8\",\"preservationDueAt_M=12\",\"preservationDueAt_A=10\",\"recoveryDeadline_M=min(11,13,11,12,12)=11\",\"recoveryDeadline_A=min(10,11,10,11,10)=10\",\"tick 10⑥\",\"tick 8⑥\",\"k_m/k_a\",\"DeathBarrier=∅\",\"identityRelation=unknown\"])a.ok(d.includes(k),k);a.equal(Math.min(11,13,11,12,12),11);a.equal(Math.min(10,11,10,11,10),10);console.log(\"PASS mdu-life paper certificate and predecessors\")'",
+      "exitCode": 0,
+      "output": "PASS mdu-life paper certificate and predecessors",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdu-life writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdu-life writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "证据命令补录后 JSON 对象缩进不符，运行 Prettier 格式化并重新检查。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-life.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前执行环境对 .git 只有读取权限，无法暂存或形成本地提交；两个合同路径的改动保留在工作区，待具备 .git 写权限的宿主提交。"
+    }
+  ]
+}
