@@ -1,0 +1,50 @@
+{
+  "taskId": "mdc-spells",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接已完成的 mdc-life 只读结论，闭合四候选原子的不可组合性、共同报价与算法 tick、五载体容量和独立授权、碰撞事件顺序及同刻并发余态；以同一程序的成功和失败反例对照旧94项入口及 ADR 0017–0020。正做功和材料作用仍以未来批准的报价证书为执行前提，本项只交付策划文档。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"programmable-spells-design.md\",s=f.readFileSync(q,\"utf8\"),r=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdc-spells.json\",\"utf8\")),plan=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")),spec=plan.tasks.find(x=>x.id===\"mdc-spells\"),pred=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdc-life.json\",\"utf8\"));a.deepEqual(spec.dependsOn,[\"mdc-life\"]);a.equal(pred.status,\"completed\");a.equal(r.taskId,\"mdc-spells\");a.equal(r.status,\"completed\");for(const k of [\"Quote(x)\",\"τrequest\",\"read\",\"transfer\",\"applyForce\",\"editMaterial\",\"maxWakeups\",\"maxGrossDebit\",\"DeathBarrier\",\"queueFull\",\"unknownPrice\",\"missingMaterial\",\"insufficientFunds\",\"unexpressible\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\",\"修士\",\"法球\",\"固定机关\",\"人工生命\",\"残余遗体\"])a.ok(s.includes(k),k);let active=false,names=[];for(const l of f.readFileSync(\"docs/reference/meta-spells.md\",\"utf8\").split(/\\r?\\n/)){if(l.startsWith(\"## \"))active=/^## (运算符|按键状态|状态探查|实体创建|实体控制|施法控制)/.test(l);if(active&&l.startsWith(\"| \")&&!l.startsWith(\"| ---\")&&!l.startsWith(\"| 元法术\"))names.push(l.split(\"|\")[1].trim())}a.equal(names.length,94);for(const n of names)a.ok(s.includes(n),n);let links=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const h=m[1].split(\"#\")[0];if(h&&!h.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),h)),h);links++}}for(const e of r.evidence)a.ok(f.existsSync(e),e);a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));console.log(\"PASS mdc-spells predecessor, contract markers, 94 entries, \"+links+\" links and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdc-spells predecessor, contract markers, 94 entries, 21 links and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-life.json",
+        "docs/reference/meta-spells.md"
+      ]
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-spells.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-life.json"
+  ]
+}
