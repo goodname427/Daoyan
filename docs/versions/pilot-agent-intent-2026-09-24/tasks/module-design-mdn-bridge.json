@@ -1,0 +1,62 @@
+{
+  "taskId": "mdn-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "核对上轮未接纳原因后补齐正式 mdn-bridge 交付证据：桥接设计稿原有双场景情形表和五路输入比较记录表已覆盖大部分矩阵，本轮校正任务状态标识并登记完整首批场景、只读前驱结论及直接检查。独立死后 grant 按 mdn-spells 结论在首批关闭；仅完成纸面策划，不代表规则全部闭合、实际可玩或批准游戏开发。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json"
+  ],
+  "dependsOn": [],
+  "readOnlyInputs": [
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
+  ],
+  "commands": [
+    {
+      "command": "node -e '[mdn-bridge contract/predecessor marker and local-link assertion]'",
+      "exitCode": 0,
+      "output": "PASS mdn-bridge contract/predecessor markers and 6 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-spells.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e '[mdn-bridge contract/predecessor marker and local-link assertion, initial run before clarifying the positive-force matrix label]'",
+      "exitCode": 1,
+      "output": "AssertionError: 正向施力; the required phrase was not explicit in the matrix. Added explicit positive-force wording and reran successfully."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-bridge.json"
+  ]
+}
