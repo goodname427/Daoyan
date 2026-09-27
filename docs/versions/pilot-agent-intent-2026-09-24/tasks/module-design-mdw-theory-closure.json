@@ -1,0 +1,55 @@
+{
+  "taskId": "mdw-theory-closure",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "整合五份已完成 mdw 前驱，在唯一世界理论正文以同一 S0、版本向量、事实/模拟序槽和 seed 对 H/B、普通行动、AT0、100/20 与双订阅作有限纸面重放；区分条件来源/价/容量与本轮零实扣，列出物理残量、生命身份、整链预算、桥接证据等级、反例、获批后的 ADR/旧资产迁移及待制作人取舍。真实原读、hash、实耗与可玩验收仍待开发后。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.filter(x=>x.id===\"mdw-theory-closure\").at(-1),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdw-theory-closure.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"S0=mdw-r13-S0-01\",\"ASTVersion=mdw-ast-v1\",\"programHash=H_H/H_B/H_D/H_AT0/H_100/H_dual\",\"priceVersion=mdw-candidate\",\"sealVersion=mdw-candidate\",\"capacityCertificateVersion=mdw-candidate\",\"seed=mdu-r13-seed-01\",\"H1\",\"H2\",\"H3\",\"B1\",\"B3×3\",\"B2\",\"B4\",\"D1→D2\",\"K0/V0\",\"AT0\",\"100/20\",\"双订阅同撞\",\"残量复领\",\"场外与连续碰撞\",\"分叉、死后授权、队列满与迟到补源\",\"稳定物与无施法演化\",\"保存、醒回与身份分判\",\"整链预算而非单步额定\",\"ADR-0017\",\"ADR-0020\",\"旧 DSL/蓝图\",\"敌方修士\",\"存档原件\",\"开发后验收\"])a.ok(d.includes(k),k);a.equal(Math.min(18-6,14,15),12);a.equal(Math.min(42-14,30,31),28);a.equal(7+0+123,130);a.equal(23+100+20,143);console.log(\"PASS mdw closure contract, predecessors, coverage and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdw closure contract, predecessors, coverage and arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdw-theory-closure writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdw-theory-closure writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-theory-closure.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "rg -n '^## |^### ' docs/versions/pilot-agent-intent-2026-09-24/{world-theory-draft,physics-material-design,mana-ledger-design,life-identity-design,programmable-spells-design,player-bridge-design}.md",
+      "exitCode": 1,
+      "reason": "PowerShell 将 Bash 风格花括号路径解析为语法错误；改为逐个明确路径读取，未影响文档或定向断言。"
+    }
+  ]
+}
