@@ -14,6 +14,7 @@ import {
   featureTaskCompletions,
   featureGateMatchesCurrent,
   retryTimeFromOutput,
+  retryTransientRename,
   resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
@@ -84,6 +85,31 @@ import {
 import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
 describe('secretary worker process launch', () => {
+  it('retries a transient Windows state rename and preserves permanent failures', async () => {
+    let attempts = 0;
+    const pauses: number[] = [];
+    await retryTransientRename(
+      async () => {
+        attempts += 1;
+        if (attempts < 3) throw Object.assign(new Error('locked'), { code: 'EPERM' });
+      },
+      async (milliseconds) => {
+        pauses.push(milliseconds);
+      },
+    );
+    expect(attempts).toBe(3);
+    expect(pauses).toEqual([50, 100]);
+    await expect(
+      retryTransientRename(
+        async () => {
+          throw Object.assign(new Error('bad path'), { code: 'ENOENT' });
+        },
+        async () => {
+          throw new Error('should not pause');
+        },
+      ),
+    ).rejects.toThrow('bad path');
+  });
   it('retries only a network-failed planner that never reached a PM snapshot', () => {
     const progress = {
       phase: '深度规划',

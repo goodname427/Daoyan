@@ -386,7 +386,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
-  await rename(temporary, path);
+  try {
+    await retryTransientRename(() => rename(temporary, path));
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
+export async function retryTransientRename(
+  operation: () => Promise<void>,
+  pause: (milliseconds: number) => Promise<void> = (milliseconds) =>
+    new Promise((resolveWait) => setTimeout(resolveWait, milliseconds)),
+): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await operation();
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (!['EPERM', 'EACCES', 'EBUSY'].includes(code ?? '') || attempt === 4) throw error;
+      await pause(50 * 2 ** attempt);
+    }
+  }
 }
 
 async function loadState(): Promise<SecretaryState> {
@@ -3869,7 +3890,10 @@ async function launch(item: SecretaryItem): Promise<void> {
       activeLaunchStartedAt.delete(item.id);
       await saveState();
       await coordinate();
-    })().catch((error) => console.error(`[notice guard] PM 退出处理失败：${String(error)}`));
+    })().catch((error) => {
+      console.error(`[notice guard] PM 退出处理失败，重新协调：${String(error)}`);
+      requestCoordinate('PM 退出恢复');
+    });
   });
 }
 
