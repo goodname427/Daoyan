@@ -39,6 +39,11 @@ import {
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
 import {
+  areControlOnlyPredecessorPaths,
+  isOrphanEvidenceReferenceCorrection,
+  quarantineOrphanStageArtifact,
+} from './orphan-stage-artifact';
+import {
   findCommitByMessage,
   findTaskCommitEvidence,
   taskCommitOutOfScopePaths,
@@ -6213,6 +6218,79 @@ async function coordinateOnce(): Promise<void> {
     }
   }
   const supersededObsolete = supersedeObsoleteFormalItems(state, activeFormalVersion);
+  const quarantinedBootstrapIds = new Set<string>();
+  if (activeFormalVersion) {
+    for (const item of state.items) {
+      if (
+        item.status !== 'tracking' ||
+        item.orchestration?.formalVersionId !== activeFormalVersion.id ||
+        item.orchestration.formalStage !== activeFormalVersion.currentStage ||
+        item.orchestration.formalScopeRevision !== formalScopeRevision(activeFormalVersion) ||
+        item.orchestration.reconciliationOutcome !== 'missing' ||
+        !item.runDirectory ||
+        isOwnedProcessAlive(item.processPid, item.processIdentity) ||
+        item.orchestration.processOccupied ||
+        (await activeWorkerProcess(item, true))
+      )
+        continue;
+      const bootstrapBase = item.orchestration.formalTaskBaseRevision ?? '';
+      const currentRevision = currentGitRevision();
+      if (!bootstrapBase || !gitRevisionIsAncestor(bootstrapBase, currentRevision)) continue;
+      const interveningPaths = changedFilesBetween(bootstrapBase, currentRevision);
+      const findingsPath = `${activeFormalVersion.documentRoot}/design-review-findings.md`;
+      const evidenceReferenceCorrection =
+        activeFormalVersion.currentStage === 'design-review' &&
+        interveningPaths.includes(findingsPath) &&
+        isOrphanEvidenceReferenceCorrection({
+          root,
+          baseline: bootstrapBase,
+          head: currentRevision,
+          path: findingsPath,
+        });
+      const controlOnlyPredecessors = areControlOnlyPredecessorPaths(
+        interveningPaths.filter((path) => !(evidenceReferenceCorrection && path === findingsPath)),
+      );
+      if (!controlOnlyPredecessors) continue;
+      const launchLog = await readFile(resolve(secretaryRoot, `${item.id}.log`), 'utf8').catch(
+        () => '',
+      );
+      if (!launchLog.includes('完整执行要求 Git 工作区干净')) continue;
+      const previous = state.items
+        .slice(0, state.items.indexOf(item))
+        .reverse()
+        .find(
+          (candidate) =>
+            candidate.status === 'delivered' &&
+            candidate.runDirectory &&
+            candidate.orchestration?.formalVersionId === activeFormalVersion.id &&
+            candidate.orchestration.formalStage === activeFormalVersion.currentStage &&
+            candidate.orchestration.formalScopeRevision ===
+              formalScopeRevision(activeFormalVersion) &&
+            candidate.orchestration.formalStageStep === 'task' &&
+            stageTasksForCurrentNode(activeFormalVersion).some(
+              (task) =>
+                task.id === candidate.orchestration?.formalTaskId &&
+                task.status === 'accepted' &&
+                task.commit === bootstrapBase,
+            ),
+        );
+      if (!previous?.runDirectory) continue;
+      try {
+        const artifact = await quarantineOrphanStageArtifact({
+          root,
+          versionDocumentRoot: activeFormalVersion.documentRoot,
+          stage: activeFormalVersion.currentStage,
+          approvedTaskIds: stageTasksForCurrentNode(activeFormalVersion).map((task) => task.id),
+          previousRunDirectory: previous.runDirectory,
+          previousRunStartedAt: previous.createdAt,
+          blockedRunDirectory: item.runDirectory,
+        });
+        if (artifact) quarantinedBootstrapIds.add(item.id);
+      } catch (error) {
+        console.error(`[秘书恢复] 合同外草稿隔离失败：${String(error)}`);
+      }
+    }
+  }
   const cleanWorktree = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
     cwd: root,
     encoding: 'utf8',
@@ -6301,6 +6379,16 @@ async function coordinateOnce(): Promise<void> {
       if (launchLog.includes('完整执行要求 Git 工作区干净')) emptyBootstrapFailures.add(item.id);
     }
   }
+  const retiredQuarantinedBootstrap = activeFormalVersion
+    ? supersedeEmptyFormalBootstrapFailures(
+        state,
+        activeFormalVersion.id,
+        activeFormalVersion.currentStage,
+        new Date().toISOString(),
+        new Set([...emptyBootstrapFailures].filter((id) => quarantinedBootstrapIds.has(id))),
+        '已核实上次交付遗留的未跟踪合同外任务 JSON，原样隔离到上次运行目录并留存审计；空启动留档后自动重派。',
+      )
+    : false;
   const retiredEmptyBootstrap = activeFormalVersion
     ? supersedeEmptyFormalBootstrapFailures(
         state,
@@ -6774,6 +6862,7 @@ async function coordinateOnce(): Promise<void> {
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
     supersededObsolete > 0 ||
+    retiredQuarantinedBootstrap ||
     retiredEmptyBootstrap ||
     retiredNetworkPlanner ||
     retiredFormalPlannerDependency ||

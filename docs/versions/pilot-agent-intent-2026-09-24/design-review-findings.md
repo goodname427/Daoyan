@@ -265,7 +265,7 @@
 
 # 六项详细策划复审汇总结论（范围修订 13）
 
-**裁定：`changes-requested`，退回详细策划补全；当前不建议将完整方案作为通过稿交制作人审阅。** 本文记录的是范围修订 13、已批准 A/B/B/B/B/B 方向下的纸面策划复核，不是新规则实现、游戏测试或真实可玩验收。逐项检查、算式、代码/测试/ADR 对照和处理去向见下文各节及[本轮复审任务证据](./tasks/design-review-mdp-world-review.json)；程序/桥接的交叉复核见[前序证据](./tasks/design-review-mdp-program-bridge-review.json)。
+**裁定：`changes-requested`，退回详细策划补全；当前不建议将完整方案作为通过稿交制作人审阅。** 本文记录的是范围修订 13、已批准 A/B/B/B/B/B 方向下的纸面策划复核，不是新规则实现、游戏测试或真实可玩验收。逐项检查、算式、代码/测试/ADR 对照和处理去向见下文各节及[本轮复审任务证据](./tasks/design-review-mdp-world-review.json)；程序/桥接的交叉复核另有未纳入节点任务清单的补充 JSON，保存在本机隔离证据路径 `../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-design-review-23/quarantined-task-artifacts/design-review-mdp-program-bridge-review.json`，不作为已接纳任务证明。
 
 ## 汇总矩阵：结论、反例与去向
 
