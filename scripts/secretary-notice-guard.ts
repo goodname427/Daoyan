@@ -3323,6 +3323,94 @@ async function markMissingSnapshot(item: SecretaryItem, exitCode: number): Promi
   }
 }
 
+export function emptyBootstrapRetryEligible(input: {
+  runFiles: string[];
+  progressStatus: string;
+  liveProcess: boolean;
+  worktreeClean: boolean;
+  baseMatches: boolean;
+  taskPending: boolean;
+}): boolean {
+  return (
+    input.runFiles.length === 1 &&
+    input.runFiles[0] === 'progress.json' &&
+    ['running', 'planned'].includes(input.progressStatus) &&
+    !input.liveProcess &&
+    input.worktreeClean &&
+    input.baseMatches &&
+    input.taskPending
+  );
+}
+
+async function requeueEmptyBootstrap(item: SecretaryItem): Promise<boolean> {
+  const owner = item.orchestration;
+  if (
+    !owner?.formalVersionId ||
+    owner.formalStageStep !== 'task' ||
+    !owner.formalTaskId ||
+    !owner.formalTaskBaseRevision ||
+    !item.runDirectory
+  )
+    return false;
+  const version = await readFormalVersion(root);
+  if (
+    !version ||
+    version.id !== owner.formalVersionId ||
+    version.currentStage !== owner.formalStage ||
+    formalScopeRevision(version) !== owner.formalScopeRevision
+  )
+    return false;
+  const files = await readdir(item.runDirectory).catch(() => null);
+  if (!files) return false;
+  const progress = await readJson(resolve(item.runDirectory, 'progress.json'));
+  const pmAlive = isOwnedProcessAlive(item.processPid, item.processIdentity, 0);
+  const worker = pmAlive ? null : await activeWorkerProcess(item, true);
+  const gitStatus = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  const eligible = emptyBootstrapRetryEligible({
+    runFiles: files,
+    progressStatus: String(progress?.status ?? ''),
+    liveProcess: pmAlive || Boolean(worker),
+    worktreeClean: gitStatus.status === 0 && !gitStatus.stdout.trim(),
+    baseMatches: currentGitRevision() === owner.formalTaskBaseRevision,
+    taskPending: stageTasksForCurrentNode(version).some(
+      (task) => task.id === owner.formalTaskId && task.status === 'pending',
+    ),
+  });
+  if (!eligible) return false;
+  normalizeSecretaryState(state);
+  clearOrphanRecovery(item.id);
+  item.status = 'superseded';
+  item.summary = '启动时中断且未形成恢复快照或仓库改动；空启动已核实，将重新派发同一节点任务。';
+  item.processPid = 0;
+  item.processIdentity = '';
+  item.retryAt = '';
+  item.updatedAt = new Date().toISOString();
+  owner.processOccupied = false;
+  owner.reconciliationOutcome = 'requeued-empty-bootstrap';
+  if (state.activeItemId === item.id) state.activeItemId = '';
+  state.orchestration!.reconciliations.push({
+    itemId: item.id,
+    runId: owner.runId,
+    attempt: owner.attempt,
+    snapshotStatus: 'missing',
+    outcome: 'requeued-empty-bootstrap',
+    reason: item.summary,
+    evidence: [item.runDirectory],
+    reconciledAt: item.updatedAt,
+  });
+  await saveState();
+  await emitNotice(
+    'unsafe-recovery-cleared',
+    `此前“${version.nodes.find((node) => node.id === version.currentStage)?.title ?? version.currentStage}”的恢复阻断已核实为空启动，未产生仓库改动；秘书重新派发原任务。`,
+    item,
+  );
+  return true;
+}
+
 async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise<void> {
   if (!['planned', 'running', 'active'].includes(run.status)) return;
   const pmAlive = isOwnedProcessAlive(run.processPid, run.processIdentity, 0);
@@ -3452,6 +3540,7 @@ async function reconcileItem(
       'preview',
     ].includes(run.status)
   ) {
+    if (await requeueEmptyBootstrap(item)) return true;
     await markMissingSnapshot(item, 1);
     return false;
   }

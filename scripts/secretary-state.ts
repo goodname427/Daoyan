@@ -72,6 +72,7 @@ export interface SecretaryReconciliation {
     | 'retry-wait'
     | 'blocked'
     | 'bootstrapping'
+    | 'requeued-empty-bootstrap'
     | 'missing';
   reason: string;
   evidence: string[];
@@ -297,6 +298,7 @@ function validateItemOrchestration(item: SecretaryItem): void {
       'retry-wait',
       'blocked',
       'bootstrapping',
+      'requeued-empty-bootstrap',
       'missing',
     ].includes(value.reconciliationOutcome) ||
     typeof value.awaitingReview !== 'boolean' ||
