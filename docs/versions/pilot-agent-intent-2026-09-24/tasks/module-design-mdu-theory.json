@@ -23,17 +23,13 @@
       "output": "PASS mdu-theory contract, predecessors, replay and six-entry matrix"
     },
     {
-      "evidence": [
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
-      ],
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
       "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
       "exitCode": 0,
       "output": "Checking formatting... All matched files use Prettier code style!"
     },
     {
-      "evidence": [
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
-      ],
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
       "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
       "exitCode": 0,
       "output": "PASS git diff --check"
