@@ -1,23 +1,23 @@
 {
   "tasks": [
     {
-      "id": "mdp-world-review",
-      "title": "六项详细策划的统一世界主策复审",
-      "objective": "在范围修订 13 和已获准的 A/B/B/B/B/B 方向内，独立判断六项 mdp-* 成果能否构成自洽、可交制作人审阅的完整版本方案。",
+      "id": "mdq-world-review",
+      "title": "逐体证书与统一世界规则的主策复审",
+      "objective": "在已批准的范围修订 13 内，独立审核六项 mdq-* 详细策划、共同因果和未列举情形，判断是否已形成可交制作人审阅的完整方案；缺口须给出证据和退回合同。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：逐项复审结论、反例、证据和处理去向。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json：实际交付与直接检查证据。",
-        "必要时仅在已批准方向内修订唯一世界理论正文及受影响模块细则；共同公理与因果只维护在 world-theory-draft.md。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项判定、反例、来源证据、处理去向及总体建议。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json：实际交付物和直接检查证据。",
+        "必要时仅在已批准方向内修订受影响的模块细则与唯一世界理论正文；共同公理仅写入 world-theory-draft.md。"
       ],
       "acceptance": [
-        "以本版 direction、范围修订 13、charter-draft.md、intent-alignment.json、上轮 design-review.md 退回项、本轮 module-design.md 和六项 mdp-* 实际交付为输入，逐份审核；completed 与纸面自测均不等于主策认可。旧版策划、实现和代理验收仅是待复核事实。",
-        "核对物理投影与材料证书、A0/P0/D0/R0/K0/V0 报价和合法尝试价、来源→作用→散逸/回收账、tick/神识及静态毛界；起步/续步、代谢、100/20 最后一击和封闭补源须逐笔可复算，未知价或域外作用不得冒充成功。",
-        "核对修士 M1 与人工生命 A1 的具体关键回路、失供 N→X、维持/保存截止、LifeAssessment、LifeId、DeathBarrier 和撤权；检验及时/逾期补源、休眠、遗体惰性修壳及复制分叉，余额为零或证书不足不得直接推出死亡或原身份复苏。",
-        "核对修士、法球、机关与人工生命的载体容量、有限感知/记忆/事件、双时点授权和同一 AST 程序；接力护送 H、活跃信标 B 及普通行动须复算触发、执行者、付款方、物理及材料来源、反作用、耗尽、失败余态和已提交事实。缺能力、越权、接触未裁定、创建者死亡、场外与连续碰撞不得靠实体专名特权补洞。",
-        "核对唯一理论正文的 C/N→X、补源、Quote/Tx↔A、到期维持、LifeAssessment/撤权、事件顺序与各模块归属；默认物理、法力守恒、结构伤害、生命和可编程施法应组合闭合。元法术只承载不可再组合的原子效果，候选数值不得冒充世界公理。",
-        "核对推演台编辑/预算/单步→演武场同书绑定/观察→返回修订的成功、失败、空和域外纸面脚本；同初态、程序 hash、证书/授权、模拟时刻及种子下，鼠标、键盘、手柄、AI、实体事件和敌方修士须得到等价规范请求、价格、裁剪及余态。纸面验收不得声称实际可玩。",
-        "每项判断标为已覆盖、存在缺口或仍需制作人判断，给文件或行为证据和修订去向；对照直接相关代码、测试、现行推演台/演武场入口及 ADR 0017–0020，说明旧原型、DSL/蓝图、预设、敌方修士及存档的重做或隔离影响。原型兼容不阻断理论判断，已采纳 ADR 不默默覆盖。",
-        "若出现新产品解释或不可逆取舍，先用通俗语言比较玩家效果、优点、代价和推荐理由并升级；不闭合则明确退回详细策划的具体合同。只有方案完整自洽才建议交制作人审阅；不选开发切片，不实现游戏、预设或敌方修士，不修改游戏测试。"
+        "以本版 direction、范围修订 13、charter-draft.md、intent-alignment.json、上轮 design-review.md 退回合同、本轮 module-design.md 和六项 mdq-* 结果为输入，独立复核正文与证书；任务 completed、条件算式和纸面矩阵均不自动构成主策通过。",
+        "核对物理、资源、生命、程序、理论和桥接的同版输入输出：C/N→X、补源、Quote/Tx↔A、到期维持、LifeAssessment/DeathBarrier、授权与事件顺序，逐笔追踪来源、施法者、付款方、材料、正功、反作用、耗散/回收、失败余态及静态毛界。",
+        "重点裁定工作包与摄取包的上游装载、封印前后读数、补充/耗尽和无套利边界；交叉复算 H/B、普通起步/续步、代谢与 100/20 最后一击。无来源、未知价格、域外材料或容量缺证时保留未知/拒绝，不把条件成功写成可执行成功。",
+        "对齐资源 H1 与程序的 tick、A0 起步/续步 tick、J1 护送方向记忆槽、同刻峰值及静态上界；若属已批准方向内的文档不一致，修订对应细则并同步唯一理论和桥接验收，不暗改共同价函数或降低费用。",
+        "核对 M1/A1 的关键回路、失供损伤、维持/保存/恢复截止、LifeId 连续/未知/分叉及死亡撤权，并检验法球、机关、人工生命的载体容量、双时点 grant、自然碰撞与已付不回滚；覆盖无供能、补源早晚、创建者死亡、场外、连续碰撞、材料/权限不足和回收套利。",
+        "以接力护送和自修复信标检验获准感知、有限记忆、事件再启动和原子作用的组合闭合；用推演台编辑/预算→演武场同书绑定/观察→返回修订的成功、失败、空、未知及域外纸面步骤比较鼠标、键盘、手柄、AI、实体事件和敌方修士的规范意图等价。不得把纸面步骤报成实际可玩。",
+        "逐项标明已覆盖、存在缺口或仍需制作人判断，并给文件或行为证据及处理去向；对照现行代码、测试和 ADR 0017–0020，说明旧 DSL/蓝图、预设、敌方修士和存档的重做或隔离影响。旧原型兼容不阻断规则评审，已采纳 ADR 不默默覆盖。",
+        "新产品解释或不可逆取舍须先给制作人通俗方案比较、玩家效果、优点、代价和推荐理由；不能在任务中预定为已批准规则。只有整体方案自洽且缺口闭合才建议交制作人审阅，否则列出可执行的详细策划退回合同；不选开发切片，不实现游戏或修改游戏测试。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -29,28 +29,24 @@
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-physics.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-mana.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-life.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-bridge.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-bridge.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/charter-draft.md",
-        "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/module-design.md",
-        "docs/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-/archived.md",
         "docs/product/vision.md",
         "docs/architecture/invariants.md",
         "docs/adr/0017-统一实体控制属性模型.md",
         "docs/adr/0018-运动供能与命中守恒.md",
         "docs/adr/0019-属性探查与资源账本.md",
         "docs/adr/0020-事件执行上下文与生命周期.md",
-        "src/core/attributes.ts",
         "src/core/world.ts",
         "src/core/vm.ts",
         "src/core/pricing.ts",
@@ -69,7 +65,7 @@
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdp-world-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json"
       ]
     }
   ]
