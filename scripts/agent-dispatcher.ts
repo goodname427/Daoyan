@@ -1000,6 +1000,10 @@ function workerPrompt(
           )
           .join('\n')}\n`
       : '';
+  const formalModuleReentry =
+    task.id === 'formal-module-design-plan'
+      ? `\n若本节点因最新主策 changes-requested 退回重入，先读当前 design-review.md 与 design-review-findings.md。旧 module-design-tasks.json 和旧任务提交仅作历史证据；必须针对尚未闭合的合同更新任务 JSON 及说明 Markdown，使用未在历史 stageTasks 出现的新任务 ID，并明确新增设计判断、反例和验收。若只看到旧六项均已交付而不产出新任务，本轮规划无法接纳。实际可玩证据留到开发及候选阶段，策划只定义可执行的验收。\n`
+      : '';
   return `你是道衍项目的执行 Agent。只承接下面这一项任务，不重新规划整个项目，也不要创建其他 Agent。
 
 必须遵守 AGENTS.md 和 docs/workflow.md。开始前读取任务相关代码、文档和测试；优先限制在建议路径与直接依赖，不要扫描无关路线图、历史日志或整个仓库。在当前工作区直接实现。不要 commit、push、tag 或发布，这些由秘书统一处理。不要覆盖无关改动。
@@ -1020,6 +1024,7 @@ ${failureContext}
 ${takeoverInstruction}
 ${priorEvidence}
 ${sharedContext}
+${formalModuleReentry}
 
 完成实现后只运行改动直接相关的类型检查、定向测试或文档校验；不要运行统一 npm run verify 或 npm run verify:full，它们由 Feature PM 在汇总后的最终代码树负责。简洁报告修改、验证与剩余风险。`;
 }

@@ -2207,9 +2207,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     stage === 'charter-draft'
       ? `同时写入 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}，JSON 格式为 {"schemaVersion":1,"versionId":"${version.id}","charterRevision":"${version.charterRevision}","producerSignals":["制作人的原始例子或观察"],"inferredPrinciple":"策划推断的共通系统原则","adjacentCases":[{"scenario":"制作人未逐项指定的相邻情形一","expectedBehavior":"按原则应如何运作"},{"scenario":"相邻情形二","expectedBehavior":"按原则应如何运作"}],"recommendedExperience":"补全后的玩家体验","scopeBoundary":"原则适用边界","openAssumptions":[]}。有待确认的策划推断才填入 openAssumptions；没有则保持空数组。先区分明确要求、举例和策划推断，不把例子直接抄成封闭任务清单；用至少两个未列举情形检验推断，再给出策划推荐，不把整理想法的工作推给制作人。策划案首页以简短文字呈现同一解释及待确认假设，供制作人先判断方向。若不能可靠推断原则，明确标记假设并建议退回对齐，不能把猜测写成已批准事实。`
       : stage === 'module-design'
-        ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}、已批准章程和本轮制作人意见。${producerDesignFeedback(version)} 详细策划须按实际受影响模块分别给出可独立审阅的设计，不得仅扩写版本策划。每个模块说明职责与边界、状态和资源归属、规则或算法、对外合同与其他模块交互、玩家可见流程、成功/失败/空状态、反例、验收情形和未决假设；跨模块整合进唯一世界理论正文，避免互相矛盾。若设计只能覆盖原话中的例子，先修正策划，不继续缩成例子清单。`
+        ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}、已批准章程和本轮制作人意见。${producerDesignFeedback(version)} 详细策划须按实际受影响模块分别给出可独立审阅的设计，不得仅扩写版本策划。每个模块说明职责与边界、状态和资源归属、规则或算法、对外合同与其他模块交互、玩家可见流程、成功/失败/空状态、反例、验收情形和未决假设；跨模块整合进唯一世界理论正文，避免互相矛盾。若设计只能覆盖原话中的例子，先修正策划，不继续缩成例子清单。制作人已委托主策补全细节：可从已批方向推导的阈值、报价和边界应给出有反例支持的具体推荐，不能只将同一缺口重新标为待定。新规则的真实可玩验证属于开发及候选阶段；此处设计可执行的玩家流程与验收情形。`
         : stage === 'design-review'
-          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；逐模块检查具体设计、跨模块接口和唯一世界理论能否处理未列举情形，以及未确认假设是否被擅自当作制作人决定。对可从已批准方向推导的细节应由主策给出推荐，不把技术空白直接丢给制作人。若缺模块设计或原则被缩成例子补丁，decision=changes-requested；只有真正需要制作人决定的产品取舍才用 producer-escalation。升级时必须附面向制作人的通俗决策说明：每项解释 A/B 的实际规则、玩家体验、优点、代价、跨模块影响、推荐选择和理由，并明确未决定会阻止什么；不能只列字母和专业术语。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
+          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；逐模块检查具体设计、跨模块接口和唯一世界理论能否处理未列举情形，以及未确认假设是否被擅自当作制作人决定。对可从已批准方向推导的细节应由主策给出推荐，不把技术空白直接丢给制作人；若再次退回，逐项指出相比上一轮仍未完成的具体设计合同及可验收补全项，不用同一笼统缺口重复退回。策划阶段只审核纸面规则、玩家流程与后续可执行验收，不以新规则尚未实际可玩为退回理由。若缺模块设计或原则被缩成例子补丁，decision=changes-requested；只有真正需要制作人决定的产品取舍才用 producer-escalation。升级时必须附面向制作人的通俗决策说明：每项解释 A/B 的实际规则、玩家体验、优点、代价、跨模块影响、推荐选择和理由，并明确未决定会阻止什么；不能只列字母和专业术语。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
           : stage === 'task-breakdown'
             ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；在任务拆分报告中逐项说明工作如何兑现系统原则和相邻情形，不能只列制作人举过的例子。同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
             : stage === 'development'
@@ -2272,7 +2272,27 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
     stage === 'module-design'
       ? `\n先列出本版本真实受影响的模块与跨模块合同，再按可独立审阅的模块设计成果分派任务；资源、账户、市场这类不同职责不能因同属一个版本就合并成一份扩写稿。每个模块任务写明单独的策划交付物、上下游接口、具体设计内容与直接验收；基础世界理论可由一个任务负责，其他模块引用同一正文，Version PM 最终核对一致性。任务清单还必须有 modules:[{"id":"模块标识","title":"模块名称","taskId":"独占该模块设计的任务 ID"}] 和非空 crossModuleContracts:["模块间交互合同"]；每个模块使用不同任务 ID。若只有一个模块，增加非空 singleModuleReason 解释边界。${producerDesignFeedback(version)}`
       : '';
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${designPlan}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  const priorModuleTasks =
+    stage === 'module-design'
+      ? (version.stageTasks ?? []).filter((task) => task.stage === stage).map((task) => task.id)
+      : [];
+  const reentryGuidance =
+    priorModuleTasks.length > 0
+      ? `\n这是主策退回后的新轮次。上一轮任务 ${priorModuleTasks.join('、')} 已作为历史证据，不能原样重派或把旧清单视为本轮交付。先读最新 ${version.documentRoot}/design-review.md 与 design-review-findings.md，按尚未闭合的具体合同只建立必要的新任务；本轮任务 ID 必须与历史 ID 不同。必须同时更新 ${manifest} 和 ${version.documentRoot}/${label}-tasks.md，明确每项相对上轮新增的设计判断、反例和验收。已闭合模块只作只读前驱，不为凑数重做。主策所说的新规则实际可玩证据属于后续开发和候选验收，此节点只规划纸面设计与可执行验收。最新主策结论：${version.nodes.find((node) => node.id === 'design-review')?.summary ?? '见最新主策审核文档'}。`
+      : '';
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${designPlan}${reentryGuidance}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+}
+
+export function repeatedModuleDesignTaskIds(
+  version: FormalVersion,
+  tasks: readonly VersionStageTask[],
+): string[] {
+  const historical = new Set(
+    (version.stageTasks ?? [])
+      .filter((task) => task.stage === 'module-design')
+      .map((task) => task.id),
+  );
+  return tasks.filter((task) => historical.has(task.id)).map((task) => task.id);
 }
 
 function stageTaskDirection(version: FormalVersion, task: VersionStageTask): string {
@@ -5435,6 +5455,12 @@ async function consumeTaskOwnedVersionItem(
       startedAt,
       expectedVersionStageStep(version, stage),
     );
+    if (stage === 'module-design') {
+      const repeated = repeatedModuleDesignTaskIds(version, tasks);
+      if (repeated.length > 0) {
+        throw new Error(`重入详细策划不得复用历史任务 ID：${repeated.join('、')}`);
+      }
+    }
     for (const task of tasks) {
       assertStageTaskPaths(task, version.documentRoot);
       task.writePaths.push(`${version.documentRoot}/tasks/${label}-${task.id}.json`);

@@ -57,6 +57,7 @@ import {
   replaceVersionWorkItems,
   versionStageDirection,
   stageTaskPlanDirection,
+  repeatedModuleDesignTaskIds,
   versionMessageIsNewDirection,
   versionProducerDecision,
   validationTreeFingerprintForPaths,
@@ -80,6 +81,7 @@ import {
   resolveDecisionGate,
   transitionVersionBug,
 } from '../scripts/version-lifecycle';
+import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
 describe('secretary worker process launch', () => {
   it('retries only a network-failed planner that never reached a PM snapshot', () => {
@@ -866,6 +868,47 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskPlanDirection(version)).toContain('A、B、B、B、B、B');
     expect(versionStageDirection(version, 'module-design')).toContain('按模块详细展开');
     expect(versionStageDirection(version, 'design-review')).toContain('推荐选择和理由');
+  });
+
+  it('requires new module tasks after a design review returns the previous round', () => {
+    const version = createFormalVersion({
+      id: 'returned-module-design',
+      title: '模块设计返工',
+      direction: '闭合统一世界规则',
+      documentRoot: 'docs/versions/returned-module-design',
+      currentStage: 'module-design',
+      workflowRevision: 2,
+    });
+    const old = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'old-life',
+            title: '旧生命设计',
+            objective: '旧模块交付',
+            deliverables: ['生命稿'],
+            acceptance: ['直接检查'],
+            dependsOn: [],
+            readPaths: ['docs/versions/returned-module-design/world.md'],
+            writePaths: ['docs/versions/returned-module-design/life.md'],
+          },
+        ],
+      },
+      'module-design',
+      1,
+      '2026-09-26T01:00:00.000Z',
+    )[0];
+    version.stageTasks = [old];
+    version.nodes.find((node) => node.id === 'design-review')!.summary = '生命同一性尚未闭合';
+    const direction = stageTaskPlanDirection(version);
+    expect(direction).toContain('生命同一性尚未闭合');
+    expect(direction).toContain('必须同时更新');
+    expect(direction).toContain('不能原样重派');
+    expect(repeatedModuleDesignTaskIds(version, [old])).toEqual(['old-life']);
+    expect(repeatedModuleDesignTaskIds(version, [{ ...old, id: 'new-life' }])).toEqual([]);
+    expect(versionStageDirection(version, 'design-review')).toContain(
+      '不以新规则尚未实际可玩为退回理由',
+    );
   });
 
   it('does not relaunch a stage after a technical review stall', () => {
