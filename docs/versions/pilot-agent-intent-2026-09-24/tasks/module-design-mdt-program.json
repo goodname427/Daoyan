@@ -1,0 +1,69 @@
+{
+  "taskId": "mdt-program",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "形成四载体逐部位最小容量与误差、W-mdsc-1 可测静态界、AT0 独立攻击帧，以及 H/B/普通行动/维持/100-20 的条件整链预算；上游装载与攻击实证未齐，正向成功仍不签。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),s=d.split(\"## `mdt-program`\")[1].split(\"### H、B\")[0];a.ok(s);for(const id of [\"mdt-source\",\"mdt-ledger\",\"mdt-life\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"M1\",\"B1\",\"J1\",\"A1\",\"64 B\",\"4096 B\",\"600 tick\",\"W-mdsc-1\",\"AT0\",\"EL-attack-01\",\"capacityUnknown\",\"capacityFull\",\"queueFull\",\"DeathBarrier\",\"不回滚\",\"τmax\",\"Smax\",\"unknownPrice\"])a.ok(s.includes(k),k);a.equal(8+2+2+1+8,21);a.equal(8+1+2+9,20);a.equal(4+8+4+6+3,25);a.equal(4+16+4+6+3,33);a.equal(2+2+2+2+1,9);a.equal(2+2+2+4+1,11);a.equal(4+3+9+6+13+5,40);a.equal(4+3+11+6+13+5,42);a.equal(23+25+20,68);a.equal(23+33+20,76);console.log(\"PASS mdt-program content, predecessors and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdt-program content, predecessors and arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-source.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-ledger.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-life.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdt-program.json\",\"utf8\")),t=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")).stageTasks.find(x=>x.id===\"mdt-program\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.ok(e.commands.every(x=>x.exitCode===0&&x.command));a.ok(e.failedAttempts.every(x=>x.exitCode!==0));for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdt-program evidence and contract writePaths\")'",
+      "exitCode": 0,
+      "output": "PASS mdt-program evidence and contract writePaths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdt-program writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdt-program writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git ls-files --error-unmatch docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json",
+      "exitCode": 1,
+      "output": "error: pathspec did not match any file(s) known to git; task evidence file is new and untracked before delivery.",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-program.json"
+      ]
+    }
+  ]
+}
