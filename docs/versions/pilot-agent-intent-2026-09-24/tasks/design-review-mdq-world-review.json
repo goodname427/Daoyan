@@ -1,0 +1,104 @@
+{
+  "taskId": "mdq-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "独立复核六项 mdq 策划、共同因果、逐笔账与纸面双场景；H1/R0、A0 tick 和 J1 方向槽已按资源目录对齐到程序、唯一理论及桥接。工作包和摄取包上游装载、M1/A1 关键修复与身份实证、逐体容量和整程序静态界仍未闭合，结论为 changes-requested，退详细策划；不宣称新规则可执行或实际可玩。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md"]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/design-review-mdq-world-review.json\")),c=JSON.parse(f.readFileSync(b+\"design-review-tasks.json\")).tasks[0],d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\"),p=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\"),w=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),h=f.readFileSync(b+\"player-bridge-design.md\",\"utf8\");a.equal(j.taskId,c.id);a.equal(j.status,\"completed\");a.ok(j.artifacts.every(x=>c.writePaths.includes(x)&&f.existsSync(x)));a.ok(j.evidence.every(x=>f.existsSync(x)));for(const x of [\"六项逐项裁定\",\"跨模块逐笔复算与反证\",\"H 接力护送\",\"B 自修复信标\",\"100/20\",\"changes-requested\",\"旧 DSL/蓝图\",\"敌方修士\"])a.ok(d.includes(x),x);a.ok(p.includes(\"H 方向 1×64 B；2×64 B\"));a.ok(p.includes(\"9 M/10 tick/S8\"));a.ok(p.includes(\"A0=12 M/6 tick/S4\"));a.ok(!p.includes(\"9 M/9 tick\"));a.ok(!p.includes(\"19 M/14 tick\"));a.ok(w.includes(\"10+6=16 tick\"));a.ok(h.includes(\"目录工作 `16 tick`\"));a.equal(2+1+2*(1+2),9);a.equal(3+1+2*(1+2),10);a.equal(10+6,16);a.equal(6+6,12);a.equal(9+12+12,33);a.equal(3+100+20+7,130);a.equal(12+9+5+43,69);console.log(\"PASS mdq review contract, evidence and cross-document values\")'",
+      "exitCode": 0,
+      "output": "PASS mdq review contract, evidence and cross-document values",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from task artifacts' }; Write-Output 'PASS only five contract paths changed'",
+      "exitCode": 0,
+      "output": "PASS only five contract paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\";for(const n of [\"design-review-findings.md\",\"world-theory-draft.md\",\"programmable-spells-design.md\",\"player-bridge-design.md\"]){const d=f.readFileSync(b+n,\"utf8\");for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\"))a.ok(f.existsSync(p.resolve(b,x)),n+\":\"+x)}}console.log(\"PASS changed Markdown local link targets\")'",
+      "exitCode": 0,
+      "output": "PASS changed Markdown local link targets",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 1,
+      "output": "design-review-findings.md 与 programmable-spells-design.md 格式检查失败。",
+      "resolution": "已对这两个文档执行 Prettier 写入，随后同一检查通过。"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 1,
+      "output": "Python 文本写入使 programmable-spells-design.md 出现整文件 CRLF 差异，git diff --check 报 626 行 trailing whitespace。",
+      "resolution": "已按 HEAD 的 LF 字节约定恢复换行；后续同一检查退出 0，差异收敛为四处定向修正。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),cp=require(\"node:child_process\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/design-review-mdq-world-review.json\")),c=JSON.parse(f.readFileSync(b+\"design-review-tasks.json\")).tasks[0],d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\"),p=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\"),w=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),h=f.readFileSync(b+\"player-bridge-design.md\",\"utf8\");a.equal(j.taskId,c.id);a.equal(j.status,\"completed\");a.ok(j.artifacts.every(x=>c.writePaths.includes(x)&&f.existsSync(x)));a.ok(j.evidence.every(x=>f.existsSync(x)));for(const x of [\"六项逐项裁定\",\"跨模块逐笔复算与反证\",\"H 接力护送\",\"B 自修复信标\",\"100/20\",\"changes-requested\",\"旧 DSL/蓝图\",\"敌方修士\"])a.ok(d.includes(x),x);a.ok(p.includes(\"H 方向 1×64 B；2×64 B\"));a.ok(p.includes(\"9 M/10 tick/S8\"));a.ok(p.includes(\"A0=12 M/6 tick/S4\"));a.ok(!p.includes(\"9 M/9 tick\"));a.ok(!p.includes(\"19 M/14 tick\"));a.ok(w.includes(\"10+6=16 tick\"));a.ok(h.includes(\"目录工作 `16 tick`\"));a.equal(2+1+2*(1+2),9);a.equal(3+1+2*(1+2),10);a.equal(10+6,16);a.equal(6+6,12);a.equal(9+12+12,33);a.equal(3+100+20+7,130);a.equal(12+9+5+43,69);const changed=cp.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(changed,j.artifacts.slice().sort());console.log(\"PASS mdq review contract, evidence, cross-document values and writePaths\")'",
+      "exitCode": 1,
+      "output": "Node.js v24.18.0: Error: spawnSync git EPERM; status null, syscall spawnSync git。",
+      "resolution": "将 Git 状态范围检查移至外层 PowerShell 命令；纯 Node 断言不再启动子进程。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdq-world-review.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前工作区 .git 索引只读；五个合同路径保持未暂存，不能在本宿主形成本地提交，未推送。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ],
+  "delivery": {
+    "committed": false,
+    "pushed": false,
+    "published": false,
+    "reason": "本地暂存因 .git/index.lock Permission denied 退出 1；保留经直接检查的五路径工作区改动供可写宿主处理。"
+  }
+}
