@@ -1,0 +1,49 @@
+{
+  "taskId": "mdw-price-proof",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "承接 mdw-source-proof 和 mdv-action-ledger，逐项给 lJ/lB/lD/lK/lV/lAT0 的机械零价或付费原子毛价判据、独立 payer/grant、LoadTx 与不可取去向；AT0 另列物理包、材料、反作用、待证 c*、有限工作及 Quote/Tx↔A。条件复算 J1 读后 23 M、B1 读后 55 M 的同账户与第三方付款，检验同源/同 payer/攻击维持争用、100/20 早迟补源及两轮回收。未签描述符与实读保留 unknownPrice，所有成功事实仍为空；现场实耗留开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"mana-ledger-design.md\",\"utf8\"),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.filter(x=>x.id===\"mdw-price-proof\").at(-1),e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdw-price-proof.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const k of [\"mdw-price-proof\",\"lJ≤11 M\",\"lB≤12 M\",\"lD1/lD2\",\"lK,i=unknownPrice\",\"lV,i=unknownPrice\",\"lAT0=unknownPrice\",\"LoadTx-attack-01\",\"c0+cw·w+cj·j+cn·n+ck·k\",\"payerGrant-J-load\",\"payerGrant-B-load\",\"M_unavailable.load\",\"M_unavailable.attempt\",\"同源双领\",\"同 payer 抢款\",\"攻击/维持争用\",\"100/20 早到与迟到\",\"两轮回收\",\"unknownPrice\"])a.ok(d.includes(k),k);a.equal(23-12,11);a.equal(55-43,12);a.equal(23+12+23+12,70);a.equal(30-23+123,130);console.log(\"PASS mdw price contract, evidence paths and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdw price contract, evidence paths and arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdw-price-proof writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdw-price-proof writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-price-proof.json"
+      ]
+    }
+  ],
+  "failedAttempts": []
+}
