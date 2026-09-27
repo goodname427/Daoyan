@@ -1,0 +1,41 @@
+{
+  "taskId": "md-life",
+  "status": "completed",
+  "summary": "完成生命维持与身份模块策划：定义结构、生命回路、供能、控制权及程序权限的状态归属与接口，区分修士、人工生命、法球、稳定物和遗体的存在/生命/施法状态，逐项核验 100/20、及时补源、死亡后再损及信标修复的成功、失败和空状态，并标明旧 HP、自动回复、固定寿命、ADR 0017/0020 冲突及未决阈值/身份规则。仅完成文档策划，无游戏实现或运行时结论。",
+  "commands": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
+    },
+    {
+      "command": "node -e 'const fs=require(\"fs\"),path=require(\"path\");const f=\"docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md\",s=fs.readFileSync(f,\"utf8\");for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")&&!fs.existsSync(path.resolve(path.dirname(f),t)))throw Error(f+\" -> \"+t)}console.log(\"life design relative links OK\")'",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 1,
+      "reason": "新文档初稿格式不符合 Prettier；随后运行 prettier --write 并通过同一检查。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md",
+    "src/core/world.ts",
+    "src/game/battle.ts"
+  ]
+}
