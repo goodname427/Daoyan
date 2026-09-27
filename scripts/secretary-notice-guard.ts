@@ -4608,6 +4608,29 @@ export function parseDesignAcceptanceResult(
   };
 }
 
+export async function assertDesignAcceptanceEvidence(
+  workspaceRoot: string,
+  startedAt: string,
+  scenarios: ReturnType<typeof parseDesignAcceptanceResult>['scenarios'],
+): Promise<void> {
+  for (const scenario of scenarios) {
+    for (const path of [scenario.designPath, ...scenario.evidence]) {
+      const absolute = resolve(workspaceRoot, path);
+      if (
+        isAbsolute(path) ||
+        relative(workspaceRoot, absolute).startsWith('..') ||
+        !existsSync(absolute)
+      )
+        throw new Error(`策划体验场景 ${scenario.id} 的证据不存在或越界：${path}`);
+      if (
+        path !== scenario.designPath &&
+        !evidenceAfterStageStart(startedAt, (await stat(absolute)).mtimeMs)
+      )
+        throw new Error(`策划体验场景 ${scenario.id} 使用了本轮开始前的运行证据：${path}`);
+    }
+  }
+}
+
 export function parseDevelopmentResult(
   value: unknown,
   workItems: VersionWorkItem[],
@@ -5288,13 +5311,7 @@ async function finalizeDeliveredVersionStage(
       version.workItems,
       testedRevision,
     );
-    for (const scenario of result.scenarios) {
-      for (const path of [scenario.designPath, ...scenario.evidence]) {
-        const absolute = resolve(root, path);
-        if (isAbsolute(path) || relative(root, absolute).startsWith('..') || !existsSync(absolute))
-          throw new Error(`策划体验场景 ${scenario.id} 的证据不存在或越界：${path}`);
-      }
-    }
+    await assertDesignAcceptanceEvidence(root, stageStartedAt, result.scenarios);
     setNodeEvidence(version, stage, {
       artifact,
       summary: `${result.summary}；${result.scenarios.length} 个实际体验场景；证据：${manifestPath}。`,
