@@ -1,0 +1,82 @@
+{
+  "taskId": "mdt-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "只在唯一世界理论正文消费 mdt-source、mdt-ledger、mdt-life、mdt-program 四份条件证书；用同版重放键接自然 C/N→X、早到转账、Quote/Tx↔A、维持、生命与事件，逐笔区分条件价、当前实扣和余态；引用已闭合桥接矩阵，列六入口纸面验收、反证、ADR 与旧内容影响。上游装载、逐体量测、关键修复及攻击证仍缺，未把条件成功登记为世界实绩或可玩结果。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdt-theory.json\")),d=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdt-theory\");a.equal(j.status,\"completed\");a.equal(j.taskId,t.id);a.deepEqual(j.evidence,t.writePaths);a.ok(j.failedAttempts.every(x=>x.exitCode!==0));for(const x of [\"mdt-source\",\"mdt-ledger\",\"mdt-life\",\"mdt-program\",\"sourceLotId\",\"seed-mdt-13\",\"DeathBarrier\",\"mdq-bridge\",\"六入口逐格等价\",\"ADR-0018\"])a.ok(d.includes(x),x);console.log(\"PASS mdt-theory contract and coverage\")'",
+      "exitCode": 0,
+      "output": "PASS mdt-theory contract and coverage",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdt-theory writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdt-theory writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 1,
+      "output": "Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "仅对合同内 world-theory-draft.md 执行 Prettier --write，随后同一检查退出码为 0。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdt-theory.json",
+      "exitCode": 1,
+      "output": "Code style issues found in module-design-mdt-theory.json. Run Prettier with --write to fix.",
+      "resolution": "只格式化合同内的任务结果 JSON，再复跑两文件格式检查。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),v=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\"),t=v.stageTasks.find(x=>x.id===\"mdt-theory\"),x=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(s=>s.slice(3).replace(/\\\\/g,\"/\"));a.deepEqual(x.sort(),t.writePaths.slice().sort());console.log(\"PASS writePaths\")'",
+      "exitCode": 1,
+      "output": "spawnSync git EPERM",
+      "resolution": "Node 子进程在当前沙盒无法启动 git；改用 PowerShell 直接运行 git status，并按合同 writePaths 精确比较，退出码为 0。"
+    }
+  ]
+}
