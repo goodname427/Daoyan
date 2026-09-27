@@ -1108,6 +1108,28 @@ describe('persistent secretary state', () => {
     expect(() => normalizeSecretaryState(state)).toThrow('嵌套记录损坏');
   });
 
+  it('loads an audited empty-bootstrap requeue after restarting the guard', () => {
+    const state = createSecretaryState('2026-09-27T08:45:00.000Z');
+    const item = itemFromIntake(
+      { id: 'preflight', idea: '主策复审', createdAt: state.initializedAt },
+      [],
+    ).item;
+    item.status = 'superseded';
+    item.orchestration!.reconciliationOutcome = 'requeued-empty-bootstrap';
+    state.items.push(item);
+    state.orchestration!.reconciliations.push({
+      itemId: item.id,
+      runId: 'run-preflight',
+      attempt: 1,
+      snapshotStatus: 'missing',
+      outcome: 'requeued-empty-bootstrap',
+      reason: '核实为空启动',
+      evidence: ['progress.json'],
+      reconciledAt: state.initializedAt,
+    });
+    expect(() => normalizeSecretaryState(structuredClone(state))).not.toThrow();
+  });
+
   it.each(['waitingSnapshot', 'acknowledgedWaitingSnapshot'] as const)(
     'rejects malformed %s without inventing approval',
     (field) => {

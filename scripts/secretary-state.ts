@@ -269,6 +269,7 @@ function validateSecretaryOrchestration(value: unknown): asserts value is Secret
         'retry-wait',
         'blocked',
         'bootstrapping',
+        'requeued-empty-bootstrap',
         'missing',
       ].includes(String(entry.outcome)) ||
       !isStringArray(entry.evidence) ||
