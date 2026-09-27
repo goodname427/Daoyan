@@ -1,21 +1,32 @@
 {
+  "modules": [
+    { "id": "world-theory", "title": "统一世界理论", "taskId": "md-world" },
+    { "id": "physics-material", "title": "默认物理与材料结构", "taskId": "md-physics" },
+    { "id": "mana-ledger", "title": "法力流、做功与账户", "taskId": "md-mana" },
+    { "id": "life-identity", "title": "生命维持与身份", "taskId": "md-life" },
+    { "id": "programmable-spells", "title": "原子作用与实体程序", "taskId": "md-spells" },
+    { "id": "player-bridge", "title": "意图桥接与双场景体验", "taskId": "md-experience" }
+  ],
+  "crossModuleContracts": [
+    "md-world 独占公理、认识状态及跨模块反例总账；各模块只写本模块细则并引用唯一理论正文。细则推翻公理时退回理论修订，Version PM 最终核对一致性。",
+    "md-physics 持有自然演化、接触事实、结构及材料去向；md-mana 持有账户来源、可用性、转移和做功账。法术作用引用物理作用 ID 与法力交易 ID，同一接触或损伤不得重复结算。",
+    "md-life 依据结构、环境及有来源供能判生命、休眠、复苏、死亡和身份；余额归零或 HP 摘要不能单独决定生命与实体存在。死亡及结构失效向 md-spells 发布权能变化与终止事实。",
+    "md-spells 接收执行实体、程序、目标或方向、模拟时刻、授权和有限付款账户；校验能力与权限，按 md-mana 报价付款并向 md-physics/md-life 提交原子作用。事件只含获准字段，响应失败不回滚已提交自然事实或前笔交易。",
+    "共享法术书由 DSL/蓝图形成唯一 AST，分析器与 VM 共用作用和价格语义；神识计有限状态，tick 计工作，动态或无界预算明示。md-experience 不复制世界结算或赋予界面特权。",
+    "鼠标、键盘、手柄、AI 和实体事件经桥接成为同一世界请求；固定初态、执行者、权限、账户、目标、模拟时刻、事件先史和随机种子时，两场景同价、同效果、同失败余态。界面、配置、暂停和存档只传意图或展示获准事实。"
+  ],
   "tasks": [
     {
-      "id": "unified-world-design",
-      "title": "统一世界规则与可编程体验详细策划",
-      "objective": "在已批准的版本策划范围内，把唯一世界理论推敲成可供主策审核的跨模块详细方案：论证规则、资源流和组合闭合性，界定推演台到演武场的完整玩家体验及旧原型影响；不能自行决定仍需制作人取舍的产品规则。",
+      "id": "md-world",
+      "title": "修订唯一世界理论与反例总账",
+      "objective": "在范围修订13与制作人 A/B/B/B/B/B 反馈内，从少量原则建立跨模块因果、认识状态和组合闭合判据，不批准游戏开发。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：持续修订的唯一权威世界规则正文，含反例、账本和明确的未决结论。",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md：引用上述正文的模块详细策划，列跨实体合同、玩家交互与失败反馈、候选表达参数、可核验场景及现行原型/ADR 影响；不另立世界公理。"
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：唯一权威正文，含六项选择解释、公理与推导、共同术语、反例总账和未决假设。"
       ],
       "acceptance": [
-        "以范围修订 13、策划修订 2 和制作人已批准的立项评审为边界；分清制作人确认、探索方向、策划推断及待取舍问题。先说明问题、范围、非目标、完整体验和模块责任，不把工作流试运行指标当成游戏主题。",
-        "从少量共同前提推导默认物理、材料/结构、实体存在与消失、生命/死亡、自然损伤与法术作用；修士、法球、稳定物体、机关和人工生命按同一规则判断能力、维持及失效，不凭名称、固定寿命或独立伤害数补洞。对有效质量与接触、普通驱动来源、法力做功与可用性、生命阈值逐项论证或明确未决。",
-        "给出元法术不可组合性、法力来源/接收/环境去向、神识与耗时、授权和账户、事件订阅与有限记忆、原子提交和失败的同一合同；审计现有属性与公开元法术的原子性和价格工作量，追踪等可组合行为保持普通程序。若换算或回收上界仍无法闭合，不用任意折扣或免费效果伪装已解决。",
-        "用至少两个未逐项指定的跨实体玩法及稳定造物、额外供能、创建者死亡、场外/擦边/碰撞、遗体再损、100 点余额挪用 20 点维持储备、回收套利等反例，逐笔指出触发者、施法者、付款方、来源、作用与反作用、耗时、环境去向及失败结果；同一作用不重复结算。",
-        "详细说明玩家在推演台编写、检查、观察预算与失败，进入演武场绑定并见证同规则行为，再返回修改的完整流程；鼠标、手柄、AI 和实体事件只通过统一意图合同进入世界，按键、瞄准、界面探查、表现、配置和帧率不得变为世界特权。预设与敌方修士作为后续规则验证对象说明适用要求，本节点不制作或排期实现。",
-        "给出必要模块的状态所有权、交互、数值/价格表达边界、成功/失败/空状态和验收情形；不适用模块明确说明。逐项对照旧策划、当前代码、相关测试、可体验入口及 ADR 0017–0020，标记已覆盖、存在缺口或待制作人判断，并说明允许重做/移除旧原型时的法术、存档、数据保留及 ADR 覆盖影响，不把旧兼容当作设计前提。",
-        "若新产品解释、不可逆架构取舍或六类理论缺口无法从既定方向推导，列出证据、可选方案与需制作人判断的问题，交由设计审核升级；在判断前不写成既定实现任务、已采纳 ADR、开发切片或预设顺序。文档可独立评审且与唯一理论正文无矛盾。"
+        "区分制作人确认、此次选择、策划推断及仍待取舍；将有效质量/接触/材料 A、普通驱动 B、法力做功/环境/回收 B、生命/身份 B、元法术 B、载体/授权 B 融入同一模型，不能只转录字母或旧候选。",
+        "从默认演化和有来源的付费改变推导修士、法球、稳定物、机关与人工生命的存在、损伤、生命和施法；用接力护送、自修复信标、失供、注能、创建者死亡、场外、碰撞、100/20 储备及回收循环逐笔反证。",
+        "指出旧理论、整版设计、当前原型及 ADR 0017–0020 的冲突和重做影响；无法闭合的新解释或不可逆选择明确升级，不伪称理论定型。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -23,31 +34,142 @@
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/charter-draft-game-intent-charter.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/product/vision.md",
-        "docs/architecture/invariants.md",
-        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/architecture/invariants.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "id": "md-physics",
+      "title": "设计默认物理、接触与材料结构",
+      "objective": "为各类实体定义自然运动、有效质量、双边接触和材料变化，并向资源、生命及术式提供明确接口。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：物理与材料模块详细策划。"
+      ],
+      "acceptance": [
+        "按选择 A 展开有限形状、有效质量、接触、反作用、材料结构及可损边界，写明状态所有权、默认演化、自然接触与付费作用接口；不以 HP 或固定寿命替代。",
+        "给出稳定物、失供法球、修士起步、擦边、撞墙、撞活体或遗体、场外移交的成功、失败、空状态和可复核结算，定位 ADR 0018 冲突。",
+        "精度或材料域仍需新产品取舍时，以通俗文字列玩家效果、优点、代价、推荐选择及理由供升级，不自行定不可逆规则。"
+      ],
+      "dependsOn": ["md-world"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/adr/0018-运动供能与命中守恒.md",
-        "docs/adr/0019-属性探查与资源账本.md",
-        "docs/adr/0020-事件执行上下文与生命周期.md",
-        "docs/reference/entities-and-attributes.md",
-        "docs/reference/spell-authoring.md",
-        "docs/reference/meta-spells.md",
-        "src/core/attributes.ts",
         "src/core/world.ts",
-        "src/core/vm.ts",
-        "src/core/pricing.ts",
         "src/game/battle.ts",
-        "src/app/LabView.tsx",
-        "src/app/CombatView.tsx",
-        "test/core.test.ts",
-        "test/combat.test.ts",
         "test/entity-vnext.test.ts"
       ],
-      "writePaths": [
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "id": "md-mana",
+      "title": "设计法力流、做功与账户账本",
+      "objective": "将普通驱动、法力转移、环境可用性、做功与回收归入同一可对账资源合同。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：资源与账户模块详细策划。"
+      ],
+      "acceptance": [
+        "按普通驱动 B 和法力做功/环境/回收 B 展开玩家效果；明确法力、物理来源、材料、神识及 tick 的所有者与边界，每笔列付款方、来源、接收者、环境去向、已做工作、可用性及退款受益人。",
+        "给出起步、额外注能、零余额先从获准来源转入、100/20 全额支用、取消/死亡后结算及重复创建回收的流水与拒绝/空状态；未证明无套利上界则标明待定或禁止的表达域。",
+        "说明与物理作用 ID、生命维持、程序定价/授权及静态预算的接口，对照旧三池、自动回复、任意倍率和 ADR 0019，不用折扣或免费补给填洞。"
+      ],
+      "dependsOn": ["md-world", "md-physics"],
+      "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md"
-      ]
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "src/core/world.ts",
+        "src/core/pricing.ts",
+        "src/core/vm.ts",
+        "test/core.test.ts"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "id": "md-life",
+      "title": "设计生命维持、死亡与身份",
+      "objective": "从结构和有来源的自维持过程定义生命临界、休眠复苏、死亡及身份连续性。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：生命与身份模块详细策划。"
+      ],
+      "acceptance": [
+        "按生命/身份 B 展开人工造物自维持、失供退化、休眠、修复复苏和新生命身份边界；列回路、材料、供能及控制权的状态归属与接口。",
+        "用修士、人工生命、法球、稳定物、遗体区分存在、生命和可施法；覆盖100/20最后一击、及时补源、死亡后再损及信标修复的成功、失败和空状态。",
+        "向程序授权和界面给出死亡与身份事实；定位旧 HP、自动回复、固定寿命及 ADR 0017/0020 冲突，未决临界不得伪装已定型。"
+      ],
+      "dependsOn": ["md-world", "md-physics", "md-mana"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md",
+        "src/core/world.ts",
+        "src/game/battle.ts"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
+    },
+    {
+      "id": "md-spells",
+      "title": "设计最小原子作用与跨实体程序",
+      "objective": "使获准感知、计算、原子作用、有限记忆和事件再启动可组合且同价同权。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：法术语言、分析、VM、载体和事件模块详细策划。"
+      ],
+      "acceptance": [
+        "按元法术 B 与载体/授权 B 界定可编辑材料域、原子不可组合性、能力及结构容量；追踪、碰撞伤害和自修复等可组合行为保持普通程序，审计旧94项入口与十项属性的去留和价格工作量。",
+        "给出唯一 AST 到分析器、定价、VM 和事件订阅的接口；说明执行者、付款方、有限授权、神识状态、tick 工作、动态预算、原子提交、事件队列、死亡后授权及拒绝/空目标。",
+        "同一程序交修士、法球、机关、人工生命和残余遗体时，逐项核验成功、无能力、越权、欠费、缺材料及队列上限；定位 ADR 0017–0020、旧法术和存档的不等价影响，不以旧兼容约束设计。"
+      ],
+      "dependsOn": ["md-world", "md-physics", "md-mana", "md-life"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/reference/meta-spells.md",
+        "docs/reference/spell-authoring.md",
+        "docs/architecture/invariants.md",
+        "src/core/attributes.ts",
+        "src/core/vm.ts",
+        "src/core/pricing.ts",
+        "test/core.test.ts"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "id": "md-experience",
+      "title": "设计意图桥接与推演至实战体验",
+      "objective": "区分现实输入和世界请求，定义玩家在共享法术书、推演台、演武场中的完整往返。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：输入桥接、双场景玩家流程与反馈模块详细策划。"
+      ],
+      "acceptance": [
+        "给出鼠标、键盘、手柄、AI、实体事件的统一意图字段及跨入口等价前提；审计瞄准、模拟时间、暂停、UI 探查、表现、配置和存档，入口及帧率不得成为世界特权。",
+        "写明 DSL/蓝图编辑、预算、单步推演、绑定实战、观察自然与付费响应、失败定位、返回同一法术书修改的流程；分别列成功、拒绝、空书/空目标、往返与旧原件诊断。",
+        "以同一程序交修士、法球、机关及敌方修士核验请求与反馈一致性；预设和敌方修士仅为后续验证对象，本节点不制作或排开发；区分现有入口能力与新规则缺口。"
+      ],
+      "dependsOn": ["md-world", "md-spells"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+        "docs/product/vision.md",
+        "docs/architecture/invariants.md",
+        "docs/reference/spell-authoring.md",
+        "src/app/LabView.tsx",
+        "src/app/CombatView.tsx",
+        "src/game/battle.ts",
+        "test/combat.test.ts"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
     }
   ]
 }
