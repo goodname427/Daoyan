@@ -1,0 +1,58 @@
+{
+  "taskId": "mdo-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接 mdo-mana 的 K0/V0 维持与保存证书，补齐关键回路最低功能裕度、有限维持/保存截止、不可逆 X 判据、结构/记忆/控制连续证据、复制分叉唯一承接或 unknown，并逐格复算失供、及时补源、休眠、遗体修壳、复制分叉和断链；候选参数待整版审核，不另定报价。",
+  "commands": [
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json"
+      ],
+      "output": "PASS mdo-life contract, K0/V0, scenarios, arithmetic and 17 local links",
+      "exitCode": 0,
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),c=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")),t=c.tasks.find(x=>x.id===\"mdo-life\"),m=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdo-mana.json\",\"utf8\"));a.deepEqual(t.dependsOn,[\"mdo-mana\"]);a.deepEqual(t.writePaths,[p+\"life-identity-design.md\"]);a.equal(m.taskId,\"mdo-mana\");a.equal(m.status,\"completed\");for(const s of [\"K0/V0\",\"hActiveMin\",\"vPreserveMin\",\"recoveryDeadline\",\"DeathBarrier\",\"LifeAssessment\",\"identityRelation=unknown\",\"same(L)\",\"new(L2)\",\"域外\",\"100/20\",\"及时补源\",\"人工生命\",\"遗体修壳\",\"复制分叉\",\"断链\",\"撤权\"])a.ok(d.includes(s),s);a.equal(100+30,0+7+123);let n=0;for(const x of d.matchAll(/\\]\\(([^)]+)\\)/g)){let h=x[1].split(\"#\")[0];if(h&&!h.includes(\"://\")){a.ok(f.existsSync(require(\"node:path\").resolve(p,h)),h);n++}}console.log(\"PASS mdo-life contract, K0/V0, scenarios, arithmetic and \"+n+\" local links\")'"
+    },
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json"
+      ],
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "exitCode": 0,
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json"
+    },
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json"
+      ],
+      "output": "",
+      "exitCode": 0,
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "Git metadata is read-only in this workspace; files remain local and uncommitted for the secretary in a Git-writable environment. No push or tag attempted.",
+      "exitCode": 1,
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json"
+    },
+    {
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "Commit could not start because staging was blocked by the same .git/index.lock permission error.",
+      "exitCode": 1,
+      "command": "git commit -m \"docs: complete life identity criteria\""
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+  ]
+}
