@@ -1,31 +1,29 @@
 {
   "modules": [
-    { "id": "physics-material", "title": "工作、摄取与材料包", "taskId": "mds-supply" },
-    { "id": "mana-ledger", "title": "包装载与法力交易账本", "taskId": "mds-ledger" },
-    { "id": "life-identity", "title": "关键回路与身份连续", "taskId": "mds-life" },
-    { "id": "programmable-spells", "title": "逐体载体与整程序预算", "taskId": "mds-capacity" },
-    { "id": "world-theory", "title": "唯一理论的同版因果收口", "taskId": "mds-theory" },
-    { "id": "player-bridge", "title": "跨入口纸面验收", "taskId": "mds-bridge" }
+    { "id": "physics-material", "title": "物理来源与材料", "taskId": "mdt-source" },
+    { "id": "mana-ledger", "title": "法力交易与独立报价", "taskId": "mdt-ledger" },
+    { "id": "life-identity", "title": "生命维持与身份连续", "taskId": "mdt-life" },
+    { "id": "programmable-spells", "title": "程序载体与整链预算", "taskId": "mdt-program" },
+    { "id": "world-theory", "title": "唯一世界理论收口", "taskId": "mdt-theory" }
   ],
   "crossModuleContracts": [
-    "物理材料模块独占工作/摄取包的可用物理量、Q[k]、支点、反作用、热和 C/N→X 测量；资源模块独占上游 M 来源授权、装载/补充/回收 Tx、Quote 与收款分区。双方以同一 energyLotId/materialLotId、结构版本、封印读数、精度和事务 ID 交接；M 付款不凭空生成 E0。",
-    "生命模块消费物理已提交的 M1/A1 关键损伤及资源 K0/V0 净到账，独占截止判定、LifeAssessment、LifeId 连续链、DeathBarrier 与撤权；缺失关键修复或身份来源证书时为 unknown，程序不得复用旧私权。",
-    "程序模块消费物理逐体结构、资源毛报价及生命撤权，独占 M1/B1/J1/A1 装载、槽/队列/储池、同刻峰值及整程序 τmax/Smax；每笔提交复验 grant、包、材料与版本，容量缺证和实满额分别拒绝。",
-    "理论模块只在 world-theory-draft.md 维护共同公理及 C/N→X→补源→Quote/Tx↔A→到期维持→LifeAssessment/DeathBarrier→事件顺序；消费四份新证书，用同一请求、批次、版本和事实 ID 交桥接，不复制模块参数或将无证成功写成事实。",
-    "桥接模块消费理论整链及四模块证书，把世界规范意图映射到推演台和演武场纸面脚本；六入口仅在同初态、同 AST/hash、payer/grant、先史、时刻/序号及种子下比较。Version PM 在节点总报告核对合同与 ADR/旧原型影响；两份共享报告不在任何模块独占写入范围。"
+    "物理模块独占 sourceLotId、能量/材料可取下界、装载功及损耗、四次测读、反作用、自然 C/N→X 和攻击物理包；资源模块消费同版包，独占 M 来源、payer/grant、LoadTx、Quote/Tx↔A、攻击独立毛价及不可取分区。M 扣款不能生成 E0。",
+    "生命模块消费 M1/A1 关键结构和独立 N/X、资源已到账交易，独占保守截止、LifeAssessment、LifeId 三链、DeathBarrier 与撤权；关键修复不可表达时保留 unknown 并明确窄域不可恢复。",
+    "程序模块消费物理结构/攻击包、资源毛报价与生命撤权，独占四载体容量、同刻队列、W-mdsc-1 工作界、攻击帧及整链 τmax/Smax；提交时复验来源、授权和材料。",
+    "理论模块只在 world-theory-draft.md 维护共同公理及因果顺序，以同一初态、批次、事实 ID 和版本重放 H/B/普通行动/100-20；已闭合的 player-bridge-design.md 是六入口纸面验收的只读前驱。共享 module-design.md、design-review 文档和 docs/status.md 留给 Version PM。"
   ],
   "tasks": [
     {
-      "id": "mds-supply",
-      "title": "补工作与摄取包的逐体物理来源证书",
-      "objective": "把 mdq-physics 已算出的正功、代谢和材料结果追溯到有限库存与可测包，而非重复碰撞模型。",
+      "id": "mdt-source",
+      "title": "签定正功、摄取和攻击的上游物理来源",
+      "objective": "相对 mds-supply 的条件包表，判定批准有限域内哪些包有取得先史与可取下界，哪些必须拒绝。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：新增 H2、B4、A0、K0/V0 所用工作/摄取包的逐体来源与封印证书。"
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：同版上游来源、装载、材料和攻击物理包证书。"
       ],
       "acceptance": [
-        "相对 mdq-physics，逐包列 energyLotId/materialLotId、上游库存和物理可用量、持有体、支点/摄取路径、Q[k] 种类及精度、装载前后与封印前后读数、测量误差、结构版本、一次作用后的功/热/废料/残量及有限补充和耗尽；未知上游只保留条件或拒绝格。",
-        "用同一物理规则反证有包、无包、无支点、材料已损、连续碰撞换版、额外供能与第二次回收；自然 C/N→X 与后来失败的付费作用分账，已提交事实不回滚。",
-        "向资源交付可引用的包 ID、有效域、误差和耗尽条件，向生命交付 M1/A1 关键结构测量输入，向程序交付逐体结构容量输入；不将 M 扣款当作 E0 或 Q[k] 来源。"
+        "对 H2、B4、D1/D2、K0/V0 和攻击逐项给来源实体、sourceLotId/energyLotId/materialLotId、取得先史、所有权/授权、前态可取下界、独立装载功/损耗、装载两侧及封印前后四次读数、E0/12 与 q/0q 误差、逐种材料/热/废料/反作用去向、有限补包及耗尽；不把 source-* 名称或目标读数当作上游证书。",
+        "反证无包、无支点、结构损坏换版、同源竞争、额外供能、连续碰撞和二次回收；M1/A1 两次独立失供的自然梯度及保存层承载亦须有可核来源，分别裁定已证、条件、未知、域外。",
+        "向资源交同版包 ID、可取保守界和封印/结构/环境版本，向生命交关键结构与 N/X 输入，向程序交四载体结构及攻击材料/反作用需求；无合法上游不签成功 LoadTx。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -33,46 +31,45 @@
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
     },
     {
-      "id": "mds-ledger",
-      "title": "补上游装载、补给与回收的同版资源账",
-      "objective": "把 mdq-mana 的条件报价与新增物理包相接，判明哪些行动能签成功交易。",
+      "id": "mdt-ledger",
+      "title": "接入装载证书并给攻击独立报价",
+      "objective": "相对 mds-ledger 条件毛账，区分有效成功价、失证未知价和合法尝试价，给攻击独立资源合同。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：新增逐批来源授权、装载/补充/回收、付款与作用交叉账。"
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：包与法力交叉账、攻击独立价函数及失败余态。"
       ],
       "acceptance": [
-        "相对 mdq-mana，为 H2、B4、A0、K0/V0 逐笔列 M 来源、payer/grant、装载事务、energyLotId/materialLotId、Q[k] 扣回、Quote/Tx↔A、不可取/热分区与失败余态；物理量与 M 分栏，已知条件价不自动等于可执行成功价。",
-        "重放有源/无源、补充次数耗尽、材料精度不足、同刻竞争付款、第一笔已付而第二笔缺包及来源→作用→回收→再作用；给封闭循环逐笔毛界和收款去向，不用净额掩盖重复回收。",
-        "未知包、价格或权限公开拒绝且不签成功 Tx/A；合法有界尝试价与公开预检互斥，已提交读数、转入和自然事实保留。若只能靠 M 无源生功或开放热回收闭合，标记需升级的产品取舍，不暗定新公理。"
+        "只消费 mdt-source 同版包，为 H2/B4/D1/D2/K0/V0 和攻击列 M 来源、payer/grant、LoadTx、包、Quote/Tx↔A、不可取及回收分区；攻击从原子作用和算法工作量推导独立毛价，不借用 K0 或预设 100 M。",
+        "反证余额足却缺包、装载失证、同刻竞争包/账户、先付读取后作用失败及来源→作用→回收→再作用；公开预检无价无扣与合法进入有界求证后换版的互斥尝试价分开。",
+        "给封闭循环逐笔毛界、热/材料不可取分区及攻击/维持竞争余态；缺证保留 unknownPrice、undeterminedEnergy、LoadTx=∅ 和 Tx/A=∅，不暗定 M→E0 或环境热回收。"
       ],
-      "dependsOn": ["mds-supply"],
+      "dependsOn": ["mdt-source"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
     },
     {
-      "id": "mds-life",
-      "title": "补 M1/A1 关键修复与身份连续证书",
-      "objective": "把 mdq-life 的条件生命判据接到可测损伤、可达修复和唯一连续链。",
+      "id": "mdt-life",
+      "title": "核定两体关键修复与 LifeId 正证",
+      "objective": "相对 mds-life 的条件维持和三链模板，判定 M1/A1 在批准窄域内能否获得可达恢复及连续身份。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：新增两体关键材料、回路、截止和三链连续的纸面证书。"
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：两体独立损伤、截止、修复可达性及唯一身份逐 tick 证书。"
       ],
       "acceptance": [
-        "相对 mdq-life，分别给 M1/A1 的 k_m/k_a 关键结构、保存层、感知/调节/连接/记忆链的测量和版本；列首损、终界的独立 N→X 输入、维持/保存/恢复截止的求法，以及在已批准窄域内获准且有材料/包的关键修复路径；D0 仅修 k0 不得冒称修复关键回路。",
-        "用同一证书逐 tick 判 100/20 最后一击、及时及阶段⑥迟到补源、休眠、惰性修壳、关键损伤、复制分叉与创建者死亡；每格列 LifeAssessment、唯一 LifeId 承接或新枝、DeathBarrier 和 grant 撤销时点。",
-        "关键修复不可表达、截止误差或三链缺证时保留 unknown 与旧私权冻结；不凭余额零、单一过期、外壳完整或复制快照判死或复苏。向程序和理论交付同版身份事实。"
+        "分别列 M1/A1 的 k_m/k_a、反馈/保存功能及材料量测、首损和终界两次独立 N→X 的 sourceLotId/causeId/前后读数和保守截止；从物理包及资源报价核获准关键修复的表达域、材料、付款和到达窗口。D0 仅修 k0，窄域无路则明示暂不可恢复并标待取舍。",
+        "逐 tick 反证 100/20 储备挪用、及时及阶段⑥迟到补源、休眠、修壳、复制分叉及创建者死亡；每格给 LifeAssessment、唯一 LifeId 承接/新枝、DeathBarrier 和 grant 撤销时点。",
+        "关键功能、截止或三链缺证时保持 unknown/identityRelation=unknown 并冻结旧私权；余额零、单独过期、壳完整或复制快照均不能单独判死或复苏。"
       ],
-      "dependsOn": ["mds-supply", "mds-ledger"],
+      "dependsOn": ["mdt-source", "mdt-ledger"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
@@ -84,42 +81,41 @@
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
     },
     {
-      "id": "mds-capacity",
-      "title": "补逐体载体容量与整程序静态上界",
-      "objective": "将 mdq-program 的候选容量和原子 tick 扩为有结构依据的同刻及整路径证书。",
+      "id": "mdt-program",
+      "title": "核定四载体容量、攻击执行与全链预算",
+      "objective": "相对 mds-capacity 的候选字节及 tick 表，给出结构约束、并发调度及可测静态上界。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：新增 M1/B1/J1/A1 容量构成、损坏换证及整程序预算证书。"
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：逐部位容量、W-mdsc-1 工作界、攻击帧及整链预算证书。"
       ],
       "acceptance": [
-        "相对 mdq-program，逐体列可测结构对 AST 代码、感官、64 B 方向槽、有限记忆、订阅、事件队列/信封、执行帧、神识及 M 储池的约束和同刻峰值；候选 20/60 M 或 600 tick 单帧限额不可替代结构证明。",
-        "按 H1 10 tick、A0 每笔 6 tick 的已修原子口径，加上 AST 判断、记忆写入、信封/唤醒及并发额外工作，逐路径求 H/B、普通行动、维持与 100/20 的 τmax/Smax 和毛扣款；攻击独立价或包未证则保留 unknownPrice。",
-        "反证第二个同刻 B1 信封、J1 第三个引用、损坏换证、容量满/容量缺证、创建者死亡与攻击/维持竞争；装载、唤醒、逐笔提交重验 grant、版本和材料，分别给 capacityFull/queueFull、capacityUnknown 及已付不回滚余态。"
+        "将 M1/B1/J1/A1 的代码/AST、感官、64 B 槽、有限记忆、订阅、信封、队列、执行帧、神识和 M 储池逐体映射到结构最小容量及误差，说明损坏换证、同刻调度和授权双时点复验；候选 21/20/21/21 S、4096 B 或 600 tick 不能自行证明可装载。",
+        "消费攻击独立价和物理包，列攻击自身执行帧及算法工作量，求 H/B、普通行动、维持及 100/20 整路径 τmax/Smax 和毛扣款；W-mdsc-1 每项有可测上界及未来静态预算≥实耗的验收，不借 K0 代攻击。",
+        "反证 B1 第二信封、J1 第三引用、损坏旧证、创建者死亡和攻击/维持竞争；分别裁定 capacityUnknown、capacityFull、queueFull 及已付不回滚，无证全链不得列成功。"
       ],
-      "dependsOn": ["mds-supply", "mds-ledger", "mds-life"],
+      "dependsOn": ["mdt-source", "mdt-ledger", "mdt-life"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
     },
     {
-      "id": "mds-theory",
-      "title": "将新证书收束进唯一世界理论",
-      "objective": "只补 mdq-theory 未能签正向整链的证书连接，不重写已闭合的世界公理。",
+      "id": "mdt-theory",
+      "title": "同一事实链收束唯一理论与纸面验收",
+      "objective": "消费四份新证书，只在唯一正文接线和标注证据级别，不重开已闭合桥接模块。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：新增同版来源、身份、容量整链与未闭合反例结论。"
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：同版 H/B/行动/最后一击重放、反例结论及旧规则影响。"
       ],
       "acceptance": [
-        "相对 mdq-theory，按同一请求、包批次、结构/报价/容量版本及 C/N/X/Quote/Tx/A/LifeAssessment/DeathBarrier/事件 ID 重放 H/B、普通行动、100/20；逐笔列触发者、执行者、payer、物理/材料来源、反作用、耗尽、实扣和余态，不复制模块价表。",
-        "将无包、无支点、关键修复不可达、身份分叉、超额队列、创建者死亡、迟到补源及第二次回收判为已证、条件、unknown、域外或需制作人取舍；无证攻击价仍为 unknownPrice，阶段⑥不倒救阶段④。",
-        "只在此正文修订共同规则；列新证书与 ADR 0017–0020、旧 DSL/蓝图、预设、敌方修士及存档的冲突和等价/隔离/拒绝/重写判断。若需新产品解释，先用通俗文字写各方案玩法效果、优势、代价、推荐及理由，不当成已批准任务。"
+        "以同一 S0、sourceLotId、AST/hash、结构/报价/授权版本、时刻/序号、种子和事实 ID 重放 C/N→X、早到补源、Quote/Tx↔A、维持、LifeAssessment/DeathBarrier、事件；逐笔列执行者、payer、来源、反作用/热、耗尽、实扣及余态，旧 mdq 条件流水与 mds/本轮证书标清证据级别。",
+        "引用已闭合桥接矩阵，给 H/B/普通行动/100-20 和六入口成功前提、失败、获准空读、未知、域外及返回修订的可执行纸面验收；逐格核公开字段裁剪、报价、实扣、事件与余态，区分纸面推导、未来量测和开发后可玩证据。",
+        "反证无包/无支点、关键修复不可达、身份分叉、容量/队列满、创建者死亡、迟到补源、二次回收及攻击无价；列 ADR 0017–0020、旧 DSL/蓝图、预设、敌方修士、存档的覆盖/隔离/重写和回退影响。桥接文 ADR-0018 误称标给 Version PM 精确修文；需开放 M→E0、环境回收、关键材料编辑或死后独立 grant 时只形成通俗取舍材料，不暗定新规则。"
       ],
-      "dependsOn": ["mds-supply", "mds-ledger", "mds-life", "mds-capacity"],
+      "dependsOn": ["mdt-source", "mdt-ledger", "mdt-life", "mdt-program"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
@@ -132,32 +128,6 @@
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
-    },
-    {
-      "id": "mds-bridge",
-      "title": "把新整链写成跨入口纸面验收",
-      "objective": "仅更新 mdq-bridge 条件格的证书前提和可执行验收，不宣称新规则已实际可玩。",
-      "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：新增同版 H/B、普通行动、100/20 的纸面重放矩阵和公开拒因。"
-      ],
-      "acceptance": [
-        "相对 mdq-bridge，以同一 S0、AST/hash、包及结构版本、grant/payer、可见字段、先史、模拟时刻/序号和种子列推演台编辑/预算→演武场绑定/观察→返回修订的纸面步骤；每格对应理论事实 ID、报价、实扣、裁剪字段和已提交余态。",
-        "分别验有证成功前提、欠费/缺包/缺料/无权/满额拒绝、获准空读、未知价或身份及域外脚本；鼠标、键盘、手柄、AI、实体事件与敌方修士的规范请求相同时比较同价、事件和余态，暂停恢复不得重放输入边沿。",
-        "旧 DSL/蓝图、预设、敌方修士、绑定及存档引用理论中的等价或隔离策略；纸面脚本只定义未来开发与候选验收，不登记浏览器运行或玩家体验通过。"
-      ],
-      "dependsOn": ["mds-theory"],
-      "readPaths": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
-      ],
-      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
     }
   ]
 }
