@@ -1,6 +1,6 @@
 # 统一世界理论与五份模块细则：主策审核记录
 
-**边界**：`pilot-agent-intent-2026-09-24`，范围修订 `13`、策划修订 `2`。[版本状态](../../../.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json)的 `orchestration.scopeRevisions[12]` 已批准范围，`approvals` 中 `charter-review/approved/2` 批准继续详细策划。制作人其后选择 `A/B/B/B/B/B` 作为六类方案方向，见[上一节点结论](./module-design.md)。这不批准参数、身份语义、ADR 覆盖或游戏开发。[上一节点六项任务结果](./module-design-tasks.json)只证明理论及五份细则的文档交付。[版本状态的最新 `stageTasks/unified-world-review`](../../../.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json)是本次写入与验收合同；较早的[审核任务清单](./design-review-tasks.json)只作验收文字对照，其写入清单未列本轮任务结果 JSON。旧[整版策划](./world-rule-design.md)只作历史对照。
+**边界**：`pilot-agent-intent-2026-09-24`，范围修订 `13`、策划修订 `2`。版本状态（本机证据：`../../../.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json`）的 `orchestration.scopeRevisions[12]` 已批准范围，`approvals` 中 `charter-review/approved/2` 批准继续详细策划。制作人其后选择 `A/B/B/B/B/B` 作为六类方案方向，见[上一节点结论](./module-design.md)。这不批准参数、身份语义、ADR 覆盖或游戏开发。[上一节点六项任务结果](./module-design-tasks.json)只证明理论及五份细则的文档交付。版本状态的最新 `stageTasks/unified-world-review`（本机证据：`../../../.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json`）是本次写入与验收合同；较早的[审核任务清单](./design-review-tasks.json)只作验收文字对照，其写入清单未列本轮任务结果 JSON。旧[整版策划](./world-rule-design.md)只作历史对照。
 
 **问题**：旧原型的分池、固定寿命和类型分支不能证明自然物理、生命、材料与玩家跨实体程序来自一套规则。**范围**：审核意图、统一因果、反例账本、完整玩家往返、现行证据和六类选择后的缺口；修正文档内可从批准方向推出的遗漏。**非目标**：定参数、运行新规则、迁移存档、选开发切片、制作预设或敌方修士。**验收**：下列每项有定位证据、处理或升级去向；无法报价或组合时标为待定价/不可表达。
 
@@ -160,7 +160,7 @@
 
 ## `mdn-*` 五细则与唯一理论的主策复审（范围修订 13）
 
-**问题与输入**：制作人认可统一世界规则大方向并委托主策在当前版本继续推敲，未批准游戏开发；[本版方向](../../../.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json)、[章程](./charter-draft.md)、[意图对齐](./intent-alignment.json)和已选 `A/B/B/B/B/B` 限定本轮解释。[上一轮审核](./design-review.md)为 `changes-requested`；[模块汇总](./module-design.md)交付五细则与唯一理论。[五项 `mdn-*` 结果](./module-design-tasks.json)均登记 `completed`，此处仍逐份核查正文。**范围**是共同因果、五细则、指定反例及双场景纸面验收；**非目标**是选择切片、制作预设、修改游戏/测试/ADR 或认定新规则已经可玩。**审核标准**：每项指出定位证据、可推翻它的反例、闭合处理或升级去向；不能给出可报价/可判证明的作用保持拒绝。
+**问题与输入**：制作人认可统一世界规则大方向并委托主策在当前版本继续推敲，未批准游戏开发；本版方向（本机证据：`../../../.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json`）、[章程](./charter-draft.md)、[意图对齐](./intent-alignment.json)和已选 `A/B/B/B/B/B` 限定本轮解释。[上一轮审核](./design-review.md)为 `changes-requested`；[模块汇总](./module-design.md)交付五细则与唯一理论。[五项 `mdn-*` 结果](./module-design-tasks.json)均登记 `completed`，此处仍逐份核查正文。**范围**是共同因果、五细则、指定反例及双场景纸面验收；**非目标**是选择切片、制作预设、修改游戏/测试/ADR 或认定新规则已经可玩。**审核标准**：每项指出定位证据、可推翻它的反例、闭合处理或升级去向；不能给出可报价/可判证明的作用保持拒绝。
 
 ### 五份交付逐份判定
 

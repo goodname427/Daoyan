@@ -37,6 +37,6 @@
 
 ## 来源与验证边界
 
-四项任务 JSON 均记 `completed`；运行报告 [`44`](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-44/report.json)、[`45`](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-45/report.json)、[`46`](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-46/report.json)、[`47`](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-47/report.json) 均记“已交付”及 `light` Profile。任务证据依序记录 **4、3、4、4 项**退出码 0 的直接检查，包含合同/算术/链接断言、Prettier、差异与写入范围核对；历史失败尝试为 **2、2、2、0 次**，原记录保留。来源提交见上表。本次 Version PM 只核对产物和记录的命令，不重跑 Feature PM 检查。
+四项任务 JSON 均记 `completed`；运行报告 `44`（本机证据：`../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-44/report.json`）、`45`（本机证据：`../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-45/report.json`）、`46`（本机证据：`../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-46/report.json`）、`47`（本机证据：`../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-47/report.json`）均记“已交付”及 `light` Profile。任务证据依序记录 **4、3、4、4 项**退出码 0 的直接检查，包含合同/算术/链接断言、Prettier、差异与写入范围核对；历史失败尝试为 **2、2、2、0 次**，原记录保留。来源提交见上表。本次 Version PM 只核对产物和记录的命令，不重跑 Feature PM 检查。
 
 本阶段是纯文档策划，没有新规则游戏 E2E、实际运行体验或代码完整门禁结论。阶段登记及后续调度由 notice guard 根据报告处理；本页不手工推进 `.daoyan-agent` 状态。
