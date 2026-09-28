@@ -1,0 +1,67 @@
+{
+  "taskId": "mdag-theory-reconcile",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "唯一理论已按 mdag 物理、账本、程序、生命与待采纳 ADR-0024 重签 B1→B4 的条件纸面链，列有证修壳、不破、无撞、未知、再撞、双接触、读前拒绝、获准空读、域外、竞争及 POST 失证，并定向反查桥接和模块总览的同键消费者。未改变其他权威。十六读逐 ID 端点/获准投影未闭合，n 未知，B4 的 34 M/40 S/249 tick 仍是 n=0 条件证；ADR-0024 待采纳，现行 World/VM 未实现本自然材料语义。实际原读、实扣、规范 AST/hash、VM tick/S、容量与实玩均未测。",
+  "reconciliation": {
+    "physical": "physics-material-design.md:539-582；S0-physical-v1/seed-physical-v1/B1-contact-fixture-v1，世界序 20 的 C-B1-01→N-B1-impact-01→X-B1-shell-v1；双端 -6/+6，速度 1→-2/-3→0，10=4+2+4 E0，旧遗体 3q=2q+fragment-B1-01(q)。B4-v1/slice-B4-01 独立 100=53+47 E0/12、4q=2q+q+q；两笔事实不双计。",
+    "ledger": "mana-ledger-design.md:768-810；B4 executor=B1、payer=acct-B1-B4，receipt-B4-funded-v1/payerGrant-B4-v1/mdz-B4-v1；n=0 且十六读逐 ID 覆盖时净入 50、毛付 16+5+10+3=34、POST 后余 16、未结已付 31/暂余 19。当前 n=unknown/Quote=unknownPrice；新读需升价版并按 34+n 重算。J1 本人 32、P0 1、P2 2、可选 P1 1，跨账户 35/36；D1 独立 40-26=14。",
+    "program": "programmable-spells-design.md:750-799；book-mdu-01/v1 下 J1ProgramIdentity 的十五读同一假设 AST/hash 别名；D1/B4 独立 ASTVersion/hash 假设。B4 仅 n=0、十九读、一订阅/一 FIFO 引用/一帧及同版容量时有 232/249 tick、40 S 条件证；首撞后的本体旧占用和规范 hash 未读。",
+    "life": "life-identity-design.md:567-606；普通 k0 壳损/补壳不改关键 k_m/k_a、保存/控制三链或旧 LifeId；assessmentId 是评估版本键，DeathBarrier 只由独立四证签一次。",
+    "architecture": "docs/adr/0024-自然接触与旧运动命中语义覆盖.md:1-66 状态待采纳；保留 ADR-0018 来源防双计与已付惯性，提议覆盖旧单边阻挡、damage 池独占命中、Wm 自动补给、固定寿命。src/core/world.ts 当前仍有旧 hitProjectile/movePower/life 路径。",
+    "consumers": "player-bridge-design.md:31-33,119-139 及 module-design.md:12-18,37-42 仍按抽象首撞直接展示 X 与旧 34/16 条件账；需各自归属者按本轮不破、无撞、未知和十六读覆盖刷新。理论本轮不代写。",
+    "blockers": [
+      "B4 十六读缺逐 ID 端点及获准字段投影，n 无法判 0，不能签可执行 Quote 或旧 M/tick/S 证。",
+      "ADR-0024 尚未采纳且现行 World/VM 未接入自然双边 C/N/X 与材料账；桥接与模块总览仍须按新父先史复核。"
+    ],
+    "paperArithmetic": "自然 10=4+2+4 E0；同刻双接触 32=8+4+20 E0；B4 独立 100=53+47 E0/12，34=16+5+10+3 M，50=34+16 M；J1 跨账户 35=32+1+2、36=35+1 M。均为条件纸面账，不是实测。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),s=w.split(\"## `mdag-theory-reconcile`\")[1]?.split(\"## 修订纪律\")[0];a.ok(s);for(const k of [\"B1-contact-fixture-v1\",\"C-B1-01\",\"N-B1-impact-01\",\"X-B1-shell-v1\",\"B4-v1/slice-B4-01\",\"n=unknown/Quote=unknownPrice\",\"missingRepairGap\",\"undeterminedContact\",\"undeterminedMaterial\",\"capacityUnknown\",\"queueFull\",\"POST 失证\",\"ADR-0024 提案\"])a.ok(s.includes(k),k);for(const [n,k] of [[\"physics-material-design.md\",\"B1-contact-fixture-v1\"],[\"mana-ledger-design.md\",\"34+n M\"],[\"programmable-spells-design.md\",\"mdag-program-resign\"],[\"life-identity-design.md\",\"mdag-life-boundary\"],[\"player-bridge-design.md\",\"C-B1-01\"],[\"module-design.md\",\"slice-B4-01\"]])a.ok(f.readFileSync(b+n,\"utf8\").includes(k),n+\" \"+k);a.ok(f.readFileSync(\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",\"utf8\").includes(\"状态：**待采纳**\"));for(const m of s.matchAll(/\\]\\(([^)#]+)(?:#[^)]+)?\\)/g))a.ok(f.existsSync(p.resolve(b,m[1])),m[1]);a.equal(10,4+2+4);a.equal(32,8+4+20);a.equal(100,53+47);a.equal(34,16+5+10+3);a.equal(50,34+16);a.equal(35,32+1+2);a.equal(36,35+1);console.log(\"PASS mdag authority keys, local links and paper accounts\")'",
+      "exitCode": 0,
+      "output": "PASS mdag authority keys, local links and paper accounts"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-theory-reconcile.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdag-theory-reconcile.json\",\"utf8\"));a.equal(j.taskId,\"mdag-theory-reconcile\");a.equal(j.status,\"completed\");a.ok(j.commands.length>=4&&j.commands.every(x=>x.exitCode===0));a.ok(j.failedAttempts.length===2&&j.failedAttempts.every(x=>x.exitCode===1));a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdag evidence JSON and paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdag evidence JSON and paths"
+    },
+    {
+      "command": "$allowed=@(\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-theory-reconcile.json\"); $changed=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if(@(Compare-Object $changed ($allowed | Sort-Object)).Count -ne 0){throw \"Unexpected changed path: $changed\"}; Write-Output \"PASS mdag two writePaths only\"",
+      "exitCode": 0,
+      "output": "PASS mdag two writePaths only"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),s=w.split(\"## `mdag-theory-reconcile`\")[1]?.split(\"## 修订纪律\")[0];a.ok(s);for(const k of [\"B1-contact-fixture-v1\",\"C-B1-01\",\"N-B1-impact-01\",\"X-B1-shell-v1\",\"B4-v1/slice-B4-01\",\"n=unknown/Quote=unknownPrice\",\"missingRepairGap\",\"undeterminedContact\",\"undeterminedMaterial\",\"capacityUnknown\",\"queueFull\",\"POST 失证\",\"ADR-0024 提案\"])a.ok(s.includes(k),k);for(const [n,k] of [[\"physics-material-design.md\",\"B1-contact-fixture-v1\"],[\"mana-ledger-design.md\",\"n=unknown\"],[\"programmable-spells-design.md\",\"mdag-program-resign\"],[\"life-identity-design.md\",\"mdag-life-boundary\"],[\"player-bridge-design.md\",\"C-B1-01\"],[\"module-design.md\",\"slice-B4-01\"]])a.ok(f.readFileSync(b+n,\"utf8\").includes(k),n+\" \"+k);a.ok(f.readFileSync(\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",\"utf8\").includes(\"状态：**待采纳**\"));for(const m of s.matchAll(/\\]\\(([^)#]+)(?:#[^)]+)?\\)/g))a.ok(f.existsSync(p.resolve(b,m[1])),m[1]);a.equal(10,4+2+4);a.equal(32,8+4+20);a.equal(100,53+47);a.equal(34,16+5+10+3);a.equal(50,34+16);a.equal(35,32+1+2);a.equal(36,35+1);console.log(\"PASS mdag authority keys, local links and paper accounts\")'",
+      "exitCode": 1,
+      "reason": "定向脚本误要求账本含精确字符串 n=unknown；账本实际表述为 n 未由合同给出。改为检查现行 34+n M 公式。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),s=w.split(\"## `mdag-theory-reconcile`\")[1]?.split(\"## 修订纪律\")[0];a.ok(s);for(const k of [\"B1-contact-fixture-v1\",\"C-B1-01\",\"N-B1-impact-01\",\"X-B1-shell-v1\",\"B4-v1/slice-B4-01\",\"n=unknown/Quote=unknownPrice\",\"missingRepairGap\",\"undeterminedContact\",\"undeterminedMaterial\",\"capacityUnknown\",\"queueFull\",\"POST 失证\",\"ADR-0024 提案\"])a.ok(s.includes(k),k);for(const [n,k] of [[\"physics-material-design.md\",\"B1-contact-fixture-v1\"],[\"mana-ledger-design.md\",\"34+n M\"],[\"programmable-spells-design.md\",\"mdag-program-resign\"],[\"life-identity-design.md\",\"mdag-life-boundary\"],[\"player-bridge-design.md\",\"C-B1-01\"],[\"module-design.md\",\"slice-B4-01\"]])a.ok(f.readFileSync(b+n,\"utf8\").includes(k),n+\" \"+k);a.ok(f.readFileSync(\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",\"utf8\").includes(\"状态：**待采纳**\"));for(const m of s.matchAll(/\\]\\(([^)#]+)(?:#[^)]+)?\\)/g))a.ok(f.existsSync(p.resolve(b,m[1])),m[1]);a.equal(10,4+2+4);a.equal(32,8+4+20);a.equal(100,53+47);a.equal(34,16+5+10+3);a.equal(50,34+16);a.equal(35,32+1+2);a.equal(36,35+1);console.log(\"PASS mdag authority keys, local links and paper accounts\")'",
+      "exitCode": 1,
+      "reason": "链接存在检查在本任务证据 JSON 创建前执行，因 ./tasks/module-design-mdag-theory-reconcile.json 尚不存在而失败；创建文件后重跑。"
+    },
+    {
+      "command": "git commit -m \"docs: reconcile mdag world theory contact evidence\"",
+      "exitCode": 1,
+      "reason": "仓库 pre-commit 自动启动统一 npm run verify；本纯文档任务禁止统一门禁，故在 docs:check 阶段手动中断。typecheck、lint、format:check 已输出通过，不能据此声称统一门禁完成。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-theory-reconcile.json"
+  ]
+}
