@@ -1,4 +1,33 @@
-# 详细策划节点公开结论：mdaa 三行为同版复核
+# 详细策划节点公开结论：mdab 程序身份与逐账户联签
+
+- 版本：`pilot-agent-intent-2026-09-24`；策划修订 `2`；范围修订 `13`。问题是上一轮 J1 桥接把跨账户毛价写成本人扣款，两个 AST 假设名也缺少可核验的同一性合同。范围仅为整合 `mdab-program-identity`、`mdab-theory-signoff`、`mdab-bridge-payers` 三项已交付策划及其跨模块合同；非目标是重写模块、实测游戏行为、决定 A/B/C 首批范围或批准开发。验收以共同身份键、逐付款方守恒、六入口授权余态和失败分支可从权威来源逐项复算为准。
+
+**阶段结论：三项 `mdab-*` 任务的纸面合同已完成轻量跨模块对账，可交主策独立复审；不等于完整详细策划、制作人方案或游戏开发获批。** [程序身份](./programmable-spells-design.md#mdab-program-identityj1-规范程序身份条件覆盖与撤证重签)将 `AST-J1-mdaa-assumed-v1` 声明为 `mdx-JH-AST-v1` 在 `book-mdu-01/v1` 下的纸面别名，[唯一理论](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误)接纳同一合同，[玩家桥接](./player-bridge-design.md#六入口等价payer-账目与公开边界)按它投影六入口。三处均保留 `programHash=unknown`，真实规范 AST/hash、VM tick、容量、原读、实扣及同书实玩仍待方案获批后的开发验收。先前公开的 `mdaa` 付款冲突由本轮桥接新附节修订；以下历史结论保留当时事实，不再代表现行对账。
+
+## 本轮模块成果与直接验收
+
+| 模块、任务及来源提交                                                                                                                                                                       | 交付合同与本轮核对                                                                                                                                                                                                               | 玩家流程、失败和验收边界                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [程序载体](./programmable-spells-design.md#mdab-program-identityj1-规范程序身份条件覆盖与撤证重签) · [mdab-program-identity](./tasks/module-design-mdab-program-identity.json) · `9b859c9` | `J1ProgramIdentity(book-mdu-01/v1, mdx-JH-AST-v1, H_JH_assumed_v1[assumption-only], mdy-JH-read-v1, W-mdx-JH-1@mdy-read-budget)` 逐项绑定节点、两分支、十五读 ID/阶段、单订阅、两引用、一帧及版本向量；别名不是第二份实测 hash。 | 名称相似但读、事件、分支或版本不同即撤受影响 `35/36 M`、`178/187` 响应 tick、`4301/4310` 整链 tick 和无法保全的 `38 S`，按同一程序重签；旧书改条件不能复活旧 Quote。                            |
+| [唯一世界理论](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误) · [mdab-theory-signoff](./tasks/module-design-mdab-theory-signoff.json) · `87ff6de`             | 消费程序别名与只读物理、账本、生命前驱；按 `S0-physical-v1/seed-physical-v1/pilot-physical-v1`、`JH-v1/D1-v1/B4-v1`、同一世界序和六阶段逐 payer 复算。                                                                           | 无源、获准空读、读前无权、失证无 P1 到账和同刻后笔拒绝分别保留已付先序；生命状态不由 J1 余额推定。                                                                                              |
+| [玩家桥接](./player-bridge-design.md#六入口等价payer-账目与公开边界) · [mdab-bridge-payers](./tasks/module-design-mdab-bridge-payers.json) · `87e2119`                                     | 消费同一书、纸面身份、事实和逐账户收据；鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士六入口只在各自能力、授权、来源、序和可见集同等时等价。                                                                                      | 推演台同书预算→演武场绑定/观察→返书改条件后重报价；成功、无源、空读、无权、失证和竞争均列本人及获准付款方余态。B4 第二响应按已读实满 `queueFull`、先序换版重报价、未读 `capacityUnknown` 三分。 |
+
+## 跨模块合同的实际对账
+
+1. **权威来源到消费文档、事实与版本键。** [物理 `mdaa-physical-key`](./physics-material-design.md#三行为同版物理接口与自然先史联签-mdaa-physical-key策划候选) 的 `S0-physical-v1/seed-physical-v1/pilot-physical-v1`、`JH-v1/D1-v1/B4-v1`、J1 的 `source-J1-work/EL-J1-H2/slice-J1-H2-01` 和 B1 先撞后的 `XB1-shell-v1`，由[账本 `mdaa-ledger-key`](./mana-ledger-design.md#三行为同版价格到账与授权联签-mdaa-ledger-key策划候选)、[程序身份](./programmable-spells-design.md#mdab-program-identityj1-规范程序身份条件覆盖与撤证重签)、[唯一理论](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误)消费，理论再交[桥接](./player-bridge-design.md#六入口等价payer-账目与公开边界)。J1 的 `mdy-JH-read-v1`、`W-mdx-JH-1@mdy-read-budget` 和十五个 `JH-*` 读 ID 沿同一条件链传递；D1/B4 各有独立来源、付款和容量，未借 J1 的证。[生命 `mdz-life-boundary`](./life-identity-design.md#mdz-life-boundary关键材料与账本后的生命边界纸面设计)只约束惰性修壳与生命三分判，不从余额或碰撞推定复苏。
+2. **逐 payer 数值。** [账本 J1 行](./mana-ledger-design.md#三行为同版价格到账与授权联签-mdaa-ledger-key策划候选)的 J1 `9+11+12=32 M` 对上[理论六阶段表](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误) `32→23→12→0`，并对上[桥接六入口表](./player-bridge-design.md#六入口等价payer-账目与公开边界)每行 `32/32/0`。P0 基线 `1 M`、P2 事后两读 `2 M` 各属独立账户，故复用分支跨账户 `32+1+2=35 M`；失证且 P1 已到账并获准新读 `1 M` 时为 `36 M`。P0/P1/P2 的 `b0/b1/b2` 初末余额只给各自获准视图；公共输出是裁剪摘要，`35/36` 不进入 J1 本人余额。
+3. **AST/hash 同一性。** [程序对照表](./programmable-spells-design.md#mdab-program-identityj1-规范程序身份条件覆盖与撤证重签)逐项列节点/原子、十五读、事件投影、响应及版本；[理论](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误)签收 `AST-J1-mdaa-assumed-v1/H_J1_mdaa_assumed_v1` 到上述 `J1ProgramIdentity` 的纸面映射，[桥接](./player-bridge-design.md#六入口等价payer-账目与公开边界)沿用该键。没有已生成的规范字节或 SHA-256；任何字段不等按程序模块撤证重签，不能因名字或回原书复用旧 hash。D1/B4 的 AST、`26/34 M` 与 `37/40 S` 独立。
+4. **六类结果与公开余态。** [理论反证表](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误)对上[桥接六入口失败表](./player-bridge-design.md#六入口等价payer-账目与公开边界)：条件成功本人 `32/0`、P0/P2 各自实结；无源与获准空读均本人已付 `9`、余 `23`，空读只返回获准空集合；读前无权本笔零扣、本人净入后余 `32`，独立先史 P0 若已付仍为 `b0−1`；失证且无 P1 到账时本人已付 `20`、余 `12`，无 H2；同刻后笔只拒后笔并保留首笔收据、自然事实和各账户最后已付余态。隐藏目标与不存在目标同形裁剪，AI 不借玩家视野，事件重投不重复付款，敌方无阵营优惠。以上均是纸面条件结果，不冒称真实运行。
+
+## 范围裁定与证据边界
+
+J1、D1、B4 仍是有前提的纸面候选。首批 A（含三行为）、B（仅 J1）、C（扩围护送/救援）及其玩家价值和缺席能力仍由主策复审后判断是否需制作人门禁；本页不暗定首批。程序变动需重新签读、逐 payer 价和 M/tick/S，现场读数、来源、到账实扣、逐体容量及真实玩家流程均留获批开发后的验收。现行[主策审核结论](./design-review.md)仍为旧轮 `changes-requested`，不会因本页纸面对账自动改写。
+
+三份[任务 JSON](./tasks/module-design-mdab-program-identity.json)及对应运行报告 [137](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-137/report.json)、[138](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-138/report.json)、[139](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-module-design-139/report.json)均记已交付。逐任务已通过的直接检查数为 `4/3/4`，保留失败尝试数为 `1/1/2`；确切命令、退出码与恢复见各自任务 JSON，本次未重跑。Version PM 仅检查上述来源并对新增阶段文档运行轻量检查，不运行代码门禁，不编辑 `.daoyan-agent` 状态；节点证据由 notice guard 登记。
+
+---
+
+# 历史阶段结论：mdaa 三行为同版复核
 
 - 版本：`pilot-agent-intent-2026-09-24`；策划修订 `2`；范围修订 `13`。本轮只整合五项已交付 Feature PM 证据；制作人对六项取舍的 `A/B/B/B/B/B` 是修订输入，尚未批准详细策划或游戏开发。
 - 问题：上一轮 `mdz` 的物理、账本、程序已有 D1/B4 条件正例，唯一理论和玩家桥接却仍按 J1 唯一正例写首批范围。本轮范围是核对 J1、D1、B4 的同版自然先史、物理来源、付款、逐体准入、理论重放与同书六入口纸面流程；非目标是重做模块、实测原读或自行选定首批范围。
