@@ -1,0 +1,55 @@
+{
+  "taskId": "mdab-program-identity",
+  "status": "completed",
+  "summary": "在 book-mdu-01/v1 下将 mdx-JH-AST-v1 与 AST-J1-mdaa-assumed-v1 明确为同一纸面程序身份的假设别名，逐项规定节点/原子、十五读、事件、响应与版本键；真实规范字节和 SHA-256 仍 unknown。差异即撤销受影响 J1 的 35/36 M、178/187 单响应 tick、4301/4310 整链 tick 与条件 38 S，并按唯一程序重签读、逐 payer 价格、工作负载及容量。列出近似名称、读/分支/事件帧/版本差异和回原书改条件反证；不借 D1/B4 证书。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json"
+      ]
+    },
+    {
+      "command": "node -e <inline assertions for taskId, completed status, both evidence paths, and required J1 identity/coverage markers>",
+      "exitCode": 0,
+      "output": "PASS mdab J1 identity contract, acceptance markers and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json"
+      ]
+    },
+    {
+      "command": "PowerShell exact git status path comparison against the two mdab-program-identity deliverables",
+      "exitCode": 0,
+      "output": "PASS only mdab-program-identity deliverables changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-program-identity.json",
+      "exitCode": 1,
+      "output": "Checking formatting... [warn] programmable-spells-design.md; Code style issues found.",
+      "resolution": "仅格式化合同内 programmable-spells-design.md 后重跑检查，最终通过。"
+    }
+  ]
+}
