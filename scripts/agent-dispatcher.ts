@@ -1080,7 +1080,7 @@ async function runTask(
       const previousSession =
         documentSessionKey && !skipSavedSession
           ? reusableWorkerSession(
-              await readWorkerSession(root, documentSessionKey),
+              await readWorkerSession(root, documentSessionKey, route.model, route.reasoning),
               documentSessionKey,
               route.model,
               route.reasoning,
@@ -1556,7 +1556,7 @@ ${review.findings
   const documentTaskId = formalDocumentTaskId(activeDirection);
   let previousSession = documentSessionKey
     ? reusableWorkerSession(
-        await readWorkerSession(root, documentSessionKey),
+        await readWorkerSession(root, documentSessionKey, route.model, route.reasoning),
         documentSessionKey,
         route.model,
         route.reasoning,

@@ -1,4 +1,5 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -56,7 +57,12 @@ describe('formal document worker sessions', () => {
       };
       await saveWorkerSession(temporary, entry);
       expect(
-        reusableWorkerSession(await readWorkerSession(temporary, key), key, 'gpt-6-sol', 'high'),
+        reusableWorkerSession(
+          await readWorkerSession(temporary, key, 'gpt-6-sol', 'high'),
+          key,
+          'gpt-6-sol',
+          'high',
+        ),
       ).toEqual(entry);
       expect(reusableWorkerSession(entry, key, 'gpt-6-astra', 'high')).toBeNull();
       expect(reusableWorkerSession({ ...entry, turns: 20 }, key, 'gpt-6-sol', 'high')).toEqual({
@@ -68,6 +74,45 @@ describe('formal document worker sessions', () => {
         reusableWorkerSession(entry, key, 'gpt-6-sol', 'high', 'fresh', 'prior-repair'),
       ).toEqual(entry);
       expect(reusableWorkerSession(entry, `${key}-other`, 'gpt-6-sol', 'high')).toBeNull();
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps different model sessions for the same document without overwriting either', async () => {
+    const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-model-sessions-'));
+    const key = 'module-design:13:docs/versions/pilot/world-theory-draft.md';
+    const entry = {
+      key,
+      sessionId,
+      model: 'gpt-6-sol',
+      reasoning: 'high',
+      turns: 1,
+      knownTokens: 70_000,
+      updatedAt: '2026-09-28T00:00:00.000Z',
+    };
+    const luna = {
+      ...entry,
+      sessionId: '01a0e770-b0bb-7c10-ab50-65ea44fcb29b',
+      model: 'gpt-6-luna',
+      reasoning: 'medium',
+    };
+    try {
+      await saveWorkerSession(temporary, entry);
+      await saveWorkerSession(temporary, luna);
+      expect(await readWorkerSession(temporary, key, 'gpt-6-sol', 'high')).toEqual(entry);
+      expect(await readWorkerSession(temporary, key, 'gpt-6-luna', 'medium')).toEqual(luna);
+      expect(await readWorkerSession(temporary, key, 'gpt-6-sol', 'medium')).toBeNull();
+      const legacyDirectory = resolve(temporary, '.daoyan-agent', 'worker-sessions');
+      await mkdir(legacyDirectory, { recursive: true });
+      await writeFile(
+        resolve(legacyDirectory, `${createHash('sha256').update(key).digest('hex')}.json`),
+        JSON.stringify({ ...entry, model: 'gpt-6-astra' }),
+      );
+      expect(await readWorkerSession(temporary, key, 'gpt-6-astra', 'high')).toEqual({
+        ...entry,
+        model: 'gpt-6-astra',
+      });
     } finally {
       await rm(temporary, { recursive: true, force: true });
     }
