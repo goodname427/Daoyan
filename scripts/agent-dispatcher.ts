@@ -5,6 +5,10 @@ import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/pro
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  canRebaseFailedRoutingRecovery,
+  isRecoverableRoutingOutage,
+} from './routing-outage-recovery';
+import {
   canRebaseEmptyRecovery,
   advanceReviewStall,
   canReuseFullGateEvidence,
@@ -2137,6 +2141,15 @@ try {
     activeCompletedDeliveryCommit = completedCommitCanResume;
     const committedAdvancePaths =
       committedAdvance?.code === 0 ? committedAdvance.stdout.split('\0').filter(Boolean) : [];
+    const failedRoutingRecoveryCanRebase =
+      fingerprintMismatch &&
+      canRebaseFailedRoutingRecovery({
+        worktreeClean: currentStatus.code === 0 && !currentStatus.stdout.trim(),
+        baselineIsAncestor: baselineAncestor.code === 0,
+        committedAdvancePaths,
+        taskScopes,
+      }) &&
+      (await isRecoverableRoutingOutage(runDirectory));
     const currentConfigFingerprint = await verificationConfigFingerprint();
     const workspacePaths = await workspaceChangedPaths();
     const unrelatedCommittedAdvance =
@@ -2192,6 +2205,7 @@ try {
       !options.takeover &&
       !canAdoptAbandonedChanges &&
       !emptyRecoveryCanRebase &&
+      !failedRoutingRecoveryCanRebase &&
       !completedCommitCanResume &&
       !unrelatedCommittedAdvance &&
       !selectiveRecoverySafe
@@ -2211,6 +2225,8 @@ try {
       console.log('[秘书接管] 检测到 Git 提交已完成，将续传并重新验证。');
     } else if (emptyRecoveryCanRebase) {
       console.log('[秘书接管] 任务尚未开始且仓库仅向前演进，已将空恢复点更新到当前基线。');
+    } else if (failedRoutingRecoveryCanRebase) {
+      console.log('[秘书接管] 失败任务未改文件，基线只含范围外提交；从原任务重新执行。');
     } else if (unrelatedCommittedAdvance) {
       console.log(
         '[秘书接管] 基线之后只有任务范围外的已提交控制面改动；保留任务结果并重做当前树的验证与审查。',
@@ -2224,7 +2240,7 @@ try {
     }
     activePlan = checkpoint.plan;
     activeBaseline =
-      emptyRecoveryCanRebase || unrelatedCommittedAdvance
+      emptyRecoveryCanRebase || failedRoutingRecoveryCanRebase || unrelatedCommittedAdvance
         ? currentHead.stdout.trim()
         : checkpoint.baseline;
     activeDirection = checkpoint.direction;
@@ -2233,9 +2249,12 @@ try {
       (fingerprintMismatch &&
         !completedCommitCanResume &&
         !emptyRecoveryCanRebase &&
+        !failedRoutingRecoveryCanRebase &&
         !unrelatedCommittedAdvance) ||
       options.takeover;
     if (options.takeover) {
+      activeTaskRuns = [];
+    } else if (failedRoutingRecoveryCanRebase) {
       activeTaskRuns = [];
     } else if (resetCompletedWork && checkpoint.taskRuns.length > 0) {
       activeTaskRuns = selectivelyReusableTaskRuns ?? [];
@@ -2262,6 +2281,7 @@ try {
       (fingerprintMismatch &&
         !completedCommitCanResume &&
         !emptyRecoveryCanRebase &&
+        !failedRoutingRecoveryCanRebase &&
         !unrelatedCommittedAdvance) ||
       checkpoint.takeover === true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
