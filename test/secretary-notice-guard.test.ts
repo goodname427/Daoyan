@@ -958,6 +958,8 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskPlanDirection(version)).toContain('同一 AST/hash 或别名');
     expect(stageTaskPlanDirection(version)).toContain('对应权威模块文档列入 readPaths');
     expect(stageTaskPlanDirection(version)).toContain('反向搜索同一事实键');
+    expect(stageTaskPlanDirection(version)).toContain('contextPolicy');
+    expect(stageTaskPlanDirection(version)).toContain('不要按固定轮数强制新开');
     expect(stageFinalizingDirection(version)).toContain(
       '读取 docs/versions/auto-stage/module-design-tasks.json',
     );
