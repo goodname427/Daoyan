@@ -1,52 +1,40 @@
 {
   "tasks": [
     {
-      "id": "mdaf-world-review",
-      "title": "首批 A 完整策划与跨模块独立复审",
-      "objective": "以主策身份独立复审 mdaf 桥接修订后的完整详细策划，核对已选首批 A 的统一世界规则、三行为纸面合同、玩家体验、扩展性与原型返工边界，裁定方案能否交制作人审阅；对未闭合项给出证据、归属和退回条件。",
+      "id": "drb1-world-vm-reentry",
+      "title": "B1 自然壳损与现有 World/VM 接入合同复核",
+      "objective": "以主策身份处理 dev-world-a 审查停滞：核对 B1 自然接触结构变化与 ADR 0018 伤害池限制及已批准首批 A 策划的关系，并在不改变已批准世界规则的前提下形成三行为接入现有 World/VM 的可执行窄范围合同；若必须新增世界规则或作不可逆取舍，形成制作人评审材料并停止将其当作已定实现。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮独立审核结论、逐项证据、反例、未决项及处理去向。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaf-world-review.json：记录本轮任务结论、证据路径和实际通过的直接检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮独立结论，逐条给出 ADR 0018 旧命中条款的保留、覆盖或待决边界，B1 自然 C/N/X 与 B4 惰性 k0 修壳的成立前提、证据和反例；可在已批准规则内推进时给出接入现有 World/编译器/VM 的窄范围实现合同，否则给出制作人通俗取舍及推荐理由。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json：记录本轮 taskId、结论、证据路径和实际通过的直接检查。"
       ],
       "acceptance": [
-        "以制作人原始方向、策划修订 2、范围修订 13、首批 A 已选的后续反馈及 mdaf 最新交付为现行输入；逐条区分旧审核历史与当前结论。J1 一次有源杆推、D1 一次有源起步、B1 首撞后 B4 一次普通惰性 k0 壳修补属于范围内待证，完整方案和游戏开发仍待制作人批准；不得重开 A/B/C 选择或把未来例子加入首批。",
-        "独立核对 mdaf 桥接对上一轮范围冲突的修复，逐处检查三路径开放/待证提示、六入口规范意图与私值边界、推演台同书编辑及预算→演武场绑定观察→返回原书改程序重报价、成功及拒绝/空读/未知/域外/竞争/POST 失证余态。对唯一理论、五份模块正文与 module-design.md 的现行消费者反向核对，不能只采信上一节点的轻量联签。",
-        "用同一 S0-physical-v1/seed-physical-v1/pilot-physical-v1 与 book-mdu-01/v1 分别复位 JH-v1、D1-v1、B4-v1，核对自然先史、factId/readId/sourceLotId/sliceId、物理来源与 E0/q/热/反作用、逐 payer 到账授权和 M 价格、AST 身份及逐体容量/tick/S、生命与普通壳边界、世界事件序。核 J1 本人 32 M 与跨账户 35/36 M、D1 付 26/净入 40 M、B4 付 34/净入 50 M；条件纸面账不得称为实扣或可玩证明。",
-        "用法球再撞付费响应、更多预设、敌方修士自有账户及至少一个未列举的跨实体组合反证三行为能否沿同一创建、能力、事件、授权、来源、付款、失败与消失规则扩展；指出必须重设计的触发条件。核 ADR 0017–0020 与现行 DSL/蓝图、属性、自动回蓝、固定寿命/伤害、预设、敌方行为、存档及推演台/演武场入口的相容或覆盖、迁移/拒绝和回退影响，不把旧原型兼容当作设计约束。",
-        "逐项标记已覆盖、存在缺口或仍需制作人判断，附文件或行为证据和负责模块；已批准原则内可补细节精确退回策划，新的世界公理、不可逆取舍或产品方向冲突先给制作人通俗选项、玩家影响及推荐理由。真实 Acquire/R0–R3/POST 原读与误差、逐账户实扣、规范 AST/hash、逐体容量/旧占用、VM 实耗、六入口及两页往返留获批开发后验证，不以这些尚不可取得的运行数据阻断纸面审核；结论不得代替制作人批准完整方案或开发。"
+        "只处理原 development-3 的 dev-world-a 停滞，引用 review-3、review-4 与已批准范围修订 13 的现行物理和世界理论证据；不把 PilotWorld 草稿或旧纸面数字当成已交付、实测或自动批准的物理参数，也不重审无关模块。",
+        "明确区分 ADR 0018 的旧 Projectile 命中伤害池及禁止动能转付费伤害，与已批准策划中的无术自然接触、双边冲量、结构 X 和材料/热去向；逐条说明哪些旧条款在首批 A 新语义下拟覆盖、哪些关于守恒、防双计、权限、确定顺序等仍有效，以及覆盖生效所需的 ADR/决策门禁，不以任务文字暗改已采纳 ADR。",
+        "对 B1 真实扫掠接触及同刻多接触的稳定顺序，列出有阈值、未越阈值、阈值或材料证据缺失、无碰撞、再撞五类反例和自然事实/失败余态；不得以固定 0.25 或调用方 damage 值推定破壳，不得为维持 B4 正例编造材料常数。若现有获批条件不足以成立 B1 壳损，标明缺口及归属，不能伪称 B4 已可成功。",
+        "若无需新的产品公理或不可逆架构选择，给出只覆盖 J1 一次杆推、D1 一次起步、B1 首撞后 B4 一次普通惰性 k0 修壳的实现合同：列出现有 World、编译器、VM 的真实接入点，统一 AST/实体/事件/来源/授权/付款/容量/世界序的状态归属和最小可执行序列，并指定 Node 无头及真实 VM tick/神识/旧占用取证方式；不得另建平行解释器作为验收路径。",
+        "实现合同附可复核的成功和失败反例：无源或无权、空读或未知材料响应、同刻竞争、跨步长扫掠与双接触、碰撞后换版、B4 域外关键回路、作用后读失证；自然 C/N/X、已付账和已提交作用不因后续失败回滚，三行为不得借其他实体账户、来源或容量。未来再撞付费响应、更多预设及敌方修士不进入本次实现范围。",
+        "若审查发现必须改变制作人已批准的世界规则或选择不可逆架构，先给制作人用玩家效果、优势、代价及推荐理由比较选项，并明确受阻的合同与待批准事项；不得把取舍写成既定开发任务。结论仅是本轮主策设计复核，不批准开发完成，也不覆盖旧轮次证据。"
       ],
       "dependsOn": [],
       "readPaths": [
-        ".daoyan-agent/releases/versions/draft-2026-09-23-7af7515c-4ac5-47fe-9063-.json",
         ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaf-bridge-scope.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-3/review-3-gpt-6-sol-attempt-1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-3/review-4-gpt-6-sol-attempt-1.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/architecture/invariants.md",
-        "docs/adr/0017-统一实体控制属性模型.md",
         "docs/adr/0018-运动供能与命中守恒.md",
-        "docs/adr/0019-属性探查与资源账本.md",
-        "docs/adr/0020-事件执行上下文与生命周期.md",
+        "docs/architecture/invariants.md",
         "src/core/world.ts",
-        "src/core/vm.ts",
-        "src/core/pricing.ts",
-        "src/game/battle.ts",
-        "src/app/LabView.tsx",
-        "src/app/CombatView.tsx"
+        "src/core/compiler.ts",
+        "src/core/vm.ts"
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaf-world-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json"
       ]
     }
   ]
