@@ -1,0 +1,39 @@
+{
+  "taskId": "mdy-read-budget",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "逐一映射 15 个物理读 ID、账本价格原子与 AST 描述符工作；旧 4 读/12 tick 装载段和 51 tick/23 S 响应证书失效。条件重签 W-mdx-JH-1：J1 32 M 池、全链 35/36 M，单响应 178/187 tick、整链 4301/4310 tick、J1 38 S；一订阅两信封 U=1，双订阅另证 U≥2/S≥39。实际 AST/hash、逐 VM tick、实际 S 与逐体原容量仍待开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-budget.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",phy=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"### `mdy-read-provenance`\")[1].split(\"上述 ID\")[0],led=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## 逐读价格与付款重签\")[1].split(\"表的中间\")[0],doc=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\").split(\"## `mdy-read-budget`\")[1],tab=doc.split(\"十五个槽\")[0],ids=s=>[...s.matchAll(/^\\| `(JH-[A-Z0-9-]+)`\\s*\\|/gm)].map(x=>x[1]),x=ids(phy),y=ids(led),z=ids(tab);a.equal(x.length,15);a.equal(y.length,15);a.equal(z.length,15);a.equal(new Set(z).size,15);a.deepEqual(z.toSorted(),x.toSorted());a.deepEqual(z.toSorted(),y.toSorted());for(const s of [\"priceVersion=mdy-JH-read-v1\",\"τ_load-segment≤8+11×10=118 tick\",\"τ_response≤2+2+1+12+10+118+12+20+1=178 tick\",\"187 tick\",\"4301 tick\",\"4310 tick\",\"4497 tick\",\"35 M\",\"36 M\",\"27+1+10=38 S\",\"U≥2、S≥39\",\"capacityUnknown\",\"真实序列化 AST/hash\"])a.ok(doc.includes(s),s);a.equal(10+4113+178,4301);a.equal(10+4113+187,4310);a.equal(10+4113+2*187,4497);a.equal(12+15+1+10,38);console.log(\"PASS mdy-read-budget: 15 IDs and price rows match; W/M/S and admission markers present\")'",
+      "exitCode": 0,
+      "output": "PASS mdy-read-budget: 15 IDs and price rows match; W/M/S and admission markers present",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-budget.json",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-budget.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-budget.json",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-budget.json"
+      ]
+    }
+  ],
+  "failedAttempts": []
+}
