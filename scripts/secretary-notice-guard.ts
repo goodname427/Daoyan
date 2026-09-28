@@ -3522,9 +3522,10 @@ export function emptyBootstrapRetryEligible(input: {
   taskPending: boolean;
 }): boolean {
   return (
-    input.runFiles.length === 1 &&
-    input.runFiles[0] === 'progress.json' &&
-    ['running', 'planned'].includes(input.progressStatus) &&
+    (input.runFiles.length === 0 ||
+      (input.runFiles.length === 1 &&
+        input.runFiles[0] === 'progress.json' &&
+        ['running', 'planned'].includes(input.progressStatus))) &&
     !input.liveProcess &&
     input.worktreeClean &&
     input.baseMatches &&
@@ -3563,6 +3564,18 @@ async function requeueEmptyBootstrap(item: SecretaryItem): Promise<boolean> {
   const task = stageTasksForCurrentNode(version).find(
     (candidate) => candidate.id === owner.formalTaskId && candidate.status === 'pending',
   );
+  if (
+    state.items.some(
+      (prior) =>
+        prior.id !== item.id &&
+        prior.status === 'superseded' &&
+        prior.orchestration?.formalVersionId === owner.formalVersionId &&
+        prior.orchestration?.formalStage === owner.formalStage &&
+        prior.orchestration?.formalTaskId === owner.formalTaskId &&
+        prior.orchestration?.reconciliationOutcome === 'requeued-empty-bootstrap',
+    )
+  )
+    return false;
   let baseMatches = false;
   if (task) {
     try {
