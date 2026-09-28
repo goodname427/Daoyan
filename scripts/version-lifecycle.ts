@@ -267,6 +267,32 @@ export interface VersionDecisionGate {
   }>;
 }
 
+export function designScopeChoiceFromMessage(
+  gate: VersionDecisionGate,
+  message: string,
+): 'A' | 'B' | 'C' | null {
+  if (
+    gate.kind !== 'producer-escalated-design' ||
+    !/首批/.test(gate.summary) ||
+    !/A[\s\S]*B[\s\S]*C/.test(gate.summary)
+  ) {
+    return null;
+  }
+  const compact = message.replace(/\s/g, '');
+  const match = compact.match(
+    /(?:^|选择|选定|选|采用|推荐的)([ABC])(?:吧|方案|选项|就行|即可|[：:，。！!]|$)/i,
+  );
+  return (match?.[1]?.toUpperCase() as 'A' | 'B' | 'C' | undefined) ?? null;
+}
+
+export function approvedDesignScopeChoice(gate: VersionDecisionGate): 'A' | 'B' | 'C' | null {
+  if (gate.status !== 'approved') return null;
+  const feedback = gate.resolutionHistory
+    ?.filter((entry) => entry.decision === 'approved')
+    .at(-1)?.feedback;
+  return feedback ? designScopeChoiceFromMessage(gate, feedback) : null;
+}
+
 export interface FeatureVerification {
   id: string;
   workItemId: string;
@@ -1278,6 +1304,7 @@ export function resolveDecisionGate(
   if (
     decision === 'approved' &&
     gate.kind === 'producer-escalated-design' &&
+    !approvedDesignScopeChoice(gate) &&
     gate.stage === 'design-review' &&
     version.currentStage === 'design-review' &&
     version.status === 'running'

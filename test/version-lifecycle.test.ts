@@ -1435,6 +1435,58 @@ describe('formal version lifecycle', () => {
     expect(version.nodes.find((node) => node.id === 'design-review')?.status).toBe('completed');
   });
 
+  it('keeps a selected first-slice option at design review until full-design approval', () => {
+    const version = createFormalVersion({
+      id: 'scope-only-design',
+      title: '首批范围',
+      direction: '统一世界规则',
+      documentRoot: 'docs/versions/scope-only-design',
+      currentStage: 'design-review',
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    recordApproval(version, {
+      stage: 'design-review',
+      reviewer: 'lead-designer',
+      decision: 'approved',
+      documentRevision: version.charterRevision,
+      comment: '纸面规则通过',
+      now: '2026-09-21T00:01:00.000Z',
+    });
+    const choice = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '请决定首批 A（三行为）、B（仅杆推）或 C（完整护送）',
+      sourceRequestId: 'review-choice',
+      now: '2026-09-21T00:02:00.000Z',
+    });
+    resolveDecisionGate(
+      version,
+      choice.id,
+      'approved',
+      '2026-09-21T00:03:00.000Z',
+      'reply-a',
+      'A吧',
+    );
+    expect(version.currentStage).toBe('design-review');
+    expect(version.nodes.find((node) => node.id === 'development')?.status).toBe('pending');
+    const full = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '首批 A 已选，请审阅完整详细策划并决定是否批准开发',
+      sourceRequestId: 'review-full',
+      now: '2026-09-21T00:04:00.000Z',
+    });
+    resolveDecisionGate(
+      version,
+      full.id,
+      'approved',
+      '2026-09-21T00:05:00.000Z',
+      'reply-full',
+      '批准完整详细策划',
+    );
+    expect(version.currentStage).toBe('task-breakdown');
+  });
+
   it('persists producer decision request ids and replays them idempotently', () => {
     const version = createFormalVersion({
       id: 'decision-replay',
