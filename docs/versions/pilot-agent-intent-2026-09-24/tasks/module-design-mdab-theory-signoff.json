@@ -1,0 +1,51 @@
+{
+  "taskId": "mdab-theory-signoff",
+  "status": "completed",
+  "summary": "已修订唯一理论正文并完成跨模块纸面对账。J1ProgramIdentity 联签的是程序前驱定义的纸面别名合同：book-mdu-01/v1、mdx-JH-AST-v1、H_JH_assumed_v1[assumption-only]、mdy-JH-read-v1、W-mdx-JH-1@mdy-read-budget；AST-J1-mdaa-assumed-v1 仅为该合同的纸面别名，规范字节及 SHA-256 尚未实测，身份不等价时按文中规则撤证。共同重放固定物理、账本、生命前驱的 S0/seed、pilot-physical-v1、meter-target-v1/env-physical-v1、JH-v1/D1-v1/B4-v1 与共享事实 ID、版本、世界序。逐 payer 独立列出 J1 32→23→12→0、P0 1、P2 2、可选 P1 1；35/36 仅为跨账户毛价。正文覆盖无源、获准空读、无权读前零扣、失证且 P1 无到账时 J1 余 12、同刻后笔拒绝不回滚前笔，并限定 J1/P0/P1/P2 授权可见余态及私值裁剪。J1/D1/B4 仍为条件候选，A/B/C 与玩家解释待主策复审及制作人判断；读数、实扣、hash、tick、容量及实玩留待获批开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json"
+      ]
+    },
+    {
+      "command": "node -e \"const fs=require('fs'),a=require('assert');const p='docs/versions/pilot-agent-intent-2026-09-24/',f=p+'tasks/module-design-mdab-theory-signoff.json',r=JSON.parse(fs.readFileSync(f,'utf8')),w=fs.readFileSync(p+'world-theory-draft.md','utf8'),s=fs.readFileSync(p+'programmable-spells-design.md','utf8'),i=w.indexOf('mdab-theory-signoff'),x=w.slice(w.lastIndexOf('## ',i));a(r.taskId==='mdab-theory-signoff'&&r.status==='completed');a(r.evidence.includes(p+'world-theory-draft.md')&&r.evidence.includes(f));for(const k of ['J1ProgramIdentity','H_JH_assumed_v1[assumption-only]','AST-J1-mdaa-assumed-v1','programHash=unknown','S0-physical-v1','seed-physical-v1','pilot-physical-v1','JH-v1','D1-v1','B4-v1','32→23→12→0','b0−1','b1−1','b2−2','35/36','无源','获准空','无权','失证','同刻','A/B/C','获批开发后验收'])a(x.includes(k),k);a(s.includes('J1ProgramIdentity(book-mdu-01/v1, mdx-JH-AST-v1, H_JH_assumed_v1[assumption-only], mdy-JH-read-v1, W-mdx-JH-1@mdy-read-budget)'));a(9+11+12===32&&32+1+2===35&&35+1===36);console.log('PASS mdab evidence status, shared identity, payer arithmetic, failure states and review scope')\"",
+      "exitCode": 0,
+      "output": "PASS mdab evidence status, shared identity, payer arithmetic, failure states and review scope",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "resolution": "使用本地 Prettier 格式化证据 JSON 后重跑双文件格式检查并通过。",
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json",
+      "exitCode": 1,
+      "output": "Checking formatting... [warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json; Code style issues found."
+    }
+  ]
+}
