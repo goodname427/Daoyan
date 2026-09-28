@@ -1,42 +1,48 @@
 {
   "tasks": [
     {
-      "id": "drb2-contact-closure-review",
-      "title": "首批 A 接触、壳损与旧 ADR 边界主策复核",
-      "objective": "在范围修订 13 和已批准首批 A 内，复核上一轮 drb1 的 B1 自然接触阻断及误升级撤回结论；判定有限接触与材料模型能否支撑 B1 首撞后 B4 一次普通 k0 修壳的自洽纸面合同，并核对三行为与现有 World/VM 接入、旧 ADR 的边界。",
+      "id": "drb3-world-closure-review",
+      "title": "首批 A 统一世界方案主策复核",
+      "objective": "在范围修订 13 和已选首批 A 内，独立核对最新模块策划、唯一世界理论与玩家桥接能否构成同版自洽且可审阅的方案；先裁定上一节点 B4 逐读覆盖阻断是否解除，再判定闭合、定向退回或确需制作人取舍。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮独立复核结论、逐项证据、反例、缺口归属及必要的 ADR 覆盖建议；不能闭合时写清退回哪个权威模块及通过条件。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json：记录任务 ID、实际结论、证据路径和直接文档检查结果。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项复核、文件证据、反例、缺口归属和阶段建议；保留旧轮记录。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb3-world-closure-review.json：记录任务 ID、结论、证据路径及通过的直接文档检查。"
       ],
       "acceptance": [
-        "核对版本状态、制作人已选首批 A 与完整策划批准、drb1 结论和误升级撤回依据；不重复要求制作人选择 A/B/C、物理常数或已有规则，也不把撤回等同于 B1 壳损已获证。",
-        "按唯一世界理论、物理材料正文及其余模块现行同键消费者，复核有限二维形状、有效质量、连续扫掠、同刻耦合接触、双边冲量、普通 k0 承力部位、材料阈值和误差的设计时判据；分别给出首撞有证损壳且保留 B4 接入、未越阈值、材料或精度缺证、无碰撞、再撞及同刻双接触的事实与失败余态。无证时不得沿用固定 0.25、旧 damage 池或条件纸面数字签发 B4 正例。",
-        "逐事实键核对 B1 自然 C/N/X 先于 B4 事件付费作用，以及 J1、D1、B4 各自的来源、物理与付款授权、材料/热去向、逐 payer 账、AST/容量、生命边界和玩家六入口投影；明确同一冲量与旧命中池不得双计，后续失败不回滚已结自然事实、已付读及已提交作用。未列举的墙、遗体、擦边、场外或创建者死亡情形须用相同规则判定或明确域外。",
-        "逐条区分 ADR 0018 中可沿用的惯性、守恒、权限及确定顺序，与需经后续 ADR 覆盖的单边阻挡、旧伤害池、普通运动供能和固定寿命语义；标出现有 World、编译器、VM 的接入点和下一阶段应取得的真实原读、材料、逐账户实扣、tick/神识及旧占用证据，但不把纸面检查写成开发验收。",
-        "对每项结论标为已闭合、退回权威模块补证或真正新增产品/不可逆取舍。只有确有后者时才给制作人通俗的玩家效果、选项、代价和推荐理由；不把新规则或 ADR 覆盖写成已批准实现。未来再撞付费响应、更多预设与敌方修士只作底座反例，不扩入首批开发。"
+        "以制作人原话、范围修订 13、首批 A 与已有完整方案批准为边界；核对上一节点 module-design.md 的最新阻断及其来源，不将历史章节、条件数字、代理任务 completed 或 ADR 提案当作当前联签和运行证据。",
+        "先逐 readId 核 B4 十六读的 phase、有限 endpointIds、projection、grant、version 与物理字段来源、逐读价格及 priceVersion；同键反查账本、程序、生命、唯一理论和桥接。覆盖仍缺时维持 unknownPrice，列原权威归属与通过条件，不签 B4 成功或擅改模块正文。",
+        "对 J1、D1、B1 自然接触后 B4 分别核实体能力、来源和物理授权、逐付款方转移、原子价格与 tick/神识界、事件与程序身份/本体容量、普通壳与生命身份、六入口等价及推演台同书编辑→演武场观察→返书修改；按同一事实和版本键复算成功、拒绝、获准空读、未知、域外、竞争、再撞、POST 失证及未列举实体/事件，区分设计推断、待测参数和当前实现。",
+        "逐条核 ADR 0017–0020 与待采纳 ADR 0024 的覆盖、旧原型迁移/隔离及安全回退，标明真实 World→compiler→VM 接入与后续可执行验收；未来法球付费响应、更多预设和敌方修士只用于检验底座扩展性，不扩入首批实现。",
+        "每项结论注明已闭合、退回具体权威模块或新增产品/不可逆取舍。只有确需制作人决定时，给通俗的玩家效果、方案优缺点、代价、推荐及理由；不重选已批准范围，不修改产品实现、模块策划或 ADR，不以纸面复核宣称开发/实玩完成。"
       ],
       "dependsOn": [],
       "readPaths": [
         ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
         "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
         "src/core/world.ts",
         "src/core/compiler.ts",
         "src/core/vm.ts"
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb3-world-closure-review.json"
       ]
     }
   ]
