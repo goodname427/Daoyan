@@ -1,0 +1,59 @@
+{
+  "scopeRevision": 13,
+  "failedAttempts": [
+    {
+      "command": "node -e initial scope assertion using mismatched scenario heading",
+      "reason": "Assertion label differed from body heading; corrected to actual heading and the coverage check passed.",
+      "exitCode": 1
+    },
+    {
+      "command": "node -e second scope assertion using mismatched JSON backup wording",
+      "reason": "Assertion phrase differed from body wording; corrected to actual phrase and the coverage check passed.",
+      "exitCode": 1
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-theory-scope.json",
+      "reason": "Initial drafts were not formatted; ran Prettier write on the two contract paths and the follow-up check passed.",
+      "exitCode": 1
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-theory-scope.json; git commit -m \"docs: compare mdz world theory scope options\"",
+      "exitCode": 128,
+      "reason": "Git could not create .git/index.lock because repository metadata is read-only in this workspace; no staged paths or commit were created."
+    }
+  ],
+  "status": "completed",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-theory-scope.json"
+  ],
+  "taskId": "mdz-theory-scope",
+  "summary": "在唯一世界理论正文新增 mdz 整版条件复算与窄域/扩围方案比较：引用已闭合十五读四格而不重写；以同版 S0/seed/版本/授权/世界序逐项列 J1 H1/H2、自然接触、M1 普通驱动、维持/100/20、信标 B4 与 AT0 的物理材料热、M 账、准入、身份及公开余态；明确仅 J1 一次杆推是条件正向证，其他路径拒绝或 unknownPrice。列七类反证、交主策待裁定事项和 ADR-0017—0020/旧资产处置；未将候选写成批准，运行证据留开发后。",
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),t=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdz-theory-scope.json\",\"utf8\"));for(const x of [\"mdz-theory-scope：同一初态的整版条件复算与范围候选\",\"S0=mdu-r13-S0-01\",\"seed=seed-mdt-13\",\"simTime=6\",\"J1-H1\",\"J1 装载并推杆 H2\",\"M1 普通起步/续步\",\"M1 到期维持与 `100/20` 最后一击\",\"B1 信标触发与 B4 修壳/救援\",\"AT0 攻击\",\"窄域候选\",\"整版扩围条件方案\",\"无源\",\"回收套利\",\"二次领余\",\"连续碰撞\",\"迟到补源\",\"死后提款\",\"跨体借证\",\"ADR-0017\",\"ADR-0018\",\"ADR-0019\",\"ADR-0020\",\"备份原始 JSON\",\"开发和候选验收阶段\",\"mdy-four-grid逐读价与工作证书下的同一-s0-四格\"])a.ok(d.includes(x),x);a.equal(1+9+11+12+2,35);a.equal(32-9-11-12,0);a.equal(1+9+11+12+2+1,36);a.equal(t.taskId,\"mdz-theory-scope\");a.equal(t.status,\"completed\");a.deepEqual(t.evidence,[p+\"world-theory-draft.md\",p+\"tasks/module-design-mdz-theory-scope.json\"]);console.log(\"PASS mdz theory scope coverage, same-version paper arithmetic and task evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdz theory scope coverage, same-version paper arithmetic and task evidence metadata"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-theory-scope.json",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",d=f.readFileSync(q,\"utf8\");let n=0;for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),x);n++}}console.log(\"PASS \"+n+\" local document links\")'",
+      "exitCode": 0,
+      "output": "PASS 119 local document links"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-theory-scope.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "PowerShell Compare-Object against mdz-theory-scope writePaths using git status --porcelain=v1 --untracked-files=all",
+      "output": "PASS only the two mdz-theory-scope writePaths changed; no staged entries",
+      "exitCode": 0
+    }
+  ]
+}
