@@ -699,15 +699,17 @@ export interface ReviewResult {
 
 export function reviewFindingSignature(review: ReviewResult): string {
   if (review.verdict !== 'fix' || review.findings.length === 0) return '';
-  return JSON.stringify(
-    review.findings
-      .map((finding) => {
-        const paths = finding.paths.map((path) => path.replaceAll('\\', '/')).sort();
-        const evidencePaths = paths.filter((path) => !path.startsWith('docs/dev/'));
-        return [finding.severity, ...(evidencePaths.length > 0 ? evidencePaths : paths)];
-      })
-      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
-  );
+  const priority = { critical: 0, high: 1, medium: 2, low: 3 };
+  const primary = [...review.findings].sort(
+    (left, right) => priority[left.severity] - priority[right.severity],
+  )[0];
+  const paths = primary.paths
+    .map((path) => path.replaceAll('\\', '/').replace(/:\d+(?::\d+)?$/, ''))
+    .filter((path) => !path.startsWith('docs/dev/'));
+  const source = paths.find((path) => /^(src|scripts|test)\//.test(path)) ?? paths[0];
+  // A review may reword the same blocker and its line numbers move after each repair.
+  // Three consecutive high-severity rounds in the same primary file merit diagnosis.
+  return JSON.stringify([primary.severity, source ?? primary.title.trim()]);
 }
 
 export function advanceReviewStall(

@@ -706,6 +706,31 @@ ${JSON.stringify({
     ).toBeUndefined();
   });
 
+  it('stops a repeated high-severity blocker when repair moves line numbers and other findings change', () => {
+    const review = (title: string, line: number, extra: string) => ({
+      verdict: 'fix' as const,
+      summary: title,
+      findings: [
+        {
+          severity: 'high' as const,
+          title,
+          detail: title,
+          paths: [`src/core/pilotWorld.ts:${line}`, 'docs/versions/v2/core.md'],
+        },
+        { severity: 'medium' as const, title: extra, detail: extra, paths: [`test/${extra}.ts`] },
+      ],
+    });
+    const first = review('尚未接入 World', 372, 'first');
+    const second = review('仍未接入 World 与 VM', 755, 'second');
+    const third = review('相同行为仍由独立世界执行', 658, 'third');
+    const stalled = advanceReviewStall(
+      advanceReviewStall(advanceReviewStall(undefined, first), second),
+      third,
+    );
+    expect(stalled?.count).toBe(3);
+    expect(reviewFindingSignature(first)).toBe(reviewFindingSignature(third));
+  });
+
   it('routes formal version stages directly without reopening producer planning', () => {
     const qa = buildLocalPlan(
       '[formal-stage:qa]\n\n推进正式版本测试。若遇到高风险架构取舍则报告。',
