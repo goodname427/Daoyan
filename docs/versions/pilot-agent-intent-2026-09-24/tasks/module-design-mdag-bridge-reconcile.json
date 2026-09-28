@@ -1,0 +1,89 @@
+{
+  "taskId": "mdag-bridge-reconcile",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "消费已交付 mdag-theory-reconcile，把 B1 有证破壳、不破、无撞、未知与再撞父先史投影到 B4 条件修壳、六入口和 book-mdu-01/v1 同书往返。十六读缺逐 ID 端点与获准投影，n=unknown/Quote=unknownPrice；34 M、16 M、40 S、249 tick 仅是 n=0 且本体容量等证齐的纸面条件，不是可执行报价或实测。module-design.md 的同键消费者待归属者同步；真实 World/VM、六入口和实玩留开发后验收。",
+  "writePaths": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json"
+  ],
+  "reconciliation": {
+    "predecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-theory-reconcile.json: completed；唯一理论 world-theory-draft.md:1119-1163 给同键正反例、条件账和消费者反查。",
+    "physical": "physics-material-design.md:539-582；S0-physical-v1/seed-physical-v1/B1-contact-fixture-v1 下 C-B1-01 有证根 t=1/4 s、双端 -6/+6、速度 +1→-2/-3→0、自然 10=4+2+4 E0、旧遗体 3q=2q+fragment q；N-B1-impact-01→X-B1-shell-v1 仅阈值/误差有证，XB1-shell-v1 是结构版本。B4-v1/slice-B4-01 独立 100=53+47 E0/12、包 32/12→8/12，耗 12/12 壳功+12/12 热，4q=2q 隔离+q 壳+q 废料；首撞残片不能作供料。",
+    "ledger": "mana-ledger-design.md:768-810；自然 C/N/X 零 B4 M/Tx。acct-B1-B4/receipt-B4-funded-v1/payerGrant-B4-v1/mdz-B4-v1 在十六读逐 ID 覆盖且 n=0 时净入 50、R0/装载/R1-R3/作用/POST 各 4/5/12/10/3，合计 34、余 16；R3 后 21/29、POST 失证 31/19。当前 n 未知，新增有价读升价版按 34+n，n≤16 且足额才余 16−n。J1 本人 32、P0 1、P2 2、可选 P1 1，跨账户 35/36；D1 自有 40−26=14，不与 B4 混账。",
+    "program": "programmable-spells-design.md:750-799；book-mdu-01/v1 的 J1ProgramIdentity 是十五读同一假设 AST/hash 别名，D1/B4 独立假设。B4 仅 n=0、十九读索引、一订阅/一 FIFO 位/一帧及 capacity-B1-v1 同版本体容量原读齐才有 232/249 tick、40 S 纸面条件证；真实规范字节/hash、球页槽/旧占用和 VM 用量未知，返书改 AST/读集撤受影响 Quote、读覆盖和容量证。",
+    "life": "life-identity-design.md:567-606；普通 k0 壳损与补壳不改 k_m/k_a/h/v 或保存/控制三链；assessmentId 是评估版本，旧终界正证 LifeId 保持历史 dead，三链未读为 unknown/unknown；修壳不产生复苏或第二次 DeathBarrier。",
+    "player": "player-bridge-design.md 的 mdag-bridge-reconcile 节列鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士同键等价，以及有证可修、接触不破、无撞、未知材料/容量、无权、获准空、域外、同刻竞争、再撞换版、POST 失证的获准提示、逐 payer 实结与私值裁剪。绑定不转款授 grant，同 ID 重投零新扣，返书新程序撤证重报，旧自然/已付事实留存。",
+    "consumersAndBlockers": "module-design.md:1-4、12-18、37-42 的旧抽象首撞、B4 34/16 和 40 S/249 tick、生命及六入口段须归属者同步；物理/账本缺十六读逐 ID 端点和获准字段投影，n=unknown，阻断可执行 Quote；ADR-0024 待采纳，现行 World/VM 和实际 UI 未验。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdag-bridge-reconcile.json\")),s=f.readFileSync(b+\"player-bridge-design.md\",\"utf8\");a.equal(e.taskId,\"mdag-bridge-reconcile\");a.equal(e.status,\"completed\");a.ok(s.includes(\"n=unknown/Quote=unknownPrice\"));a.ok(s.includes(\"同键消费者反查\"));a.equal(34,16+5+10+3);a.equal(35,32+1+2);a.equal(19,50-31);console.log(\"PASS mdag bridge evidence and conditional accounts\")'",
+      "exitCode": 0,
+      "output": "PASS mdag bridge evidence and conditional accounts",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json"
+      ]
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json' | Sort-Object); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){Write-Error \"writePaths mismatch: $($actual -join ', ')\"; exit 1}; Write-Output 'PASS exact mdag-bridge-reconcile writePaths'",
+      "exitCode": 0,
+      "output": "PASS exact mdag-bridge-reconcile writePaths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 1,
+      "reason": "新增 Markdown 表格尚未格式化；随后执行 npx prettier --write 同一允许路径并复查通过。"
+    },
+    {
+      "command": "$b='docs/versions/pilot-agent-intent-2026-09-24/'; $p=Get-Content ($b+'player-bridge-design.md') -Raw; foreach($k in @('mdag-bridge-reconcile','B1-contact-fixture-v1','n=unknown/Quote=unknownPrice','missingRepairGap','undeterminedContact','undeterminedMaterial','capacityUnknown','queueFull','POST 失证','同键消费者反查','鼠标','键盘','手柄','妖兽 AI','实体事件','敌方修士','34+n','16−n','31','19','module-design.md')){if(-not $p.Contains($k)){throw \"bridge missing $k\"}}; if((16+5+10+3) -ne 34 -or (50-31) -ne 19 -or (32+1+2) -ne 35 -or (35+1) -ne 36){throw 'paper arithmetic'}; $matches=[regex]::Matches($p,'\\]\\(([^)#]+)(?:#[^)]+)?\\)'); foreach($m in $matches){$q=$m.Groups[1].Value;if($q -and $q -notmatch '^[a-z]+:' -and -not (Test-Path (Join-Path $b $q))){throw \"broken link $q\"}}; 'PASS mdag bridge keys, six entries, branch states, accounts and local links'",
+      "exitCode": 1,
+      "reason": "检查时精确任务 JSON 尚未创建，文中到该文件的链接暂时不存在；创建本证据后重跑。"
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json",
+      "exitCode": 1,
+      "reason": "写入 commands 时漏掉数组后的逗号，JSON 解析失败；已补逗号并重新格式化。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdag-bridge-reconcile.json\")),s=f.readFileSync(b+\"player-bridge-design.md\",\"utf8\");a.equal(e.taskId,\"mdag-bridge-reconcile\");a.equal(e.status,\"completed\");a.ok(e.commands.length>=4);a.ok(e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.every(x=>x.exitCode===1));a.ok(s.includes(\"n=unknown/Quote=unknownPrice\"));a.ok(s.includes(\"同键消费者反查\"));a.equal(34,16+5+10+3);a.equal(35,32+1+2);a.equal(19,50-31);console.log(\"PASS mdag bridge evidence and conditional accounts\")'",
+      "exitCode": 1,
+      "reason": "同一缺失逗号导致 JSON.parse 抛 SyntaxError；已补逗号后重跑。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-bridge-reconcile.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md"
+  ]
+}
