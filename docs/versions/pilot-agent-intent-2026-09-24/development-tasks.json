@@ -1,0 +1,92 @@
+{
+  "tasks": [
+    {
+      "id": "dev-world-a",
+      "title": "统一世界核心与首批三行为",
+      "objective": "在无头核心中以同一实体、自然演化、来源、事件、程序、权限和逐付款方账本合同实现首批 A 的 J1 一次有源杆推、D1 修士一次有源起步、B1 首撞后 B4 一次普通惰性 k0 壳修补。",
+      "deliverables": [
+        "可由 Node 无头运行的核心实现及对应定向测试，覆盖三行为和共同的实体、物理、资源、事件与程序合同。",
+        "三行为的实测证据：同版原读和误差、来源及材料/能量/热/反作用账、逐 payer/grant 收据、规范 AST/hash、逐体容量与既有占用、VM tick 和神识峰值。",
+        "核心规则、首批适用边界和旧原型/ADR 差异的可追溯技术说明；需要改变已批准世界原则或不可逆架构时先报告阻断和取舍，不暗中采纳。"
+      ],
+      "acceptance": [
+        "J1、D1、B4 分别按已批准的独立来源和价证准入，不借用他体账户或容量；纸面 32 M 本人及 35/36 M 跨账户、D1 26 M、B4 34 M 只在同版真实读数满足前提时成立，静态资源上界不小于实耗。",
+        "无术时自然碰撞和惯性先提交；有术时来源取得、装载、授权、付款、作用、维持/生命评估与事件派发遵守同一世界序。无源、无权、空读、未知价/容量、域外、同刻竞争、再撞和作用后读失证保留已付与自然事实，不生成免费功、材料、法力或伤害。",
+        "B4 仅修普通惰性 k0 壳，不产生复苏或关键回路修复；D1 仅一次有源起步，J1 仅一次有源杆推。续步、攻击、法球再次付费响应、更多预设和敌方修士内容不作为本任务成功行为。",
+        "同一规范意图在相同状态、能力、授权、来源、付款方、版本与先序下得到相同世界结果；跨入口事件字段按授权裁剪，死亡撤权及资源耗尽有确定失败余态。定向核心测试和实际测量证据可复核。"
+      ],
+      "dependsOn": [],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/architecture/invariants.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md",
+        "src/core",
+        "test/core.test.ts",
+        "test/entity-vnext.test.ts"
+      ],
+      "writePaths": [
+        "src/core",
+        "test/core.test.ts",
+        "test/entity-vnext.test.ts",
+        "test/dsl-migration.test.ts",
+        "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md"
+      ]
+    },
+    {
+      "id": "dev-player-a",
+      "title": "首批三行为玩家闭环与原型资产处置",
+      "objective": "把已验收的核心合同接入推演台和演武场，使玩家能用同一法术书编辑、预算、绑定、观察三行为，再返回修改并重报价；旧原型资产只在证明等价时迁入。",
+      "deliverables": [
+        "推演台、演武场及战斗桥接的首批三路径实现和定向游戏、界面及浏览器测试。",
+        "对旧 DSL/蓝图、预设、绑定和本机存档的等价迁移或定位拒绝实现与测试，保留不可等价原件并记录安全回退边界。",
+        "玩家可见的来源、本人付款、预算、拒因与余态说明及同书往返实玩证据；旧原型兼容状态和候选验证入口的交接说明。"
+      ],
+      "acceptance": [
+        "从推演台同书编辑和预算，进入演武场绑定并观察 J1、D1、B4 的条件成功及失败，再返回原书改程序或读集后产生新 hash、撤销旧报价；不把纸面条件价或未实测行为显示为已可玩事实。",
+        "鼠标、键盘、手柄、妖兽 AI、实体事件和敌方修士仅作为意图来源接入或作等价合同验证；相同世界输入等价、不同权限和账户分别裁剪。敌方修士新行为仍属未来候选，不在本版实现。",
+        "无源、无权、获准空读、未知、域外、同刻竞争、再撞容量三分判和 POST 失证的提示、本人账与已提交自然/付费事实一致；私有余额、隐藏目标和未获准字段不经界面或日志泄露。",
+        "旧法术和存档不能证明 AST、作用时点、价、权限、容量与返回值等价时定位拒绝并保留原件；不补造来源、grant、余额或活动队列，不把旧固定寿命、自动回蓝和固定伤害静默变成新规则。",
+        "受影响路径的定向测试与推演台—演武场—返书实际体验有可复核记录；若玩家路径需要新增世界公理或超出首批 A 的原子效果，报告阻断并退回相应权威合同。"
+      ],
+      "dependsOn": ["dev-world-a"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md",
+        "src/core",
+        "src/game",
+        "src/app",
+        "test/combat.test.ts",
+        "test/render.test.tsx",
+        "test/persistence.test.ts",
+        "e2e/smoke.spec.ts",
+        "e2e/candidate.spec.ts"
+      ],
+      "writePaths": [
+        "src/game",
+        "src/app",
+        "src/demo",
+        "test/combat.test.ts",
+        "test/render.test.tsx",
+        "test/persistence.test.ts",
+        "e2e/smoke.spec.ts",
+        "e2e/candidate.spec.ts",
+        "docs/reference/spell-authoring.md",
+        "docs/reference/entities-and-attributes.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md"
+      ]
+    }
+  ]
+}
