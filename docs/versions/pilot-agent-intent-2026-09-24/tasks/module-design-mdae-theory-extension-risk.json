@@ -1,0 +1,56 @@
+{
+  "taskId": "mdae-theory-extension-risk",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "首批 A 只确定 J1/D1/B4 的范围，未批准完整详细策划或游戏开发。已在唯一理论正文按五份只读模块和 ADR-0017 至 0020 补齐共用底座、四类未来组合边界、逐 payer 六类纸面余态、旧原型迁移/隔离及不安全回退判准；没有改写上游数值或权威断言。真实原读、逐 payer 实扣、规范 AST/hash、逐体容量、VM tick/S 与两页实玩均待获批开发后验证。",
+  "reconciliation": {
+    "authority": {
+      "physical": "physics-material-design.md#mdaa-physical-key，S0-physical-v1/seed-physical-v1/pilot-physical-v1，worldSequence 10/20/30/40/50/60/70/80；JH-v1/D1-v1/B4-v1 各自 Acquire/sourceLot/slice/R0-R3/POST；B1 首撞 C-B1-01→N-B1-impact-01→X-B1-shell-v1 自然先提交。",
+      "ledger": "mana-ledger-design.md#mdaa-ledger-key；J1 本人净入及支付 32 M，P0 1、P2 2，P1 失证获准时另 1，跨账户毛 35/36 M；D1 独立净入 40、价 26、POST 后余 14；B4 独立净入 50、价 34、POST 后余 16。payer/grant/receipt/PriceVersion 逐笔核对，不以 M 兑换 E0。",
+      "program": "programmable-spells-design.md#mdab-program-identity 与 #mdaa-carrier-key；book-mdu-01/v1 下 J1ProgramIdentity 仅纸面同一 AST 别名，真实 hash 未算；D1/B4 各自 AST 假设与 capacity-D1-v1/capacity-B1-v1，J1/D1/B4 条件峰 38/37/40 S，VM 与旧占用未实测。",
+      "life": "life-identity-design.md#mdz-life-boundary；B4 仅 k0 惰性壳，LifeId 及三链不由壳修补或零余额判定。",
+      "bridge": "player-bridge-design.md#六入口等价payer-账目与公开边界；同书版本、factId/requestId/effectId 和本人授权投影，P0/P1/P2 私额不随 J1 或敌方视图出现。"
+    },
+    "worldTheoryEvidence": "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md#mdae-theory-extension-risk首批-a-的组合边界与返工风险范围修订-13",
+    "paperChecks": "J1 9+11+12+1+2=35，失证获准另加 P1=36；D1 12+4+8+2=26 且 68=35+33；B4 16+5+10+3=34 且 100=53+47。各数是条件账，当前无现场成功证。",
+    "upstreamConflict": "未发现需改写五份模块现行数值、单位、公式、材料/热、价、程序覆盖或生命状态的冲突；旧草案/旧桥接的 A/B/C 待选措辞作为历史，由 2026-09-28 制作人后续首批 A 反馈覆盖。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),p=f.readFileSync(b+\"physics-material-design.md\",\"utf8\"),m=f.readFileSync(b+\"mana-ledger-design.md\",\"utf8\"),c=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\"),l=f.readFileSync(b+\"life-identity-design.md\",\"utf8\"),h=f.readFileSync(b+\"player-bridge-design.md\",\"utf8\");for(const k of [\"mdae-theory-extension-risk\",\"S0-physical-v1\",\"seed-physical-v1\",\"JH-v1/D1-v1/B4-v1\",\"book-mdu-01/v1\",\"queueFull\",\"capacityUnknown\",\"ADR-0017 至 0020\"])a.ok(w.includes(k),k);for(const k of [\"C-B1-01\",\"N-B1-impact-01\",\"X-B1-shell-v1\",\"slice-D1-01\",\"slice-B4-01\"])a.ok(p.includes(k)&&w.includes(k),k);for(const k of [\"mdy-JH-read-v1\",\"mdz-D1-v1\",\"mdz-B4-v1\",\"receipt-J1-funded-v1\",\"payerGrant-B4-v1\"])a.ok(m.includes(k)&&w.includes(k),k);a.ok(c.includes(\"J1ProgramIdentity\")&&w.includes(\"J1ProgramIdentity\"));a.ok(l.includes(\"B4\")&&w.includes(\"LifeId\"));a.ok(h.includes(\"敌方修士\")&&w.includes(\"敌方修士\"));a.equal(9+11+12+1+2,35);a.equal(35+1,36);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(35+33,68);a.equal(53+47,100);console.log(\"PASS mdae focused cross-document keys and paper arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdae focused cross-document keys and paper arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdae-theory-extension-risk.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdae-theory-extension-risk.json\",\"utf8\"));a.equal(j.taskId,\"mdae-theory-extension-risk\");a.equal(j.status,\"completed\");a.ok(j.commands.every(x=>x.exitCode===0));a.ok(j.evidence.every(x=>f.existsSync(x)));a.ok(j.reconciliation.authority.physical&&j.reconciliation.authority.ledger&&j.reconciliation.authority.program&&j.reconciliation.authority.life&&j.reconciliation.authority.bridge);console.log(\"PASS mdae task evidence JSON, paths and results\")'",
+      "exitCode": 0,
+      "output": "PASS mdae task evidence JSON, paths and results"
+    },
+    {
+      "command": "$allowed=@(\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdae-theory-extension-risk.json\"); $changed=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if(@(Compare-Object $changed ($allowed | Sort-Object)).Count -ne 0){throw \"Unexpected changed path: $changed\"}; Write-Output \"PASS mdae two writePaths only\"",
+      "exitCode": 0,
+      "output": "PASS mdae two writePaths only"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 1,
+      "reason": "初稿表格尚未格式化；随后执行 prettier --write 并重跑同命令通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdae-theory-extension-risk.json"
+  ]
+}
