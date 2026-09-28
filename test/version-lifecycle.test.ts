@@ -18,6 +18,7 @@ import {
   normalizeFormalVersion,
   pauseRepeatedDesignReview,
   resumeRepeatedDesignReview,
+  returnBlockedDevelopmentToDesignReview,
   downgradeFormalVersionPreservingFacts,
   invalidateValidationEvidence,
   recordValidationEvidence,
@@ -40,8 +41,102 @@ import {
   verifyMigrationBackup,
   type FormalVersion,
 } from '../scripts/version-lifecycle';
+import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
 describe('formal version lifecycle', () => {
+  it('returns a stalled unaccepted development round for a new lead-design decision while preserving old tasks', () => {
+    const version = createFormalVersion({
+      id: 'stalled-development',
+      title: '开发停滞',
+      direction: '首批 A',
+      documentRoot: 'docs/versions/stalled-development',
+      currentStage: 'development',
+      workflowRevision: 2,
+      now: '2026-09-28T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'old-core',
+            title: '旧核心',
+            objective: '实现首批 A',
+            deliverables: ['核心'],
+            acceptance: ['定向测试'],
+            dependsOn: [],
+            readPaths: ['src/core/world.ts'],
+            writePaths: ['src/core/pilotWorld.ts'],
+          },
+        ],
+      },
+      'development',
+      1,
+      '2026-09-28T00:00:00.000Z',
+    );
+    const blocked = {
+      id: 'failed-world',
+      summary: '技术阻断：审查停滞：World/VM 未接入',
+      runDirectory: 'runs/failed-world',
+    };
+    returnBlockedDevelopmentToDesignReview(version, blocked, '2026-09-28T01:00:00.000Z');
+    expect(version.currentStage).toBe('design-review');
+    expect(version.nodes.find((node) => node.id === 'development')?.startedAt).toBe('');
+    expect(version.nodes.find((node) => node.id === 'design-review')?.startedAt).toBe(
+      '2026-09-28T01:00:00.000Z',
+    );
+    expect(version.stageTasks?.[0]).toMatchObject({ id: 'old-core', status: 'pending' });
+    expect(version.orchestration?.technicalReplans?.[0]).toMatchObject({
+      blockedItemId: 'failed-world',
+      previousDevelopmentStartedAt: '2026-09-28T00:00:00.000Z',
+    });
+    expect(() =>
+      returnBlockedDevelopmentToDesignReview(version, blocked, '2026-09-28T02:00:00.000Z'),
+    ).toThrow();
+  });
+
+  it('refuses technical replanning when any development task has already been accepted', () => {
+    const version = createFormalVersion({
+      id: 'partly-accepted',
+      title: '部分已交付',
+      direction: '首批 A',
+      documentRoot: 'docs/versions/partly-accepted',
+      currentStage: 'development',
+      workflowRevision: 2,
+      now: '2026-09-28T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'old-core',
+            title: '旧核心',
+            objective: '实现首批 A',
+            deliverables: ['核心'],
+            acceptance: ['定向测试'],
+            dependsOn: [],
+            readPaths: ['src/core/world.ts'],
+            writePaths: ['src/core/world.ts'],
+          },
+        ],
+      },
+      'development',
+      1,
+      '2026-09-28T00:00:00.000Z',
+    );
+    version.stageTasks[0].status = 'accepted';
+    expect(() =>
+      returnBlockedDevelopmentToDesignReview(
+        version,
+        {
+          id: 'failed-world',
+          summary: '技术阻断：审查停滞：问题',
+          runDirectory: 'runs/failed-world',
+        },
+        '2026-09-28T01:00:00.000Z',
+      ),
+    ).toThrow('已有开发任务被接纳');
+  });
+
   it('pauses repeated design-review rejections until an operator acknowledges the hold', async () => {
     const version = createFormalVersion({
       id: 'review-loop-hold',

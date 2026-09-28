@@ -366,6 +366,15 @@ export interface FormalVersionOrchestration {
   qaInvalidatedThrough?: number;
   /** Operator acknowledgment that resets the automatic design-review retry budget. */
   designReviewInterventionAt?: string;
+  /** Auditable return from a stalled development task to lead-design review. */
+  technicalReplans?: Array<{
+    blockedItemId: string;
+    blockedRunDirectory: string;
+    reason: string;
+    previousDevelopmentStartedAt: string;
+    designReviewStartedAt: string;
+    scopeRevision: number;
+  }>;
 }
 
 function normalizedPath(path: string): string {
@@ -1935,6 +1944,64 @@ export function resumeRepeatedDesignReview(
   node.summary = '';
   version.orchestration.designReviewInterventionAt = now;
   version.status = 'running';
+  version.updatedAt = now;
+}
+
+/** Return a stalled, unaccepted development round for a bounded lead-design decision. */
+export function returnBlockedDevelopmentToDesignReview(
+  version: FormalVersion,
+  blocked: { id: string; summary: string; runDirectory: string },
+  now = new Date().toISOString(),
+): void {
+  if (
+    version.workflowRevision !== 2 ||
+    version.status !== 'running' ||
+    version.currentStage !== 'development'
+  ) {
+    throw new Error('只能退回正在开发的任务制正式版本');
+  }
+  if (!blocked.id || !blocked.runDirectory || !blocked.summary.startsWith('技术阻断：审查停滞：')) {
+    throw new Error('缺少同轮审查停滞的原始运行证据');
+  }
+  const development = version.nodes.find((node) => node.id === 'development');
+  const review = version.nodes.find((node) => node.id === 'design-review');
+  const orchestration = version.orchestration;
+  if (!development?.startedAt || !review || !orchestration) {
+    throw new Error('开发或主策审核节点缺少有效状态');
+  }
+  const scopeRevision = currentScopeRevision(orchestration);
+  const tasks = (version.stageTasks ?? []).filter(
+    (task) =>
+      task.stage === 'development' &&
+      task.scopeRevision === scopeRevision &&
+      task.stageStartedAt === development.startedAt,
+  );
+  if (tasks.length === 0 || tasks.some((task) => task.status === 'accepted')) {
+    throw new Error('已有开发任务被接纳，须另行核对保留范围后才能重规划');
+  }
+  if (now <= development.startedAt) throw new Error('重规划时间不能早于原开发轮次');
+  if (orchestration.technicalReplans?.some((entry) => entry.blockedItemId === blocked.id)) {
+    throw new Error('该技术阻断已登记过重规划');
+  }
+  orchestration.technicalReplans ??= [];
+  orchestration.technicalReplans.push({
+    blockedItemId: blocked.id,
+    blockedRunDirectory: blocked.runDirectory,
+    reason: blocked.summary,
+    previousDevelopmentStartedAt: development.startedAt,
+    designReviewStartedAt: now,
+    scopeRevision,
+  });
+  development.status = 'pending';
+  development.summary = `原开发任务因审查停滞退回主策，原运行：${blocked.runDirectory}`;
+  development.startedAt = '';
+  development.completedAt = '';
+  review.status = 'active';
+  review.startedAt = now;
+  review.completedAt = '';
+  review.summary = `仅复核开发阻断的规则与接入合同：${blocked.summary}`;
+  review.artifact = '';
+  version.currentStage = 'design-review';
   version.updatedAt = now;
 }
 

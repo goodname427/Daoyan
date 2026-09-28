@@ -4,11 +4,13 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { isOwnedProcessAlive, isProcessAlive } from './process-identity';
 import { publicSecretaryState, type IntakeRequest, type SecretaryState } from './secretary-state';
 import { runNoticeGuard } from './secretary-notice-guard';
 import {
   readFormalVersion,
+  returnBlockedDevelopmentToDesignReview,
   resumeRepeatedDesignReview,
   writeFormalVersion,
 } from './version-lifecycle';
@@ -45,6 +47,7 @@ function printHelp(): void {
   npm run secretary:status
   npm run secretary:stop
   npm run secretary:resume-design-review
+  npm run secretary:replan-stalled-development
 
 秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
 }
@@ -224,6 +227,64 @@ async function resumeDesignReview(): Promise<void> {
   );
 }
 
+async function replanStalledDevelopment(): Promise<void> {
+  const current = await readState();
+  if (!current) throw new Error('缺少秘书队列，不能核实原技术阻断');
+  if (isOwnedProcessAlive(current.pid, current.processIdentity)) {
+    throw new Error('技术重规划前须先停止 notice guard 并保存恢复点');
+  }
+  if (current.items.some((item) => isOwnedProcessAlive(item.processPid, item.processIdentity))) {
+    throw new Error('技术重规划前须等待 PM 与执行 Agent 退出');
+  }
+  const version = await readFormalVersion(root);
+  if (!version?.orchestration) throw new Error('缺少正式版本编排状态');
+  const startedAt = version.nodes.find((node) => node.id === 'development')?.startedAt ?? '';
+  const revision = version.orchestration.scopeRevisions
+    .filter((scope) => scope.status === 'approved')
+    .at(-1)?.revision;
+  const blocked = [...current.items]
+    .reverse()
+    .find(
+      (item) =>
+        item.status === 'failed' &&
+        item.summary.startsWith('技术阻断：审查停滞：') &&
+        item.orchestration?.formalVersionId === version.id &&
+        item.orchestration.formalStage === 'development' &&
+        item.orchestration.formalScopeRevision === revision &&
+        item.createdAt >= startedAt &&
+        item.runDirectory,
+    );
+  if (!blocked?.runDirectory || !existsSync(resolve(blocked.runDirectory, 'recovery.json'))) {
+    throw new Error('缺少当前开发轮次的审查停滞恢复证据');
+  }
+  const checkpoint = JSON.parse(
+    await readFile(resolve(blocked.runDirectory, 'recovery.json'), 'utf8'),
+  ) as {
+    processPid?: number;
+    processIdentity?: string;
+  };
+  if (isOwnedProcessAlive(checkpoint.processPid ?? 0, checkpoint.processIdentity ?? '')) {
+    throw new Error('原 Feature PM 仍在运行，不能重新规划');
+  }
+  if (
+    execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim()
+  ) {
+    throw new Error('共享工作区有未提交草稿；先核实归属并保存，不能由重规划覆盖');
+  }
+  returnBlockedDevelopmentToDesignReview(version, {
+    id: blocked.id,
+    summary: blocked.summary,
+    runDirectory: blocked.runDirectory,
+  });
+  await writeFormalVersion(root, version);
+  console.log(
+    `[常驻秘书] 已保留 ${blocked.id} 的阻断证据，退回主策仅复核规则冲突及 World/VM 接入；启动 notice guard 后由 Version PM 重规划。`,
+  );
+}
+
 async function enqueue(idea: string): Promise<void> {
   await startGuard();
   const request: IntakeRequest = {
@@ -328,6 +389,8 @@ if (command === 'run') {
   await stopGuard();
 } else if (command === 'resume-design-review') {
   await resumeDesignReview();
+} else if (command === 'replan-stalled-development') {
+  await replanStalledDevelopment();
 } else if (command === 'status') {
   await printStatus();
 } else if (command === 'help' || command === '--help' || command === '-h') {
