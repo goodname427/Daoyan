@@ -1,0 +1,40 @@
+{
+  "taskId": "mdx-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "独立复核五项 mdx 细则与两体生命合同，在同一 S0 和版本锁下复算 J1→H2 的物理、法力、容量及四格失败余态，反证接力护送、自修复信标、同撞双观察、100/20、撤权和生命三判。J1→H2 有设计时可判的条件纸面路径；桥接 JH− 改动初态、JH× 双订阅超基础证书，且装载四有价 I/O 与主辅四读及热端尚未逐项映射。退回策划修齐这三项，整版暂不交制作人；真实原读、AST/hash、实耗和玩家往返仍待获批开发后验证。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdx-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),b='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(b+'design-review-findings.md','utf8'),t=JSON.parse(f.readFileSync(b+'design-review-tasks.json','utf8')).tasks[0],e=JSON.parse(f.readFileSync(b+'tasks/design-review-mdx-world-review.json','utf8'));a.equal(t.id,'mdx-world-review');a.equal(e.taskId,t.id);a.equal(e.status,'completed');a.equal(e.reviewDecision,'changes-requested');a.deepEqual(e.evidence,t.writePaths);for(const id of ['action-domain','decidable-price','admission-bound','theory-replay','entry-script'])a.equal(JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-'+id+'.json','utf8')).status,'completed');for(const s of ['mdx-world-review','JH+','JH−','JH∅','JH×','32=7+9+4+12','76=20+8+5+4+6+33','76=20+56','U≥2、S≥24','四个有价 I/O','DeathBarrier=∅','changes-requested','精确退回合同'])a.ok(d.includes(s),s);a.equal(48+28,20+8+5+4+6+33);a.equal(32,7+9+4+12);a.equal(76,20+56);console.log('PASS mdx review contract, five sources, four ledgers and blockers')\"",
+      "exitCode": 0,
+      "output": "PASS mdx review contract, five sources, four ledgers and blockers"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdx-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdx-world-review.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdx-world-review.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdx-world-review writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdx-world-review writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),b='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(b+'design-review-findings.md','utf8'),t=JSON.parse(f.readFileSync(b+'design-review-tasks.json','utf8')).tasks[0],e=JSON.parse(f.readFileSync(b+'tasks/design-review-mdx-world-review.json','utf8'));a.equal(t.id,'mdx-world-review');a.equal(e.taskId,t.id);a.equal(e.status,'completed');a.equal(e.reviewDecision,'changes-requested');a.deepEqual(e.evidence,t.writePaths);for(const id of ['action-domain','decidable-price','admission-bound','theory-replay','entry-script'])a.equal(JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-'+id+'.json','utf8')).status,'completed');for(const s of ['# `mdx-world-review`','JH+','JH−','JH∅','JH×','32=7+9+4+12','76=20+8+5+4+6+33','76=20+56','U≥2、S≥24','四个有价 I/O','DeathBarrier=∅','changes-requested','精确退回合同'])a.ok(d.includes(s),s);a.equal(48+28,20+8+5+4+6+33);a.equal(32,7+9+4+12);a.equal(76,20+56);console.log('PASS mdx review contract, five sources, four ledgers and blockers')\"",
+      "exitCode": 1,
+      "reason": "PowerShell 在双引号 node -e 参数中处理反引号，标题字面量被改变，断言 # mdx-world-review 失败；改用不含反引号的标识后同一检查通过。"
+    }
+  ]
+}
