@@ -1319,7 +1319,9 @@ describe('formal version stage dispatch', () => {
     if (!approvedFeedback) throw new Error('missing approved feedback');
     approvedFeedback.feedback = '批准完整详细策划进入开发；本版交付可追溯路线图与交接记录。';
     expect(stageTaskPlanDirection(version)).toContain('roadmap-handoff.md');
+    expect(stageTaskPlanDirection(version)).toContain('roadmapHandoff:');
     expect(stageTaskPlanDirection(version)).toContain('制作人对完整详细策划的批准');
+    expect(stageFinalizingDirection(version)).toContain('节点收束时补记规划缺口及责任');
     expect(versionStageDirection(version, 'candidate')).toContain('docs/roadmap.md');
   });
 

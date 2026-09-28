@@ -212,6 +212,24 @@ export function assertModuleDesignTaskPlan(value: unknown): void {
   }
 }
 
+/** Keep the version-wide handoff owned by Version PM, outside Feature PM write scopes. */
+export function assertRoadmapHandoffTaskPlan(value: unknown, expectedPath: string): void {
+  const handoff = isRecord(value) ? value.roadmapHandoff : undefined;
+  if (
+    !isRecord(handoff) ||
+    handoff.owner !== 'Version PM' ||
+    handoff.path !== expectedPath ||
+    !isStrings(handoff.acceptance) ||
+    handoff.acceptance.length === 0
+  ) {
+    throw new Error(`开发规划须明确由 Version PM 交付并验收 ${expectedPath}`);
+  }
+  const criteria = handoff.acceptance.join(' ');
+  if (!criteria.includes('design-review.md') || !criteria.includes('development.json')) {
+    throw new Error('路线图交接验收须引用已批准策划与实际开发证据');
+  }
+}
+
 export function readyStageTasks(tasks: VersionStageTask[]): VersionStageTask[] {
   const accepted = new Set(
     tasks.filter((task) => task.status === 'accepted').map((task) => task.id),

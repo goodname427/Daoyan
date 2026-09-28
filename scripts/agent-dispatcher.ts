@@ -2062,7 +2062,7 @@ const currentProcessIdentity = getProcessIdentity(process.pid);
 function throwIfReviewStalled(review: ReviewResult): void {
   if (activeReviewStall && activeReviewStall.count >= 3) {
     throw new Error(
-      `审查停滞：同一范围和等级的问题已连续 ${activeReviewStall.count} 轮未关闭，已停止自动修复与复审；请核查失败命令、真实产物及运行环境。最近结论：${review.summary}`,
+      `审查停滞：同一主要文件连续 ${activeReviewStall.count} 轮仍有同等级阻断，已停止自动修复与复审；请核查任务边界、架构接入及真实产物。最近结论：${review.summary}`,
     );
   }
 }
@@ -2380,7 +2380,7 @@ try {
     activeReview = resetCompletedWork || unrelatedCommittedAdvance ? null : checkpoint.review;
     activeReviewStall = unrelatedCommittedAdvance
       ? undefined
-      : (checkpoint.reviewStall ?? (await reviewStallFromRunHistory(runDirectory)));
+      : ((await reviewStallFromRunHistory(runDirectory)) ?? checkpoint.reviewStall);
     activeValidationProgress =
       resetCompletedWork || unrelatedCommittedAdvance
         ? { fastGate: null, independentReview: null }
@@ -2698,6 +2698,7 @@ try {
 
   if (validationStages.has('independent-review')) {
     let reviewBoundary: ReviewBoundary | null = null;
+    if (activeReview?.verdict === 'fix') throwIfReviewStalled(activeReview);
     while (true) {
       reviewRound += 1;
       currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;

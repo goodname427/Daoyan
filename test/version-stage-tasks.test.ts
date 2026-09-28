@@ -9,6 +9,7 @@ import { ensureVersionStageItem } from '../scripts/secretary-notice-guard';
 import { createSecretaryState } from '../scripts/secretary-state';
 import {
   assertModuleDesignTaskPlan,
+  assertRoadmapHandoffTaskPlan,
   assertStageTaskPaths,
   assertStageTaskDeliveryScope,
   assertStageTaskPrestartScope,
@@ -30,6 +31,31 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('requires a Version PM owned roadmap handoff with design and delivery evidence', () => {
+    const path = 'docs/versions/v2/roadmap-handoff.md';
+    const plan = {
+      tasks: [task('world')],
+      roadmapHandoff: {
+        owner: 'Version PM',
+        path,
+        acceptance: ['引用 design-review.md 与实测 development.json，区分未来候选'],
+      },
+    };
+    expect(() => assertRoadmapHandoffTaskPlan(plan, path)).not.toThrow();
+    expect(() => assertRoadmapHandoffTaskPlan({ tasks: plan.tasks }, path)).toThrow('Version PM');
+    expect(() =>
+      assertRoadmapHandoffTaskPlan(
+        { ...plan, roadmapHandoff: { ...plan.roadmapHandoff, owner: 'Feature PM' } },
+        path,
+      ),
+    ).toThrow('Version PM');
+    expect(() =>
+      assertRoadmapHandoffTaskPlan(
+        { ...plan, roadmapHandoff: { ...plan.roadmapHandoff, acceptance: ['写路线图'] } },
+        path,
+      ),
+    ).toThrow('已批准策划');
+  });
   it('records Version PM context decisions and keeps old task manifests valid', () => {
     const [continued] = parseStageTaskManifest(
       {
