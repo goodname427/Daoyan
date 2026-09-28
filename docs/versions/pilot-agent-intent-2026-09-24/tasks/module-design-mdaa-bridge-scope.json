@@ -1,0 +1,53 @@
+{
+  "taskId": "mdaa-bridge-scope",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "修订玩家桥接纸面合同：以同一 S0/seed/book-mdu-01/v1 对 J1、D1、B4 写完整编辑、预算、绑定、观察与返回重报价；明确首批待审方案、拟缺席能力、六入口条件等价、逐 payer 条件账目、私值裁剪、生命称谓和反例。真实 UI、原读、实扣、真实 AST/hash 与实玩留开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-bridge-scope.json"
+  ],
+  "commands": [
+    {
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ],
+      "exitCode": 0,
+      "output": "PASS bridge scope coverage, paper paths, six-entry privacy counterexamples, and write contract",
+      "command": "node -e bridge paper-contract coverage assertion"
+    },
+    {
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+    },
+    {
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
+      "exitCode": 0,
+      "output": "",
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "resolution": "Reordered validation to run content checks, create evidence, then validate metadata.",
+      "exitCode": 1,
+      "output": "ENOENT: evidence JSON had not yet been created",
+      "command": "node -e evidence metadata check before evidence creation"
+    },
+    {
+      "resolution": "Expanded assertion to full design document; corrected check passed.",
+      "exitCode": 1,
+      "output": "AssertionError: S0-physical-v1; selected substring omitted shared initial-state section",
+      "command": "node -e scoped substring coverage assertion"
+    },
+    {
+      "resolution": "Formatted document and reran successfully.",
+      "exitCode": 1,
+      "output": "Code style issues found",
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+    }
+  ]
+}
