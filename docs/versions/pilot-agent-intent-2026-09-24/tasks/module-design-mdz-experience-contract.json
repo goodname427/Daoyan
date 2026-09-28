@@ -1,0 +1,40 @@
+{
+  "taskId": "mdz-experience-contract",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "只读消费已完成的 mdz-theory-scope 与同版 mdy-four-grid 结论，修订玩家桥接现行段落：逐项提供 JH+ 条件成功、JH− 自然无源、JH∅ 获准空读、JH× 同刻竞争、未知、域外/拒绝和护送/信标救援/醒回等缺席行为的同书推演台编辑与预算、演武场绑定观察、返回原书改 hash 并重报价步骤；补齐六入口同条件等价矩阵、六类反证和未执行/待开发候选体验边界。未修改实现，未声称功能可玩。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-experience-contract.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),p='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(p+'player-bridge-design.md','utf8'),w=f.readFileSync(p+'world-theory-draft.md','utf8'),v=JSON.parse(f.readFileSync('.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json','utf8')),t=v.stageTasks.find(x=>x.id==='mdz-experience-contract');a.deepEqual(t.writePaths,[p+'player-bridge-design.md',p+'tasks/module-design-mdz-experience-contract.json']);a.equal(JSON.parse(f.readFileSync(p+'tasks/module-design-mdz-theory-scope.json','utf8')).status,'completed');for(const x of ['JH+','JH−','JH∅','JH×','获准空读','未知：','域外/拒绝','缺席：','鼠标','键盘','手柄','妖兽 AI','实体事件','敌方修士','同价','同扣','事件 ID/序','裁剪后的余态','隐藏目标泄漏','AI 借玩家视野','敌方阵营特权','暂停重放','同撞双观察','无证载体误报成功','返回原书','hash','重报价','真实 UI','逐笔实扣','实玩'])a.ok(d.includes(x),x);for(const x of ['完整护送','信标修壳/救援','醒回','J1→H2'])a.ok(w.includes(x),x);console.log('PASS mdz experience contract: exact predecessor scope, six scenarios, same-book loop, six-entry matrix and counterexamples')\"",
+      "exitCode": 0,
+      "output": "PASS mdz experience contract: exact predecessor scope, six scenarios, same-book loop, six-entry matrix and counterexamples",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-experience-contract.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "reason": "初稿 Markdown 格式不符合 Prettier；仅对 writePath 设计文档执行格式化后复检通过。",
+      "exitCode": 1
+    }
+  ]
+}
