@@ -1,0 +1,68 @@
+{
+  "taskId": "mdab-bridge-payers",
+  "status": "completed",
+  "summary": "仅修订 player-bridge-design.md：消费只读 mdab-theory-signoff、mdab-program-identity、mdaa-ledger-key、mdaa-physical-key、mdaa-carrier-key 与 mdz-life-boundary，版本键为 S0-physical-v1/seed-physical-v1/pilot-physical-v1、book-mdu-01/v1、JH-v1/D1-v1/B4-v1、mdy-JH-read-v1、W-mdx-JH-1@mdy-read-budget。六入口逐行使用同一 J1ProgramIdentity(book-mdu-01/v1, mdx-JH-AST-v1, H_JH_assumed_v1[assumption-only], mdy-JH-read-v1, W-mdx-JH-1@mdy-read-budget)；AST-J1-mdaa-assumed-v1/H_J1_mdaa_assumed_v1 只是纸面别名，programHash=unknown。别名仅条件覆盖十五读、单订阅/两引用/一帧、35/36 M 跨账户毛界、178/187 单响应 tick、4301/4310 整链 tick 与 38 S；身份/版本不等须撤证重签，D1/B4 保持独立 26/34 M 与 37/40 S。J1 本人成功报价/已付/余态 32/32/0，净额 32→23→12→0；P0 1/1/授权余态，P2 2/2/授权余态，跨账户总毛 35 不进 J1 余额；失证新读由独立已到账且获准 P1 付 1 后总毛 36，仍不进 J1 余额；无 P1 到账/grant 时 J1 已付 20 留 12，H2 未提交。六入口分别列成功、无源 9/23、获准空读 9/23、读前无权零新扣、失证无 P1 和同刻竞争的本人及其他授权可见余态。P0/P1/P2 的 b0/b1/b2 初末余额只在各自字段授权视图，公开仅裁剪付款摘要和拒因；AI 不借玩家视野、事件不重复付款、敌方无阵营优惠、隐藏目标不从拒因泄漏。B4 第二响应已原读实满为 queueFull，先序换版重读重报价，容量未读为 capacityUnknown；首项已付款及自然事实不回滚。A/B/C 首批范围、缺席能力与玩家解释仍待主策复审及制作人判断；真实 AST/hash、到账实扣、容量原读和实玩留获批开发后验收。本轮只改合同两个 writePaths，未运行统一门禁，未 commit/push/tag。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json"
+  ],
+  "authorities": [
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-theory-signoff.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md#mdab-theory-signoff",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md#mdab-program-identity",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md#mdaa-carrier-key",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md#mdaa-ledger-key",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md#mdaa-physical-key",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md#mdz-life-boundary",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#mdab-world-review"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),j=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdab-bridge-payers.json\",\"utf8\"));a(j.taskId===\"mdab-bridge-payers\"&&j.status===\"completed\");const r=b.split(\"\\n\").filter(x=>/^\\| (鼠标|键盘|手柄|妖兽 AI|实体事件|敌方修士) ·/.test(x));a(r.length===6);for(const x of r)for(const k of [\"book-mdu-01/v1\",\"mdx-JH-AST-v1\",\"H_JH_assumed_v1[assumption-only]\",\"32/32/0\",\"1/1/授权余态\",\"2/2/授权余态\",\"35\",\"36\"])a(x.includes(k),k);a(9+11+12===32&&32+1+2===35&&35+1===36);console.log(\"PASS mdab bridge payer check\")'",
+      "exitCode": 0,
+      "output": "PASS mdab bridge payer check",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git status --short",
+      "exitCode": 0,
+      "output": " M docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md\n?? docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "rg -n \"^## .*mdab|^### .*mdab|^## .*mdaa-ledger-key|^## .*mdaa-carrier-key\" docs/versions/pilot-agent-intent-2026-09-24/{world-theory-draft,programmable-spells-design,mana-ledger-design}.md",
+      "exitCode": 1,
+      "output": "PowerShell ParserError: Missing argument in parameter list.",
+      "resolution": "改用明确文件路径的定向读取核对现行合同段落；未把本次失败当作通过的检查。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdab-bridge-payers.json",
+      "exitCode": 1,
+      "output": "Checking formatting... [warn] docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md; Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "展开六入口身份键后按仓库 Prettier 格式化，并重跑同一双文件检查，退出码 0。"
+    }
+  ]
+}
