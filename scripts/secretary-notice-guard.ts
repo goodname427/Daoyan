@@ -32,6 +32,7 @@ import {
   conventionalCommitOrFallback,
   formalTaskPredecessorIds,
   internalizeFormalPlanDependencies,
+  isHypotheticalProducerQuestion,
   isValidationTreePath,
   preferredWindowsExecutable,
   reviewFindingSignature,
@@ -2227,6 +2228,16 @@ export function versionMessageIsNewDirection(message: string): boolean {
   return messageIsNewDirection(message);
 }
 
+export function hypotheticalFormalWaitCanResume(direction: string, rawPlan: unknown): boolean {
+  return (
+    /^\[formal-stage-deliverable:development:[a-zA-Z0-9_-]+\]/u.test(direction) &&
+    isRecord(rawPlan) &&
+    rawPlan.producerDecisionRequired === true &&
+    typeof rawPlan.producerQuestion === 'string' &&
+    isHypotheticalProducerQuestion(rawPlan.producerQuestion)
+  );
+}
+
 function draftVersionId(request: IntakeRequest): string {
   const date = request.createdAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const requestKey = request.id.replace(/[^a-z0-9_-]/gi, '-').slice(0, 24) || 'direction';
@@ -3883,6 +3894,22 @@ async function reconcileItem(
       recordReconciliation('retry-wait', '该等待快照已由制作人处理，保留恢复派发。', [
         run.directory,
       ]);
+      return true;
+    }
+    const rawPlan = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'plan.validated.json')).catch(() => null)
+      : null;
+    if (hypotheticalFormalWaitCanResume(item.idea, rawPlan)) {
+      item.status = 'retry-wait';
+      item.summary = '仅有将来可能发生的冲突，尚无制作人待决事实；从原恢复点继续执行。';
+      item.retryAt = new Date().toISOString();
+      item.processPid = 0;
+      item.processIdentity = '';
+      itemOrchestration.processOccupied = false;
+      itemOrchestration.waitingSnapshot = waitingSnapshot;
+      itemOrchestration.acknowledgedWaitingSnapshot = waitingSnapshot;
+      if (state.activeItemId === item.id) state.activeItemId = '';
+      recordReconciliation('retry-wait', item.summary, [run.directory]);
       return true;
     }
     clearOrphanRecovery(item.id);

@@ -369,5 +369,15 @@ describe('stage-owned task contracts', () => {
       '[formal-stage-deliverable:development:physics]',
     );
     expect(developmentPlan.producerDecisionRequired).toBe(true);
+    const contingencyPlan = buildLocalPlan('实现已批准的首批三行为');
+    contingencyPlan.producerDecisionRequired = true;
+    contingencyPlan.producerQuestion =
+      '如果实现过程中发现必须改变已批准世界原则或作出不可逆架构选择，先提交阻断事实与可比较取舍，再由制作人决定；除此情形按合同推进。';
+    applyFormalStageValidationProfile(
+      contingencyPlan,
+      '[formal-stage-deliverable:development:world-core]',
+    );
+    expect(contingencyPlan.producerDecisionRequired).toBe(false);
+    expect(contingencyPlan.producerQuestion).toContain('如果实现过程中发现');
   });
 });

@@ -63,6 +63,7 @@ import {
   productImplementationChanges,
   replaceVersionWorkItems,
   versionStageDirection,
+  hypotheticalFormalWaitCanResume,
   assertApprovedRoadmapHandoff,
   stageTaskPlanDirection,
   stageTaskDirection,
@@ -744,6 +745,30 @@ describe('secretary task milestone extraction', () => {
 });
 
 describe('formal version producer decisions', () => {
+  it('retries a development checkpoint that only raised a future contingency', () => {
+    const direction = '[formal-stage-deliverable:development:dev-world-a]\n实现已批准合同';
+    const question =
+      '如果实现过程中发现必须改变已批准世界原则或作出不可逆架构选择，先提交阻断事实与可比较取舍，再由制作人决定。';
+    expect(
+      hypotheticalFormalWaitCanResume(direction, {
+        producerDecisionRequired: true,
+        producerQuestion: question,
+      }),
+    ).toBe(true);
+    expect(
+      hypotheticalFormalWaitCanResume(direction, {
+        producerDecisionRequired: true,
+        producerQuestion: '当前已发现法力守恒冲突：方案 A 与 B 的玩家代价不同，请制作人选择。',
+      }),
+    ).toBe(false);
+    expect(
+      hypotheticalFormalWaitCanResume('[formal-stage-deliverable:design-review:review]', {
+        producerDecisionRequired: true,
+        producerQuestion: question,
+      }),
+    ).toBe(false);
+  });
+
   it('requires explicit approval or explicit requested changes', () => {
     expect(versionProducerDecision('通过，可以继续推进')).toBe('approved');
     expect(versionProducerDecision('这里有问题，需要调整范围')).toBe('changes-requested');
