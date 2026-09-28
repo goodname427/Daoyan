@@ -1,0 +1,53 @@
+{
+  "taskId": "mdad-bridge-reconcile",
+  "status": "completed",
+  "summary": "消费已完成 mdad-theory-reconcile，按共同 S0/seed、世界先序、事实/读/切片和版本键核桥接三路径及六入口；D1/B4 的 E0、q、M、S/tick、第二响应和普通壳生命边界与现行权威来源一致，无新增读、材料、热或作用，维持既有联签。完成纸面玩家往返脚本；真实原读、逐 payer 实扣、规范 AST/hash、容量、VM 用量与实玩待获批开发后验收。",
+  "acceptance": {
+    "predecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-theory-reconcile.json",
+    "previousNonAcceptance": "上轮桥接正文保留了检查记录，却没有本任务精确路径的 JSON 接纳证据；旧 git add 曾因 index.lock 权限拒绝，本轮不重用旧结果为本轮检查。",
+    "commonKeys": "S0-physical-v1/seed-physical-v1/pilot-physical-v1；worldSequence、factId/actionId/readId、D1-v1/B4-v1、source/aux/energy/material lot、slice/seal、payer/physical grant、壳/锚/环境及价格/容量/程序版本逐项匹配。",
+    "physical": "D1 包 16/12→4/12 E0，本笔 12/12=6/12 动能+6/12 热、材料 0q；B4 包 32/12→8/12 E0，本笔 24/12=12/12 壳功+12/12 热、4q=2q 隔离余+q 壳+q 废料。",
+    "ledger": "J1 本人 32 M，P0/P2 各 1/2 M、可选 P1 1 M，跨账户 35/36 M；D1 acct-M1-D1/payerGrant-D1-v1 已结净入 40、条件毛价 26、末额 14；B4 acct-B1-B4/payerGrant-B4-v1 已结净入 50、条件毛价 34、末额 16；逐阶段已付与 POST 未读余态单列。",
+    "programAndExperience": "J1ProgramIdentity 仅纸面 AST 别名；D1/B4 独立 AST/hash 假设及 37/40 S、176+17/232+17 tick 条件证；六入口按相同规范意图、能力、视野、payer/grant、程序/物理版本和世界先序比较成功、拒绝、空读、未知、域外、竞争；B1 首撞/再撞及 B4 第二响应三分；返书改程序撤证重报。",
+    "signoff": "未发现新增读、材料、热或作用，不撤旧联签；主策仍须复审整版范围。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),w=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\").split(\"## `mdad-theory-reconcile`\")[1],ph=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),m=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),li=f.readFileSync(p+\"life-identity-design.md\",\"utf8\");a.ok(w);for(const s of [\"16/12→4/12\",\"32/12→8/12\",\"queueFull\",\"capacityUnknown\",\"35\",\"36\",\"37 S\",\"40 S\"])a.ok(w.includes(s),\"theory \"+s);for(const s of [\"16/12→4/12\",\"32/12→8/12\",\"4q=2q\",\"J1ProgramIdentity\",\"payerGrant-D1-v1\",\"payerGrant-B4-v1\",\"37 S\",\"40 S\",\"176+17\",\"232+17\",\"推演台编辑预算\",\"返回原书改程序、撤证、重报价\",\"queueFull\",\"capacityUnknown\"])a.ok(b.includes(s),\"bridge \"+s);for(const s of [\"鼠标\",\"键盘\",\"手柄\",\"妖兽 AI\",\"实体事件\",\"敌方修士\"])a.ok(b.includes(s),\"entry \"+s);for(const [d,s] of [[ph,\"slice-D1-01\"],[ph,\"slice-B4-01\"],[m,\"receipt-D1-funded-v1\"],[m,\"receipt-B4-funded-v1\"],[pr,\"37 S\"],[pr,\"40 S\"],[li,\"mdz-life-boundary\"]])a.ok(d.includes(s),\"source \"+s);for(const [actual,expected] of [[16-12,4],[32-24,8],[6+6,12],[12+12,24],[2+1+1,4],[9+11+12,32],[32+1+2,35],[35+1,36],[12+4+8+2,26],[40-26,14],[16+5+10+3,34],[50-34,16],[176+17,193],[232+17,249]])a.equal(actual,expected);console.log(\"PASS mdad bridge paper reconciliation\")'",
+      "exitCode": 0,
+      "output": "PASS mdad bridge paper reconciliation"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-bridge-reconcile.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-bridge-reconcile.json",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),w=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\").split(\"## `mdad-theory-reconcile`\")[1],ph=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),m=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),li=f.readFileSync(p+\"life-identity-design.md\",\"utf8\");a.ok(w);for(const s of [\"16/12→4/12\",\"32/12→8/12\",\"queueFull\",\"capacityUnknown\",\"35\",\"36\",\"37 S\",\"40 S\"])a.ok(w.includes(s),\"theory \"+s);for(const s of [\"16/12→4/12\",\"32/12→8/12\",\"4q=2q\",\"J1ProgramIdentity\",\"payerGrant-D1-v1\",\"payerGrant-B4-v1\",\"37 S\",\"40 S\",\"176+17\",\"232+17\",\"推演台编辑预算\",\"返回原书改程序、撤证、重报价\",\"queueFull\",\"capacityUnknown\"])a.ok(b.includes(s),\"bridge \"+s);for(const s of [\"鼠标\",\"键盘\",\"手柄\",\"妖兽 AI\",\"实体事件\",\"敌方修士\"])a.ok(b.includes(s),\"entry \"+s);for(const [d,s] of [[ph,\"slice-D1-01\"],[ph,\"slice-B4-01\"],[m,\"receipt-D1-funded-v1\"],[m,\"receipt-B4-funded-v1\"],[pr,\"capacity-D1-v1\"],[pr,\"capacity-B1-v1\"],[li,\"mdz-life-boundary\"]])a.ok(d.includes(s),\"source \"+s);for(const [actual,expected] of [[16-12,4],[32-24,8],[6+6,12],[12+12,24],[2+1+1,4],[9+11+12,32],[32+1+2,35],[35+1,36],[12+4+8+2,26],[40-26,14],[16+5+10+3,34],[50-34,16],[176+17,193],[232+17,249]])a.equal(actual,expected);console.log(\"PASS mdad bridge paper reconciliation\")'",
+      "exitCode": 1,
+      "reason": "初版断言在程序正文中查找 capacity-D1-v1/capacity-B1-v1 字面键；该键出现在理论版本向量，程序权威正文签的是 37 S/40 S 条件容量，已修正检查并复跑通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-bridge-reconcile.json"
+  ],
+  "scopeNote": "合同 writePaths 仅含桥接正文；本轮用户另明确要求精确任务 JSON，故仅额外创建这一接纳证据文件。未改其他路径，未提交或推送。"
+}

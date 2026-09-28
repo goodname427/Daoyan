@@ -44,7 +44,7 @@
 
 理论前驱 [`mdad-theory-reconcile`](./world-theory-draft.md#mdad-theory-reconcile同键物理账与第二响应复核) 已同步 `mdaa-theory-replay` 的旧简写：D1 `16/12→4/12` 仅耗 `12/12=6/12` 动能加 `6/12` 热；B4 `32/12→8/12` 仅耗 `24/12=12/12` 壳功加 `12/12` 热；未经新 POST 原读的中心余量为 `unknown`。B4 第二响应仅同版本体 FIFO/占用原读实满报 `queueFull`，先序换版撤证重读重报，未读容量报 `capacityUnknown`。桥接、物理、账本、程序与理论现按这些同键事实联签；本轮未新增材料、热、作用读或价格/容量断言，故无需撤旧联签或要求权威模块重签。三体真实规范 AST 字节/SHA-256、容量/已有占用原读、逐 payer 实扣与 VM tick/S 均未取得；以上只是开发后可执行验收的纸面期望。若改变首批 A/B/C 取舍或需新增世界规则，交主策判断，本文不定案。
 
-**逐路径版本键对账。** 以下是同一 `S0-physical-v1/seed-physical-v1/pilot-physical-v1` 和 `book-mdu-01/v1` 下的三个独立 Quote 输入，不是三个程序共用的一张付款或容量证。J1 的 `JH-v1`、`mdy-JH-read-v1`、`W-mdx-JH-1@mdy-read-budget` 分别由物理、账本、程序正文签；D1 的 `D1-v1`、`mdz-D1-v1`、`capacity-D1-v1` 与 B4 的 `B4-v1`、`mdz-B4-v1`、`capacity-B1-v1` 各自同理。D1/B4 的程序键分别是 `AST-D1-mdaa-assumed-v1/H-D1-mdaa-assumed-v1`、`AST-B4-mdaa-assumed-v1/H-B4-mdaa-assumed-v1`，均非 J1 别名或实测 hash。每份 Quote 同时带 `worldSequence`、本体 `factId/actionId`、按 R0…R3/POST 分开的 `readId`、`Acquire-*`、主辅来源 lot、包 lot、`sliceId`、物理与付款 grant、封印，以及 `physicalVersion/priceVersion/capacityVersion/structureVersion/materialVersion/contactVersion/anchorVersion/environmentVersion`；J1 额外核 P0/P1/P2 各自到账和授权。改书后即使物理中心值未变，也先撤受影响的旧 Quote/容量覆盖，再用新 AST、读和版本逐账户重签；旧已付 `ReadTx` 仅在完整覆盖键仍相同且授权有效时可引用，新增或失证的读必须独立付款。现行必需权威来源均在本任务 `readPaths`：物理、账本、程序、理论联签、生命边界与主策退回；未发现读路径缺口。本轮任务证据留在本文件，符合 `mdad-bridge-reconcile` 的单一 `writePaths`；不增写桥接合同外路径。
+**逐路径版本键对账。** 以下是同一 `S0-physical-v1/seed-physical-v1/pilot-physical-v1` 和 `book-mdu-01/v1` 下的三个独立 Quote 输入，不是三个程序共用的一张付款或容量证。J1 的 `JH-v1`、`mdy-JH-read-v1`、`W-mdx-JH-1@mdy-read-budget` 分别由物理、账本、程序正文签；D1 的 `D1-v1`、`mdz-D1-v1`、`capacity-D1-v1` 与 B4 的 `B4-v1`、`mdz-B4-v1`、`capacity-B1-v1` 各自同理。D1/B4 的程序键分别是 `AST-D1-mdaa-assumed-v1/H-D1-mdaa-assumed-v1`、`AST-B4-mdaa-assumed-v1/H-B4-mdaa-assumed-v1`，均非 J1 别名或实测 hash。每份 Quote 同时带 `worldSequence`、本体 `factId/actionId`、按 R0…R3/POST 分开的 `readId`、`Acquire-*`、主辅来源 lot、包 lot、`sliceId`、物理与付款 grant、封印，以及 `physicalVersion/priceVersion/capacityVersion/structureVersion/materialVersion/contactVersion/anchorVersion/environmentVersion`；J1 额外核 P0/P1/P2 各自到账和授权。改书后即使物理中心值未变，也先撤受影响的旧 Quote/容量覆盖，再用新 AST、读和版本逐账户重签；旧已付 `ReadTx` 仅在完整覆盖键仍相同且授权有效时可引用，新增或失证的读必须独立付款。现行必需权威来源均在本任务 `readPaths`：物理、账本、程序、理论联签、生命边界与主策退回；未发现读路径缺口。任务正文仍只改合同 `writePaths` 内的本文件；另按本轮明确要求补写精确接纳证据 JSON。
 
 ### 三路径失败与余态纸面反证
 
@@ -142,20 +142,4 @@
 
 相对 `mdac-bridge-physical` 的理论勘误已经由只读前驱 `mdad-theory-reconcile` 写入唯一理论正文：旧 D1 `3→2 E0`、B4 把 `2 E0` 全计壳后另加 `1 E0` 热，以及不分本体证据的“满即拒”不再是同键成功。桥接据此把 D1/B4 账与 POST 余态、B4 第二响应三分判认作跨模块联签；未增加上游事实或价/读/容量，故不撤物理、账本、程序或生命联签。反例包括虚构第三个 E0、借 J1 `38 S`、借世界队列位猜本体满、改程序后沿用旧 Quote、以及把 B4 修壳当生命复苏。六入口仅在规范意图、执行能力、视野、payer/grant、程序/物理版本及世界先序相同才等价；各入口没有天然共享玩家账户或视野。
 
-**任务证据（只记录本轮实际结果）**：`taskId=mdad-bridge-reconcile`；实际检查为上述合同与权威段落对照，发现并修正一处过期桥接陈述（理论仍待同步），其余三路径/六入口数字与反例无差异。变更仅在本文件；合同 `mdad-bridge-reconcile.writePaths` 也仅允许本文件，证据路径为 `docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`。下列命令均在本轮执行，退出码为实际结果；失败尝试单列。提交状态以实际 Git 操作为准。
-
-通过命令（逐字记录，均在本轮实际执行）：
-
-```text
-node -e 'const fs=require("fs"),assert=require("assert/strict"),p="docs/versions/pilot-agent-intent-2026-09-24/",b=fs.readFileSync(p+"player-bridge-design.md","utf8"),w=fs.readFileSync(p+"world-theory-draft.md","utf8"),ph=fs.readFileSync(p+"physics-material-design.md","utf8"),m=fs.readFileSync(p+"mana-ledger-design.md","utf8"),pr=fs.readFileSync(p+"programmable-spells-design.md","utf8"),li=fs.readFileSync(p+"life-identity-design.md","utf8");for(const s of ["mdad-bridge-reconcile","16/12→4/12","32/12→8/12","queueFull","capacityUnknown","J1ProgramIdentity","37 S","40 S","推演台编辑预算","返回原书改程序、撤证、重报价","taskId=mdad-bridge-reconcile"])assert(b.includes(s),s);assert(w.includes("mdad-theory-reconcile"));for(const d of [ph,m,pr,li])assert(d.length>0);for(const n of ["鼠标","键盘","手柄","妖兽 AI","实体事件","敌方修士"])assert(b.includes(n),n);assert.equal(16-12,4);assert.equal(32-24,8);assert.equal(12,6+6);assert.equal(24,12+12);assert.equal(4,2+1+1);assert.equal(9+11+12,32);assert.equal(32+1+2,35);assert.equal(35+1,36);assert.equal(12+4+8+2,26);assert.equal(16+5+10+3,34);console.log("PASS mdad bridge paper reconciliation")'
-node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md
-git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md
-```
-
-退出码分别为 `0`、`0`、`0`。失败尝试：纸面断言初版查找英文 `mouse` 而入口以中文“鼠标”列出，退出码 `1`；改正标签后同一检查以 `0` 通过。未运行统一 `npm run verify` 或 `npm run verify:full`。
-
-其他实际失败尝试（均已处理或记录）：
-
-- `node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`，退出码 `1`；追加证据时格式不符合，已运行 `node node_modules/prettier/bin/prettier.cjs --write docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`（退出码 `0`），再检查通过。
-- `git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`，追加证据时退出码 `2`（行尾空白），格式化后最终退出码 `0`。
-- `git add -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`，退出码 `1`：`fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied`。未形成本地提交。
+**本轮任务证据**：`taskId=mdad-bridge-reconcile` 的检查命令、真实退出码、结果和证据路径见[独立任务结果](./tasks/module-design-mdad-bridge-reconcile.json)。上轮正文虽记有检查过程，却缺少该精确 JSON 文件，无法作为任务接纳证据；旧尝试与本轮结果分开记录。本轮核对修订理论后，D1/B4 的包、热、材料及第二响应与现行物理、账本、程序和生命来源同键，无新增读、材料、热或作用，因此维持原权威联签。仅纸面联签仍待主策复审，不代表整版通过。
