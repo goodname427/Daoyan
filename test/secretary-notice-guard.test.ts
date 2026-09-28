@@ -29,6 +29,7 @@ import {
   rejectedStageAttemptFor,
   requiresProducerDesignReapproval,
   isRetryablePlannerNetworkFailure,
+  isRecoverableRoutingOutage,
   isRetryableFormalPlannerDependencyFailure,
   localQuestionResponse,
   ensureVersionStageItem,
@@ -149,6 +150,42 @@ describe('secretary worker process launch', () => {
       false,
     );
     expect(isRetryablePlannerNetworkFailure(progress, files, 'ERROR: task failed')).toBe(false);
+  });
+  it('keeps a task with only routing failures in technical recovery after the retry cap', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-routing-'));
+    const prefix = 'formal-module-design-plan-gpt-6-sol';
+    const recovery = {
+      status: 'recoverable',
+      taskRuns: [
+        {
+          result: 'failed',
+          attempts: 2,
+          changedFiles: [] as string[],
+          outputFile: resolve(directory, `${prefix}-attempt-2.md`),
+        },
+      ],
+    };
+    try {
+      await writeFile(resolve(directory, 'recovery.json'), JSON.stringify(recovery));
+      for (const attempt of [1, 2])
+        await writeFile(
+          resolve(directory, `${prefix}-attempt-${attempt}.log`),
+          'ERROR: workspace routing discovery failed\n',
+        );
+      expect(await isRecoverableRoutingOutage(directory)).toBe(true);
+      await writeFile(resolve(directory, `${prefix}-attempt-2.log`), 'ERROR: task failed\n');
+      expect(await isRecoverableRoutingOutage(directory)).toBe(false);
+      await writeFile(
+        resolve(directory, `${prefix}-attempt-2.log`),
+        'ERROR: workspace routing discovery failed\nERROR: rate limit\n',
+      );
+      expect(await isRecoverableRoutingOutage(directory)).toBe(false);
+      recovery.taskRuns[0].changedFiles = ['docs/changed.md'];
+      await writeFile(resolve(directory, 'recovery.json'), JSON.stringify(recovery));
+      expect(await isRecoverableRoutingOutage(directory)).toBe(false);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
   it('retries only an empty formal planner failure caused by an accepted predecessor', () => {
     const progress = {
