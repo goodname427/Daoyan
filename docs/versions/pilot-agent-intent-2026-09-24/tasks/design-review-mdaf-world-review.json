@@ -1,0 +1,100 @@
+{
+  "taskId": "mdaf-world-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "charterRevision": 2,
+  "reviewDecision": "ready-for-producer-review",
+  "summary": "独立复审 mdaf 桥接修订、唯一理论、五份模块正文及现行模块总览。首批 A 三行为的范围投影与同键条件纸面账已闭合，上一轮桥接阻断已消除；可把完整详细策划作为待审方案交制作人判断。本结论不批准完整方案、游戏开发、ADR 覆盖或运行成功。",
+  "findings": [
+    {
+      "item": "scope-bridge-and-experience",
+      "decision": "covered-as-conditional-paper-design",
+      "owner": "player-bridge-design",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md"
+      ],
+      "returnCondition": "三条范围内路径误标未开放或已可玩；同书返修沿用失效报价；六入口同键不同价或泄露他人私额时退桥接，并按改变的权威键重新联签。"
+    },
+    {
+      "item": "physical-ledger-program-life-and-failure-residuals",
+      "decision": "covered-as-conditional-paper-design-runtime-evidence-pending",
+      "owner": "physics-material-design, mana-ledger-design, programmable-spells-design, life-identity-design",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
+      ],
+      "paperLedger": {
+        "j1": "independent JH-v1; 76=20+56 E0/12 units; self net 32 M and 9+11+12=32, 32->23->12->0; P0 1 and P2 2 produce cross-account 35 M; only approved settled P1 new read adds 1 for 36 M",
+        "d1": "independent D1-v1; 68=35+33; package 16/12->4/12 E0, 6/12 kinetic plus 6/12 heat; net 40 M, 12+4+8+2=26, 40->28->24->16->14; unpaid POST leaves paid 24 and paper balance 16",
+        "b4": "independent B4-v1 after C-B1-01; 100=53+47; package 32/12->8/12 E0, 12/12 shell work plus 12/12 heat, 4q=2q+q+q; net 50 M, 16+5+10+3=34, 50->34->29->19->16; unpaid POST leaves paid 31 and paper balance 19"
+      },
+      "returnCondition": "源、双端能量/材料/热/反作用或自然先序不符退物理；到账/付款授权/价格不符退账本；AST、容量或 tick/S 不符退程序；关键生命三链或 B4 修域改变退生命；理论、桥接和总览按受影响键重签。"
+    },
+    {
+      "item": "future-combinations-and-legacy-migration",
+      "decision": "extension-refutations-recorded-no-future-success-certificate",
+      "owner": "relevant-design-authority-and-architecture",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md"
+      ],
+      "returnCondition": "再撞付费响应、更多预设、敌方自身账户或机关接收 J1 摘要推动 B1 若需要不可组合原子、新世界公理、阵营特权源或不可逆迁移，先由主策提出玩家效果、代价和推荐，经制作人判断；不能继承首批价格与证书。"
+    },
+    {
+      "item": "producer-gate",
+      "decision": "producer-judgment-required",
+      "owner": "producer",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md"
+      ],
+      "returnCondition": "制作人不接受首批只有一次起步与普通惰性修壳的体验边界，或要求完整护送、战斗、关键修复及醒回时，回到相应产品和跨模块设计；本审核不代批准完整方案或开发。"
+    }
+  ],
+  "developmentOnlyEvidence": [
+    "Acquire/R0-R3/POST 双端原始读数、误差、材料与热去向和自然先史",
+    "逐 payer 已结到账、grant、实际锁款与扣费收据",
+    "同书规范 AST 字节/hash、逐体容量、旧占用和事件 FIFO",
+    "VM 逐原子 tick 与同时活 S 相对静态上界的实测",
+    "六入口同键意图/私值裁剪及推演台至演武场再返回原书的实际体验"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `mdaf-world-review`\")[1],j=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdaf-world-review.json\",\"utf8\"));a.ok(r);for(const x of [\"ready-for-producer-review\",\"首批 A\",\"JH-v1\",\"D1-v1\",\"B4-v1\",\"35/36\",\"POST\",\"六入口\",\"法球再撞\",\"更多预设\",\"敌方修士\",\"固定机关\",\"ADR 0017\",\"开发获批后\"])a.ok(r.includes(x),x);for(const [x,y] of [[9+11+12,32],[32+1+2,35],[35+1,36],[12+4+8+2,26],[40-26,14],[16+5+10+3,34],[50-34,16],[35+33,68],[53+47,100]])a.equal(x,y);a.equal(j.taskId,\"mdaf-world-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"ready-for-producer-review\");for(const x of j.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdaf review scope, evidence and paper arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdaf review scope, evidence and paper arithmetic"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\",s=f.readFileSync(p,\"utf8\").split(\"# `mdaf-world-review`\")[1];let n=0;for(const m of s.matchAll(/\\]\\((\\.\\.?\\/[^)#]+)(?:#[^)]*)?\\)/g)){const target=path.resolve(path.dirname(p),decodeURIComponent(m[1]));a.ok(f.existsSync(target),m[1]);n++}a.ok(n>20);console.log(\"PASS mdaf local evidence links: \"+n)'",
+      "exitCode": 0,
+      "output": "PASS mdaf local evidence links: 39"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaf-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaf-world-review.json docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaf-world-review.json"
+  ],
+  "scopeNote": "只修改合同 writePaths；纯文档轻量 Profile。不运行 npm run verify 或 npm run verify:full，不 commit、push、tag 或发布。"
+}
