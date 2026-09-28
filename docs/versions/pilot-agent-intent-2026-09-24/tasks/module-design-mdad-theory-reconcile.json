@@ -1,0 +1,33 @@
+{
+  "taskId": "mdad-theory-reconcile",
+  "status": "completed",
+  "summary": "复核修订 13 唯一世界理论正文：D1/B4 条件 E0 与材料账、六阶段失败余态、B4 第二响应三分支及权威来源对账均已覆盖。纸面检查、格式检查和差异空白检查通过；真实原读、逐 payer 实扣、规范 AST/hash、容量、VM 实耗与实玩仍属于获批开发后的验收。",
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",s=f.readFileSync(p,\"utf8\").split(/\\r?\\n/);for(const n of [940,949])a.ok(s[n-1].includes(\"16/12→4/12 E0\"));for(const n of [940,951])a.ok(s[n-1].includes(\"32/12→8/12 E0\"));for(const n of [941,951,1011])a.ok(s[n-1].includes(\"queueFull\")&&s[n-1].includes(\"capacityUnknown\"));a.ok(s[943-1].includes(\"POST\"));a.equal(16-12,4);a.equal(32-24,8);a.equal(6+6,12);a.equal(12+12,24);a.equal(40-26,14);a.equal(50-34,16);a.equal(32+1+2,35);a.equal(35+1,36);a.equal(35+33,68);a.equal(53+47,100);console.log(\"PASS mdad paper contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdad paper contract"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-theory-reconcile.json; git diff --cached --check; git diff --cached --name-only; git commit -m \"docs: reconcile mdad world theory evidence\"",
+      "exitCode": 128,
+      "reason": "fatal: Unable to create .git/index.lock: Permission denied"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-theory-reconcile.json"
+  ]
+}
