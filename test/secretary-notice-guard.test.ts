@@ -30,6 +30,7 @@ import {
   requiresProducerDesignReapproval,
   isRetryablePlannerNetworkFailure,
   isRecoverableRoutingOutage,
+  routingRetryAlreadyScheduled,
   isRetryableFormalPlannerDependencyFailure,
   localQuestionResponse,
   ensureVersionStageItem,
@@ -186,6 +187,19 @@ describe('secretary worker process launch', () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
+  });
+  it('keeps the first routing retry deadline stable across state reconciliation', () => {
+    const snapshot = 'run-107/recoverable/round-7';
+    expect(
+      routingRetryAlreadyScheduled('retry-wait', '2026-09-28T01:45:33Z', snapshot, snapshot),
+    ).toBe(true);
+    expect(
+      routingRetryAlreadyScheduled('waiting-producer', '2026-09-28T01:45:33Z', snapshot, snapshot),
+    ).toBe(false);
+    expect(routingRetryAlreadyScheduled('retry-wait', '', snapshot, snapshot)).toBe(false);
+    expect(
+      routingRetryAlreadyScheduled('retry-wait', '2026-09-28T01:45:33Z', snapshot, 'new-run'),
+    ).toBe(false);
   });
   it('retries only an empty formal planner failure caused by an accepted predecessor', () => {
     const progress = {
