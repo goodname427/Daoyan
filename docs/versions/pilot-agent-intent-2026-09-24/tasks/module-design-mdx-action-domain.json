@@ -1,0 +1,44 @@
+{
+  "taskId": "mdx-action-domain",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "在 mdw 的 H2/B4 条件包上封闭首批纸面作用域：H2 具名杆、屏障、底座地基及主辅独立 lot 形成 76=33+43 的逐笔物理能量账，限一次 12/12 E0 切片并保留作用后 4/12 E0 中心残量；B4 保持独立惰性壳条件形状。动作表拒绝 D1/D2、K0/V0、A1 驱动、AT0 借包，并逐项记录无源、断锚、未授权供料、额外供能、同源竞争、二次领余与两轮回收的拒因和自然余态。所有数字为设计参数与纸面初态；现场四读、实际功、误差、逐种材料、价格及实耗列开发后验收，当前没有成功 LoadTx/Tx/A。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\",d=f.readFileSync(p,\"utf8\");for(const s of [\"mdx-action-domain\",\"EL-J1-H2\",\"EL-B1-B4\",\"Aux-J1-01\",\"reservableSlice=12/12\",\"physicalLoadWork≤3/12\",\"physicalActionWork≤12/12\",\"76=33+43\",\"ΣQ[k]_前=ΣQ[k]_后\",\"D1、D2\",\"K0、V0\",\"A1 驱动\",\"AT0 攻击\",\"无源\",\"断锚\",\"未授权供料\",\"额外供能\",\"同源竞争\",\"二次领余\",\"两轮回收\",\"开发后验收测量计划\"])a.ok(d.includes(s),s);a.equal(48+28,8+8+4+4+3+6+20+8+5+4+6);a.equal(40-20,16+4);a.equal(20-8,8+4);a.equal(16-4,6+6);a.equal(28-24,4);a.equal(2,1+1);console.log(\"PASS mdx H2/B4 paper ledger, closed actions, counterexamples and deferred measurements\")'",
+      "exitCode": 0,
+      "output": "PASS mdx H2/B4 paper ledger, closed actions, counterexamples and deferred measurements",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "按相同范围格式化任务证据 JSON，再重新运行检查。"
+    }
+  ]
+}
