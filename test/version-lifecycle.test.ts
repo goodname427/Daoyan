@@ -10,11 +10,14 @@ import {
   completeVersionTodo,
   createMigrationBackup,
   createFormalVersion,
+  consecutiveDesignReviewRejections,
   currentVersionStagePolicy,
   effectiveVersionNodes,
   decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
+  pauseRepeatedDesignReview,
+  resumeRepeatedDesignReview,
   downgradeFormalVersionPreservingFacts,
   invalidateValidationEvidence,
   recordValidationEvidence,
@@ -39,6 +42,51 @@ import {
 } from '../scripts/version-lifecycle';
 
 describe('formal version lifecycle', () => {
+  it('pauses repeated design-review rejections until an operator acknowledges the hold', async () => {
+    const version = createFormalVersion({
+      id: 'review-loop-hold',
+      title: '复审熔断',
+      direction: '验证策划迭代',
+      documentRoot: 'docs/versions/review-loop-hold',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+      now: '2026-09-28T00:00:00.000Z',
+    });
+    for (const time of ['2026-09-28T00:01:00.000Z', '2026-09-28T00:03:00.000Z']) {
+      version.currentStage = 'design-review';
+      const review = version.nodes.find((node) => node.id === 'design-review')!;
+      review.status = 'active';
+      review.startedAt =
+        time === '2026-09-28T00:01:00.000Z'
+          ? '2026-09-28T00:00:00.000Z'
+          : '2026-09-28T00:02:00.000Z';
+      recordApproval(version, {
+        stage: 'design-review',
+        reviewer: 'lead-designer',
+        decision: 'changes-requested',
+        documentRevision: version.charterRevision,
+        comment: '同键文档冲突',
+        now: time,
+      });
+    }
+    expect(consecutiveDesignReviewRejections(version)).toBe(2);
+    pauseRepeatedDesignReview(version, '2026-09-28T00:04:00.000Z');
+    expect(version.status).toBe('paused');
+    expect(version.nodes.find((node) => node.id === 'module-design')?.status).toBe('blocked');
+    const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-hold-'));
+    try {
+      await writeFormalVersion(temporary, version);
+      const restored = (await readFormalVersion(temporary))!;
+      expect(restored.status).toBe('paused');
+      resumeRepeatedDesignReview(restored, '2026-09-28T00:05:00.000Z');
+      expect(restored.status).toBe('running');
+      expect(restored.nodes.find((node) => node.id === 'module-design')?.status).toBe('active');
+      expect(consecutiveDesignReviewRejections(restored)).toBe(0);
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
+  });
+
   it('adds design acceptance to an active v2 version without rewriting archived history', async () => {
     const temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-design-acceptance-'));
     try {

@@ -123,10 +123,12 @@ import {
   applyVersionTodoDecision,
   addDecisionGate,
   createFormalVersion,
+  consecutiveDesignReviewRejections,
   currentVersionStagePolicy,
   decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
+  pauseRepeatedDesignReview,
   publicVersionState,
   readFormalVersion,
   readFormalVersionById,
@@ -162,6 +164,7 @@ import {
 } from './version-stage-tasks';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const MAX_CONSECUTIVE_DESIGN_REJECTIONS = 2;
 const agentRoot = resolve(root, '.daoyan-agent');
 const secretaryRoot = resolve(
   root,
@@ -5390,6 +5393,18 @@ async function finalizeDeliveredVersionStage(
         documentRevision: version.charterRevision,
         comment: `${result.summary}；证据：${evidence}`,
       });
+      const rejectionCount = consecutiveDesignReviewRejections(version);
+      if (rejectionCount >= MAX_CONSECUTIVE_DESIGN_REJECTIONS) {
+        pauseRepeatedDesignReview(version);
+        await writeFormalVersion(root, version);
+        item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        await emitNotice(
+          'version-stage-blocked',
+          `【策划复审熔断】“${version.title}”连续 ${rejectionCount} 次由主策退回，已停止自动重派。主 Agent 将核对全部同键冲突、修订范围和任务边界后恢复；无需制作人重新派工。`,
+          item,
+        );
+        return true;
+      }
       await writeFormalVersion(root, version);
       item.orchestration!.formalStageConsumedAt = new Date().toISOString();
       await emitNotice(
