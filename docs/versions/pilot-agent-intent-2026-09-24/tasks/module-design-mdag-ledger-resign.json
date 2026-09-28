@@ -1,0 +1,93 @@
+{
+  "taskId": "mdag-ledger-resign",
+  "status": "completed",
+  "scopeRevision": 13,
+  "commitStatus": "blocked: git add cannot create .git/index.lock (Permission denied); no local commit was created",
+  "summary": "按 mdag-physical-contact 的有限首撞夹具重签 B4 自然父先史、碰撞后版本、读覆盖条件、逐 payer 条件账和逐事实键失败余态。16 项旧读的端点及获准投影未逐 ID 枚举，34 M 只能在覆盖成立且无新增有价读时作为条件价；新增 n 项须升价版并重算 34+n、16-n 及程序预算。真实原读、实际扣款、AST/hash、载体容量与玩家实玩留开发及总审核。",
+  "scope": {
+    "problem": "旧 B4 条件账未消费首撞的可判普通壳缺口、接触和材料新版本，读集覆盖与价格尚需按现行物理重签。",
+    "nonGoals": "不改物理、程序、生命、理论、桥接、ADR 或代码；不把纸面条件账登记为已执行交易。",
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json"
+    ]
+  },
+  "reconciliation": {
+    "physical": "physics-material-design.md#mdag-physical-contact 与 #mdaa-physical-key：S0-physical-v1/seed-physical-v1，世界序 10/20/50/80；C-B1-01→N-B1-impact-01→X-B1-shell-v1，首撞 J=6 双端 ±J、速度 1→-2/-3→0、自然 10=4+2+4 E0，遗体普通壳 3q=2q+fragment-B1-01(q)。B4 自有 source-B1-work/EL-B1-B4/slice-B4-01，XB1-shell-v1、ML-B1-shell-k0-v1、contact-B1-impact-v1/contact-B4-v1、anchor-B1-v1；B4 100=53+47 E0/12，包 32/12→8/12，24/12 分给壳功/热各 12/12；仓 4q=2q 隔离+q 新壳+q 废料。自然 C/N/X 不收 M。",
+    "readCoverageAndPrice": "mana-ledger-design.md#mdz-action-prices/#mdaa-ledger-key 给 16 个 R0–R3 读、5 装载、10 作用、3 POST 与每新读 1 M/≤10 tick，现行物理只列读名与新版本，没有逐 ID 的端点/获准投影；因此 n=0 时 34 M 是条件价，n 个新增有价读则新 PriceVersion 毛 34+n、本人条件末额 16-n，n 未知时 Quote=unknownPrice，不能沿用旧 232/249 tick。",
+    "payers": "B4 receipt-B4-funded-v1 净入 acct-B1-B4 50，条件收款 read/load/action/post=16/5/10/3，50→34→29→19→16；POST 未付已付 31/暂余 19。J1 本人净入 32 并付 9+11+12=32；P0/P2 另付 1/2，失证新读可选 P1 另付 1，跨账户 35/36。D1 独立净入 40、付 12+4+8+2=26、余 14，POST 未付已付 24/暂余 16。各付款方需独立到账、payer grant 与不可取收款，物理 grant 不代付。",
+    "factStates": "独立复位核成功、读前同形拒绝、获准空读只付实际读、材料/接触/价/容量未知、域外、R3 后同 payer 毛 13 对他笔 20 竞争及同 lot 唯一切片、POST 失证。B4 成功后 POST 未读只释放未执行 3；同请求重试零新扣；仅全价锁定且有权并完成合法求证后先序换版可互斥结一次 attempt=1。自然 C/N/X、合法已付及已提交作用/功热/废料不回滚。",
+    "crossModuleAuthorities": [
+      {
+        "source": "world-theory-draft.md#mdad-theory-reconcile",
+        "versionKeys": ["pilot-physical-v1", "B4-v1", "mdz-B4-v1"],
+        "result": "世界序与 B4 条件 31/19、34/16 相符；旧理论未含首撞具体阈值和材料/接触新版本，须下游按新键重签。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdaa-carrier-key/#mdab-program-identity",
+        "versionKeys": ["book-mdu-01/v1", "capacity-B1-v1", "mdx-JH-AST-v1"],
+        "result": "J1 十五读同一假设 AST/hash 别名，D1/B4 独立假设；B4 232/249 tick、40 S 仅覆盖旧读集和待证球内页/FIFO/帧/旧占用，新增读或首撞损球须撤相关证。"
+      },
+      {
+        "source": "life-identity-design.md#mdz-life-boundary",
+        "versionKeys": ["LifeId", "assessmentId", "k0", "k_m", "k_a"],
+        "result": "仅普通壳修，旧死亡屏障不重放；生命正文较早 43 M 是撤证草价，不作现行成功价。"
+      },
+      {
+        "source": "player-bridge-design.md#mdaf-bridge-scope 与 design-review-findings.md#drb2-contact-closure-review",
+        "versionKeys": ["B4-v1", "book-mdu-01/v1", "S0-physical-v1"],
+        "result": "仅获准壳损、本人已付/暂余及裁剪拒因可见，未知包余待测；六入口、真实扣款与实际同书往返未证，前次主策退回结论不能由本任务单方改写。"
+      }
+    ],
+    "openEvidence": "16 项 B4 读的逐 ID 端点/获准字段覆盖和碰撞后实际版本读数未给，真实 receipt/grant、AST/hash、本体旧占用、VM tick/S、实际扣费与六入口体验待开发和总审核。若现场无可接 q 缺口，B4 成功正例阻断。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdag-ledger-resign\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdag-ledger-resign.json\",\"utf8\")),d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.deepEqual(e.scope.writePaths,t.writePaths);for(const s of [\"mdag-ledger-resign\",\"C-B1-01→N-B1-impact-01→X-B1-shell-v1\",\"contact-B1-impact-v1\",\"source-B1-work\",\"16−n\",\"POST 三读失证\",\"读覆盖缺口\"])a.ok(d.includes(s),s);a.equal(50-16-5-10-3,16);a.equal(50-16-5-10,19);a.equal(9+11+12+1+2,35);a.equal(9+11+12+1+1+2,36);a.equal(40-12-4-8-2,14);a.equal(10,4+2+4);a.equal(100,53+47);a.equal(4,2+1+1);console.log(\"PASS mdag B4 evidence, arithmetic and contract paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdag B4 evidence, arithmetic and contract paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json"
+      ]
+    },
+    {
+      "command": "git status --short --untracked-files=all",
+      "exitCode": 0,
+      "output": " M docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md\n?? docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied; sandbox permits .git reads only, so staging and the requested local commit cannot be completed in this workspace."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-ledger-resign.json"
+  ]
+}
