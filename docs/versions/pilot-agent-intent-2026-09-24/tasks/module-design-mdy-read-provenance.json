@@ -1,0 +1,65 @@
+{
+  "taskId": "mdy-read-provenance",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "为 J1→H2 补齐主源、辅源 R0—R3、装载热端和作用后来源/包/热端的逐读 ID、对象、阶段、使用者、版本、误差及覆盖/I/O规则；补入自然失稳、换封印、切片二领、作用后无新读和主辅混读拒因及事实保留。保留既有 76 E0 纸面包与允许域，并标明初态、参数及开发后原读验收；所有数值均为纸面预测，未声称实测。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.filter(x=>x.id===\"mdy-read-provenance\").at(-1);a.deepEqual(t.writePaths,[p+\"physics-material-design.md\",p+\"tasks/module-design-mdy-read-provenance.json\"]);for(const k of [\"JH-M-R0\",\"JH-M-R1\",\"JH-M-R2\",\"JH-M-R3\",\"JH-A-R0\",\"JH-A-R1\",\"JH-A-R2\",\"JH-A-R3\",\"JH-H-R0\",\"JH-H-R1\",\"JH-H-R2\",\"JH-H-R3\",\"JH-POST-S-R0\",\"JH-POST-P-R1\",\"JH-POST-H-R2\",\"readId\",\"objectId\",\"worldSeq\",\"stateVersion\",\"calibrationVersion\",\"sourceReadTxId\",\"±1/12 E0\",\"±2/12 E0\",\"mdx-JH-v1\",\"76 E0\",\"sealRetired\",\"sourceIdentityMismatch\",\"undeterminedAnchor\",\"预测/纸面目标\",\"主源读数代替辅源\"])a.ok(d.includes(k),k);for(const k of [\"自然先史\",\"本笔\",\"账本\",\"程序\",\"读取性质\",\"失证与重读\",\"grant-J1-H2-v1\",\"12/12 E0\",\"4/12 E0\",\"Acquire-J1-01\",\"Acquire-aux-J1-01\"])a.ok(d.includes(k),k);console.log(\"PASS mdy-read-provenance contract, read matrix, error bounds, rejection cases and paper-only acceptance\")'",
+      "exitCode": 0,
+      "output": "PASS mdy-read-provenance contract, read matrix, error bounds, rejection cases and paper-only acceptance",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdy-read-provenance writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdy-read-provenance writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e '... contract marker assertion including the phrase not a successful ...'",
+      "exitCode": 1,
+      "reason": "定向断言使用了正文未包含的测试短语 not a successful，断言失败；调整为核对正文实际表达后通过。"
+    },
+    {
+      "command": "node -e '... contract marker assertion including 不得复用 ...'",
+      "exitCode": 1,
+      "reason": "定向断言期待短语 不得复用，但正文用的是 不能把旧读数当作新读；调整为核对实际用语后继续。"
+    },
+    {
+      "command": "node -e '... contract marker assertion including 不能把主源读数代替辅源 ...'",
+      "exitCode": 1,
+      "reason": "定向断言中的语序与正文不符；正文为 用主源读数代替辅源 R0-R3，随后使用该实际短语的断言通过。"
+    }
+  ]
+}
