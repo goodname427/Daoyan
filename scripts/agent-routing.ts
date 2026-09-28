@@ -1206,7 +1206,11 @@ export function buildLocalPlan(direction: string): TaskPlan {
           paths: template.paths,
           deliverables: ['机器可校验的 stage-tasks.json 和简短人类可读说明'],
           verification: ['核对范围、依赖、写入冲突与产品意图'],
-          validationProfile: 'version',
+          validationProfile: ['charter-draft', 'module-design', 'design-review'].includes(
+            stageTaskPlan,
+          )
+            ? 'light'
+            : 'version',
         },
       ],
       commitMessage: `chore(version): plan ${stageTaskPlan} deliverables`,

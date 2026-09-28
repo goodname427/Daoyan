@@ -415,6 +415,16 @@ ${JSON.stringify({
     );
   });
 
+  it('keeps planning for document stages light while retaining review for development planning', () => {
+    for (const stage of ['charter-draft', 'module-design', 'design-review']) {
+      const stagePlan = buildLocalPlan(`[formal-stage-task-plan:${stage}]\n规划当前节点`);
+      expect(validationProfileForPlan(stagePlan)).toBe('light');
+      expect(validationStagesForPlan(stagePlan)).toEqual([]);
+    }
+    const developmentPlan = buildLocalPlan('[formal-stage-task-plan:development]\n规划开发任务');
+    expect(validationStagesForPlan(developmentPlan)).toEqual(['independent-review']);
+  });
+
   it('selects the failed npm child command for an in-place targeted recheck', () => {
     const output = `> daoyan@0.2.0 verify\n> npm run typecheck && npm run format:check\n\n> daoyan@0.2.0 typecheck\n> tsc --noEmit\n\n> daoyan@0.2.0 format:check\n> prettier --check .\n`;
     expect(failedNpmCommandFromOutput(output, ['npm', 'run', 'verify'])).toEqual([
