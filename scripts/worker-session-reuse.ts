@@ -118,23 +118,46 @@ export function workerInvocationArgs(
   ];
 }
 
-function sessionPath(root: string, key: string): string {
-  const digest = createHash('sha256').update(key).digest('hex');
+function sessionPath(root: string, key: string, model: string, reasoning: string): string {
+  const digest = createHash('sha256')
+    .update(JSON.stringify([key, model, reasoning]))
+    .digest('hex');
   return resolve(root, '.daoyan-agent', 'worker-sessions', `${digest}.json`);
 }
 
-export async function readWorkerSession(root: string, key: string): Promise<WorkerSession | null> {
-  try {
-    const value = JSON.parse(await readFile(sessionPath(root, key), 'utf8')) as WorkerSession;
-    return value.key === key && SESSION_ID.test(value.sessionId) ? value : null;
-  } catch {
-    return null;
+export async function readWorkerSession(
+  root: string,
+  key: string,
+  model: string,
+  reasoning: string,
+): Promise<WorkerSession | null> {
+  const legacyPath = resolve(
+    root,
+    '.daoyan-agent',
+    'worker-sessions',
+    `${createHash('sha256').update(key).digest('hex')}.json`,
+  );
+  for (const path of [sessionPath(root, key, model, reasoning), legacyPath]) {
+    try {
+      const value = JSON.parse(await readFile(path, 'utf8')) as WorkerSession;
+      if (
+        value.key === key &&
+        value.model === model &&
+        value.reasoning === reasoning &&
+        SESSION_ID.test(value.sessionId)
+      ) {
+        return value;
+      }
+    } catch {
+      // A missing or damaged slot cannot authorize cross-model reuse.
+    }
   }
+  return null;
 }
 
 export async function saveWorkerSession(root: string, entry: WorkerSession): Promise<void> {
   if (!SESSION_ID.test(entry.sessionId) || entry.turns < 1) throw new Error('无效执行会话记录');
-  const path = sessionPath(root, entry.key);
+  const path = sessionPath(root, entry.key, entry.model, entry.reasoning);
   await mkdir(resolve(root, '.daoyan-agent', 'worker-sessions'), { recursive: true });
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporary, `${JSON.stringify(entry, null, 2)}\n`, 'utf8');
