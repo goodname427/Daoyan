@@ -1,102 +1,86 @@
 {
   "modules": [
-    {"id":"physics-material","title":"物理材料与来源","taskId":"mdz-action-sources"},
-    {"id":"mana-ledger","title":"法力账户与价格","taskId":"mdz-action-prices"},
-    {"id":"life-identity","title":"生命维持与身份","taskId":"mdz-life-boundary"},
-    {"id":"programmable-spells","title":"程序载体与准入","taskId":"mdz-carrier-admission"},
-    {"id":"world-theory","title":"唯一世界理论与首批边界","taskId":"mdz-theory-scope"},
-    {"id":"player-bridge","title":"玩家意图桥接","taskId":"mdz-experience-contract"}
+    {"id":"physics-material","title":"物理材料与来源","taskId":"mdaa-physical-key"},
+    {"id":"mana-ledger","title":"法力账户与价格","taskId":"mdaa-ledger-key"},
+    {"id":"programmable-spells","title":"程序载体与准入","taskId":"mdaa-carrier-key"},
+    {"id":"world-theory","title":"唯一世界理论与首批范围","taskId":"mdaa-theory-replay"},
+    {"id":"player-bridge","title":"玩家意图桥接","taskId":"mdaa-bridge-scope"}
   ],
   "crossModuleContracts": [
-    "物理逐行为交来源 lot、可取切片、取得先史、主辅功、锚与反作用、材料/热和自然余态；法力账本消费同版物理证，不以 M 付款生成物理功。",
-    "账本逐行为交 executor/payer/grant、读/装载/作用毛价、到账和不可取去向；程序按同版 AST 与价格计算每体 M/tick/S 和事件容量，不借 J1 证书。",
-    "生命消费来源与维持账，独占保存/醒回/同一 LifeId 三分判及 DeathBarrier；程序只据已提交撤权事实复验事件和死后授权。",
-    "唯一理论是共用公理与同刻因果的唯一正文；桥接只归一六入口意图并呈现理论结果，不改变世界付款、可见性或时序。",
-    "各模块逐行为交拟开放或明确缺席的纸面合同；首批缩窄、新公理或不可逆 ADR 由主策判断是否交制作人。共享报告、评审及 docs/status.md 由 Version PM 收束。"
+    "物理模块交 J1/D1/B4 可并存的来源 lot、结构/材料版本、自然先史、反作用和热；账本以相同事实 ID 和版本核对到账、授权及读/装载/作用价格，法力付款不生成物理功。",
+    "程序模块消费同版物理与账本描述符，按 J1/M1/B1 各自 AST、事件、引用、FIFO、S/tick 和容量复核准入；新增读或槽须重签价格及负载，不能跨体借证。",
+    "唯一理论是唯一公理正文，消费三模块复核和只读生命三分判；桥接归一六入口意图，按同一范围、法术书、付款方和授权投影世界结果。",
+    "D1/B4 纳入首批、明确缺席、完整护送/救援扩围均为待主策复审的候选；缩窄已批准目标、新公理或不可逆取舍由主策判断是否升级制作人。真实原读、实扣、容量和实玩属于获批开发后的验收。"
   ],
   "tasks": [
     {
-      "id":"mdz-action-sources",
-      "title":"逐行为确定独立物理来源与材料边界",
-      "objective":"相对 mdy 只证 J1→H2，裁定 M1 起步/D1、B1/B4、K0/V0、AT0/旧百点攻击哪些可在批准的有限域内获得独立物理正证，哪些保持缺席。",
-      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：逐行为来源、材料及自然余态设计表。"],
+      "id":"mdaa-physical-key",
+      "title":"复核三行为同版物理来源与自然先史",
+      "objective":"相对 mdz 的 D1/B4 独立条件物理账，补 J1、D1、B4 可并存的物理版本接口，不重造各自已闭合来源。",
+      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md：同版来源、结构/材料版本及自然先史联签附节。"],
       "acceptance":[
-        "每项拟开放行为列初态、来源实体和 lot/切片、取得与有限补给先史、所有权/授权、主辅工作与装载读、封印版本、有效质量/接触/锚及双边反作用、逐种材料/废料/热和耗尽余态；纸面逐步守恒，不借 J1 的 76 E0 或十五读。未签行为说明缺席体验及物理拒因。",
-        "反证无源起步、球无锚转向、B4 缺料或关键回路越域、攻击无独立包、同源竞争、二次领余和回收套利；自然碰撞和惯性保留。向账本交逐行为可定价读/装/作用描述符，向生命交保存与修复可能域。",
-        "将原读、误差、冲量、材料和作用后余量的运行核验列为开发后可执行验收，不将设定参数称为实测。"
+        "以明确共同初态及稳定世界序列出三体独立 lot/切片、取得先史、锚和材料；将 B1 碰撞后的壳版本、D1 的 68=35+33、B4 的 100=53+47 与 J1 账分别接入，不混用包或把设定值称为原读。向账本交相同事实 ID、读阶段和版本键。",
+        "逐步反证同源竞争、碰撞后结构换版、无锚、缺料、第二次领中心余及再撞；列自然损耗、热、材料、双边反作用和拒绝后余态。共同初态若改变既有物理界，写明撤证与重签项。",
+        "实际原读、冲量、材料和热的核验只列开发后可执行验收；当前直接验收为设定初态与纸面守恒可复算。"
       ],
       "dependsOn":[],
-      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
+      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
       "writePaths":["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
     },
     {
-      "id":"mdz-action-prices",
-      "title":"逐行为闭合价格、账户与补给账",
-      "objective":"相对 mdy 的 J1 35/36 M 价证，为拟开放的其他行为建立自己的付款与工作价格，未签的保持未知价。",
-      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：逐行为原子报价、账户转移与竞争余态表。"],
+      "id":"mdaa-ledger-key",
+      "title":"复核三行为同版价格与付款授权",
+      "objective":"相对 mdz 的 D1 26 M、B4 34 M 独立报价，核对共同初态下 J1/D1/B4 的到账收据、逐原子价格、付款方与版本键。",
+      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md：三行为同版账户、价格及失败余态联签附节。"],
       "acceptance":[
-        "消费同版物理描述符，逐项列 M1/D1、B1/B4、K0/V0、AT0/旧百点攻击的 executor、payer/grant、获准读、装载、作用原子和算法工作毛价、价格版本、到账/锁款/不可取去向及有限回收毛界；开放行为用明示初态逐笔结算，不借 J1 35 M 或无据折扣。",
-        "反证读后欠费、无 grant、晚到补给、同源/同 payer 竞争、失败重试、无包而 M 足额、旧百点攻击未签价；区分预检零扣、已付前序和合法求证互斥尝试价，给稳定拒因与余态。未开放行为标 unknownPrice 或域外，不伪造 Tx。",
-        "向程序交每原子的 M/tick 工作描述符，向生命交 K0/V0 和最后一击的同账户账；实扣及静态毛界比较留开发后验收。"
+        "消费物理共同事实 ID，分别列 J1 35/36 M、D1 26 M、B4 34 M 的净到账收据、executor/payer/grant、读/装载/作用价、已付复用键及逐账户余额；撤销旧 D1 12/19 M、B4 43 M 的现行正价地位。新增有价读须重新报价。",
+        "纸面反证欠到账收据、R0 后他笔先扣、同 payer/同切片竞争、授权撤销、失证重读、失败重试和两轮回收套利；逐笔区分零新扣、已付先序与合法互斥尝试价。",
+        "共同版本若改变 26/34 M 或 J1 35/36 M，列撤证、重签和下游通知；真实逐 payer 实扣与价格静态界核验只列开发后验收。"
       ],
-      "dependsOn":["mdz-action-sources"],
+      "dependsOn":["mdaa-physical-key"],
       "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"],
       "writePaths":["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
     },
     {
-      "id":"mdz-life-boundary",
-      "title":"确定维持、关键修复与身份的首批边界",
-      "objective":"相对 mdy 生命三分判的条件规则，明确 M1/A1 在拟开放行为下能否有截止前关键修复及同一 LifeId 正向路径。",
-      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md：两体维持/保存/醒回/身份判据及首批反馈。"],
+      "id":"mdaa-carrier-key",
+      "title":"复核三行为同版逐体程序准入",
+      "objective":"相对 mdz 的 D1 37 S、B4 40 S 与 J1 38 S 分体候选界，核对共同初态及新读、引用、订阅是否改变程序预算。",
+      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：J1/M1/B1 同版 AST、事件及逐体预算联签附节。"],
       "acceptance":[
-        "消费物理关键材料域与账本 K0/V0，分别列 M1/A1 初态、自然 F1/F2、结构/记忆/控制三链、保守截止、及时补源和获准修复路径；若关键 k_m/k_a 不可修，明示只能保存待判或修壳、醒回和原身份不可签，不以零 M、F2 单断或壳修好判死亡。",
-        "逐时纸面检验 100/20 最后一击的有价攻击与维持竞争、早到/迟到补源、休眠与失供、创建者死亡、复制 store 分叉及四证齐全的一次 DeathBarrier/撤权；未签攻击价或关键修复只给条件/未知结论。",
-        "向理论交生命判定与玩家称谓边界，向程序交授权撤销时点；F1/F2、时钟、三链和实玩身份验证留开发后。"
+        "按共同书/AST 假设和各体能力，逐体列 D1 26 M/176 tick/37 S、B4 34 M/232 tick/40 S、J1 35–36 M/38 S 的原子、响应峰、引用、订阅/FIFO 与结构页条件；核算新增读或槽是否使界失效，失效则重签。",
+        "反证 B1 碰撞后换结构版、同撞双观察、两订阅借一位、队列实满与容量未读、创建者死亡后撤派生权；A1、K0/V0、攻击的成功界仍未知，不借三体证书。",
+        "给理论及桥接可判的纸面准入/拒因；真实 AST/hash、逐 VM tick、同时活 S 与部位容量留获批开发后。"
       ],
-      "dependsOn":["mdz-action-prices"],
-      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
-      "writePaths":["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
-    },
-    {
-      "id":"mdz-carrier-admission",
-      "title":"为拟开放载体签独立程序准入界",
-      "objective":"相对 mdy 的 J1 一订阅证书，逐体界定 M1/B1/J1/A1 能装载与执行哪些首批行为。",
-      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md：逐体结构页、程序工作和事件准入证书。"],
-      "acceptance":[
-        "对每个拟开放载体及动作给 AST/原子组合、能力、感官与有限记忆、结构页、M/tick/S、订阅/FIFO/引用/帧峰值、付款与授权复验及同刻调度；消费各自物理包和账本价格，不借 J1 38 S、一订阅或价证。普通驱动、修壳、维持、攻击须独立入界，未开放则标不可表达、未知或容量缺证。",
-        "反证两订阅借一订阅位、同撞双观察争同源、伤后换证、创建者死亡撤权、队列实满与容量未读、攻击和维持同刻峰值；给已付前序与无新作用余态。",
-        "向理论及桥接交逐体准入/拒绝条件与可执行验收；真实序列化 AST/hash、逐 VM tick、逐时 S、原容量和静态上界覆盖实耗留开发后。"
-      ],
-      "dependsOn":["mdz-life-boundary"],
-      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md","docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"],
+      "dependsOn":["mdaa-ledger-key"],
+      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md","docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
       "writePaths":["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
     },
     {
-      "id":"mdz-theory-scope",
-      "title":"在唯一世界理论核对首批候选范围",
-      "objective":"只读汇总独立证书，在权威正文给主策可审阅的整版条件方案或明确缺席体验的窄域候选，不自行缩窄批准目标。",
-      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：同版因果重放、反例、候选范围和待主策裁定事项。"],
+      "id":"mdaa-theory-replay",
+      "title":"在唯一世界理论重放同版三行为与待审范围",
+      "objective":"消除 J1 唯一正例、D1/B4 新条件证和首批缺席之间的冲突，形成可供主策复审的统一候选，不暗定范围。",
+      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md：同版初态、六阶段双账重放、反例及首批范围待审方案。"],
       "acceptance":[
-        "保持少量已确认公理及唯一正文，用同一设定初态、版本、seed、来源/授权、世界序逐行为复算拟开放的护送、信标修壳、普通驱动、维持/最后一击/攻击和 J1 基线；列物理/材料/热、M 账、逐体准入、生命身份、成功或拒绝及公开余态。已闭合十五读四格只读引用。",
-        "若只有一次杆推窄域，明确完整护送、信标救援、醒回及其他实体编程的缺席与玩家反馈；用通俗文字给窄域和扩围两案的玩法效果、优点、代价、推荐及理由，交主策决定是否请制作人选择，不写成已批准。",
-        "反证无源、回收套利、二次领余、连续碰撞、迟到补源、死后提款和跨体借证；新公理、关键编辑、法力生功、环境回收、无锚转向列待主策升级。注明 ADR-0017—0020 和旧 DSL/蓝图/预设/敌方修士/存档的沿用或覆盖影响及获批后处置，运行证据留开发后。"
+        "维护唯一理论正文；以共同 S0、seed、自然先史、事实 ID、物理/价格/容量版、AST/hash 假设及稳定世界序，让 J1/D1/B4 独立账户与来源可并存。逐阶段复算 35/36、26、34 M、材料/热/反作用、逐体准入与生命拒绝边界；旧 12/19/43 M 仅标撤证历史。",
+        "对三行为分别列条件成功、无源/拒绝、获准空读、unknown、域外和同刻竞争的逐步账与余态；反证跨体借证、二次领余、迟到补源、连续碰撞和修壳误称复苏，不以纸面条件证宣称已可玩。",
+        "并列给 D1/B4 纳入首批、明确缺席、完整护送/救援扩围的玩家效果、优势、代价、跨模块影响与推荐理由；拟推荐方案仍待制作人范围裁定，缩窄批准目标或新增公理先交主策升级。列 ADR-0017—0020 与旧原型的获批后影响，不执行迁移。"
       ],
-      "dependsOn":["mdz-carrier-admission"],
-      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md","docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md","docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md","docs/architecture/invariants.md"],
+      "dependsOn":["mdaa-carrier-key"],
+      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json","docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md","docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md","docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md","docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md","docs/architecture/invariants.md"],
       "writePaths":["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
     },
     {
-      "id":"mdz-experience-contract",
-      "title":"把首批边界转成同书与六入口验收",
-      "objective":"相对 mdy 的 J1 四格脚本，给每项拟开放或缺席的跨实体行为可执行但尚未运行的玩家验收。",
-      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：同书玩家流程、六入口等价矩阵及可见失败/缺席说明。"],
+      "id":"mdaa-bridge-scope",
+      "title":"同步首批待审范围与六入口同书验收",
+      "objective":"相对 mdz 只写 J1 玩家路径，按理论同版候选说明 D1/B4 纳入或缺席时玩家真正能做什么。",
+      "deliverables":["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：三行为同书纸面脚本、六入口等价与公开边界。"],
       "acceptance":[
-        "对理论裁定的每项开放/缺席行为，写推演台同书 DSL/蓝图编辑与预算、演武场绑定观察、返回原书改 hash 重报价的具体步骤；覆盖成功、拒绝、获准空读、未知、域外及缺席，不把脚本称为已可玩。",
-        "六入口仅在相同规范意图、能力、视野、AST/hash、来源、payer/grant、版本、世界先史/序及 seed 下核同价、同扣、同事件和裁剪余态；反证隐藏目标泄漏、AI 借玩家视野、敌方阵营特权、暂停重放、同撞双观察及无证载体误报成功。",
-        "与理论同版核对公开拒因和首批范围；真实 UI、逐入口实扣及实玩留获批开发与候选验收。"
+        "与理论同一初态、书版本、AST/hash 假设和首批待审方案，分别给 J1/D1/B4 推演台编辑与预算→演武场绑定/观察→返回原书修订重报价的纸面步骤；拟纳入时覆盖条件成功、拒绝、获准空读、unknown、域外及竞争，拟缺席时说明草稿与未开放/待证提示及玩家损失。",
+        "六入口鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士仅在规范意图、能力/视野、来源、payer/grant、版本、先史/序和 seed 相同才要求同价同结果；逐 payer 列可见报价/已付/余态与私值裁剪，反证 AI 借玩家视野、隐藏目标泄漏、阵营折扣及暂停重放。",
+        "对照唯一理论的首批边界和生命称谓，旧 J1 单正例/排除 D1/B4 文案须标历史或撤证；真实 UI、原读、实扣及实玩只列开发后验收。"
       ],
-      "dependsOn":["mdz-theory-scope"],
-      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json","docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md","docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md","docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
+      "dependsOn":["mdaa-theory-replay"],
+      "readPaths":["docs/versions/pilot-agent-intent-2026-09-24/design-review.md","docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md","docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json","docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md","docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md","docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md","docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
       "writePaths":["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
     }
   ]
