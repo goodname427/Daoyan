@@ -338,6 +338,8 @@ export interface FormalVersionOrchestration {
   validationEvidence?: ValidationEvidence[];
   codeRevision?: string;
   qaInvalidatedThrough?: number;
+  /** Operator acknowledgment that resets the automatic design-review retry budget. */
+  designReviewInterventionAt?: string;
 }
 
 function normalizedPath(path: string): string {
@@ -558,7 +560,10 @@ function validateOrchestrationRecords(
     (Object.hasOwn(value, 'qaInvalidatedThrough') &&
       (!Number.isSafeInteger(value.qaInvalidatedThrough) ||
         Number(value.qaInvalidatedThrough) < 0 ||
-        Number(value.qaInvalidatedThrough) > (value.qaRuns as unknown[]).length))
+        Number(value.qaInvalidatedThrough) > (value.qaRuns as unknown[]).length)) ||
+    (Object.hasOwn(value, 'designReviewInterventionAt') &&
+      (typeof value.designReviewInterventionAt !== 'string' ||
+        !Number.isFinite(Date.parse(value.designReviewInterventionAt))))
   )
     throw new Error('正式版本代码修订或 QA 失效边界损坏；已停止自动写入和派发');
   const riskAssessments = value.riskAssessments as unknown[];
@@ -1854,6 +1859,56 @@ export function advanceVersion(version: FormalVersion, target: VersionStage, now
     next.completedAt = timestamp;
     version.completedAt = timestamp;
   }
+}
+
+export function consecutiveDesignReviewRejections(version: FormalVersion): number {
+  const interventionAt = version.orchestration?.designReviewInterventionAt ?? '';
+  let count = 0;
+  for (const approval of [...version.approvals].reverse()) {
+    if (interventionAt && approval.createdAt <= interventionAt) break;
+    if (approval.stage !== 'design-review' || approval.reviewer !== 'lead-designer') continue;
+    if (approval.documentRevision !== version.charterRevision) break;
+    if (approval.decision !== 'changes-requested') break;
+    count += 1;
+  }
+  return count;
+}
+
+export function pauseRepeatedDesignReview(
+  version: FormalVersion,
+  now = new Date().toISOString(),
+): void {
+  if (version.currentStage !== 'module-design' || version.status !== 'running') {
+    throw new Error('只能在主策退回后的详细策划节点暂停重复评审');
+  }
+  const node = version.nodes.find((entry) => entry.id === 'module-design');
+  if (!node) throw new Error('找不到详细策划节点');
+  const count = consecutiveDesignReviewRejections(version);
+  node.status = 'blocked';
+  node.summary = `技术阻断：详细策划与主策审核连续 ${count} 次退回，已停止自动重派，等待主 Agent 核查同键冲突与任务边界。`;
+  version.status = 'paused';
+  version.updatedAt = now;
+}
+
+export function resumeRepeatedDesignReview(
+  version: FormalVersion,
+  now = new Date().toISOString(),
+): void {
+  const node = version.nodes.find((entry) => entry.id === 'module-design');
+  if (
+    version.status !== 'paused' ||
+    version.currentStage !== 'module-design' ||
+    node?.status !== 'blocked' ||
+    !node.summary.startsWith('技术阻断：详细策划与主策审核连续 ')
+  ) {
+    throw new Error('当前版本没有可恢复的重复主策审核暂停');
+  }
+  if (!version.orchestration) throw new Error('正式版本缺少编排证据');
+  node.status = 'active';
+  node.summary = '';
+  version.orchestration.designReviewInterventionAt = now;
+  version.status = 'running';
+  version.updatedAt = now;
 }
 
 export function recordApproval(

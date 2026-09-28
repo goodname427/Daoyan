@@ -123,10 +123,12 @@ import {
   applyVersionTodoDecision,
   addDecisionGate,
   createFormalVersion,
+  consecutiveDesignReviewRejections,
   currentVersionStagePolicy,
   decisionResolutionForRequest,
   listFormalVersions,
   normalizeFormalVersion,
+  pauseRepeatedDesignReview,
   publicVersionState,
   readFormalVersion,
   readFormalVersionById,
@@ -162,6 +164,7 @@ import {
 } from './version-stage-tasks';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const MAX_CONSECUTIVE_DESIGN_REJECTIONS = 2;
 const agentRoot = resolve(root, '.daoyan-agent');
 const secretaryRoot = resolve(
   root,
@@ -2299,7 +2302,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
       : stage === 'module-design'
         ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}、已批准章程和本轮制作人意见。${producerDesignFeedback(version)} 详细策划须按实际受影响模块分别给出可独立审阅的设计，不得仅扩写版本策划。每个模块说明职责与边界、状态和资源归属、规则或算法、对外合同与其他模块交互、玩家可见流程、成功/失败/空状态、反例、验收情形和未决假设；跨模块整合进唯一世界理论正文，避免互相矛盾。若设计只能覆盖原话中的例子，先修正策划，不继续缩成例子清单。制作人已委托主策补全细节：可从已批方向推导的阈值、报价和边界应给出有反例支持的具体推荐，不能只将同一缺口重新标为待定。新规则的真实可玩验证属于开发及候选阶段；此处设计可执行的玩家流程与验收情形。`
         : stage === 'design-review'
-          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；逐模块检查具体设计、跨模块接口和唯一世界理论能否处理未列举情形，以及未确认假设是否被擅自当作制作人决定。对可从已批准方向推导的细节应由主策给出推荐，不把技术空白直接丢给制作人；若再次退回，逐项指出相比上一轮仍未完成的具体设计合同及可验收补全项，不用同一笼统缺口重复退回。策划阶段只审核纸面规则、玩家流程与后续可执行验收，不以新规则尚未实际可玩为退回理由。世界公理、初态、参数和有限样例可在策划中明示为设计设定，再用逐步账目与反例证明内在一致；不得要求开发后才可能取得的真实运行读数、物理测量或实耗结果来批准纯文档策划，也不得把假设样例冒充实测。把缺口明确分成三类：已批准原则可推出的细节由策划给出推荐并核反例；需要制作人改变或选择的世界规则走 producer-escalation；只能在实现后量测的性质写成可执行验收和失败边界，留到开发及候选阶段验证。连续退回时逐项比较新旧证据与同一缺口，若仅重复索取本阶段无法产生的证据，不再另造一轮同义任务。若缺模块设计或原则被缩成例子补丁，decision=changes-requested；只有真正需要制作人决定的产品取舍才用 producer-escalation。升级时必须附面向制作人的通俗决策说明：每项解释 A/B 的实际规则、玩家体验、优点、代价、跨模块影响、推荐选择和理由，并明确未决定会阻止什么；不能只列字母和专业术语。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
+          ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；逐模块检查具体设计、跨模块接口和唯一世界理论能否处理未列举情形，以及未确认假设是否被擅自当作制作人决定。对可从已批准方向推导的细节应由主策给出推荐，不把技术空白直接丢给制作人；若再次退回，逐项指出相比上一轮仍未完成的具体设计合同及可验收补全项，不用同一笼统缺口重复退回。对本轮涉及的每个场景键、切片、事实 ID 与版本键，定向搜索所有模块正文和唯一世界理论的命中段落，穷尽同键冲突后一次列出受影响文件、冲突行、权威行和归属任务；不要发现首处矛盾便停止审查，也不要重读无关历史。策划阶段只审核纸面规则、玩家流程与后续可执行验收，不以新规则尚未实际可玩为退回理由。世界公理、初态、参数和有限样例可在策划中明示为设计设定，再用逐步账目与反例证明内在一致；不得要求开发后才可能取得的真实运行读数、物理测量或实耗结果来批准纯文档策划，也不得把假设样例冒充实测。把缺口明确分成三类：已批准原则可推出的细节由策划给出推荐并核反例；需要制作人改变或选择的世界规则走 producer-escalation；只能在实现后量测的性质写成可执行验收和失败边界，留到开发及候选阶段验证。连续退回时逐项比较新旧证据与同一缺口，若仅重复索取本阶段无法产生的证据，不再另造一轮同义任务。若缺模块设计或原则被缩成例子补丁，decision=changes-requested；只有真正需要制作人决定的产品取舍才用 producer-escalation。升级时必须附面向制作人的通俗决策说明：每项解释 A/B 的实际规则、玩家体验、优点、代价、跨模块影响、推荐选择和理由，并明确未决定会阻止什么；不能只列字母和专业术语。同时写入 ${stageManifest}，格式必须为 {"decision":"approved|changes-requested|producer-escalation","summary":"公开审核结论"}。任务执行成功不等于策划审核通过。`
           : stage === 'task-breakdown'
             ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；在任务拆分报告中逐项说明工作如何兑现系统原则和相邻情形，不能只列制作人举过的例子。同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
             : stage === 'development'
@@ -2363,7 +2366,11 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
   const manifest = `${version.documentRoot}/${label}-tasks.json`;
   const designPlan =
     stage === 'module-design'
-      ? `\n先列出本版本真实受影响的模块与跨模块合同，再按可独立审阅的模块设计成果分派任务；资源、账户、市场这类不同职责不能因同属一个版本就合并成一份扩写稿。每个模块任务写明单独的策划交付物、上下游接口、具体设计内容与直接验收；基础世界理论可由一个任务负责，其他模块引用同一正文，Version PM 最终核对一致性。跨模块合同必须指定权威来源、消费方和同一事实的核对键；涉及账户时分开逐付款方与跨账户合计，涉及程序时明确同一 AST/hash 或别名及证书覆盖范围，涉及状态时逐一核对成功、拒绝、空、未知、域外和竞争余态。下游任务只要新增或改写其他模块的数值、单位、公式、能量流、材料/热或状态断言，即使本轮只修局部界面，也必须把对应权威模块文档列入 readPaths 和直接验收；不能因该模块在上一轮已闭合而省去。下游任务验收须要求对照现行来源结论，不能只检查关键词出现。纯文档任务可要求有明确公理、初态、参数、逐步账目、反例和未来可执行验收；不得要求尚未实现的运行读数或物理实测作为策划交付。确实需要实测的项目列入开发后验收，不把假设值伪称实测；若缺的是尚未批准的世界规则，交主策判断是否升级制作人。任务清单还必须有 modules:[{"id":"模块标识","title":"模块名称","taskId":"独占该模块设计的任务 ID"}] 和非空 crossModuleContracts:["模块间交互合同"]；每个模块使用不同任务 ID。若只有一个模块，增加非空 singleModuleReason 解释边界。${producerDesignFeedback(version)}`
+      ? `\n先列出本版本真实受影响的模块与跨模块合同，再按可独立审阅的模块设计成果分派任务；资源、账户、市场这类不同职责不能因同属一个版本就合并成一份扩写稿。每个模块任务写明单独的策划交付物、上下游接口、具体设计内容与直接验收；基础世界理论可由一个任务负责，其他模块引用同一正文，Version PM 最终核对一致性。跨模块合同必须指定权威来源、消费方和同一事实的核对键；涉及账户时分开逐付款方与跨账户合计，涉及程序时明确同一 AST/hash 或别名及证书覆盖范围，涉及状态时逐一核对成功、拒绝、空、未知、域外和竞争余态。下游任务只要新增或改写其他模块的数值、单位、公式、能量流、材料/热或状态断言，即使本轮只修局部界面，也必须把对应权威模块文档列入 readPaths 和直接验收；不能因该模块在上一轮已闭合而省去。下游任务验收须要求对照现行来源结论，不能只检查关键词出现。对本轮变动的场景键、切片、事实 ID 和版本键，使用定向搜索反向搜索同一事实键在当前版本其他模块正文与唯一世界理论中的消费位置；只读取命中段落，把需要同步更正的消费者纳入本轮任务边界或明确列为阻断，不能只修主策点名的两行。纯文档任务可要求有明确公理、初态、参数、逐步账目、反例和未来可执行验收；不得要求尚未实现的运行读数或物理实测作为策划交付。确实需要实测的项目列入开发后验收，不把假设值伪称实测；若缺的是尚未批准的世界规则，交主策判断是否升级制作人。任务清单还必须有 modules:[{"id":"模块标识","title":"模块名称","taskId":"独占该模块设计的任务 ID"}] 和非空 crossModuleContracts:["模块间交互合同"]；每个模块使用不同任务 ID。若只有一个模块，增加非空 singleModuleReason 解释边界。${producerDesignFeedback(version)}`
+      : '';
+  const contextGuidance =
+    stage === 'module-design'
+      ? '\n每个模块任务另写 contextPolicy（continue 或 fresh）及 contextReason。修订同一文档且原问题和已核实推理仍适用时选择 continue；规则前提重置、文档职责改变或旧上下文已造成重复误判时选择 fresh，并说明具体原因。不要按固定轮数强制新开。秘书只在文档、已批准范围和模型配置一致且会话可恢复时实际续接；旧清单未写此字段时由秘书按这些条件自动判断。'
       : '';
   const priorModuleTasks =
     stage === 'module-design'
@@ -2379,7 +2386,7 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
       ?.decision === 'changes-requested'
       ? `\n这是策划体验验收退回的修复轮次。先读取 ${version.documentRoot}/design-acceptance.json 中失败场景及实际操作证据，只规划为兑现已批准策划所需的修正成果；保留已通过场景和开发来源，修后再进策划体验验收，不得改策划以迁就代码。`
       : '';
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${reentryGuidance}${acceptanceReentry}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
 }
 
 export function repeatedModuleDesignTaskIds(
@@ -2421,7 +2428,7 @@ export function stageFinalizingDirection(version: FormalVersion): string {
   const tasks = stageTasksForCurrentNode(version);
   const moduleReconciliation =
     version.currentStage === 'module-design'
-      ? `\n在写详细策划汇总前，读取 ${version.documentRoot}/module-design-tasks.json 的 crossModuleContracts，并按每项任务的直接验收对当前模块产物做一次轻量跨模块对账。先用下方来源提交逐项查看任务实际改动的文档差异，再只读取被差异引用的权威来源段落；不要重读整版历史。对每一条新增或改写的跨模块数值、单位、公式、能量/材料/热流、账户归属、程序身份和玩家余态，记录“改动行→权威来源行→相同或冲突”，不能只抽查清单已点名的 J1 等例子，也不能因物理、法力或生命模块在上一轮已闭合就略过。逐项核对事实与版本键、逐付款方和跨账户合计、AST/hash 同一性或别名、六类结果的公开余态。把实际核对的关键行及来源路径写进汇总；只看任务状态或关键词检查不算对账。若发现同一键在两个模块含义或数值不同，或某模块宣称的已批准范围与权威正文冲突，不能写“已联签”并推进主策审核；明确指出冲突及对应任务，保留恢复证据并报告阻断，由原模块任务修正，不由你代写策划正文。未决定的首批范围仍交主策判断是否需要制作人门禁；纸面核对只运行直接文档检查。`
+      ? `\n在写详细策划汇总前，读取 ${version.documentRoot}/module-design-tasks.json 的 crossModuleContracts，并按每项任务的直接验收对当前模块产物做一次轻量跨模块对账。先用下方来源提交逐项查看任务实际改动的文档差异，再只读取被差异引用的权威来源段落；不要重读整版历史。对每一条新增或改写的跨模块数值、单位、公式、能量/材料/热流、账户归属、程序身份和玩家余态，记录“改动行→权威来源行→相同或冲突”，不能只抽查清单已点名的 J1 等例子。再用场景键、切片、事实 ID 和版本键定向搜索当前版本全部模块正文及唯一世界理论的消费位置，形成“改动事实→权威来源→所有消费者”的双向核对表；只读取命中段落，不重读全版文档；任何仍在使用旧数值或旧状态的消费者都视为同版冲突，也不能因物理、法力或生命模块在上一轮已闭合就略过。逐项核对事实与版本键、逐付款方和跨账户合计、AST/hash 同一性或别名、六类结果的公开余态。把实际核对的关键行及来源路径写进汇总；只看任务状态或关键词检查不算对账。若发现同一键在两个模块含义或数值不同，或某模块宣称的已批准范围与权威正文冲突，不能写“已联签”并推进主策审核；明确指出冲突及对应任务，保留恢复证据并报告阻断，由原模块任务修正，不由你代写策划正文。未决定的首批范围仍交主策判断是否需要制作人门禁；纸面核对只运行直接文档检查。`
       : '';
   return `${versionStageDirection(version, version.currentStage)}\n[formal-stage-finalizing]\n你现在以 Version PM 身份收束本节点，所有 Feature PM 的任务均已分别提交。只整合下面带来源的任务结论，不重新实现任务、不重跑已通过的定向命令。若任务证据不足，应报告阻断而不是编造通过。开发完成后的节点不得编辑 docs/status.md 或其他前置策划输入。${moduleReconciliation}\n<stage-task-results>${JSON.stringify(tasks.map((task) => ({ id: task.id, title: task.title, ...(version.currentStage === 'module-design' ? { acceptance: task.acceptance } : {}), commit: task.commit, evidence: task.evidence })))}</stage-task-results>\n开发节点的最终完整门禁由此收束运行在集成代码树上完成；QA 不得重复该门禁。`;
 }
@@ -5390,6 +5397,18 @@ async function finalizeDeliveredVersionStage(
         documentRevision: version.charterRevision,
         comment: `${result.summary}；证据：${evidence}`,
       });
+      const rejectionCount = consecutiveDesignReviewRejections(version);
+      if (rejectionCount >= MAX_CONSECUTIVE_DESIGN_REJECTIONS) {
+        pauseRepeatedDesignReview(version);
+        await writeFormalVersion(root, version);
+        item.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        await emitNotice(
+          'version-stage-blocked',
+          `【策划复审熔断】“${version.title}”连续 ${rejectionCount} 次由主策退回，已停止自动重派。主 Agent 将核对全部同键冲突、修订范围和任务边界后恢复；无需制作人重新派工。`,
+          item,
+        );
+        return true;
+      }
       await writeFormalVersion(root, version);
       item.orchestration!.formalStageConsumedAt = new Date().toISOString();
       await emitNotice(

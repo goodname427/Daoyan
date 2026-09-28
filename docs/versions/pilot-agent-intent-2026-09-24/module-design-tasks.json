@@ -62,8 +62,8 @@
     }
   ],
   "modules": [
-    {"id": "world-theory", "title": "唯一世界理论", "taskId": "mdad-theory-reconcile"},
-    {"id": "player-bridge", "title": "玩家意图桥接与同书往返", "taskId": "mdad-bridge-reconcile"}
+    { "id": "world-theory", "title": "唯一世界理论", "taskId": "mdad-theory-reconcile" },
+    { "id": "player-bridge", "title": "玩家意图桥接与同书往返", "taskId": "mdad-bridge-reconcile" }
   ],
   "crossModuleContracts": [
     "物理材料正文权威签 D1/B4 的来源、E0/12 与 q、六笔 Acquire、R0–R3/POST、seal/slice、动能/结构功/热/反作用和自然 C/N/X；理论与桥接按 S0-physical-v1/seed-physical-v1、worldSequence、D1-v1/B4-v1、EL-M1-D1/EL-B1-B4、slice-D1-01/slice-B4-01、factId/readId、壳/锚/环境版消费。同键异数必须退回对账。",

@@ -15,6 +15,8 @@ export interface VersionStageTask {
   dependsOn: string[];
   readPaths: string[];
   writePaths: string[];
+  contextPolicy?: 'auto' | 'continue' | 'fresh';
+  contextReason?: string;
   status: StageTaskStatus;
   pmItemId: string;
   commit: string;
@@ -39,6 +41,8 @@ type TaskDraft = Pick<
   | 'dependsOn'
   | 'readPaths'
   | 'writePaths'
+  | 'contextPolicy'
+  | 'contextReason'
 >;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -94,7 +98,14 @@ export function parseStageTaskManifest(
       !isStrings(entry.dependsOn) ||
       !isStrings(entry.readPaths) ||
       !isStrings(entry.writePaths) ||
-      entry.writePaths.length === 0
+      entry.writePaths.length === 0 ||
+      (entry.contextPolicy !== undefined &&
+        !['auto', 'continue', 'fresh'].includes(String(entry.contextPolicy))) ||
+      (entry.contextReason !== undefined &&
+        (typeof entry.contextReason !== 'string' || !entry.contextReason.trim())) ||
+      (entry.contextPolicy !== undefined &&
+        entry.contextPolicy !== 'auto' &&
+        (typeof entry.contextReason !== 'string' || !entry.contextReason.trim()))
     ) {
       throw new Error('节点任务合同缺少目标、交付物、验收、依赖或写入范围');
     }
@@ -109,6 +120,12 @@ export function parseStageTaskManifest(
       dependsOn: [...entry.dependsOn],
       readPaths: [...new Set(entry.readPaths.map((path: string) => normalizedPath(path)))],
       writePaths: [...new Set(entry.writePaths.map((path: string) => normalizedPath(path)))],
+      ...(entry.contextPolicy === undefined
+        ? {}
+        : { contextPolicy: entry.contextPolicy as VersionStageTask['contextPolicy'] }),
+      ...(entry.contextReason === undefined
+        ? {}
+        : { contextReason: (entry.contextReason as string).trim() }),
     };
   });
   const byId = new Map(drafts.map((task) => [task.id, task]));
@@ -245,6 +262,13 @@ export function validateStageTaskState(value: unknown): value is VersionStageTas
         isStrings(task.dependsOn) &&
         isStrings(task.readPaths) &&
         isStrings(task.writePaths) &&
+        (task.contextPolicy === undefined ||
+          ['auto', 'continue', 'fresh'].includes(String(task.contextPolicy))) &&
+        (task.contextReason === undefined ||
+          (typeof task.contextReason === 'string' && Boolean(task.contextReason.trim()))) &&
+        (task.contextPolicy === undefined ||
+          task.contextPolicy === 'auto' ||
+          (typeof task.contextReason === 'string' && Boolean(task.contextReason.trim()))) &&
         ['pending', 'active', 'submitted', 'accepted', 'blocked'].includes(String(task.status)) &&
         typeof task.pmItemId === 'string' &&
         typeof task.commit === 'string' &&

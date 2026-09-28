@@ -7,6 +7,11 @@ import { spawn } from 'node:child_process';
 import { isOwnedProcessAlive, isProcessAlive } from './process-identity';
 import { publicSecretaryState, type IntakeRequest, type SecretaryState } from './secretary-state';
 import { runNoticeGuard } from './secretary-notice-guard';
+import {
+  readFormalVersion,
+  resumeRepeatedDesignReview,
+  writeFormalVersion,
+} from './version-lifecycle';
 import { refreshWindowsUserEnvironment } from './windows-user-environment';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,6 +44,7 @@ function printHelp(): void {
   npm run secretary:open
   npm run secretary:status
   npm run secretary:stop
+  npm run secretary:resume-design-review
 
 秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
 }
@@ -201,6 +207,23 @@ async function stopGuard(): Promise<void> {
   console.log('[常驻秘书] notice guard 已停止；正在运行的 PM 会收到终止信号并保留恢复点。');
 }
 
+async function resumeDesignReview(): Promise<void> {
+  const current = await readState();
+  if (current && isOwnedProcessAlive(current.pid, current.processIdentity)) {
+    throw new Error('恢复重复主策审核前必须先停止 notice guard 并核对恢复点');
+  }
+  if (current?.items.some((item) => isOwnedProcessAlive(item.processPid, item.processIdentity))) {
+    throw new Error('恢复重复主策审核前必须等待 PM 与执行 Agent 退出');
+  }
+  const version = await readFormalVersion(root);
+  if (!version) throw new Error('没有可恢复的正式版本');
+  resumeRepeatedDesignReview(version);
+  await writeFormalVersion(root, version);
+  console.log(
+    `[常驻秘书] 已解除“${version.title}”的重复主策审核技术暂停；请启动 notice guard 从既有节点继续。`,
+  );
+}
+
 async function enqueue(idea: string): Promise<void> {
   await startGuard();
   const request: IntakeRequest = {
@@ -303,6 +326,8 @@ if (command === 'run') {
   await openDashboard();
 } else if (command === 'stop') {
   await stopGuard();
+} else if (command === 'resume-design-review') {
+  await resumeDesignReview();
 } else if (command === 'status') {
   await printStatus();
 } else if (command === 'help' || command === '--help' || command === '-h') {

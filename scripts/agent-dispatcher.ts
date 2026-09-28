@@ -58,6 +58,16 @@ import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
 import { taskDependencyContext } from './task-context';
+import {
+  formalDocumentContextPolicy,
+  formalDocumentSessionKey,
+  formalDocumentTaskId,
+  readWorkerSession,
+  reusableWorkerSession,
+  saveWorkerSession,
+  workerSessionId,
+  workerInvocationArgs,
+} from './worker-session-reuse';
 import { findTaskCommitEvidence } from './task-commit-evidence';
 import { runInvocationUsage } from './version-usage';
 
@@ -1053,6 +1063,10 @@ async function runTask(
   let totalAttempts = 0;
   let escalations = 0;
   let lastOutputFile = '';
+  const documentSessionKey = formalDocumentSessionKey(activeDirection);
+  const documentContextPolicy = formalDocumentContextPolicy(activeDirection);
+  const documentTaskId = formalDocumentTaskId(activeDirection);
+  let skipSavedSession = false;
 
   while (true) {
     let routeFailure = '';
@@ -1063,21 +1077,56 @@ async function runTask(
       const logFile = resolve(runDirectory, `${task.id}-${slug}-attempt-${totalAttempts}.log`);
       lastOutputFile = outputFile;
       console.log(`\n[执行 ${task.id}] ${task.title} -> ${route.model} (${route.reasoning})`);
-      const result = await runProcess(
-        'codex',
-        [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
-        {
-          input: workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext),
-          logFile,
-          stream: true,
-          heartbeatLabel: `执行 ${task.id} / ${route.model}`,
-          workerModel: route.model,
-          workerRole: '执行 Agent',
-          progressFile: resolve(runDirectory, 'progress.json'),
-          timeoutMs: minutes(policy.timeouts.workers[tier]),
-        },
+      const previousSession =
+        documentSessionKey && !skipSavedSession
+          ? reusableWorkerSession(
+              await readWorkerSession(root, documentSessionKey),
+              documentSessionKey,
+              route.model,
+              route.reasoning,
+              documentContextPolicy,
+              documentTaskId,
+            )
+          : null;
+      const workerArgs = workerInvocationArgs(
+        codexArgs(route, 'workspace-write'),
+        route.model,
+        route.reasoning,
+        outputFile,
+        Boolean(documentSessionKey),
+        previousSession?.sessionId ?? null,
       );
-      tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(failureText(result)));
+      const result = await runProcess('codex', workerArgs, {
+        input: `${previousSession ? '这是同一模块文档的新一轮修订。保留已核实的推理脉络，但以本轮合同、当前文件和最新主策退回为准；旧结论与当前权威冲突时重新核对，不沿用旧批准。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext)}`,
+        logFile,
+        stream: true,
+        heartbeatLabel: `执行 ${task.id} / ${route.model}`,
+        workerModel: route.model,
+        workerRole: '执行 Agent',
+        progressFile: resolve(runDirectory, 'progress.json'),
+        timeoutMs: minutes(policy.timeouts.workers[tier]),
+      });
+      const output = failureText(result);
+      const invocationTokens = parseTokenUsage(output);
+      tokensUsed = addTokenUsage(tokensUsed, invocationTokens);
+      if (result.code === 0 && documentSessionKey) {
+        const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
+        if (sessionId) {
+          await saveWorkerSession(root, {
+            key: documentSessionKey,
+            sessionId,
+            model: route.model,
+            reasoning: route.reasoning,
+            turns: (previousSession?.turns ?? 0) + 1,
+            knownTokens:
+              invocationTokens === null
+                ? null
+                : (previousSession?.knownTokens ?? 0) + invocationTokens,
+            updatedAt: new Date().toISOString(),
+            ...(documentTaskId ? { ownerTaskId: documentTaskId } : {}),
+          });
+        }
+      }
       if (result.code === 0) {
         const changedFiles = await changedFilesSince(taskStartFiles);
         const inputPaths = await collectTaskInputPaths(task.paths, changedFiles);
@@ -1099,7 +1148,18 @@ async function runTask(
         };
       }
 
-      routeFailure = failureText(result).slice(-4000);
+      routeFailure = output.slice(-4000);
+      if (
+        previousSession &&
+        !skipSavedSession &&
+        /session (?:not found|unavailable)|failed to (?:load|resume) session|无法恢复会话/i.test(
+          routeFailure,
+        )
+      ) {
+        skipSavedSession = true;
+        retry -= 1;
+        continue;
+      }
       const kind = classifyAgentFailure(routeFailure, result.code);
       if (kind === 'external-blocker') {
         throw new AgentCallError(
@@ -1492,27 +1552,75 @@ ${review.findings
   .join('\n')}
 
 完成必要的代码、测试和文档修改，并运行最相关的验证。`;
-  const result = await runProcess(
-    'codex',
-    [...codexArgs(route, 'workspace-write'), '-o', outputFile, '-'],
-    {
-      input: prompt,
-      logFile,
-      stream: true,
-      heartbeatLabel: `审查修复 / 第 ${round} 轮 / ${route.model}`,
-      workerModel: route.model,
-      workerRole: '修复 Agent',
-      progressFile: resolve(runDirectory, 'progress.json'),
-      timeoutMs: minutes(policy.timeouts.repairs[highestTier(plan.tasks)]),
-    },
-  );
-  const tokensUsed = parseTokenUsage(failureText(result));
+  const documentSessionKey = formalDocumentSessionKey(activeDirection);
+  const documentTaskId = formalDocumentTaskId(activeDirection);
+  let previousSession = documentSessionKey
+    ? reusableWorkerSession(
+        await readWorkerSession(root, documentSessionKey),
+        documentSessionKey,
+        route.model,
+        route.reasoning,
+        formalDocumentContextPolicy(activeDirection),
+        documentTaskId,
+      )
+    : null;
+  const invoke = (sessionId: string | null) =>
+    runProcess(
+      'codex',
+      workerInvocationArgs(
+        codexArgs(route, 'workspace-write'),
+        route.model,
+        route.reasoning,
+        outputFile,
+        Boolean(documentSessionKey),
+        sessionId,
+      ),
+      {
+        input: `${sessionId ? '这是同一模块文档的修复。当前审查和权威文件优先于旧会话结论。\n\n' : ''}${prompt}`,
+        logFile,
+        stream: true,
+        heartbeatLabel: `审查修复 / 第 ${round} 轮 / ${route.model}`,
+        workerModel: route.model,
+        workerRole: '修复 Agent',
+        progressFile: resolve(runDirectory, 'progress.json'),
+        timeoutMs: minutes(policy.timeouts.repairs[highestTier(plan.tasks)]),
+      },
+    );
+  let result = await invoke(previousSession?.sessionId ?? null);
+  let tokensUsed = parseTokenUsage(failureText(result));
+  if (
+    result.code !== 0 &&
+    previousSession &&
+    /session (?:not found|unavailable)|failed to (?:load|resume) session|无法恢复会话/i.test(
+      failureText(result),
+    )
+  ) {
+    previousSession = null;
+    result = await invoke(null);
+    tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(failureText(result)));
+  }
   if (result.code !== 0) {
     throw new AgentCallError(
       `审查修复失败，详见 ${logFile}`,
       classifyAgentFailure(failureText(result), result.code),
       tokensUsed,
     );
+  }
+  if (documentSessionKey) {
+    const output = failureText(result);
+    const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
+    if (sessionId) {
+      await saveWorkerSession(root, {
+        key: documentSessionKey,
+        sessionId,
+        model: route.model,
+        reasoning: route.reasoning,
+        turns: (previousSession?.turns ?? 0) + 1,
+        knownTokens: tokensUsed === null ? null : (previousSession?.knownTokens ?? 0) + tokensUsed,
+        updatedAt: new Date().toISOString(),
+        ...(documentTaskId ? { ownerTaskId: documentTaskId } : {}),
+      });
+    }
   }
   return tokensUsed;
 }

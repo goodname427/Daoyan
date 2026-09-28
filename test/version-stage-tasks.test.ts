@@ -30,6 +30,43 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('records Version PM context decisions and keeps old task manifests valid', () => {
+    const [continued] = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            ...task('world', [], ['docs/versions/v2/world.md']),
+            contextPolicy: 'continue',
+            contextReason: '同一世界理论文档的定向修订',
+          },
+        ],
+      },
+      'module-design',
+      13,
+    );
+    expect(continued.contextPolicy).toBe('continue');
+    expect(continued.contextReason).toBe('同一世界理论文档的定向修订');
+    const [legacy] = parseStageTaskManifest(
+      { tasks: [task('legacy', [], ['docs/versions/v2/legacy.md'])] },
+      'module-design',
+      13,
+    );
+    expect(legacy.contextPolicy).toBeUndefined();
+    expect(() =>
+      parseStageTaskManifest(
+        { tasks: [{ ...task('world'), contextPolicy: 'fresh' }] },
+        'module-design',
+        13,
+      ),
+    ).toThrow('节点任务合同');
+    expect(() =>
+      parseStageTaskManifest(
+        { tasks: [{ ...task('world'), contextPolicy: 'invalid' }] },
+        'module-design',
+        13,
+      ),
+    ).toThrow('节点任务合同');
+  });
   it('recovers a delivered result whose paths were recorded as artifacts', () => {
     const result = {
       taskId: 'physics',
