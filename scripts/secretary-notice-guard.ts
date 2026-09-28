@@ -3859,7 +3859,17 @@ async function reconcileItem(
       return true;
     }
     if (await isRecoverableRoutingOutage(run.directory)) {
+      if (
+        routingRetryAlreadyScheduled(
+          item.status,
+          item.retryAt,
+          itemOrchestration.waitingSnapshot ?? '',
+          waitingSnapshot,
+        )
+      )
+        return true;
       item.status = 'retry-wait';
+      itemOrchestration.waitingSnapshot = waitingSnapshot;
       item.summary = 'Codex 工作区路由暂时无法连接；秘书会从原恢复点自动重试。';
       item.retryAt = new Date(
         Date.now() + Math.max(config.guard.executionRetryMinutes, 10) * 60_000,
@@ -4163,6 +4173,15 @@ export async function isRecoverableRoutingOutage(directory: string): Promise<boo
       return false;
   }
   return true;
+}
+
+export function routingRetryAlreadyScheduled(
+  status: string,
+  retryAt: string,
+  recordedSnapshot: string,
+  currentSnapshot: string,
+): boolean {
+  return status === 'retry-wait' && Boolean(retryAt) && recordedSnapshot === currentSnapshot;
 }
 
 /** A completed formal predecessor is input evidence, not a dependency inside the new PM run. */
