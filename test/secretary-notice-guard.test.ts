@@ -64,6 +64,7 @@ import {
   replaceVersionWorkItems,
   versionStageDirection,
   stageTaskPlanDirection,
+  stageFinalizingDirection,
   repeatedModuleDesignTaskIds,
   versionMessageIsNewDirection,
   versionProducerDecision,
@@ -952,6 +953,13 @@ describe('formal version stage dispatch', () => {
     expect(versionStageDirection(version, 'module-design')).toContain('按实际受影响模块分别给出');
     expect(stageTaskPlanDirection(version)).toContain('真实受影响的模块');
     expect(stageTaskPlanDirection(version)).toContain('不得要求尚未实现的运行读数');
+    expect(stageTaskPlanDirection(version)).toContain('逐付款方与跨账户合计');
+    expect(stageTaskPlanDirection(version)).toContain('同一 AST/hash 或别名');
+    expect(stageFinalizingDirection(version)).toContain(
+      '读取 docs/versions/auto-stage/module-design-tasks.json',
+    );
+    expect(stageFinalizingDirection(version)).toContain('轻量跨模块对账');
+    expect(stageFinalizingDirection(version)).toContain('不能写“已联签”并推进主策审核');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
     expect(versionStageDirection(version, 'design-review')).toContain('未列举情形');
@@ -963,6 +971,40 @@ describe('formal version stage dispatch', () => {
       /^\[formal-stage:module-design\]/,
     );
     expect(ensureVersionStageItem(state, version, '2026-09-21T00:02:00.000Z')).toBeNull();
+  });
+
+  it('gives module finalizing the source task acceptance, not only completion flags', () => {
+    const version = createFormalVersion({
+      id: 'module-handoff',
+      title: '跨模块交付',
+      direction: '统一账户与程序身份',
+      documentRoot: 'docs/versions/module-handoff',
+      currentStage: 'module-design',
+      now: '2026-09-21T00:00:00.000Z',
+    });
+    version.stageTasks = [
+      {
+        id: 'bridge',
+        stage: 'module-design',
+        stageStep: 'primary',
+        scopeRevision: 1,
+        stageStartedAt: version.nodes.find((node) => node.id === 'module-design')?.startedAt ?? '',
+        title: '玩家桥接',
+        objective: '核对账目',
+        deliverables: ['docs/versions/module-handoff/bridge.md'],
+        acceptance: ['本人付款与跨账户总额分列'],
+        dependsOn: [],
+        readPaths: [],
+        writePaths: ['docs/versions/module-handoff/bridge.md'],
+        status: 'accepted',
+        pmItemId: 'pm-bridge',
+        commit: 'abc123',
+        evidence: ['docs/versions/module-handoff/tasks/bridge.json'],
+      },
+    ];
+
+    expect(stageFinalizingDirection(version)).toContain('本人付款与跨账户总额分列');
+    expect(stageFinalizingDirection(version)).toContain('abc123');
   });
 
   it('passes a rejected producer design choice into the next module plan', () => {
