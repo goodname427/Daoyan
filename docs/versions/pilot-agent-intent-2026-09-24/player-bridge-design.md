@@ -1,6 +1,6 @@
 # 玩家意图桥接与推演—实战体验策划
 
-**状态**：`pilot-agent-intent-2026-09-24` 策划修订 2、范围修订 13 的 `module-design / mdac-bridge-physical` 纸面勘误；保留前轮 `mdab-bridge-payers` 的逐付款方结论。只读前驱 [`mdab-theory-signoff`](./world-theory-draft.md#mdab-theory-signoffj1-程序身份与逐付款方六阶段勘误) 是 J1 程序身份、同版事实、逐付款方余额与授权投影的权威来源；三体物理/价格/容量按下文联签核对。J1、D1、B4 是有条件首批候选，仍待主策复审及制作人范围裁定；以下不授权开发，也不声称界面、原读数、实扣或实玩已验证。
+**状态**：`pilot-agent-intent-2026-09-24` 策划修订 2、范围修订 13 的 `mdad-bridge-reconcile` 纸面复核；只读消费 `mdad-theory-reconcile`，并保留 `mdac-bridge-physical`、`mdab-bridge-payers` 的逐付款方与物理结论。J1、D1、B4 是有条件首批候选，仍待主策复审及制作人范围裁定；以下不授权开发，也不声称界面、原读数、实扣或实玩已验证。
 
 ## 问题、范围、非目标与判准
 
@@ -42,9 +42,9 @@
 | D1：物理 `mdaa-physical-key/mdz-action-sources` 的 `D1-v1`，账本 `mdaa-ledger-key/mdz-D1-v1`，程序 `mdaa-carrier-key`，理论 `mdaa-theory-replay` 的价格/域       | 世界序 40 的十二读、70 的 `A-M1-D1-01` 只指 M1 主/辅源与 `EL-M1-D1`；`slice-D1-01=12/12 E0`，包 `16→4`、身体动能 `+6`、热 `+6`，材料 `0q`、双边反冲。`receipt-D1-funded-v1` 净入 40；`acct-M1-D1` 用 `payerGrant-D1-v1` 付 `12+4+8+2=26`，末 14。D1 独立 AST/hash 假设、`37 S/176 tick` 与有限事件 `193 tick` 条件覆盖。                                                                                        | 本人见 `40→28→24→16→14` 与脚地/起步裁剪摘要。改条件、增读或脚地/源/封印/容量换版，撤旧 `26 M` Quote 和受影响证，重验自身账户；已付十二读及已提交动能/热不回滚。                         |
 | B4：物理 `mdaa-physical-key/mdz-action-sources` 的 `B4-v1`，账本 `mdaa-ledger-key/mdz-B4-v1`，程序 `mdaa-carrier-key`，理论 `mdaa-theory-replay` 的价格/生命边界 | 世界序 20 先结 `C-B1-01→N/X`、50 才读新壳、80 的 `A-B1-B4-01` 只用 B1 主/辅源、包、授权的 `2q`；`slice-B4-01=24/12 E0`，包 `32→8`，壳结构功 `+12`、热 `+12`，`4q=2q` 隔离余仓 `+q` 壳 `+q` 废料，双边/地基反冲闭合。`receipt-B4-funded-v1` 净入 50；`acct-B1-B4` 用 `payerGrant-B4-v1` 付 `16+5+10+3=34`，末 16。B4 独立 AST/hash 假设、`40 S/232 tick` 与有限事件 `249 tick` 条件覆盖。                        | 本人见 `50→34→29→19→16` 与惰性壳结构摘要；不见隐藏材料位，不推定生命或身份。再撞、修订或材料/桶/锚/壳/容量换版，撤旧 `34 M` Quote 和受影响证，先按新壳重读；旧碰撞/读费/废料留存。      |
 
-物理与账本的现行纸面账优先于[`mdaa-theory-replay`](./world-theory-draft.md#mdaa-theory-replay同版三行为重放与首批范围待审修订-13)阶段③中 D1 包 `3→2 E0`、B4 “2 E0 入壳再有 1 E0 热”的旧成功简写；这两句和 B4 “满即拒”未分已读/换版/未读的简写需要理论文档归属者后续同步，本文不以它们生成第二套物理规则或 Quote。其 `26/34 M`、`37/40 S`、域外与生命边界仍按账本、程序和现行理论共同核对。三体真实规范 AST 字节/SHA-256、容量/已有占用原读、逐 payer 实扣与 VM tick/S 均未取得；以上只是可执行验收的纸面期望。若改变首批 A/B/C 取舍或需新增世界规则，交主策判断，本文不定案。
+理论前驱 [`mdad-theory-reconcile`](./world-theory-draft.md#mdad-theory-reconcile同键物理账与第二响应复核) 已同步 `mdaa-theory-replay` 的旧简写：D1 `16/12→4/12` 仅耗 `12/12=6/12` 动能加 `6/12` 热；B4 `32/12→8/12` 仅耗 `24/12=12/12` 壳功加 `12/12` 热；未经新 POST 原读的中心余量为 `unknown`。B4 第二响应仅同版本体 FIFO/占用原读实满报 `queueFull`，先序换版撤证重读重报，未读容量报 `capacityUnknown`。桥接、物理、账本、程序与理论现按这些同键事实联签；本轮未新增材料、热、作用读或价格/容量断言，故无需撤旧联签或要求权威模块重签。三体真实规范 AST 字节/SHA-256、容量/已有占用原读、逐 payer 实扣与 VM tick/S 均未取得；以上只是开发后可执行验收的纸面期望。若改变首批 A/B/C 取舍或需新增世界规则，交主策判断，本文不定案。
 
-**逐路径版本键对账。** 以下是同一 `S0-physical-v1/seed-physical-v1/pilot-physical-v1` 和 `book-mdu-01/v1` 下的三个独立 Quote 输入，不是三个程序共用的一张付款或容量证。J1 的 `JH-v1`、`mdy-JH-read-v1`、`W-mdx-JH-1@mdy-read-budget` 分别由物理、账本、程序正文签；D1 的 `D1-v1`、`mdz-D1-v1`、`capacity-D1-v1` 与 B4 的 `B4-v1`、`mdz-B4-v1`、`capacity-B1-v1` 各自同理。D1/B4 的程序键分别是 `AST-D1-mdaa-assumed-v1/H-D1-mdaa-assumed-v1`、`AST-B4-mdaa-assumed-v1/H-B4-mdaa-assumed-v1`，均非 J1 别名或实测 hash。每份 Quote 同时带 `worldSequence`、本体 `factId/actionId`、按 R0…R3/POST 分开的 `readId`、`Acquire-*`、主辅来源 lot、包 lot、`sliceId`、物理与付款 grant、封印，以及 `physicalVersion/priceVersion/capacityVersion/structureVersion/materialVersion/contactVersion/anchorVersion/environmentVersion`；J1 额外核 P0/P1/P2 各自到账和授权。改书后即使物理中心值未变，也先撤受影响的旧 Quote/容量覆盖，再用新 AST、读和版本逐账户重签；旧已付 `ReadTx` 仅在完整覆盖键仍相同且授权有效时可引用，新增或失证的读必须独立付款。现行必需权威来源均在本任务 `readPaths`：物理、账本、程序、理论联签、生命边界与主策退回；未发现读路径缺口。机器合同 `writePaths` 仅列桥接正文，本轮精确任务证据 JSON 是任务交付另需写入的路径，此处不改合同本身。
+**逐路径版本键对账。** 以下是同一 `S0-physical-v1/seed-physical-v1/pilot-physical-v1` 和 `book-mdu-01/v1` 下的三个独立 Quote 输入，不是三个程序共用的一张付款或容量证。J1 的 `JH-v1`、`mdy-JH-read-v1`、`W-mdx-JH-1@mdy-read-budget` 分别由物理、账本、程序正文签；D1 的 `D1-v1`、`mdz-D1-v1`、`capacity-D1-v1` 与 B4 的 `B4-v1`、`mdz-B4-v1`、`capacity-B1-v1` 各自同理。D1/B4 的程序键分别是 `AST-D1-mdaa-assumed-v1/H-D1-mdaa-assumed-v1`、`AST-B4-mdaa-assumed-v1/H-B4-mdaa-assumed-v1`，均非 J1 别名或实测 hash。每份 Quote 同时带 `worldSequence`、本体 `factId/actionId`、按 R0…R3/POST 分开的 `readId`、`Acquire-*`、主辅来源 lot、包 lot、`sliceId`、物理与付款 grant、封印，以及 `physicalVersion/priceVersion/capacityVersion/structureVersion/materialVersion/contactVersion/anchorVersion/environmentVersion`；J1 额外核 P0/P1/P2 各自到账和授权。改书后即使物理中心值未变，也先撤受影响的旧 Quote/容量覆盖，再用新 AST、读和版本逐账户重签；旧已付 `ReadTx` 仅在完整覆盖键仍相同且授权有效时可引用，新增或失证的读必须独立付款。现行必需权威来源均在本任务 `readPaths`：物理、账本、程序、理论联签、生命边界与主策退回；未发现读路径缺口。本轮任务证据留在本文件，符合 `mdad-bridge-reconcile` 的单一 `writePaths`；不增写桥接合同外路径。
 
 ### 三路径失败与余态纸面反证
 
@@ -127,3 +127,35 @@
 ## 撤证历史：旧 `mdy-bridge-four-grid` 与 `mdx-entry-script`
 
 旧稿将 J1→H2 写为唯一首批正向证书，并将 D1/B4 排除在条件正例之外；更早 `mdx` 使用旧价格、容量和物理来源。它们均为历史文案/撤证内容，不代表当前首批边界。本文上方三条路径消费 `mdaa-theory-replay` 的同版 J1 35/36 M、D1 26 M、B4 34 M 条件链；旧 D1 12/19 M、B4 43 M 明确撤证。方案 A 仍待复审和范围裁定，不因桥接纸面脚本而自动批准。
+
+## 纸面玩家验收脚本与联签记录（`mdad-bridge-reconcile`）
+
+### 纸面操作脚本
+
+1. **推演台编辑预算**：在 `book-mdu-01/v1` 分别打开 J1、D1、B4 节点，记录规范节点意图、条件分支、预算和纸面程序键。J1 只把两个 AST 名按 `J1ProgramIdentity` 作为一个假设别名；D1/B4 保持独立 AST/hash 假设。核 J1 `32 M / 38 S`、D1 `26 M / 37 S / 176+17 tick`、B4 `34 M / 40 S / 232+17 tick` 条件界，且不得以任一条容量覆盖另一体。
+2. **演武场同书绑定与授权观察**：绑定当前同书节点，逐账户观察 payer、到账、grant、逐读已付和本人可见收据；绑定不产生款项或授权。按世界先序观察 J1/D1/B4 各自的来源、读、切片、作用、热/材料、版本键和 POST。分别演练成功、读前拒绝、获准空读、未知、域外及同刻竞争；隐藏/无权/不存在目标使用同形裁剪。B1 先撞须先留自然 `C/N/X`，再撞换版后撤旧证；B4 第二响应按 `queueFull`/重读重报/`capacityUnknown` 三分判。确认已付读、自然事实、已提交作用、热和废料不回滚，普通壳修复不显示复苏或同一身份。
+3. **返回原书改程序、撤证、重报价**：从演武返回原节点，改条件或读集并保存新书版本。撤销受影响的 AST/hash、Quote、读覆盖及 S/tick 容量证，按新 `readId/payerId/PriceVersion/receiptId` 与物理/结构/材料/锚/环境版本逐项重报价；保留旧请求已付款与已提交事实，不把其收据、余额或切片当新请求免费资源。新增现场读数、实扣、规范 hash、容量和 VM 用量留到获批开发后采集。
+
+### 联签判断与本轮证据
+
+共同事实键按 [`mdaa-physical-key`](./physics-material-design.md#三行为同版物理接口与自然先史联签-mdaa-physical-key策划候选)、[`mdaa-ledger-key`](./mana-ledger-design.md#三行为同版价格到账与授权联签-mdaa-ledger-key策划候选)、[`mdaa-carrier-key`](./programmable-spells-design.md#mdaa-carrier-keyj1m1b1-同版-ast事件与逐体预算联签)、[`mdab-program-identity`](./programmable-spells-design.md#mdab-program-identityj1-规范程序身份条件覆盖与撤证重签)、[`mdz-life-boundary`](./life-identity-design.md#mdz-life-boundary关键材料与账本后的生命边界纸面设计)逐项对照：S0/seed/worldSequence、fact/action/read IDs、来源与能量 lot、slice/seal、物理/付款 grants、payer/receipt、程序身份及容量、结构/材料/接触/锚/环境/热汇版均保持同键。D1/B4 的能量、材料、价、S/tick 与余态同权威段一致；J1 的 `9+11+12=32` 本人付款、P0/P2 各 1/2、失证时可选 P1 另付 1，跨账户毛额 35/36；D1/B4 分别独立到账 40/50、条件毛额 26/34、条件余额 14/16。真实实扣仍未取得。程序别名、D1/B4 独立 hash 假设和条件预算成立于纸面，不表示 hash 或容量已实测。
+
+相对 `mdac-bridge-physical` 的理论勘误已经由只读前驱 `mdad-theory-reconcile` 写入唯一理论正文：旧 D1 `3→2 E0`、B4 把 `2 E0` 全计壳后另加 `1 E0` 热，以及不分本体证据的“满即拒”不再是同键成功。桥接据此把 D1/B4 账与 POST 余态、B4 第二响应三分判认作跨模块联签；未增加上游事实或价/读/容量，故不撤物理、账本、程序或生命联签。反例包括虚构第三个 E0、借 J1 `38 S`、借世界队列位猜本体满、改程序后沿用旧 Quote、以及把 B4 修壳当生命复苏。六入口仅在规范意图、执行能力、视野、payer/grant、程序/物理版本及世界先序相同才等价；各入口没有天然共享玩家账户或视野。
+
+**任务证据（只记录本轮实际结果）**：`taskId=mdad-bridge-reconcile`；实际检查为上述合同与权威段落对照，发现并修正一处过期桥接陈述（理论仍待同步），其余三路径/六入口数字与反例无差异。变更仅在本文件；合同 `mdad-bridge-reconcile.writePaths` 也仅允许本文件，证据路径为 `docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`。下列命令均在本轮执行，退出码为实际结果；失败尝试单列。提交状态以实际 Git 操作为准。
+
+通过命令（逐字记录，均在本轮实际执行）：
+
+```text
+node -e 'const fs=require("fs"),assert=require("assert/strict"),p="docs/versions/pilot-agent-intent-2026-09-24/",b=fs.readFileSync(p+"player-bridge-design.md","utf8"),w=fs.readFileSync(p+"world-theory-draft.md","utf8"),ph=fs.readFileSync(p+"physics-material-design.md","utf8"),m=fs.readFileSync(p+"mana-ledger-design.md","utf8"),pr=fs.readFileSync(p+"programmable-spells-design.md","utf8"),li=fs.readFileSync(p+"life-identity-design.md","utf8");for(const s of ["mdad-bridge-reconcile","16/12→4/12","32/12→8/12","queueFull","capacityUnknown","J1ProgramIdentity","37 S","40 S","推演台编辑预算","返回原书改程序、撤证、重报价","taskId=mdad-bridge-reconcile"])assert(b.includes(s),s);assert(w.includes("mdad-theory-reconcile"));for(const d of [ph,m,pr,li])assert(d.length>0);for(const n of ["鼠标","键盘","手柄","妖兽 AI","实体事件","敌方修士"])assert(b.includes(n),n);assert.equal(16-12,4);assert.equal(32-24,8);assert.equal(12,6+6);assert.equal(24,12+12);assert.equal(4,2+1+1);assert.equal(9+11+12,32);assert.equal(32+1+2,35);assert.equal(35+1,36);assert.equal(12+4+8+2,26);assert.equal(16+5+10+3,34);console.log("PASS mdad bridge paper reconciliation")'
+node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md
+git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md
+```
+
+退出码分别为 `0`、`0`、`0`。失败尝试：纸面断言初版查找英文 `mouse` 而入口以中文“鼠标”列出，退出码 `1`；改正标签后同一检查以 `0` 通过。未运行统一 `npm run verify` 或 `npm run verify:full`。
+
+其他实际失败尝试（均已处理或记录）：
+
+- `node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`，退出码 `1`；追加证据时格式不符合，已运行 `node node_modules/prettier/bin/prettier.cjs --write docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`（退出码 `0`），再检查通过。
+- `git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`，追加证据时退出码 `2`（行尾空白），格式化后最终退出码 `0`。
+- `git add -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md`，退出码 `1`：`fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied`。未形成本地提交。
