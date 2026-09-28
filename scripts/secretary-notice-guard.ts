@@ -120,12 +120,14 @@ import {
 } from './secretary-state';
 import {
   advanceVersion,
+  approvedDesignScopeChoice,
   applyVersionTodoDecision,
   addDecisionGate,
   createFormalVersion,
   consecutiveDesignReviewRejections,
   currentVersionStagePolicy,
   decisionResolutionForRequest,
+  designScopeChoiceFromMessage,
   listFormalVersions,
   normalizeFormalVersion,
   pauseRepeatedDesignReview,
@@ -2247,9 +2249,17 @@ function producerDesignFeedback(version: FormalVersion): string {
     .flatMap((gate) => gate.resolutionHistory ?? [])
     .filter((entry) => entry.decision === 'rejected' && entry.feedback?.trim())
     .map((entry) => ({ requestId: entry.requestId, feedback: entry.feedback }));
-  return feedback?.length
-    ? `制作人退回意见（优先于旧候选方案）：${JSON.stringify(feedback)}。`
-    : '';
+  const selectedScope = version.orchestration?.decisionGates
+    .filter((gate) => gate.kind === 'producer-escalated-design')
+    .map((gate) => ({ choice: approvedDesignScopeChoice(gate), gate }))
+    .filter((entry) => entry.choice)
+    .at(-1);
+  const latestGate = version.orchestration?.decisionGates
+    .filter((gate) => gate.kind === 'producer-escalated-design' && gate.stage === 'design-review')
+    .at(-1);
+  const fullDesignApproved =
+    latestGate?.status === 'approved' && !approvedDesignScopeChoice(latestGate);
+  return `${feedback?.length ? `制作人退回意见（优先于旧候选方案）：${JSON.stringify(feedback)}。` : ''}${selectedScope ? `制作人已选择首批 ${selectedScope.choice}，原话：${selectedScope.gate.resolutionHistory?.at(-1)?.feedback ?? ''}。${fullDesignApproved ? '完整策划随后也已由制作人批准。' : '这只是首批范围选择，不是完整策划或游戏开发批准。'}不要再次要求选择 A/B/C，应在该范围下给出完整可审阅方案。` : ''}`;
 }
 
 export function versionStageItemId(
@@ -2330,6 +2340,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     `阶段交付：${STAGE_DELIVERABLES[stage] ?? node?.description ?? '完成当前阶段。'}`,
     `执行策略：${policy.mode === 'reduced' ? '精简执行' : '完整执行'}。理由：${policy.reason}`,
     policy.evidence.length > 0 ? `策略依据：${policy.evidence.join('、')}` : '',
+    stage === 'design-review' ? producerDesignFeedback(version) : '',
     stageSpecific,
     formalWorkItems,
     `将公开结论写入 ${artifact}，同步必要长期文档和开发日志。`,
@@ -2795,16 +2806,20 @@ async function handleVersionProducerReply(
 ): Promise<boolean> {
   if (intent === 'question') return false;
   const current = await readFormalVersion(root);
-  const decision = versionProducerDecision(request.idea);
-  if (!decision && versionMessageIsNewDirection(request.idea)) return false;
+  const explicitDecision = versionProducerDecision(request.idea);
+  if (!explicitDecision && versionMessageIsNewDirection(request.idea)) return false;
   const decisionGate =
     current?.orchestration?.decisionGates.find((candidate) => candidate.status === 'open') ??
-    (decision === 'approved'
+    (explicitDecision === 'approved'
       ? current?.orchestration?.decisionGates.find(
           (candidate) =>
             candidate.status === 'rejected' && candidate.kind === 'irreversible-decision',
         )
       : undefined);
+  const selectedScope = decisionGate
+    ? designScopeChoiceFromMessage(decisionGate, request.idea)
+    : null;
+  const decision = explicitDecision ?? (selectedScope ? 'approved' : null);
   if (current && decisionGate) {
     if (!decision) {
       const response = '已记录补充；当前范围或架构决策门禁仍在等待明确批准或退回。';
@@ -2823,9 +2838,11 @@ async function handleVersionProducerReply(
     const response =
       decision === 'approved'
         ? decisionGate.kind === 'producer-escalated-design'
-          ? current.currentStage === 'design-review'
-            ? '已记录你对详细策划的批准；主策将按取舍继续闭合设计。'
-            : '已记录你对完整详细策划的批准，版本将按后续节点推进。'
+          ? selectedScope
+            ? `已记录你选择首批 ${selectedScope}；完整策划和游戏开发尚未批准，主策将按此范围收束方案。`
+            : current.currentStage === 'design-review'
+              ? '已记录你对详细策划的批准；主策将按取舍继续闭合设计。'
+              : '已记录你对完整详细策划的批准，版本将按后续节点推进。'
           : `已批准“${decisionGate.summary}”，内部流程可按新的范围修订继续。`
         : decisionGate.kind === 'producer-escalated-design'
           ? `已记录你的取舍和修改意见，详细策划已退回重做；完成模块设计及主策复审前不会进入开发。`
@@ -4128,14 +4145,10 @@ export function rejectedStageAttemptFor(
 }
 
 export function requiresProducerDesignReapproval(version: FormalVersion): boolean {
-  return Boolean(
-    version.orchestration?.decisionGates.some(
-      (gate) =>
-        gate.kind === 'producer-escalated-design' &&
-        gate.stage === 'design-review' &&
-        gate.status === 'rejected',
-    ),
-  );
+  const latest = version.orchestration?.decisionGates
+    .filter((gate) => gate.kind === 'producer-escalated-design' && gate.stage === 'design-review')
+    .at(-1);
+  return latest?.status === 'rejected' || Boolean(latest && approvedDesignScopeChoice(latest));
 }
 
 export function isRetryablePlannerNetworkFailure(
@@ -5420,6 +5433,11 @@ async function finalizeDeliveredVersionStage(
     }
     const priorProducerRejection = requiresProducerDesignReapproval(version);
     if (result.decision === 'producer-escalation' || priorProducerRejection) {
+      const selectedScope = version.orchestration?.decisionGates
+        .filter((gate) => gate.kind === 'producer-escalated-design')
+        .map(approvedDesignScopeChoice)
+        .filter((choice) => choice !== null)
+        .at(-1);
       if (result.decision === 'approved') {
         recordApproval(version, {
           stage,
@@ -5433,9 +5451,12 @@ async function finalizeDeliveredVersionStage(
         kind: 'producer-escalated-design',
         stage,
         summary:
-          priorProducerRejection && result.decision === 'approved'
-            ? `修订后的完整详细策划已通过主策复审，等待制作人审阅；${result.summary}`
-            : result.summary,
+          selectedScope &&
+          (result.decision === 'approved' || /首批[\s\S]*A[\s\S]*B[\s\S]*C/.test(result.summary))
+            ? `制作人已选择首批 ${selectedScope}。请审阅 ${version.documentRoot}/design-review.md 与模块详细策划，并明确决定是否批准完整方案进入后续开发流程；此前的范围选择不等于开发批准。`
+            : priorProducerRejection && result.decision === 'approved'
+              ? `修订后的完整详细策划已通过主策复审，等待制作人审阅；${result.summary}`
+              : result.summary,
         sourceRequestId: item.id,
       });
       await writeFormalVersion(root, version);

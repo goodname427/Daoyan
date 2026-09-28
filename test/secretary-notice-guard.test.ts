@@ -83,6 +83,7 @@ import {
 import {
   createFormalVersion,
   addDecisionGate,
+  designScopeChoiceFromMessage,
   currentVersionStagePolicy,
   recordScopeRevision,
   recordValidationEvidence,
@@ -1234,6 +1235,38 @@ describe('formal version stage dispatch', () => {
     });
     resolveDecisionGate(version, gate.id, 'rejected', '2026-09-21T00:01:00.000Z');
     expect(requiresProducerDesignReapproval(version)).toBe(true);
+    const choice = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '请选择首批 A（三行为）、B（仅杆推）或 C（完整护送）',
+      sourceRequestId: 'scope-review',
+    });
+    expect(designScopeChoiceFromMessage(choice, 'A吧')).toBe('A');
+    resolveDecisionGate(
+      version,
+      choice.id,
+      'approved',
+      '2026-09-21T00:02:00.000Z',
+      'scope-choice',
+      '我选择推荐的 A：只批准首批范围，不等于批准游戏开发。',
+    );
+    expect(requiresProducerDesignReapproval(version)).toBe(true);
+    expect(versionStageDirection(version, 'design-review')).toContain('制作人已选择首批 A');
+    const full = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '首批 A 已选，请审阅完整策划并决定是否批准开发',
+      sourceRequestId: 'full-review',
+    });
+    resolveDecisionGate(
+      version,
+      full.id,
+      'approved',
+      '2026-09-21T00:03:00.000Z',
+      'full-approval',
+      '批准完整策划',
+    );
+    expect(requiresProducerDesignReapproval(version)).toBe(false);
   });
 
   it('holds a candidate environment failure without scheduling another PM round', () => {
