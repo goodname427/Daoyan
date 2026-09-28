@@ -63,6 +63,7 @@ import {
   productImplementationChanges,
   replaceVersionWorkItems,
   versionStageDirection,
+  assertApprovedRoadmapHandoff,
   stageTaskPlanDirection,
   stageTaskDirection,
   stageFinalizingDirection,
@@ -1289,6 +1290,56 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskPlanDirection(version)).toContain('roadmap-handoff.md');
     expect(stageTaskPlanDirection(version)).toContain('制作人对完整详细策划的批准');
     expect(versionStageDirection(version, 'candidate')).toContain('docs/roadmap.md');
+  });
+
+  it('holds development and candidate until the approved roadmap handoff has sources', async () => {
+    const workspace = await mkdtemp(resolve(tmpdir(), 'daoyan-roadmap-handoff-'));
+    try {
+      const version = createFormalVersion({
+        id: 'roadmap-pilot',
+        title: '路线图交接',
+        direction: '首批验证',
+        documentRoot: 'docs/versions/roadmap-pilot',
+        currentStage: 'development',
+      });
+      const gate = addDecisionGate(version, {
+        kind: 'producer-escalated-design',
+        stage: 'design-review',
+        summary: '审阅完整策划',
+        sourceRequestId: 'roadmap-review',
+      });
+      resolveDecisionGate(
+        version,
+        gate.id,
+        'approved',
+        '2026-09-29T00:00:00.000Z',
+        'roadmap-approval',
+        '批准完整策划进入开发，并要求路线图交接。',
+      );
+      const handoffPath = resolve(workspace, 'docs/versions/roadmap-pilot/roadmap-handoff.md');
+      await mkdir(resolve(workspace, 'docs/versions/roadmap-pilot'), { recursive: true });
+      await mkdir(resolve(workspace, 'docs'), { recursive: true });
+      expect(() => assertApprovedRoadmapHandoff(workspace, version, 'development')).toThrow(
+        '路线图交接尚未交付',
+      );
+      await writeFile(handoffPath, 'roadmap-pilot\ndesign-review.md\ndevelopment.json\n');
+      expect(() => assertApprovedRoadmapHandoff(workspace, version, 'development')).not.toThrow();
+      await writeFile(resolve(workspace, 'docs/roadmap.md'), '# 路线图\n');
+      expect(() => assertApprovedRoadmapHandoff(workspace, version, 'candidate')).toThrow(
+        '候选体验前须把本版交接链接写入',
+      );
+      await writeFile(
+        handoffPath,
+        'roadmap-pilot\ndesign-review.md\ndevelopment.json\ncandidate.json\n',
+      );
+      await writeFile(
+        resolve(workspace, 'docs/roadmap.md'),
+        'docs/versions/roadmap-pilot/roadmap-handoff.md\n',
+      );
+      expect(() => assertApprovedRoadmapHandoff(workspace, version, 'candidate')).not.toThrow();
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
   });
 
   it('holds a candidate environment failure without scheduling another PM round', () => {
