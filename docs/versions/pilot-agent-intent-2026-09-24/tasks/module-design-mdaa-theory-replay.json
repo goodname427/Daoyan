@@ -1,0 +1,61 @@
+{
+  "taskId": "mdaa-theory-replay",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "在唯一世界理论正文新增修订 13 同版三行为统一重放：以共同 S0/seed、独立物理/价格/容量键与稳定序，复算 J1 35/36 M、D1 26 M、B4 34 M 及材料/热/反作用、准入和生命拒绝边界；明确撤证旧 D1 12/19 M、B4 43 M。分别列条件成功、无源拒绝、获准空读、unknown、域外和同刻竞争余态，反证跨体借证、二次领余、迟到补源、连续碰撞及修壳误称复苏；并列 D1/B4 首批纳入、明确缺席、护送/救援扩围三案，推荐待主策复审和制作人范围裁定。列明 ADR-0017—0020 与旧原型获批后的处理；没有执行迁移或声称可玩。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),s=d.split(\"## mdaa-theory-replay：同版三行为重放与首批范围待审（修订 13）\")[1].split(\"## 修订纪律\")[0];for(const k of [\"S0-physical-v1\",\"seed-physical-v1\",\"pilot-physical-v1\",\"XB1-shell-v1\",\"worldSequence\",\"AST/hash\",\"35=9+11+12+1+2\",\"36\",\"26=12+4+8+2\",\"34=16+5+10+3\",\"12/19 M\",\"43 M\",\"receipt-J1-funded-v1\",\"receipt-D1-funded-v1\",\"receipt-B4-funded-v1\",\"38 S\",\"37 S\",\"40 S\",\"4301/4310 tick\",\"176 tick\",\"232 tick\",\"1/2 屏障功\",\"封闭废料\",\"获准空读\",\"unknownPrice\",\"outOfDomain\",\"capacityUnknown\",\"同刻竞争\",\"跨体借证\",\"二次领余\",\"迟到补源\",\"连续碰撞\",\"修壳误称复苏\",\"生命拒绝边界\",\"三案\",\"ADR-0017\",\"ADR-0018\",\"ADR-0019\",\"ADR-0020\",\"不执行 ADR 改动\"])a.ok(s.includes(k),k);a.equal(35,9+11+12+1+2);a.equal(36,35+1);a.equal(26,12+4+8+2);a.equal(34,16+5+10+3);a.equal(32-9-11-12,0);a.equal(40-26,14);a.equal(50-34,16);console.log(\"PASS mdaa theory replay coverage and paper arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdaa theory replay coverage and paper arithmetic",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json') | Sort-Object; $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw \"Changed paths mismatch: $($actual -join ', ')\" }; Write-Output 'PASS only mdaa-theory-replay writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdaa-theory-replay writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json\",e=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(e.taskId,\"mdaa-theory-replay\");a.equal(e.status,\"completed\");a.equal(e.scopeRevision,13);a.deepEqual(e.evidence,[\"docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\",p]);a.ok(e.commands.every(x=>x.exitCode===0&&x.command&&Array.isArray(x.evidence)));a.ok(e.failedAttempts.every(x=>x.exitCode!==0&&x.command));console.log(\"PASS mdaa theory task evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdaa theory task evidence metadata",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json",
+      "exitCode": 1,
+      "output": "[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json; Code style issues found in the above file.",
+      "resolution": "对任务证据 JSON 运行 Prettier --write 后，重跑两文件 --check 通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 1,
+      "output": "Checking formatting... [warn] world-theory-draft.md; Code style issues found in the above file.",
+      "resolution": "对理论草稿运行 Prettier --write 后，重新执行 --check 与 git diff --check 均通过。"
+    }
+  ]
+}
