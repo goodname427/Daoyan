@@ -857,6 +857,31 @@ export function formalTaskPredecessorIds(direction: string): string[] {
   }
 }
 
+/** The Version PM contract, rather than the Feature PM's read-heavy plan, owns writes. */
+export function formalStageWritePaths(direction: string): string[] {
+  if (!/^\[formal-stage-(?:deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.test(direction))
+    return [];
+  const prefix = '只完成本合同：\n';
+  const suffix = '\n直接前驱的有限证据索引：';
+  const start = direction.indexOf(prefix);
+  const end = start < 0 ? -1 : direction.indexOf(suffix, start + prefix.length);
+  if (end < 0) return [];
+  try {
+    const task = JSON.parse(direction.slice(start + prefix.length, end)) as unknown;
+    if (typeof task !== 'object' || task === null || !('writePaths' in task)) return [];
+    const paths = task.writePaths;
+    if (
+      !Array.isArray(paths) ||
+      paths.length === 0 ||
+      !paths.every((path) => typeof path === 'string')
+    )
+      return [];
+    return [...new Set(paths.map((path: string) => path.replaceAll('\\', '/')))].sort();
+  } catch {
+    return [];
+  }
+}
+
 /** Remove only accepted external predecessors mistakenly copied into an internal plan. */
 export function internalizeFormalPlanDependencies(
   plan: TaskPlan,
