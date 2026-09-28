@@ -2272,6 +2272,9 @@ function formalScopeRevision(version: FormalVersion): number {
 }
 
 function producerDesignFeedback(version: FormalVersion): string {
+  const withdrawn = version.orchestration?.decisionGates
+    .filter((gate) => gate.kind === 'producer-escalated-design' && gate.status === 'withdrawn')
+    .at(-1);
   const feedback = version.orchestration?.decisionGates
     .filter((gate) => gate.kind === 'producer-escalated-design' && gate.status === 'rejected')
     .flatMap((gate) => gate.resolutionHistory ?? [])
@@ -2287,7 +2290,7 @@ function producerDesignFeedback(version: FormalVersion): string {
     .at(-1);
   const fullDesignApproved =
     latestGate?.status === 'approved' && !approvedDesignScopeChoice(latestGate);
-  return `${feedback?.length ? `制作人退回意见（优先于旧候选方案）：${JSON.stringify(feedback)}。` : ''}${selectedScope ? `制作人已选择首批 ${selectedScope.choice}，原话：${selectedScope.gate.resolutionHistory?.at(-1)?.feedback ?? ''}。${fullDesignApproved ? '完整策划随后也已由制作人批准。' : '这只是首批范围选择，不是完整策划或游戏开发批准。'}不要再次要求选择 A/B/C，应在该范围下给出完整可审阅方案。` : ''}`;
+  return `${feedback?.length ? `制作人退回意见（优先于旧候选方案）：${JSON.stringify(feedback)}。` : ''}${selectedScope ? `制作人已选择首批 ${selectedScope.choice}，原话：${selectedScope.gate.resolutionHistory?.at(-1)?.feedback ?? ''}。${fullDesignApproved ? '完整策划随后也已由制作人批准。' : '这只是首批范围选择，不是完整策划或游戏开发批准。'}不要再次要求选择 A/B/C，应在该范围下给出完整可审阅方案。` : ''}${withdrawn ? `主 Agent 撤回上一轮重复升级：${withdrawn.withdrawalReason ?? ''}；依据：${withdrawn.withdrawalEvidence ?? ''}。本轮须在已批准方向内给出有限材料与接触参数、正反例及旧 ADR 覆盖建议；若仍需制作人决定，必须明确指出相对于已批准选择新增的玩家可见规则或不可逆取舍，不能以旧 ADR 待更新、尚未实测或参数待定重复升级。` : ''}`;
 }
 
 function approvedDesignHandoff(version: FormalVersion): string {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { closeSync, existsSync, openSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
@@ -12,6 +12,7 @@ import {
   readFormalVersion,
   returnBlockedDevelopmentToDesignReview,
   resumeRepeatedDesignReview,
+  withdrawRedundantDesignEscalation,
   writeFormalVersion,
 } from './version-lifecycle';
 import { refreshWindowsUserEnvironment } from './windows-user-environment';
@@ -48,6 +49,7 @@ function printHelp(): void {
   npm run secretary:stop
   npm run secretary:resume-design-review
   npm run secretary:replan-stalled-development
+  npm run secretary:withdraw-design-escalation -- <gate-id> <reason> <evidence-path>
 
 秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
 }
@@ -285,6 +287,45 @@ async function replanStalledDevelopment(): Promise<void> {
   );
 }
 
+async function withdrawDesignEscalation(
+  gateId: string,
+  reason: string,
+  evidencePath: string,
+): Promise<void> {
+  const current = await readState();
+  if (!current || isOwnedProcessAlive(current.pid, current.processIdentity)) {
+    throw new Error('撤回重复升级前须停止 notice guard 并核对秘书队列');
+  }
+  if (current.items.some((item) => isOwnedProcessAlive(item.processPid, item.processIdentity))) {
+    throw new Error('撤回重复升级前须等待 PM 与执行 Agent 退出');
+  }
+  const evidenceFile = resolve(root, evidencePath);
+  const relativeEvidence = relative(resolve(root, 'docs'), evidenceFile);
+  if (
+    !relativeEvidence ||
+    relativeEvidence.startsWith('..') ||
+    isAbsolute(relativeEvidence) ||
+    !existsSync(evidenceFile)
+  ) {
+    throw new Error('必须指向仓库内现存的设计复核证据');
+  }
+  if (
+    execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim()
+  ) {
+    throw new Error('共享工作区有未提交内容，不能撤回升级并重启规划');
+  }
+  const version = await readFormalVersion(root);
+  if (!version) throw new Error('没有可核对的正式版本');
+  withdrawRedundantDesignEscalation(version, gateId, reason, evidencePath);
+  await writeFormalVersion(root, version);
+  console.log(
+    `[常驻秘书] 已审计撤回重复设计升级 ${gateId}；启动 notice guard 后重新安排有界主策复核。`,
+  );
+}
+
 async function enqueue(idea: string): Promise<void> {
   await startGuard();
   const request: IntakeRequest = {
@@ -391,6 +432,8 @@ if (command === 'run') {
   await resumeDesignReview();
 } else if (command === 'replan-stalled-development') {
   await replanStalledDevelopment();
+} else if (command === 'withdraw-design-escalation') {
+  await withdrawDesignEscalation(args[1] ?? '', args[2] ?? '', args[3] ?? '');
 } else if (command === 'status') {
   await printStatus();
 } else if (command === 'help' || command === '--help' || command === '-h') {

@@ -253,12 +253,14 @@ export interface VersionDecisionGate {
   id: string;
   kind: 'irreversible-decision' | 'scope-change' | 'producer-escalated-design';
   stage: VersionStage;
-  status: 'open' | 'approved' | 'rejected';
+  status: 'open' | 'approved' | 'rejected' | 'withdrawn';
   summary: string;
   sourceRequestId: string;
-  resolvedBy: 'producer' | '';
+  resolvedBy: 'producer' | 'main-agent' | '';
   createdAt: string;
   resolvedAt: string;
+  withdrawalReason?: string;
+  withdrawalEvidence?: string;
   resolutionHistory?: Array<{
     requestId: string;
     decision: 'approved' | 'rejected';
@@ -663,8 +665,10 @@ function validateOrchestrationRecords(
         String(entry.kind),
       ) ||
       !VERSION_STAGES.includes(entry.stage as VersionStage) ||
-      !['open', 'approved', 'rejected'].includes(String(entry.status)) ||
-      !['producer', ''].includes(String(entry.resolvedBy)) ||
+      !['open', 'approved', 'rejected', 'withdrawn'].includes(String(entry.status)) ||
+      !['producer', 'main-agent', ''].includes(String(entry.resolvedBy)) ||
+      (entry.withdrawalReason !== undefined && typeof entry.withdrawalReason !== 'string') ||
+      (entry.withdrawalEvidence !== undefined && typeof entry.withdrawalEvidence !== 'string') ||
       (entry.resolutionHistory !== undefined &&
         (!Array.isArray(entry.resolutionHistory) ||
           entry.resolutionHistory.some(
@@ -1331,6 +1335,66 @@ export function resolveDecisionGate(
     const next = version.nodes[currentIndex + 1]?.id;
     if (leadDesignerApproved && next) advanceVersion(version, next, gate.resolvedAt);
   }
+}
+
+/** Withdraw an escalation that repeats an already approved product choice.
+ * This is an audited workflow correction, not a producer approval or rejection.
+ */
+export function withdrawRedundantDesignEscalation(
+  version: FormalVersion,
+  gateId: string,
+  reason: string,
+  evidence: string,
+  now = new Date().toISOString(),
+): void {
+  const orchestration = requireOrchestration(version);
+  const gate = orchestration.decisionGates.find((entry) => entry.id === gateId);
+  if (
+    version.workflowRevision !== 2 ||
+    version.currentStage !== 'design-review' ||
+    version.status !== 'waiting-producer' ||
+    gate?.kind !== 'producer-escalated-design' ||
+    gate.status !== 'open' ||
+    gate.stage !== 'design-review' ||
+    !reason.trim() ||
+    !evidence.trim()
+  ) {
+    throw new Error('只有当前有证据的重复设计升级可由主 Agent 撤回');
+  }
+  const priorApproval = orchestration.decisionGates.find(
+    (entry) =>
+      entry.kind === 'producer-escalated-design' &&
+      entry.status === 'approved' &&
+      !approvedDesignScopeChoice(entry) &&
+      entry.resolvedAt < gate.createdAt &&
+      !orchestration.scopeRevisions.some((scope) => scope.createdAt > entry.resolvedAt),
+  );
+  if (!priorApproval) throw new Error('缺少同范围已批准的完整详细策划');
+  const review = version.nodes.find((node) => node.id === 'design-review');
+  if (!review?.startedAt || now <= gate.createdAt) throw new Error('主策复核轮次无效');
+  if (
+    orchestration.decisionGates.some((entry) => entry.id !== gate.id && entry.status === 'open')
+  ) {
+    throw new Error('尚有其他制作人决策，不能恢复自动执行');
+  }
+  gate.status = 'withdrawn';
+  gate.resolvedBy = 'main-agent';
+  gate.resolvedAt = now;
+  gate.withdrawalReason = reason.trim();
+  gate.withdrawalEvidence = evidence.trim();
+  for (const todo of version.todos.filter(
+    (entry) => entry.decisionGateId === gate.id && entry.status === 'open',
+  )) {
+    todo.status = 'done';
+    todo.completedAt = now;
+  }
+  review.status = 'active';
+  review.startedAt = now;
+  review.completedAt = '';
+  review.artifact = '';
+  review.summary = `误升级撤回：${reason.trim()}；依据：${evidence.trim()}`;
+  version.status = 'running';
+  version.updatedAt = now;
 }
 
 export function decisionResolutionForRequest(
