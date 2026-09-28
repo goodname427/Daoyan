@@ -1,20 +1,20 @@
 {
   "tasks": [
     {
-      "id": "mdz-world-review",
-      "title": "六模块统一世界规则的独立主策复审",
-      "objective": "在已批准的范围修订 13 内，独立核对六项 mdz 详细策划、跨模块闭合与未列举情形，裁定完整方案能否交制作人审阅。",
+      "id": "mdaa-world-review",
+      "title": "三行为同版方案的独立主策复审",
+      "objective": "在已批准的范围修订 13 内，独立核对五项 mdaa 详细策划的共同初态、跨模块账目、首批范围和玩家闭环，裁定方案能否交制作人审阅。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项审核、证据、反例、结论与缺口去向。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdz-world-review.json：记录任务交付与实际直接检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项审核、定位证据、反例、结论与缺口去向。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaa-world-review.json：记录审核交付与实际直接检查。"
       ],
       "acceptance": [
-        "以制作人原始方向、批准的范围修订 13、上一轮主策退回合同及六项 mdz 交付为准，逐项标明已覆盖、存在缺口或仍需制作人判断；每项给可定位的文档或现行行为证据。任务交付和条件纸面正例不自动等于整版通过。",
-        "重点复核首批范围冲突：物理、账本和程序的 D1 单步与 B4 惰性修壳条件正例，和唯一理论仅称 J1→H2 为唯一正向证书、玩家桥接排除 D1/B4 的结论是否能在同版初态、版本和范围下并存。分别说明纳入、明确缺席或扩围候选所需证据与玩家效果，不暗中扩大或缩窄批准目标。",
-        "交叉复算自然事实先序、各行为独立物理来源与材料/热/反作用、法力来源及 payer/grant 和逐原子价格、逐体 AST/事件/容量、生命保存与身份以及六入口同书流程；核成功前提、拒绝、获准空读、未知、域外、已付前序与公开余态，不借 J1 包、价格或容量代签 D1/B4。",
-        "用接力护送、自修复信标及至少一个未按玩法专名预设的相邻实体或事件情形反证无源或额外供能、二次回收、连续碰撞、迟到补源、创建者死亡、100/20 最后一击、同刻竞争及队列满；区分可组合、明确不可表达与真正理论缺口，不新增专名元法术。",
-        "核对鼠标、键盘、手柄、妖兽 AI、实体事件和敌方修士的规范意图等价，以及推演台编写与预算、演武场绑定与观察、返回同一本法术书改 hash 的纸面往返；说明与现行原型、架构不变量、ADR 0017—0020 不一致处及旧法术、预设、敌方修士和存档的覆盖或重做影响，原型兼容不阻断规则判断。",
-        "区分纸面设定与未来原读、实扣、真实 AST/hash、容量和实玩证据；批准原则内可补的矛盾写成精确退回合同。若须制作人选择首批范围、新产品解释或不可逆规则，用通俗语言比较玩家效果、收益、代价及推荐理由；仅在方案完整可审阅时建议提交制作人，不批准游戏开发。只写审核记录和任务结果，不改模块细则、游戏实现、游戏测试、共享节点总报告或 docs/status.md。"
+        "以制作人原始方向、批准的范围修订 13、上一轮审核退回合同和五项 mdaa 交付为准，逐项标为已覆盖、存在缺口或仍需制作人判断，并给可定位的文档或现行行为证据；任务完成和条件纸面正例不自动等于整版通过。",
+        "优先独立复算 J1 跨账户毛价 35/36 M：J1 本人净额 32 M、P0/P2 各付 1/2 M、失证新读由 P1 付 1 M。核对玩家桥接六入口表将 35/35/0 M 写作 J1 单 payer 报价/已付/余态的冲突、私值裁剪和拒绝后余态；若仍不一致，给出精确退回合同，不代模块负责人改细则。",
+        "在同一 S0、seed、自然先史、事实 ID、版本和世界序下，交叉复核 J1/D1/B4 独立物理来源、材料/热/反作用、到账与授权、逐原子价格、逐体 AST/事件/FIFO/S/tick 准入、生命保存与身份边界；明确旧价和旧 J1 唯一正例是否已撤证，不借一体证书证明另一体。",
+        "以接力护送、自修复信标及至少一个未按玩法专名预设的相邻实体或事件反证无源或额外供能、二次回收、连续碰撞、迟到补源、创建者死亡、100/20 最后一击、同刻竞争和队列满；分别说明可组合、明确缺席、未知与理论缺口。",
+        "核对推演台编写与预算、演武场绑定与观察、返回同一本法术书改 hash 的 J1/D1/B4 纸面流程，以及鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士在相同规范意图、能力、授权、来源和时序下的等价边界；对照现行原型、架构不变量、ADR 0017—0020 说明获批后的覆盖或重做影响，原型兼容不阻断规则判断。",
+        "区分本阶段可复算的纸面设定与获批开发后才可取得的原读、实际扣费、真实 AST/hash、容量和实玩证据。首批含 D1/B4、仅 J1、完整扩围仍为待审方案；若需制作人选择缩窄范围、新产品解释或不可逆规则，先用通俗语言比较玩家效果、收益、代价并给推荐理由。只有完整可审阅时才建议交制作人，不批准游戏开发。只写审核记录和任务结果，不改模块细则、游戏实现与测试、共享节点总报告或 docs/status.md。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -28,16 +28,15 @@
         "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-action-sources.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-action-prices.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-life-boundary.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-theory-scope.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-experience-contract.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-physical-key.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-theory-replay.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-bridge-scope.json",
         "docs/architecture/invariants.md",
         "docs/adr/0017-统一实体控制属性模型.md",
         "docs/adr/0018-运动供能与命中守恒.md",
@@ -52,7 +51,7 @@
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdz-world-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdaa-world-review.json"
       ]
     }
   ]
