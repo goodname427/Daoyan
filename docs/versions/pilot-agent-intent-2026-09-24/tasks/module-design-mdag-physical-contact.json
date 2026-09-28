@@ -1,0 +1,112 @@
+{
+  "taskId": "mdag-physical-contact",
+  "status": "completed",
+  "summary": "在唯一物理材料权威新增 B1 有限二维接触夹具：固定 S0/seed、形状和有效质量、k0 板/接入阈值、误差，复算首撞双端 ±J、速度、动能、热、残片及单次 X；同参数覆盖不破、无撞、未知、再撞、同刻双接触，并检查候选交换与合步/分步。首撞在给定设计参数下形成可接普通 q 缺口，B4 的独立 2q 供料、功热、锚和废料账条件可承接；实际原读与程序准入仍待开发，不宣称实测成功。",
+  "commitStatus": "blocked: git add cannot create .git/index.lock (Permission denied); index.lock is absent and no commit was created",
+  "scope": {
+    "problem": "旧 B1 先史只有事实键，缺少足以判定普通壳损及 B4 接入的固定材料和接触参数。",
+    "nonGoals": "不修改 ADR、代码、其他模块权威或既有批准；不把纸面参数写成现场原读、实际交易或玩家体验。",
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-physical-contact.json"
+    ]
+  },
+  "acceptance": {
+    "fixture": "S0-physical-v1/seed-physical-v1/B1-contact-fixture-v1；两圆盘半径 1/2 L、质量各 2 μ、球速 +1、遗体 -3 L/s、e=1/2、εL=1/1024 L、εt=1/4096 s，材料/组解和能量误差详见正文。",
+    "firstImpact": "t=1/4；J=6，B1 -6 与遗体 +6，速度 +1→-2、-3→0；动能 10→4，断口及残片形变 2、热 4 E0；遗体惰性壳 3q=2q 附着+q 具名残片，C-B1-01→N-B1-impact-01→X-B1-shell-v1 一次提交。",
+    "counterexamples": "同参数低速接触 J=3 而不破；正间隙无撞；材料未知保留有证 C 而 X 未裁定；根或组解超界则局部 C 未裁定；再撞 J=3 不重用旧 X/读价；正交双墙同刻组交换顺序均为双轴 J=12、单个球壳 X、两残片。合步与四个 1/8 s 子步在 1/4 得同根同账。",
+    "b4": "遗体普通壳缺 q，遗体惰性接入环与球补壳头、锚、桶的给定裕度仍足；独立供料 4q=2q 隔离+q 壳+q B4 废料，另有遗体首撞 q 残片；B4 包 32/12→8/12，耗 24/12=12/12 壳功+12/12 热。现场若不能形成可接缺口则撤销成功条件正例并报阻断。",
+    "authorities": [
+      {
+        "source": "physics-material-design.md#mdaa-physical-key",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "XB1-shell-v1"
+        ],
+        "result": "同源键与先序相符；本轮补首撞数值，新材料/接触版须下游重签。"
+      },
+      {
+        "source": "world-theory-draft.md#mdad-theory-reconcile",
+        "versionKeys": ["pilot-physical-v1", "C-B1-01", "B4-v1"],
+        "result": "自然世界序 20 早于 B4 读 50、作用 80；理论尚未消费本轮新增的双端数值和材料阈值。"
+      },
+      {
+        "source": "mana-ledger-design.md#mdaa-ledger-key",
+        "versionKeys": ["mdz-B4-v1", "receipt-B4-funded-v1", "payerGrant-B4-v1"],
+        "result": "B4 本人净入 50、读装作用 POST 16+5+10+3=34、条件余 16；自然碰撞 0 M。新读/版须重价，实际到账与扣费未证。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdaa-carrier-key",
+        "versionKeys": ["book-mdu-01/v1", "capacity-B1-v1", "B4-v1"],
+        "result": "J1 同一 AST/hash 纸面别名与 D1/B4 独立假设不混；B4 232/249 tick、40 S 为条件界，真实 hash 与本体旧占用缺失。"
+      },
+      {
+        "source": "life-identity-design.md#mdz-life-boundary",
+        "versionKeys": ["LifeId", "assessmentId", "XB1-shell-v1"],
+        "result": "只改遗体普通 k0，遗体 k_m/k_a、保存/控制和身份不据此改变；生命现场判读未证。"
+      },
+      {
+        "source": "player-bridge-design.md#mdaf-bridge-scope",
+        "versionKeys": ["B4-v1", "book-mdu-01/v1"],
+        "result": "仅按获准可见集显示损壳、待证与本人已付；六入口及同书实玩待开发。"
+      },
+      {
+        "source": "docs/adr/0018-运动供能与命中守恒.md",
+        "versionKeys": ["ADR-0018"],
+        "result": "旧 damage 池和固定控制周期不能承担自然 C/N/X；覆盖提案属后续架构任务，当前未采纳。"
+      }
+    ],
+    "futureMeasurements": "现有 World 同种子 30/60/120 Hz、合步/分步和候选交换的形状/有效质量/根/组残差、双端冲量与速度、材料阈值/Q/残片/热/锚；B4 各 Acquire/R0-R3/POST 双端原读、校准、授权、逐 payer 实扣、AST/hash、逐体容量与 VM 用量、六入口公开余态。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdag-physical-contact.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdag-physical-contact\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.deepEqual(e.scope.writePaths,t.writePaths);for(const k of [\"B1-contact-fixture-v1\",\"C-B1-01\",\"N-B1-impact-01\",\"X-B1-shell-v1\",\"遗体惰性壳迎撞板\",\"εL=1/1024\",\"εt=1/4096\",\"同刻共享球的双接触\",\"局部未裁定\",\"undeterminedMaterial\",\"capacityUnknown\",\"fragment-B1-01\"])a.ok(d.includes(k),k);a.equal((1+.5)*4/(.5+.5),6);a.equal((1+.5)*2/(.5+.5),3);a.equal(10-(4+0),2+4);a.equal(10-(6.25+2.25),1.5);a.equal(4-(.25+2.25),1.5);a.equal(32-8,4+20);a.equal(2,1.75+.25);a.equal(3,2+1);a.equal(4,2+1+1);a.equal(100,53+47);a.equal(32-8,12+12);a.equal(50,16+5+10+3+16);for(const x of e.acceptance.authorities)a.ok(x.source&&x.versionKeys.length&&x.result);console.log(\"PASS mdag contact, B4, authorities and exact evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdag contact, B4, authorities and exact evidence paths"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-physical-contact.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-physical-contact.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @( 'docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-physical-contact.json' | Sort-Object ); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "commandSummary": "Initial JSON ownership wording replacement attempted against a phrase absent from the file",
+      "exitCode": 1,
+      "reason": "No file changed; read the actual JSON wording and reran the targeted replacement successfully."
+    },
+    {
+      "commandSummary": "node -e exact worktree scope check invoking git through child_process.execFileSync",
+      "exitCode": 1,
+      "reason": "This host rejected nested git spawn with EPERM; a direct PowerShell git status and Compare-Object scope check then passed."
+    },
+    {
+      "commandSummary": "Initial velocity-parameter text replacement",
+      "exitCode": 1,
+      "reason": "Replacement expected a phrase absent from the document; no file changed, corrected the exact phrase and reran successfully."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-physical-contact.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create E:/CGL/Programs/Daoyan/.git/index.lock: Permission denied; lock file absent. Git metadata is read-only in this workspace."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-physical-contact.json"
+  ]
+}
