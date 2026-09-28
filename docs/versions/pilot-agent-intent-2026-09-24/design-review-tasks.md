@@ -1,7 +1,7 @@
 # 设计审核节点任务（范围修订 13）
 
-**问题**：[本轮详细策划汇总](./module-design.md)记录五项 `mdaa-*` 成果已交付，同版 J1/D1/B4 条件纸面链已取代旧 J1 唯一正例，但[玩家桥接](./player-bridge-design.md)把 J1 跨账户毛价 `35/36 M` 误写成 J1 单个付款账户的 `35/35/0 M`；[账本](./mana-ledger-design.md)的 J1 本人净额和付款为 `32 M`，另有 P0/P2（失证新读再加 P1）付款。跨模块整合因此尚未通过，条件纸面链也不等于实测或已可玩。
+**问题**：[上一轮主策审核](./design-review.md)退回 J1 跨账户毛价误记为本人扣款，以及两个 AST 假设键缺少同一性合同。[本轮详细策划汇总](./module-design.md)记录 `mdab-program-identity`、`mdab-theory-signoff`、`mdab-bridge-payers` 已交付纸面修订；仍需独立复审，不能因任务完成而认定整版通过。
 
-**范围与成果**：只设 `mdaa-world-review` 一项。主策对照[制作人意图](./intent-alignment.json)、批准范围、[上一轮退回合同](./design-review.md)、五份模块成果及只读生命细则，在[审核记录](./design-review-findings.md)独立复算同版来源、账本、程序准入、生命边界、六入口同书体验与未列举情形。逐项给出已覆盖、缺口或待制作人判断，并定位证据；已知 J1 逐 payer 矛盾须明确裁定和退回去向。
+**范围与成果**：只设 `mdab-world-review` 一项。主策对照[制作人意图](./intent-alignment.json)、批准范围、旧退回合同和三项新成果，独立复算程序身份、J1 逐付款方 `32+1+2=35 M`（失证新读再加 P1 的 `1 M`）、六入口授权余态和 B4 队列三分判，并以 J1/D1/B4 及未列举情形检验跨模块闭合。[审核记录](./design-review-findings.md)须逐项给出已覆盖、缺口或待制作人判断及定位证据。
 
-**验收与非目标**：可在已批准原则内补的矛盾写成精确退回合同；首批范围、新产品解释或不可逆规则若须制作人选择，比较玩家效果、收益、代价并给推荐理由。区分策划纸面推导与开发后实测及玩家体验。本任务不修订模块细则、不选开发切片、不改游戏实现或测试，也不批准开发。方案完整可审阅时才建议交制作人。[机器合同](./design-review-tasks.json)声明稳定 ID、验收、输入和独占写入路径；单任务无同节点依赖或写入冲突。`design-review.md`、`design-review.json` 和 `docs/status.md` 留给 Version PM 收束。
+**验收与非目标**：纸面可修的矛盾给精确退回合同；首批 A/B/C 范围或新规则若需制作人选择，先比较玩家效果、收益、代价并推荐。真实 AST/hash、原读、实扣、容量、VM 实耗及实玩属于获批开发后的验收。本任务不改模块细则、游戏实现或测试，也不批准开发。[机器合同](./design-review-tasks.json)声明稳定 ID、验收、必要输入和独占写入；单任务无同节点依赖或写入冲突。`design-review.md`、`design-review.json` 与 `docs/status.md` 留给 Version PM 收束。
