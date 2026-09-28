@@ -1,0 +1,59 @@
+{
+  "taskId": "mdx-decidable-price",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "为 J1→H2 建立 priceVersion=mdx-JH-v1 纸面原子价：读 9 M、LoadTx lJ=4 M、作用 12 M；同体完整分支 32=9+4+12+7，核对授权/锁款/不可取去向、失败竞态与耗尽。B4 的 lB、AT0 与旧 100 M 攻击保持 unknownPrice/域外；现场实扣、原读与物理来源版本验证留待开发后。只完成纸面设计和定向文档检查，未声称运行交易。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\");for(const s of [\"mdx-decidable-price\",\"priceVersion=mdx-JH-v1\",\"p_read=9 M\",\"lJ=4×1=4 M\",\"p_H2=12×1=12 M\",\"12 个有价作用原子\",\"payerGrant-J-load\",\"payerGrant-J-action\",\"M_unavailable.read +9\",\"M_unavailable.load +4\",\"M_unavailable.action +12\",\"32=9+4+12+7\",\"同源双领\",\"同 payer 抢款\",\"作用与维持竞争\",\"失败后重复请求\",\"耗尽\",\"unknownPrice\",\"outOfDomain\",\"开发后验收计划\",\"本文没有实测\"])a.ok(d.includes(s),s);for(const s of [\"EL-J1-H2\",\"Aux-J1-01\",\"reservableSlice=12/12\",\"mdx-action-domain\"])a.ok(x.includes(s),s);a.equal(32-9-4-12,7);a.equal(23-4,19);a.ok(4<=11);a.equal(9+4+12,25);console.log(\"PASS mdx J1-H2 price, paper ledger, counterexamples, exclusions and deferred runtime evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdx J1-H2 price, paper ledger, counterexamples, exclusions and deferred runtime evidence",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdx-decidable-price.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===e.taskId);a.equal(e.taskId,\"mdx-decidable-price\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.deepEqual(t.writePaths,[b+\"mana-ledger-design.md\",b+\"tasks/module-design-mdx-decidable-price.json\"]);a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-mdx-action-domain.json\",\"utf8\")).status,\"completed\");console.log(\"PASS mdx contract writePaths, exact evidence paths and completed direct predecessor\")'",
+      "exitCode": 0,
+      "output": "PASS mdx contract writePaths, exact evidence paths and completed direct predecessor",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "格式化本轮证据 JSON 后重跑。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json",
+      "exitCode": 2,
+      "output": "SyntaxError: Expecting Unicode escape sequence \\uXXXX. (55:3); correction script wrote a literal backslash-n after the JSON object.",
+      "resolution": "移除末尾字面量 \\n，重写为合法 JSON 后格式化并复跑全部检查。"
+    }
+  ]
+}
