@@ -2378,9 +2378,11 @@ try {
       activeTaskRuns = checkpoint.taskRuns;
     }
     activeReview = resetCompletedWork || unrelatedCommittedAdvance ? null : checkpoint.review;
-    activeReviewStall = unrelatedCommittedAdvance
-      ? undefined
-      : ((await reviewStallFromRunHistory(runDirectory)) ?? checkpoint.reviewStall);
+    // A disjoint control-plane commit invalidates a review pass, but it cannot
+    // close an existing product-code blocker recorded in this run's reviews.
+    activeReviewStall =
+      (await reviewStallFromRunHistory(runDirectory)) ??
+      (unrelatedCommittedAdvance ? undefined : checkpoint.reviewStall);
     activeValidationProgress =
       resetCompletedWork || unrelatedCommittedAdvance
         ? { fastGate: null, independentReview: null }
@@ -2698,7 +2700,15 @@ try {
 
   if (validationStages.has('independent-review')) {
     let reviewBoundary: ReviewBoundary | null = null;
-    if (activeReview?.verdict === 'fix') throwIfReviewStalled(activeReview);
+    if (activeReviewStall?.count && activeReviewStall.count >= 3) {
+      throwIfReviewStalled(
+        activeReview ?? {
+          verdict: 'fix',
+          summary: '历史审查记录显示主要文件的高等级阻断持续存在',
+          findings: [],
+        },
+      );
+    }
     while (true) {
       reviewRound += 1;
       currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;
