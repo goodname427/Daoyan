@@ -24,6 +24,7 @@ import {
   failedNpmCommandFromOutput,
   highestTier,
   formalTaskPredecessorIds,
+  formalStageWritePaths,
   internalizeFormalPlanDependencies,
   isSafeRunId,
   optimizePlan,
@@ -1829,18 +1830,18 @@ async function commitAndPush(
       throw new Error(`git diff --check 失败：\n${diffCheck.stdout}${diffCheck.stderr}`);
 
     const formalTask = /^\[formal-stage-(?:deliverable|verification):/.test(activeDirection);
-    const scopes = formalTask ? [...new Set(plan.tasks.flatMap((task) => task.paths))] : [];
-    const stagePaths: string[] = [];
-    for (const scope of scopes) {
-      if (
-        existsSync(resolve(root, scope)) ||
-        (await git(['ls-files', '--', scope])).stdout.trim()
-      ) {
-        stagePaths.push(scope);
-      }
+    const scopes = formalTask ? formalStageWritePaths(activeDirection) : [];
+    if (formalTask && scopes.length === 0) throw new Error('正式节点任务缺少有效的独占写入合同');
+    const dirtyPaths = formalTask ? [...(await workspaceFileSnapshot()).keys()] : [];
+    const unrelatedDirty = dirtyPaths.filter(
+      (path) => !scopes.some((scope) => pathMatchesTaskScope(path, scope)),
+    );
+    if (unrelatedDirty.length > 0) {
+      throw new Error(`正式节点任务改动超出独占写入范围：${unrelatedDirty.join('、')}`);
     }
-    if (formalTask && stagePaths.length === 0) throw new Error('正式节点任务没有可提交的计划路径');
-    const add = await git(formalTask ? ['add', '-A', '--', ...stagePaths] : ['add', '-A'], true);
+    if (formalTask && dirtyPaths.length === 0)
+      throw new Error('正式节点任务没有可提交的合同内改动');
+    const add = await git(formalTask ? ['add', '-A', '--', ...dirtyPaths] : ['add', '-A'], true);
     if (add.code !== 0)
       throw new Error(`git add 失败：${failureText(add) || `退出码 ${add.code}`}`);
     const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
@@ -2125,12 +2126,16 @@ try {
       !currentStatus.stdout.trim() &&
       currentHead.code === 0
     ) {
+      const formalWritePaths = formalStageWritePaths(checkpoint.direction);
       const committedTask = findTaskCommitEvidence({
         root,
         baseline: checkpoint.baseline,
         head: currentHead.stdout.trim(),
         expectedMessage: expectedCommitMessage,
-        writePaths: checkpoint.plan.tasks.flatMap((task) => task.paths),
+        writePaths:
+          formalWritePaths.length > 0
+            ? formalWritePaths
+            : checkpoint.plan.tasks.flatMap((task) => task.paths),
         readPaths: taskScopes,
       });
       if (committedTask) {

@@ -37,6 +37,7 @@ import {
   taskOutputPaths,
   validatePlan,
   formalTaskPredecessorIds,
+  formalStageWritePaths,
   internalizeFormalPlanDependencies,
   validatePolicy,
   validateReview,
@@ -171,6 +172,21 @@ describe('agent routing', () => {
         1,
       ),
     ).toThrow('不存在');
+  });
+
+  it('takes formal commit scopes from writePaths rather than read-only run evidence', () => {
+    const direction = `[formal-stage-deliverable:module-design:mdy-four-grid]
+只完成本合同：
+${JSON.stringify({
+  readPaths: ['.daoyan-agent/runs/prior/report.json', 'docs/versions/v/theory.md'],
+  writePaths: ['docs/versions/v/theory.md', 'docs/versions/v/tasks/four-grid.json'],
+})}
+直接前驱的有限证据索引：[]。来源是线索`;
+    expect(formalStageWritePaths(direction)).toEqual([
+      'docs/versions/v/tasks/four-grid.json',
+      'docs/versions/v/theory.md',
+    ]);
+    expect(formalStageWritePaths('[formal-stage-deliverable:module-design:broken]')).toEqual([]);
   });
 
   it('validates policy and task limits', () => {
