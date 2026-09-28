@@ -1,0 +1,121 @@
+{
+  "taskId": "mdae-world-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "独立复核首批 A 的已选范围、五模块同键纸面账、六入口与扩展反例。J1/D1/B4 的条件物理和逐 payer 账可复算，旧 mdad 数值冲突没有复发；玩家桥接现行状态仍称 A/B/C 待选，与制作人已选 A 冲突，故退桥接归属修正并轻量重签。完整详细策划和游戏开发未批准，本任务完成仅表示审核产物交付。",
+  "findings": [
+    {
+      "item": "scope-and-bridge",
+      "decision": "blocking-design-conflict",
+      "owner": "player-bridge-design",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "resolution": "把桥接第 3、11、66、115、129 行的现行 A/B/C 待选和仅 J1 分支改为已选 A 的玩家开放范围、空态与同书往返投影；B/C 留作历史。无需再次请制作人选择范围。"
+    },
+    {
+      "item": "physical-ledger-program-life",
+      "decision": "covered-as-conditional-paper-design",
+      "owner": "physical-ledger-program-life-authorities",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
+      ],
+      "paperLedger": {
+        "j1": "self 9+11+12=32 M; P0 1, P2 2, total 35 M; approved new P1 read adds 1 for total 36 M; self 32->23->12->0",
+        "d1": "net receipt 40 M; 12+4+8+2=26 M; 40->28->24->16->14; energy package 16/12->4/12 E0; 6/12 kinetic + 6/12 heat; 68=35+33",
+        "b4": "net receipt 50 M; 16+5+10+3=34 M; 50->34->29->19->16; energy package 32/12->8/12 E0; 12/12 shell work + 12/12 heat; 4q=2q+q+q; 100=53+47"
+      }
+    },
+    {
+      "item": "extension-and-migration",
+      "decision": "risk-boundary-recorded-no-future-success-certificate",
+      "owner": "future-design-and-architecture",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md"
+      ],
+      "boundary": "未来再撞付费响应、更多预设、敌方自有账户和未预设跨实体消息只作反例；新价格/来源/身份与真实容量不得借首批证书。旧 AST/蓝图、预设、敌方行为及存档须证明等价或隔离；覆盖 ADR 和不安全回退先由架构归属者决策。"
+    }
+  ],
+  "producerDecision": "首批 A 已获范围选择；本轮没有新的制作人范围选择。完整详细策划须在桥接修正和复审后重新交制作人审阅，游戏开发仍待批准。若未来确需新增不可组合世界作用或不可逆迁移，先给玩家影响、可选方案和推荐理由，不由本任务批准。",
+  "developmentOnlyEvidence": [
+    "Acquire/R0-R3/POST 原读、误差和材料热去向",
+    "逐 payer 已结到账、授权及真实扣款收据",
+    "规范 AST 字节与 hash、逐体容量及旧占用",
+    "VM tick/S 静态上界与实耗比较",
+    "六入口投影及推演台到演武场再返回同书的真实体验"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'JSON.parse(require(\"node:fs\").readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json\",\"utf8\")); console.log(\"PASS task evidence JSON parses\")'",
+      "exitCode": 0,
+      "output": "PASS task evidence JSON parses",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+      ]
+    },
+    {
+      "exitCode": 0,
+      "output": "PASS mdae review scope, evidence and paper arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+      ],
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `mdae-world-review`\")[1],j=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdae-world-review.json\",\"utf8\"));a.ok(r);for(const x of [\"首批 A 已选\",\"changes-requested\",\"player-bridge-design.md\",\"S0-physical-v1\",\"seed-physical-v1\",\"JH-v1\",\"D1-v1\",\"B4-v1\",\"book-mdu-01/v1\",\"queueFull\",\"capacityUnknown\",\"法球再撞\",\"更多预设\",\"敌方修士\",\"未预设跨实体组合\"])a.ok(r.includes(x),x);for(const [x,y] of [[9+11+12,32],[32+1+2,35],[35+1,36],[12+4+8+2,26],[40-26,14],[16-12,4],[16+5+10+3,34],[50-34,16],[32-24,8],[6+6,12],[12+12,24],[35+33,68],[53+47,100]])a.equal(x,y);a.equal(j.taskId,\"mdae-world-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdae review scope, evidence and paper arithmetic\")'"
+    },
+    {
+      "exitCode": 0,
+      "output": "Checking formatting...`nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+      ],
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+    },
+    {
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+      ],
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+    },
+    {
+      "exitCode": 0,
+      "output": "PASS mdae two writePaths only",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+      ],
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if(@(Compare-Object ($expected | Sort-Object) $actual).Count -ne 0){throw \"Unexpected changed paths: $($actual -join ', ')\"}; Write-Output 'PASS mdae two writePaths only'"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json"
+  ],
+  "failedAttempts": [
+    {
+      "command": "$v=Get-Content .daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json -Raw | ConvertFrom-Json; $v.stageTasks | Where-Object id -eq 'mdae-world-review' | ConvertTo-Json -Depth 12; Get-Content docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json; Get-Content docs/versions/pilot-agent-intent-2026-09-24/module-design.md -Tail 70; rg -n \"S0-physical-v1|seed-physical-v1|JH-v1|D1-v1|B4-v1|book-mdu-01/v1|36 M|68=35\\+33|100=53\\+47|capacityUnknown|queueFull|ADR-0017|自动回蓝|固定寿命|damage\" docs/versions/pilot-agent-intent-2026-09-24/{world-theory-draft.md,physics-material-design.md,mana-ledger-design.md,programmable-spells-design.md,life-identity-design.md,player-bridge-design.md}",
+      "reason": "PowerShell rg invocation used unsupported Bash-style brace expansion; reran the inspection with explicit file paths.",
+      "exitCode": 1
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdae-world-review.json",
+      "exitCode": 128,
+      "reason": "Unable to create .git/index.lock: Permission denied. No files were staged and no commit was created."
+    }
+  ]
+}
