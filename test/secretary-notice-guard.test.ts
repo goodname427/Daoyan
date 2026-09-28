@@ -957,12 +957,14 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskPlanDirection(version)).toContain('逐付款方与跨账户合计');
     expect(stageTaskPlanDirection(version)).toContain('同一 AST/hash 或别名');
     expect(stageTaskPlanDirection(version)).toContain('对应权威模块文档列入 readPaths');
+    expect(stageTaskPlanDirection(version)).toContain('反向搜索同一事实键');
     expect(stageFinalizingDirection(version)).toContain(
       '读取 docs/versions/auto-stage/module-design-tasks.json',
     );
     expect(stageFinalizingDirection(version)).toContain('轻量跨模块对账');
     expect(stageFinalizingDirection(version)).toContain('逐项查看任务实际改动的文档差异');
     expect(stageFinalizingDirection(version)).toContain('不能只抽查清单已点名的 J1 等例子');
+    expect(stageFinalizingDirection(version)).toContain('双向核对表');
     expect(stageFinalizingDirection(version)).toContain('不能写“已联签”并推进主策审核');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
@@ -971,6 +973,7 @@ describe('formal version stage dispatch', () => {
       '不得要求开发后才可能取得的真实运行读数',
     );
     expect(versionStageDirection(version, 'design-review')).toContain('连续退回时逐项比较新旧证据');
+    expect(versionStageDirection(version, 'design-review')).toContain('穷尽同键冲突');
     expect(versionStageDirection(version, 'module-design')).toMatch(
       /^\[formal-stage:module-design\]/,
     );
