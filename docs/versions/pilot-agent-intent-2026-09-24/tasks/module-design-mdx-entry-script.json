@@ -1,0 +1,68 @@
+{
+  "taskId": "mdx-entry-script",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "基于已完成的 mdx-theory-replay，将 JH+、JH−、JH∅、JH×及未知/域外投影映射到鼠标、键盘、手柄、妖兽 AI、实体事件和敌方修士六入口；给出同一 S0、AST/hash 与三证书版本假设、共同意图/公开结果、同书推演预算—演武观察—回书新 hash 重报价路径，并列隐藏目标、过期授权、暂停边沿重放和敌方设备特权反证。真实 UI、同价同扣及回书体验明确留开发后验收，本轮未改实现或运行新规则。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),b='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(b+'player-bridge-design.md','utf8'),e=JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-entry-script.json','utf8')),v=JSON.parse(f.readFileSync('.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json','utf8')),t=v.stageTasks.filter(x=>x.id==='mdx-entry-script').at(-1);a.equal(e.taskId,'mdx-entry-script');a.equal(e.status,'completed');a.deepEqual(e.evidence,t.writePaths);a.equal(JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-theory-replay.json','utf8')).status,'completed');for(const k of ['S0=mdw-r13-S0-01','mdx-JH-AST-v1','mdx-JH-v1','mdx-JH-program-1','鼠标','键盘','手柄','妖兽 AI','实体事件','敌方修士','JH+','JH−','JH∅','JH×','获准空读','unknownPrice','capacityUnknown','unexpressible','sourceLotId=source-J1-work','隐藏目标','过期授权','64 边沿','敌方设备特权','同价同扣','返回原法术书','programHash','开发后验收'])a.ok(d.includes(k),k);for(const p of e.evidence)a.ok(f.existsSync(p),p);console.log('PASS mdx entry script: predecessor, exact writePaths, six entries, result classes, user loop and counterexamples')\"",
+      "exitCode": 0,
+      "output": "PASS mdx entry script: predecessor, exact writePaths, six entries, result classes, user loop and counterexamples",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdx-entry-script writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdx-entry-script writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),b='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(b+'player-bridge-design.md','utf8'),e=JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-entry-script.json','utf8')),v=JSON.parse(f.readFileSync('.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json','utf8')),t=v.stageTasks.filter(x=>x.id==='mdx-entry-script').at(-1);a.equal(e.taskId,'mdx-entry-script');a.equal(e.status,'completed');a.deepEqual(e.evidence,t.writePaths);a.equal(JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-theory-replay.json','utf8')).status,'completed');for(const k of ['S0=mdw-r13-S0-01','mdx-JH-AST-v1','mdx-JH-v1','mdx-JH-program-1','鼠标','键盘','手柄','妖兽 AI','实体事件','敌方修士','JH+','JH−','JH∅','JH×','获准空读','unknownPrice','capacityUnknown','unexpressible','sourceLotId=source-J1-work','隐藏目标','过期授权','64 边沿','敌方设备特权','同价同扣','返回原法术书','programHash','开发后验收'])a.ok(d.includes(k),k);for(const p of e.evidence)a.ok(f.existsSync(p),p);console.log('PASS mdx entry script: predecessor, exact writePaths, six entries, result classes, user loop and counterexamples')\"",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: 敌方设备特权",
+      "resolution": "正文明确增加敌方设备特权反证后重新执行；最终定向合同检查通过。"
+    },
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),b='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(b+'player-bridge-design.md','utf8'),e=JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-entry-script.json','utf8')),v=JSON.parse(f.readFileSync('.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json','utf8')),t=v.stageTasks.filter(x=>x.id==='mdx-entry-script').at(-1);a.equal(e.taskId,'mdx-entry-script');a.equal(e.status,'completed');a.deepEqual(e.evidence,t.writePaths);a.equal(JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-theory-replay.json','utf8')).status,'completed');for(const k of ['S0=mdw-r13-S0-01','mdx-JH-AST-v1','mdx-JH-v1','mdx-JH-program-1','鼠标','键盘','手柄','妖兽 AI','实体事件','敌方修士','JH+','JH−','JH∅','JH×','获准空读','unknownPrice','capacityUnknown','unexpressible','sourceLotId=source-J1-work','隐藏目标','过期授权','64 边沿','敌方设备特权','同价同扣','返回原法术书','programHash','开发后验收'])a.ok(d.includes(k),k);for(const p of e.evidence)a.ok(f.existsSync(p),p);console.log('PASS mdx entry script: predecessor, exact writePaths, six entries, result classes, user loop and counterexamples')\"",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: 敌方设备特权",
+      "resolution": "进一步将明确短语‘敌方设备特权’写入反证说明；之后继续合同检查。"
+    },
+    {
+      "command": "node -e \"const a=require('node:assert/strict'),f=require('node:fs'),b='docs/versions/pilot-agent-intent-2026-09-24/',d=f.readFileSync(b+'player-bridge-design.md','utf8'),e=JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-entry-script.json','utf8')),v=JSON.parse(f.readFileSync('.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json','utf8')),t=v.stageTasks.filter(x=>x.id==='mdx-entry-script').at(-1);a.equal(e.taskId,'mdx-entry-script');a.equal(e.status,'completed');a.deepEqual(e.evidence,t.writePaths);a.equal(JSON.parse(f.readFileSync(b+'tasks/module-design-mdx-theory-replay.json','utf8')).status,'completed');for(const k of ['S0=mdw-r13-S0-01','mdx-JH-AST-v1','mdx-JH-v1','mdx-JH-program-1','鼠标','键盘','手柄','妖兽 AI','实体事件','敌方修士','JH+','JH−','JH∅','JH×','获准空读','unknownPrice','capacityUnknown','unexpressible','sourceLotId=source-J1-work','隐藏目标','过期授权','64 边沿','敌方设备特权','同价同扣','返回原法术书','programHash','开发后验收'])a.ok(d.includes(k),k);for(const p of e.evidence)a.ok(f.existsSync(p),p);console.log('PASS mdx entry script: predecessor, exact writePaths, six entries, result classes, user loop and counterexamples')\"",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: 返回原法术书",
+      "resolution": "在连续路径中明确标记‘返回原法术书’后重跑；最终合同检查通过。"
+    }
+  ]
+}
