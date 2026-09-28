@@ -32,6 +32,7 @@ import {
   conventionalCommitOrFallback,
   formalTaskPredecessorIds,
   internalizeFormalPlanDependencies,
+  isHypotheticalProducerQuestion,
   isValidationTreePath,
   preferredWindowsExecutable,
   reviewFindingSignature,
@@ -2227,6 +2228,16 @@ export function versionMessageIsNewDirection(message: string): boolean {
   return messageIsNewDirection(message);
 }
 
+export function hypotheticalFormalWaitCanResume(direction: string, rawPlan: unknown): boolean {
+  return (
+    /^\[formal-stage-deliverable:development:[a-zA-Z0-9_-]+\]/u.test(direction) &&
+    isRecord(rawPlan) &&
+    rawPlan.producerDecisionRequired === true &&
+    typeof rawPlan.producerQuestion === 'string' &&
+    isHypotheticalProducerQuestion(rawPlan.producerQuestion)
+  );
+}
+
 function draftVersionId(request: IntakeRequest): string {
   const date = request.createdAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const requestKey = request.id.replace(/[^a-z0-9_-]/gi, '-').slice(0, 24) || 'direction';
@@ -2405,6 +2416,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     `执行策略：${policy.mode === 'reduced' ? '精简执行' : '完整执行'}。理由：${policy.reason}`,
     policy.evidence.length > 0 ? `策略依据：${policy.evidence.join('、')}` : '',
     stage === 'design-review' ? producerDesignFeedback(version) : '',
+    stage === 'charter-draft'
+      ? '先读取 docs/roadmap.md 中上一正式版本的交接链接；若存在 roadmap-handoff.md，继续读取其已批准原则、实际验收、未决假设和重新设计触发条件，再与本轮制作人新方向逐项对照。未来候选只是策划输入，不自动成为本版已批准承诺；没有交接链接时明确记录该事实。'
+      : '',
     ['development', 'candidate', 'archived'].includes(stage)
       ? `${approvedDesignHandoff(version)}${roadmapHandoffDirection(version)}`
       : '',
@@ -2468,7 +2482,11 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
     stage === 'development' || stage === 'candidate'
       ? `\n${approvedDesignHandoff(version)}${roadmapHandoffDirection(version)}`
       : '';
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}${approvedHandoff}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  const priorHandoff =
+    stage === 'charter-draft'
+      ? '\n先读取 docs/roadmap.md 和其中指向上一正式版本的 roadmap-handoff.md；提炼哪些世界原则与实测结论可继承、哪些候选仍需重新立项、哪些返工触发条件已被本轮方向碰到。没有交接时在版本策划中明示，不能把旧原型事实当成新承诺。'
+      : '';
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}${approvedHandoff}${priorHandoff}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
 }
 
 export function repeatedModuleDesignTaskIds(
@@ -3876,6 +3894,22 @@ async function reconcileItem(
       recordReconciliation('retry-wait', '该等待快照已由制作人处理，保留恢复派发。', [
         run.directory,
       ]);
+      return true;
+    }
+    const rawPlan = item.runDirectory
+      ? await readJson(resolve(item.runDirectory, 'plan.validated.json')).catch(() => null)
+      : null;
+    if (hypotheticalFormalWaitCanResume(item.idea, rawPlan)) {
+      item.status = 'retry-wait';
+      item.summary = '仅有将来可能发生的冲突，尚无制作人待决事实；从原恢复点继续执行。';
+      item.retryAt = new Date().toISOString();
+      item.processPid = 0;
+      item.processIdentity = '';
+      itemOrchestration.processOccupied = false;
+      itemOrchestration.waitingSnapshot = waitingSnapshot;
+      itemOrchestration.acknowledgedWaitingSnapshot = waitingSnapshot;
+      if (state.activeItemId === item.id) state.activeItemId = '';
+      recordReconciliation('retry-wait', item.summary, [run.directory]);
       return true;
     }
     clearOrphanRecovery(item.id);

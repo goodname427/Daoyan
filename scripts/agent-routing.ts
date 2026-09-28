@@ -82,6 +82,16 @@ export function validationProfileForPlan(plan: TaskPlan): ValidationProfile {
     );
 }
 
+/** A future contingency is not evidence of a current producer decision. */
+export function isHypotheticalProducerQuestion(question: string): boolean {
+  const text = question.trim();
+  return (
+    /^(?:如果|若|一旦|假如)/u.test(text) &&
+    /(?:发现|出现|需要|必须).{0,100}(?:冲突|不可逆|改变|选择)/u.test(text) &&
+    !/(?:当前|已经|已发现|现有).{0,40}(?:冲突|矛盾|不可逆)/u.test(text)
+  );
+}
+
 /** The version node contract, not a planner's label for a bookkeeping step, sets document checks. */
 export function applyFormalStageValidationProfile(plan: TaskPlan, direction: string): boolean {
   const match = /^\[formal-stage-(deliverable|verification):([a-z-]+):[a-zA-Z0-9_-]+\]/u.exec(
@@ -103,6 +113,16 @@ export function applyFormalStageValidationProfile(plan: TaskPlan, direction: str
   // Pausing before it is written leaves the producer with nothing concrete to review.
   // The stage result can still escalate through design-review.json after delivery.
   if (match[1] === 'deliverable' && match[2] === 'design-review' && plan.producerDecisionRequired) {
+    plan.producerDecisionRequired = false;
+    changed = true;
+  }
+  // A contingency in the plan is not an observed blocker. Keep the work moving
+  // until an actual conflict has evidence and a concrete producer choice.
+  if (
+    match[1] === 'deliverable' &&
+    plan.producerDecisionRequired &&
+    isHypotheticalProducerQuestion(plan.producerQuestion)
+  ) {
     plan.producerDecisionRequired = false;
     changed = true;
   }
