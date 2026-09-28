@@ -1,0 +1,67 @@
+{
+  "taskId": "mdaa-physical-key",
+  "status": "completed",
+  "scopeRevision": 13,
+  "commitStatus": "blocked",
+  "commitBlocker": "git add/commit failed with exit code 128: Git could not create .git/index.lock due to Permission denied; no commit was created.",
+  "summary": "在物理材料策划中增加 J1、D1、B4 同版物理接口与自然先史联签附节。定义共同设定初态 S0-physical-v1、隔离的来源/辅源 lot、切片、取得事实、材料与锚，并将 B1 自然碰撞后的 XB1-shell-v1 接入稳定世界序。三行为向账本和程序交付一致的事实 ID、R0/R1/R2/R3/POST 阶段及物理/价格/容量/结构/材料版本键；分别保留 J1 既有账、D1 68=35+33、B4 100=53+47，不混包、不将目标值称作原读。逐项记录同源竞争、碰撞后换版、无锚、缺料、二领中心余、再撞的拒因、自然余态、热/材料和双边反作用；实际原读、冲量、材料和热仅列开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-physical-key.json"
+  ],
+  "commands": [
+    {
+      "command": "$p='docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md'; $d=Get-Content $p -Raw; $checks=@('S0-physical-v1','seed-physical-v1','pilot-physical-v1','C-B1-01','N-B1-impact-01','X-B1-shell-v1','slice-J1-H2-01','slice-D1-01','slice-B4-01','Read-J1-H2-','Read-D1-','Read-B4-','R0','R1','R2','R3','POST','68=35+33','100=53+47','J1:76=20+56','mdy','35/36 M','mdz-D1-v1','26 M','mdz-B4-v1','34 M','staleStructureVersion','undeterminedAnchor','undeterminedMaterial','sliceUnavailable','A-B1-B4-01','实际原读、冲量、材料和热一律留作开发后验收'); foreach($x in $checks){if(-not $d.Contains($x)){throw \"Missing: $x\"}}; if((12+8+5+4+6)-ne 35){throw 'D1 residual arithmetic'}; if((8+8+4+4+3+6)-ne 33){throw 'D1 heat arithmetic'}; if((20+8+5+8+12)-ne 53){throw 'B4 residual arithmetic'}; if((8+8+12+4+3+12)-ne 47){throw 'B4 heat arithmetic'}; if((2+1+1)-ne 4){throw 'B4 material arithmetic'}; Write-Output 'PASS mdaa physical keys, B1 post-collision version, three accounts, counterexamples and paper conservation'",
+      "exitCode": 0,
+      "output": "PASS mdaa physical keys, B1 post-collision version, three accounts, counterexamples and paper conservation",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-physical-key.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-physical-key.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-physical-key.json",
+      "exitCode": 1,
+      "reason": "首次检查发现任务 JSON 不符合 Prettier 格式；对该任务证据文件运行 prettier --write 后重检通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-28/physics-material-design.md",
+      "exitCode": 1,
+      "reason": "复检命令误写日期路径，目标文件不存在；随后改用合同内 2026-09-24 路径检查通过。"
+    },
+    {
+      "command": "node -e task evidence self-check; JSON string quoting was invalid",
+      "exitCode": 1,
+      "reason": "任务结果自检命令文本的引号破坏 JSON 字符串，Node 在执行检查前解析证据文件失败；修正记录格式后重跑。"
+    },
+    {
+      "command": "node -e task evidence self-check; asserted two failures before recording the earlier failures",
+      "exitCode": 1,
+      "reason": "任务结果自检当时检查失败尝试数量，但证据 JSON 尚未登记前两条格式检查失败；补全 failedAttempts 后重跑。"
+    },
+    {
+      "command": "node -e task evidence self-check; expected failedAttempts length 5",
+      "exitCode": 1,
+      "reason": "自检硬编码失败尝试应为五项，而当时实际记录为四项；改为检查所有已记录退出码及合同路径，不依赖脆弱计数。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-physical-key.json; git commit -m \"docs: align J1 D1 B4 physical versions\"",
+      "exitCode": 128,
+      "reason": "Git 无法创建 .git/index.lock，返回 Permission denied；未暂存或创建提交。"
+    }
+  ]
+}
