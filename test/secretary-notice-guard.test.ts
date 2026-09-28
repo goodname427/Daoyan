@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { canRebaseFailedRoutingRecovery } from '../scripts/routing-outage-recovery';
 import {
   continueDispatchResponse,
   currentValidationConfigFingerprint,
@@ -199,6 +200,24 @@ describe('secretary worker process launch', () => {
     expect(routingRetryAlreadyScheduled('retry-wait', '', snapshot, snapshot)).toBe(false);
     expect(
       routingRetryAlreadyScheduled('retry-wait', '2026-09-28T01:45:33Z', snapshot, 'new-run'),
+    ).toBe(false);
+  });
+  it('rebases a failed routing task only past clean commits outside its task scope', () => {
+    const safe = {
+      worktreeClean: true,
+      baselineIsAncestor: true,
+      committedAdvancePaths: ['scripts/secretary-notice-guard.ts', 'docs/status.md'],
+      taskScopes: ['docs/versions/', 'docs/product/'],
+    };
+    expect(canRebaseFailedRoutingRecovery(safe)).toBe(true);
+    expect(canRebaseFailedRoutingRecovery({ ...safe, worktreeClean: false })).toBe(false);
+    expect(canRebaseFailedRoutingRecovery({ ...safe, baselineIsAncestor: false })).toBe(false);
+    expect(canRebaseFailedRoutingRecovery({ ...safe, committedAdvancePaths: [] })).toBe(false);
+    expect(
+      canRebaseFailedRoutingRecovery({
+        ...safe,
+        committedAdvancePaths: ['docs/versions/pilot/module-design.md'],
+      }),
     ).toBe(false);
   });
   it('retries only an empty formal planner failure caused by an accepted predecessor', () => {

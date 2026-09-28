@@ -24,6 +24,8 @@ import {
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isRecoverableRoutingOutage } from './routing-outage-recovery';
+export { isRecoverableRoutingOutage } from './routing-outage-recovery';
 import {
   buildLocalPlan,
   classifyAgentFailure,
@@ -4140,39 +4142,6 @@ export function isRetryablePlannerNetworkFailure(
     files.every((file) => ['planner.log', 'progress.json', 'public-events.jsonl'].includes(file)) &&
     /ERROR: workspace routing discovery failed/.test(log),
   );
-}
-
-/** A failed task with no file changes and only routing failures needs time, not a producer decision. */
-export async function isRecoverableRoutingOutage(directory: string): Promise<boolean> {
-  const recovery = await readJson(resolve(directory, 'recovery.json'));
-  if (recovery?.status !== 'recoverable' || !Array.isArray(recovery.taskRuns)) return false;
-  const latest = recovery.taskRuns.at(-1);
-  if (
-    !isRecord(latest) ||
-    latest.result !== 'failed' ||
-    !Array.isArray(latest.changedFiles) ||
-    latest.changedFiles.length > 0 ||
-    !Number.isInteger(latest.attempts) ||
-    Number(latest.attempts) < 1 ||
-    typeof latest.outputFile !== 'string'
-  )
-    return false;
-  const output = resolve(latest.outputFile);
-  if (!output.startsWith(`${resolve(directory)}${sep}`)) return false;
-  const match = /^(.*)-attempt-\d+\.md$/.exec(basename(output));
-  if (!match) return false;
-  for (let attempt = 1; attempt <= Number(latest.attempts); attempt += 1) {
-    const log = await readFile(
-      resolve(directory, `${match[1]}-attempt-${attempt}.log`),
-      'utf8',
-    ).catch(() => '');
-    if (
-      !/ERROR: workspace routing discovery failed/.test(log) ||
-      /usage limit|rate limit|unauthorized|forbidden|insufficient.credits/i.test(log)
-    )
-      return false;
-  }
-  return true;
 }
 
 export function routingRetryAlreadyScheduled(
