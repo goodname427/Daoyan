@@ -1,19 +1,19 @@
 {
   "tasks": [
     {
-      "id": "mdac-world-review",
-      "title": "同版物理冲突与统一世界方案独立复审",
-      "objective": "以主策身份独立核对 mdac 桥接交付、上一轮退回合同与跨模块权威正文，裁定完整方案能否交制作人审阅；未闭合处给出可定位的退回合同。",
+      "id": "mdad-world-review",
+      "title": "统一世界方案同版独立复审",
+      "objective": "以主策身份独立复审 mdad 理论勘误、桥接复核及六模块同版闭合，裁定修订 13 的详细策划能否形成交制作人审阅的完整方案；缺口给出可定位的退回合同。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项裁定、证据、反例和去向。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json：记录审核结论与实际直接检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项裁定、反例、证据和去向。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json：记录审核结论与实际直接检查。"
       ],
       "acceptance": [
-        "依据制作人原始方向、范围修订 13、上轮 mdab-world-review、当前 module-design.md 受阻结论及 mdac-bridge-physical 交付，逐项标为已覆盖、存在缺口或仍需制作人判断，并给文件或行为证据；任务 completed 不自动表示整版通过。",
-        "独立对照物理、账本、桥接与唯一世界理论的同一 S0/seed、D1-v1/B4-v1、slice 与版本键：D1 包 16/12→4/12 E0、耗 12/12 且动能/热各 6/12 E0；B4 包 32/12→8/12 E0、总耗 24/12 且壳结构功/热各 1 E0，4q=2q 仓库余+q 壳+q 废料；分别核 26/34 M、反作用与失败余态。特别裁定理论仍写的 D1 3→2 E0、B4 2 E0 入壳另加 1 E0 热及队列满位简写；同版冲突未消除不得判定联签或完整方案通过，须指出理论归属者的精确修订位置与重签范围。",
-        "核对 J1/D1/B4 同书推演台预算、演武场绑定与授权观察、返书改程序后撤旧报价的纸面脚本，及鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士在相同意图、状态、授权、来源、世界序和版本下的等价边界。反证无源、获准空读、读前无权、缺原读/价格/容量、同刻争源、B1 先撞与再撞；B4 第二响应区分已读实满 queueFull、先序换版重读重报、未读 capacityUnknown，保留合法已付和自然事实。",
-        "用接力护送、自修复信标及至少一个未以玩法专名预设的实体或事件核查实体、生命、程序、感知、事件、授权和资源组合闭合；对照现行原型、架构不变量与 ADR 0017—0020 说明获批后的沿用或重做边界。纸面可复算设定与条件账；真实原读、实扣、规范 AST/hash、容量、VM tick/S 和实玩留获批开发后，不以缺少现场读数反复退回策划。",
-        "A（J1+D1+B4）、B（仅 J1）、C（扩围护送与救援）仍为待审范围。若需制作人缩窄范围、新产品解释或不可逆选择，先通俗比较玩家效果、收益、代价并给推荐理由；不代选、不批准游戏开发。已批准原则内的文档矛盾定点退回原归属者。本任务只写审核记录及任务结果，不改模块细则、游戏实现与测试、共享节点总报告或 docs/status.md。"
+        "以制作人原始方向和范围修订 13 为边界，对照上轮 mdac 退回、mdad 两项任务结果及现行模块正文，逐项标为已覆盖、存在缺口或仍需制作人判断，并给出文件或行为证据；任务完成不自动表示整版通过。",
+        "独立复算 J1、D1、B4 在共同 S0/seed、事实与读 ID、世界先序、来源切片、payer/grant 和版本键下的六阶段正例及失败余态：D1 包 16/12→4/12 E0、动能/热各 6/12、26/40 M；B4 包 32/12→8/12 E0、壳功/热各 12/12、4q=2q+q+q、34/50 M；J1 本人 32 M、跨账户 35/36 M。核自然碰撞、反作用、POST 失证、条件余包与已付事实的去向，确认旧 3→2 E0 和 B4 超支口径在当前同键正文中已撤或明确仅作历史反例。",
+        "核对 B4 第二响应只有同版本体 FIFO/占用原读实满才 queueFull，先序换版须撤证重读重报，缺容量或占用原读为 capacityUnknown；核读前无权、获准空读、无源、缺价/容量、同刻争源、B1 首撞与再撞均不凭空赠资源、不倒带合法已付或自然事实。",
+        "用推演台同书编辑与预算→演武场绑定、授权观察与事件响应→返书改程序撤旧报价的纸面脚本，核鼠标、键盘、手柄、妖兽 AI、实体事件及敌方修士在相同规范意图、能力、状态、授权、来源、世界序和版本下的等价边界；以接力护送、自修复信标及未按玩法专名预设的实体或事件复核物理、生命、程序、感知、记忆、事件、权限和资源的组合闭合。对照旧原型与 ADR 0017—0020 说明获批后的沿用或重做影响。",
+        "仅用可复算的纸面设定和条件账评审策划；现场原读、实扣、规范 AST/hash、真实容量、VM tick/S 和实玩属于获批开发后的验收。A（J1+D1+B4）、B（仅 J1）、C（扩围护送与救援）或新产品解释仍需制作人选择时，给通俗比较、玩家效果和推荐理由，不代选或批准开发；已批准原则内的文档冲突精确退回归属者。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -23,10 +23,11 @@
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdac-bridge-physical.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-theory-reconcile.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-bridge-reconcile.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
@@ -47,7 +48,7 @@
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json"
       ]
     }
   ]
