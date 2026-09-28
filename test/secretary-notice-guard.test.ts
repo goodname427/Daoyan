@@ -752,6 +752,15 @@ describe('formal version producer decisions', () => {
     ).toBe('changes-requested');
     expect(versionProducerDecision('这个版本我不通过，不要锁死伤害上限')).toBe('changes-requested');
     expect(versionProducerDecision('当前候选体验反馈：画面不错，我再看看')).toBeNull();
+    expect(
+      versionProducerDecision(
+        '针对当前版本待审详细策划的反馈：世界方向认可，但完整方案及游戏开发暂不批准。请主策补交扩展性说明，后续加入法球事件也不应改底座。',
+      ),
+    ).toBe('changes-requested');
+    expect(versionProducerDecision('不批准完整方案，请先补充扩展性分析')).toBe('changes-requested');
+    expect(versionProducerDecision('方向可以，但尚未批准开发')).toBeNull();
+    expect(versionProducerDecision('只选择首批范围，不等于批准开发')).toBeNull();
+    expect(versionProducerDecision('方向没问题，但工作流落地前先别进入开发')).toBeNull();
     expect(versionProducerDecision('新的产品方向：不要视作已发布版本')).toBeNull();
     expect(versionProducerDecision('我再看看，晚点回复')).toBeNull();
     expect(versionProducerDecision('另外我有一个新方向')).toBeNull();
