@@ -1,46 +1,74 @@
 {
-  "modules": [
-    {
-      "id": "player-bridge",
-      "title": "玩家意图桥接与同书往返",
-      "taskId": "mdac-bridge-physical"
-    }
-  ],
-  "singleModuleReason": "最新主策只退回玩家桥接中 D1、B4 的物理摘要及三条同书脚本复核；物理、法力、生命、程序和唯一理论的纸面合同均已闭合，本轮只读引用，不为凑数重派。",
-  "crossModuleContracts": [
-    "物理材料设计是 D1/B4 能量、材料、热、反作用及 slice 的权威来源；玩家桥接消费同一 S0-physical-v1/seed-physical-v1、D1-v1/B4-v1、readId/factId/worldSequence、slice-D1-01/slice-B4-01、封印及壳/锚版本。D1 包 16/12→4/12 E0、总耗 12/12 E0，动能与热各 6/12 E0；B4 包 32/12→8/12 E0、总耗 24/12=2 E0，壳结构功与热各 1 E0，材料 4q=2q 仓库余+q 壳+q 具名废料。不得以旧 3→2 或 2+1 E0 作为同版成功说明。",
-    "法力账本是价格和逐付款方收据的权威来源，唯一世界理论联签共同初态与六阶段余态，程序设计提供 AST 别名和证书覆盖，生命设计限定惰性壳修复的生命结论；桥接在三条脚本及六入口投影中按同一书 book-mdu-01/v1、程序身份/版本、payer/grant、PriceVersion、事实 ID 和稳定序核对。J1 本人 32 M 与 P0 1、P2 2、可选 P1 1 分列，35/36 M 仅为跨账户毛价；D1/B4 分别对照现行 26/34 M 候选价和独立容量，不因修物理文案改价或借用其他实体证书。",
-    "桥接逐项核对成功、拒绝、获准空读、未知、域外及同源/同刻竞争后的已付和物理余态；B1 自然碰撞先结且不重扣，旧壳/锚换版重读重报价，未读容量保持 capacityUnknown，B4 修普通壳不推定复苏。真实原读、实扣、规范 AST/hash、容量、VM 用量和六入口实玩属于获批开发后验收。"
-  ],
   "tasks": [
     {
-      "id": "mdac-bridge-physical",
-      "title": "校正 D1/B4 玩家桥接物理摘要并复核三条同书脚本",
-      "objective": "相对 mdab-bridge-payers 新增 D1 与 B4 玩家可见能量账的同版判断，消除两处与物理权威正文冲突的成功说明，并复核 J1/D1/B4 的编辑、绑定观察、返回修订脚本。",
+      "id": "mdad-theory-reconcile",
+      "title": "校正唯一世界理论的 D1/B4 同版账与第二响应",
+      "objective": "在范围修订 13 内消除最新主策指出的同版冲突，不扩充首批玩法或新增世界公理。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md：D1/B4 同版包起末量、去向及切片的定点勘误，三条同书往返与失败余态复核记录。"
+        "world-theory-draft.md：修订唯一正文的六阶段、D1/B4 条件成功、失败余态和 B4 第二响应，注明相对 mdac 新增判断与反例。",
+        "同一正文中的纸面验收：共同初态、单位、参数、逐步双账、失败及开发后可执行的验收目标。"
       ],
       "acceptance": [
-        "逐项对照 physics-material-design.md 的 mdaa-physical-key：D1 引用 slice-D1-01、EL-M1-D1，包 16/12→4/12 E0、总耗 12/12 E0、动能与热各 6/12 E0，并解释脚地/地基反冲；B4 引用 slice-B4-01、EL-B1-B4，包 32/12→8/12 E0、总耗 24/12=2 E0，其中壳结构功与热各 1 E0，材料 4q=2q 仓库余+q 壳+q 具名废料，作用端/锚及地基反作用闭合。旧 3→2 E0 和 2 E0 入壳另加 1 E0 热不得再显示为本版成功。",
-        "从同一 S0-physical-v1、seed、book-mdu-01/v1、程序假设键与物理/价格/容量版本逐一复核 J1、D1、B4 的推演台预算→演武场绑定及授权观察→回原书修改后重报价；三体来源、包、payer/grant、事实 ID 与已付读独立，D1/B4 分别维持现行 26/34 M 候选全链价，J1 本人 32 M 与跨账户 35/36 M 分列。对照现行物理、账本、程序、理论正文核对结果，新增读或改版须撤旧 Quote，不以关键词出现代替一致性。",
-        "用无源/无包、授权拒绝、获准空读、缺原读/容量/价格的未知、续步/关键回路/复苏域外、同源或同刻竞争、B1 碰撞先结与再撞换版逐项反证成功、拒绝和余态；旧已付读、自然碰撞、热、残片和已提交作用不回滚，B4 惰性壳修复不推定生命或身份恢复。B4 第二响应仍区分已读实满 queueFull、先序换版重报价、未读 capacityUnknown。",
-        "只给纸面初态、单位、逐步账、玩家可见摘要及未来可执行验收；真实原读、逐 payer 实扣、规范 AST/hash、容量、VM tick/S 和同书实玩标为获批开发后核验。若复核需新增世界规则或改变 A/B/C 待审范围，列明冲突交主策判断，不写成既定策划。"
+        "对照物理现行结论及 S0-physical-v1/seed-physical-v1、D1-v1/EL-M1-D1/slice-D1-01：D1 包 16/12→4/12 E0，仅耗 12/12，动能和具名热各 6/12，脚/砖及地基反冲闭合；旧 3→2 E0 不再作为同键成功。",
+        "对照物理现行结论及 B4-v1/EL-B1-B4/slice-B4-01：B4 包 32/12→8/12 E0，仅耗 24/12，壳结构功与热各 12/12；头/壳/夹具/地基反作用及 4q=2q 仓库余+q 壳+q 废料闭合；不再把 2 E0 全入壳另加 1 E0 热。",
+        "六阶段、正例和失败余态逐项核成功、无源/无权、获准空读、缺原读或价或容量、域外、同刻争源、POST 失证及再撞；已付读、自然 C/N/X、已提交作用、热和废料留存，未经新 POST 原读的余包为 unknown，条件末额不冒充实扣。",
+        "B4 第二响应按程序和桥接现行来源三分：同版本体 FIFO/占用原读实满才 queueFull；先序碰撞或作用换壳/槽/锚版则撤旧证重读重报；容量/误差/占用未读则 capacityUnknown。六阶段第 941、943 行、正例第 951 行与后附第 1011 行语义一致，不借世界队列位猜满。",
+        "对照账本逐 payer 核 J1 本人 32 M、P0 1、P2 2、可选 P1 1 与跨账户 35/36 M；D1/B4 独立已结 40/50 M、毛价 26/34 M、条件余 14/16。对照程序核各自 AST/hash 假设和容量证，对照生命核修壳不等于复苏。若改读、价、容量或生命断言，撤受影响 Quote 并交权威模块重签，不由理论单方改写。",
+        "写明原读、逐 payer 实扣、规范 AST/hash、容量、VM 实耗和实玩只是获批开发后验收。"
       ],
       "dependsOn": [],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
-      ],
-      "writePaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
-      ]
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "id": "mdad-bridge-reconcile",
+      "title": "按修订理论复核玩家桥接的三路径与六入口",
+      "objective": "消费校正后的唯一理论，核对桥接的 J1/D1/B4 同书体验、公开余态及第二响应；仅在确有差异时定点修订。",
+      "deliverables": [
+        "player-bridge-design.md：追加本轮共同事实键对照与联签结论；有差异才修订三路径、六入口及反例。",
+        "纸面玩家验收脚本：推演台编辑预算→演武场同书绑定与授权观察→返回原书改程序撤证重报价。"
+      ],
+      "acceptance": [
+        "对照修订理论与物理现行来源，以同一 S0/seed、worldSequence、factId/readId、D1-v1/B4-v1、slice、壳/锚/环境版逐项核 D1 16/12→4/12 E0、6/12+6/12 与 B4 32/12→8/12 E0、12/12+12/12、4q=2q+q+q；若新增读、材料、热或作用，撤旧联签并交权威模块重签，不能仅核关键词。",
+        "对照账本逐账户核 J1 本人 32 M、P0/P2 1/2 M、可选 P1 1 M 与跨账户 35/36 M；D1/B4 分别核 26/34 M、payer/grant、已付与条件末额。对照程序使用 J1 纸面 AST 别名、D1/B4 独立 AST/hash 假设、37/40 S 与 176+17/232+17 tick 条件证；返书改程序后撤旧证重报，不借 J1 容量。",
+        "鼠标、键盘、手柄、妖兽 AI、实体事件和敌方修士仅在规范意图、执行能力、视野、payer/grant、程序/物理版本和世界先序相同时等价；逐核成功、拒绝、获准空读、未知、域外和竞争的可见字段、收据及保留余态，隐藏/无权/不存在同形裁剪。",
+        "对照程序和修订理论核 B1 首撞、再撞及 B4 第二响应：同版本体实满才 queueFull，先序换版须重读重报，未读为 capacityUnknown；不重复领源或撤销首笔。对照生命现行结论，普通壳修复不显示复苏或同身份。",
+        "记录相对 mdac 新增的理论勘误后联签判断与反例；真实原读、实扣、规范 AST/hash、容量、VM 用量和实玩只列为开发后可执行验收。"
+      ],
+      "dependsOn": ["mdad-theory-reconcile"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
     }
+  ],
+  "modules": [
+    {"id": "world-theory", "title": "唯一世界理论", "taskId": "mdad-theory-reconcile"},
+    {"id": "player-bridge", "title": "玩家意图桥接与同书往返", "taskId": "mdad-bridge-reconcile"}
+  ],
+  "crossModuleContracts": [
+    "物理材料正文权威签 D1/B4 的来源、E0/12 与 q、六笔 Acquire、R0–R3/POST、seal/slice、动能/结构功/热/反作用和自然 C/N/X；理论与桥接按 S0-physical-v1/seed-physical-v1、worldSequence、D1-v1/B4-v1、EL-M1-D1/EL-B1-B4、slice-D1-01/slice-B4-01、factId/readId、壳/锚/环境版消费。同键异数必须退回对账。",
+    "法力账本正文权威签价格、到账、grant 和逐付款方收据；理论与桥接核 J1 本人 32 M、P0 1、P2 2、可选 P1 1 及跨账户 35/36 M，D1 40 M 到款、26 M 毛价、条件余 14，B4 50 M 到款、34 M 毛价、条件余 16。M 不是 E0 换算率；改读/价按 readId、payerId、PriceVersion、receiptId 撤旧 Quote 重签。",
+    "程序正文权威签 book-mdu-01/v1、J1ProgramIdentity 纸面 AST 别名、D1/B4 独立 AST/hash 假设、逐体读集、M/tick/S、订阅/FIFO/帧及容量证覆盖。理论与桥接以 programIdentity、capacityVersion 和本体占用核同一事实；真实规范 hash/容量未读为未知，程序或结构换版撤受影响证。B4 第二响应不得借世界队列或 J1 容量猜满。",
+    "生命正文权威签关键回路、保存和身份三链，B4 只修普通壳不推出 viable/same。理论维护六阶段与成功、拒绝、空读、未知、域外、竞争余态；桥接按同一 factId/actionId 和可见权限投影，已付和自然/作用事实不回滚。Version PM 最终核对理论、桥接与只读权威来源，主策再独立复审。"
   ]
 }
