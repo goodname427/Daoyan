@@ -39,6 +39,7 @@
     "secretary:stop": "tsx scripts/project-secretary.ts stop",
     "secretary:resume-design-review": "tsx scripts/project-secretary.ts resume-design-review",
     "secretary:replan-stalled-development": "tsx scripts/project-secretary.ts replan-stalled-development",
+    "secretary:withdraw-design-escalation": "tsx scripts/project-secretary.ts withdraw-design-escalation",
     "secretary:dingtalk:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-dingtalk-secretary.ps1",
     "secretary:site:build": "tsx scripts/build-secretary-site.ts",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm run docs:check && npm run test",

@@ -19,6 +19,7 @@ import {
   pauseRepeatedDesignReview,
   resumeRepeatedDesignReview,
   returnBlockedDevelopmentToDesignReview,
+  withdrawRedundantDesignEscalation,
   downgradeFormalVersionPreservingFacts,
   invalidateValidationEvidence,
   recordValidationEvidence,
@@ -44,6 +45,67 @@ import {
 import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
 describe('formal version lifecycle', () => {
+  it('withdraws a redundant design gate without recording a producer decision', () => {
+    const version = createFormalVersion({
+      id: 'redundant-escalation',
+      title: '重复升级',
+      direction: '首批 A',
+      documentRoot: 'docs/versions/redundant-escalation',
+      currentStage: 'design-review',
+      workflowRevision: 2,
+      now: '2026-09-28T00:00:00.000Z',
+    });
+    const approved = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '完整策划审阅',
+      sourceRequestId: 'producer-approval',
+      now: '2026-09-28T00:01:00.000Z',
+    });
+    resolveDecisionGate(
+      version,
+      approved.id,
+      'approved',
+      '2026-09-28T00:02:00.000Z',
+      'producer-reply',
+      '批准完整策划进入开发，维持首批 A',
+    );
+    const redundant = addDecisionGate(version, {
+      kind: 'producer-escalated-design',
+      stage: 'design-review',
+      summary: '重新选择首批 A 或等待阈值',
+      sourceRequestId: 'new-review',
+      now: '2026-09-28T00:03:00.000Z',
+    });
+    withdrawRedundantDesignEscalation(
+      version,
+      redundant.id,
+      '首批 A 和细节委托已有批准',
+      'docs/versions/redundant-escalation/design-review-findings.md',
+      '2026-09-28T00:04:00.000Z',
+    );
+    expect(version.currentStage).toBe('design-review');
+    expect(version.status).toBe('running');
+    expect(redundant).toMatchObject({
+      status: 'withdrawn',
+      resolvedBy: 'main-agent',
+      withdrawalReason: '首批 A 和细节委托已有批准',
+    });
+    expect(version.todos.find((todo) => todo.decisionGateId === redundant.id)?.status).toBe('done');
+    expect(version.nodes.find((node) => node.id === 'design-review')?.startedAt).toBe(
+      '2026-09-28T00:04:00.000Z',
+    );
+    expect(() =>
+      withdrawRedundantDesignEscalation(
+        version,
+        redundant.id,
+        '重复',
+        'docs/evidence.md',
+        '2026-09-28T00:05:00.000Z',
+      ),
+    ).toThrow();
+  });
+
   it('returns a stalled unaccepted development round for a new lead-design decision while preserving old tasks', () => {
     const version = createFormalVersion({
       id: 'stalled-development',
