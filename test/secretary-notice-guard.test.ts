@@ -996,6 +996,9 @@ describe('formal version stage dispatch', () => {
     expect(versionStageDirection(version, 'module-design')).toContain('按实际受影响模块分别给出');
     expect(stageTaskPlanDirection(version)).toContain('真实受影响的模块');
     expect(stageTaskPlanDirection(version)).toContain('不得要求尚未实现的运行读数');
+    expect(stageTaskPlanDirection(version)).toContain('对象与端点 ID');
+    expect(stageTaskPlanDirection(version)).toContain('不能因运行尚未产生签名');
+    expect(versionStageDirection(version, 'module-design')).toContain('真实样本值、实际收据');
     expect(stageTaskPlanDirection(version)).toContain('逐付款方与跨账户合计');
     expect(stageTaskPlanDirection(version)).toContain('同一 AST/hash 或别名');
     expect(stageTaskPlanDirection(version)).toContain('对应权威模块文档列入 readPaths');
@@ -1068,6 +1071,7 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskDirection(version, version.stageTasks[0])).toContain(
       'readPaths 漏列所需来源时报告合同缺口',
     );
+    expect(stageTaskDirection(version, version.stageTasks[0])).toContain('不能因运行尚未产生签名');
   });
 
   it('passes a rejected producer design choice into the next module plan', () => {
