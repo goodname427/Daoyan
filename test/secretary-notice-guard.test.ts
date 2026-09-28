@@ -64,6 +64,7 @@ import {
   replaceVersionWorkItems,
   versionStageDirection,
   stageTaskPlanDirection,
+  stageTaskDirection,
   stageFinalizingDirection,
   repeatedModuleDesignTaskIds,
   versionMessageIsNewDirection,
@@ -955,10 +956,13 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskPlanDirection(version)).toContain('不得要求尚未实现的运行读数');
     expect(stageTaskPlanDirection(version)).toContain('逐付款方与跨账户合计');
     expect(stageTaskPlanDirection(version)).toContain('同一 AST/hash 或别名');
+    expect(stageTaskPlanDirection(version)).toContain('对应权威模块文档列入 readPaths');
     expect(stageFinalizingDirection(version)).toContain(
       '读取 docs/versions/auto-stage/module-design-tasks.json',
     );
     expect(stageFinalizingDirection(version)).toContain('轻量跨模块对账');
+    expect(stageFinalizingDirection(version)).toContain('逐项查看任务实际改动的文档差异');
+    expect(stageFinalizingDirection(version)).toContain('不能只抽查清单已点名的 J1 等例子');
     expect(stageFinalizingDirection(version)).toContain('不能写“已联签”并推进主策审核');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
@@ -1005,6 +1009,12 @@ describe('formal version stage dispatch', () => {
 
     expect(stageFinalizingDirection(version)).toContain('本人付款与跨账户总额分列');
     expect(stageFinalizingDirection(version)).toContain('abc123');
+    expect(stageTaskDirection(version, version.stageTasks[0])).toContain(
+      '即使该模块不在本轮交付清单',
+    );
+    expect(stageTaskDirection(version, version.stageTasks[0])).toContain(
+      'readPaths 漏列所需来源时报告合同缺口',
+    );
   });
 
   it('passes a rejected producer design choice into the next module plan', () => {
