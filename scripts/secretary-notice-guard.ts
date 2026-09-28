@@ -2457,6 +2457,24 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
   const stage = version.currentStage;
   const label = currentStageTaskLabel(version);
   const manifest = `${version.documentRoot}/${label}-tasks.json`;
+  const technicalReplan = version.orchestration?.technicalReplans?.at(-1);
+  const technicalReviewDirection =
+    stage === 'design-review' &&
+    technicalReplan &&
+    technicalReplan.designReviewStartedAt ===
+      version.nodes.find((node) => node.id === stage)?.startedAt
+      ? `\n本轮只处理开发审查停滞，原运行 ${technicalReplan.blockedRunDirectory}，原事项 ${technicalReplan.blockedItemId}。主策先核对 B1 自然接触造成的壳损与 ADR 0018 的伤害池限制及已批准详细策划的关系，明确哪些旧条款被覆盖、哪些仍有效，以及三行为应如何接入现有 World/VM。若需改变制作人已批准的世界规则或不可逆架构选择，按既有门禁升级制作人；否则写出可执行的窄范围实现合同和反例。不得把独立 PilotWorld 草稿当成交付，也不要重审无关模块。本轮任务 ID 不得复用上一主策审核轮次，避免覆盖旧证据。只做文档轻量检查。`
+      : '';
+  const technicalDevelopmentDirection =
+    stage === 'development' &&
+    technicalReplan &&
+    (version.stageTasks ?? []).some(
+      (task) =>
+        task.stage === 'development' &&
+        task.stageStartedAt === technicalReplan.previousDevelopmentStartedAt,
+    )
+      ? `\n这是审查停滞后的新开发规划，原事项 ${technicalReplan.blockedItemId}、运行 ${technicalReplan.blockedRunDirectory} 仅作证据，不续跑旧 PM。先读取本轮主策结论、现有 src/core/world.ts 与 src/core/vm.ts 的真实接入点及旧草稿差异；新任务 ID 不得复用上一开发轮次。任务合同须把三行为接入现有 World/VM、B1 自然壳损与 ADR 关系、可执行黑盒和定向验收写清。未闭合的规则冲突不得被当成工程默认值；不得以独立 PilotWorld 或测试夹具替代游戏交付。保留已批准的首批 A 范围，未来候选不纳入本版。`
+      : '';
   const designPlan =
     stage === 'module-design'
       ? `\n先列出本版本真实受影响的模块与跨模块合同，再按可独立审阅的模块设计成果分派任务；资源、账户、市场这类不同职责不能因同属一个版本就合并成一份扩写稿。每个模块任务写明单独的策划交付物、上下游接口、具体设计内容与直接验收；基础世界理论可由一个任务负责，其他模块引用同一正文，Version PM 最终核对一致性。跨模块合同必须指定权威来源、消费方和同一事实的核对键；涉及账户时分开逐付款方与跨账户合计，涉及程序时明确同一 AST/hash 或别名及证书覆盖范围，涉及状态时逐一核对成功、拒绝、空、未知、域外和竞争余态。下游任务只要新增或改写其他模块的数值、单位、公式、能量流、材料/热或状态断言，即使本轮只修局部界面，也必须把对应权威模块文档列入 readPaths 和直接验收；不能因该模块在上一轮已闭合而省去。下游任务验收须要求对照现行来源结论，不能只检查关键词出现。对本轮变动的场景键、切片、事实 ID 和版本键，使用定向搜索反向搜索同一事实键在当前版本其他模块正文与唯一世界理论中的消费位置；只读取命中段落，把需要同步更正的消费者纳入本轮任务边界或明确列为阻断，不能只修主策点名的两行。纯文档任务可要求有明确公理、初态、参数、逐步账目、反例和未来可执行验收；不得要求尚未实现的运行读数或物理实测作为策划交付。确实需要实测的项目列入开发后验收，不把假设值伪称实测；若缺的是尚未批准的世界规则，交主策判断是否升级制作人。任务清单还必须有 modules:[{"id":"模块标识","title":"模块名称","taskId":"独占该模块设计的任务 ID"}] 和非空 crossModuleContracts:["模块间交互合同"]；每个模块使用不同任务 ID。若只有一个模块，增加非空 singleModuleReason 解释边界。${producerDesignFeedback(version)}`
@@ -2487,7 +2505,7 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
     stage === 'charter-draft'
       ? '\n先读取 docs/roadmap.md 和其中指向上一正式版本的 roadmap-handoff.md；提炼哪些世界原则与实测结论可继承、哪些候选仍需重新立项、哪些返工触发条件已被本轮方向碰到。没有交接时在版本策划中明示，不能把旧原型事实当成新承诺。'
       : '';
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}${approvedHandoff}${priorHandoff}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}${technicalReviewDirection}${technicalDevelopmentDirection}${approvedHandoff}${priorHandoff}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
 }
 
 export function repeatedModuleDesignTaskIds(
@@ -6069,6 +6087,19 @@ async function consumeTaskOwnedVersionItem(
       if (repeated.length > 0) {
         throw new Error(`重入详细策划不得复用历史任务 ID：${repeated.join('、')}`);
       }
+    }
+    const technicalReplan = version.orchestration?.technicalReplans?.at(-1);
+    if (technicalReplan && ['design-review', 'development'].includes(stage)) {
+      const priorIds = new Set(
+        (version.stageTasks ?? [])
+          .filter(
+            (task) => task.stage === stage && task.scopeRevision === formalScopeRevision(version),
+          )
+          .map((task) => task.id),
+      );
+      const repeated = tasks.filter((task) => priorIds.has(task.id)).map((task) => task.id);
+      if (repeated.length > 0)
+        throw new Error(`技术重规划不得复用历史任务 ID：${repeated.join('、')}`);
     }
     for (const task of tasks) {
       assertStageTaskPaths(task, version.documentRoot);

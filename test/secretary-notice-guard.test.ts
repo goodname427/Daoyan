@@ -92,6 +92,7 @@ import {
   recordStagePolicy,
   resolveDecisionGate,
   transitionVersionBug,
+  returnBlockedDevelopmentToDesignReview,
 } from '../scripts/version-lifecycle';
 import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
 
@@ -1175,6 +1176,63 @@ describe('formal version stage dispatch', () => {
     expect(evidenceAfterStageStart('2099-01-01T00:00:00.000Z', '2099-01-01T00:01:00.000Z')).toBe(
       true,
     );
+  });
+
+  it('schedules a bounded lead-design review after a recorded development stall, then a fresh development plan', () => {
+    const state = createSecretaryState('2026-09-28T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'stalled-world',
+      title: '统一世界',
+      direction: '首批 A',
+      documentRoot: 'docs/versions/stalled-world',
+      currentStage: 'development',
+      workflowRevision: 2,
+      now: '2026-09-28T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'old-world',
+            title: '旧世界实现',
+            objective: '三行为',
+            deliverables: ['实现'],
+            acceptance: ['定向测试'],
+            dependsOn: [],
+            readPaths: ['src/core/world.ts'],
+            writePaths: ['src/core/pilotWorld.ts'],
+          },
+        ],
+      },
+      'development',
+      1,
+      '2026-09-28T00:00:00.000Z',
+    );
+    const prior = ensureVersionStageItem(state, version, '2026-09-28T00:01:00.000Z')!;
+    prior.status = 'failed';
+    prior.summary = '技术阻断：审查停滞：未接入 World/VM';
+    prior.runDirectory = 'runs/prior';
+    expect(ensureVersionStageItem(state, version)).toBeNull();
+    returnBlockedDevelopmentToDesignReview(
+      version,
+      {
+        id: prior.id,
+        summary: prior.summary,
+        runDirectory: prior.runDirectory,
+      },
+      '2026-09-28T00:02:00.000Z',
+    );
+    const review = ensureVersionStageItem(state, version, '2026-09-28T00:03:00.000Z');
+    expect(review?.orchestration?.formalStageStep).toBe('planning');
+    expect(review?.idea).toContain('ADR 0018');
+    expect(review?.idea).toContain('World/VM');
+    version.currentStage = 'development';
+    version.nodes.find((node) => node.id === 'development')!.startedAt = '2026-09-28T00:04:00.000Z';
+    expect(stageTaskPlanDirection(version)).toContain('新任务 ID 不得复用');
+    expect(
+      ensureVersionStageItem(state, version, '2026-09-28T00:05:00.000Z')?.orchestration
+        ?.formalStageStep,
+    ).toBe('planning');
   });
 
   it('keeps task-owned run ids unique when the same stage is entered again', () => {
