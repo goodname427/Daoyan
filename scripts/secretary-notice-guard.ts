@@ -2197,6 +2197,22 @@ export function versionProducerDecision(message: string): 'approved' | 'changes-
   ) {
     return 'changes-requested';
   }
+  // Review feedback may mention future features as counterexamples. An explicit
+  // refusal of the current design still belongs to its open review gate.
+  if (/(?:详细策划|设计评审|完整方案).{0,32}(?:暂不批准|先不批准|不批准|退回)/.test(normalized)) {
+    return 'changes-requested';
+  }
+  if (/(?:暂不|先不|不)批准/.test(normalized)) return 'changes-requested';
+  if (/(?:尚未|未|没有|还没)批准|(?:不等于|不代表|并非).{0,6}批准/.test(normalized)) {
+    return null;
+  }
+  // A positive assessment of the direction is not permission to start coding
+  // when the producer explicitly asks to wait for another prerequisite.
+  if (
+    /(?:先别|暂缓|暂不|先不|尚未|还没|不能|不要).{0,16}(?:进入)?(?:开发|实施|开工)/.test(normalized)
+  ) {
+    return null;
+  }
   if (versionMessageIsNewDirection(message)) return null;
   if (/(不通过|不能通过|先别|不要继续|需要修改|需要调整|有问题|不行)/.test(normalized)) {
     return 'changes-requested';
