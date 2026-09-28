@@ -2297,7 +2297,33 @@ function approvedDesignHandoff(version: FormalVersion): string {
 function roadmapHandoffDirection(version: FormalVersion): string {
   const approval = approvedDesignHandoff(version);
   if (!/(路线图|roadmap|交接|下一轮|下轮)/i.test(approval)) return '';
-  return `本版须由 Version PM 维护 ${version.documentRoot}/roadmap-handoff.md，并在候选体验前同步 docs/roadmap.md。交接记录逐项链接已批准的世界原则和模块合同，区分本轮已实现并实测、仍待验证、未来候选；写明后续候选的依赖、验收证据、返工或重新设计触发条件及 ADR/迁移回退状态。未来候选不自动成为本版实现或下一正式版本。下轮版本策划必须先读取这份交接记录和本版真实验收结论。`;
+  return `本版须由 Version PM 维护 ${version.documentRoot}/roadmap-handoff.md，并在候选体验前同步 docs/roadmap.md。即使开发任务清单漏列，开发节点收束也必须补齐交接：写明版本 ID，链接已批准的 design-review.md 与实际 development.json，逐项区分本轮已实现并实测、仍待验证、未来候选；写明后续候选的依赖、验收证据、返工或重新设计触发条件及 ADR/迁移回退状态。候选节点收束再链接 candidate.json，并在 docs/roadmap.md 写入本版交接路径。缺任一来源时节点不能通过。未来候选不自动成为本版实现或下一正式版本。下轮版本策划必须先读取这份交接记录和本版真实验收结论。`;
+}
+
+export function assertApprovedRoadmapHandoff(
+  workspaceRoot: string,
+  version: FormalVersion,
+  stage: VersionStage,
+): void {
+  if (!['development', 'candidate'].includes(stage) || !roadmapHandoffDirection(version)) return;
+  const handoffPath = `${version.documentRoot}/roadmap-handoff.md`.replace(/\\/g, '/');
+  const handoffFile = resolve(workspaceRoot, handoffPath);
+  if (!existsSync(handoffFile)) {
+    throw new Error(`制作人要求的下一轮路线图交接尚未交付：${handoffPath}`);
+  }
+  const handoff = readFileSync(handoffFile, 'utf8');
+  if (
+    !handoff.includes(version.id) ||
+    !handoff.includes('design-review.md') ||
+    !handoff.includes('development.json')
+  ) {
+    throw new Error(`路线图交接缺少本版 ID、已批策划或开发验收来源：${handoffPath}`);
+  }
+  if (stage !== 'candidate') return;
+  const projectRoadmap = readFileSync(resolve(workspaceRoot, 'docs/roadmap.md'), 'utf8');
+  if (!projectRoadmap.includes(handoffPath) || !handoff.includes('candidate.json')) {
+    throw new Error('候选体验前须把本版交接链接写入 docs/roadmap.md，并在交接中引用候选体验结论');
+  }
 }
 
 export function versionStageItemId(
@@ -5374,6 +5400,7 @@ async function finalizeDeliveredVersionStage(
   if (!evidenceAfterStageStart(stageStartedAt, String(report.finishedAt ?? ''))) {
     throw new Error('阶段交付报告早于本轮节点启动，不能复用旧运行');
   }
+  assertApprovedRoadmapHandoff(root, version, stage);
   const validationProfile = reportValidationProfile(report);
   if (
     validationProfile !== 'light' &&
