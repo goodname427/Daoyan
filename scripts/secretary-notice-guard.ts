@@ -157,6 +157,7 @@ import { parseInvocationTokens, versionStageUsage } from './version-usage';
 import { writeVersionRetrospective } from './version-retrospective';
 import {
   assertModuleDesignTaskPlan,
+  assertRoadmapHandoffTaskPlan,
   assertStageTaskPaths,
   assertStageTaskDeliveryScope,
   assertStageTaskPrestartScope,
@@ -2308,7 +2309,7 @@ function approvedDesignHandoff(version: FormalVersion): string {
 function roadmapHandoffDirection(version: FormalVersion): string {
   const approval = approvedDesignHandoff(version);
   if (!/(路线图|roadmap|交接|下一轮|下轮)/i.test(approval)) return '';
-  return `本版须由 Version PM 维护 ${version.documentRoot}/roadmap-handoff.md，并在候选体验前同步 docs/roadmap.md。即使开发任务清单漏列，开发节点收束也必须补齐交接：写明版本 ID，链接已批准的 design-review.md 与实际 development.json，逐项区分本轮已实现并实测、仍待验证、未来候选；写明后续候选的依赖、验收证据、返工或重新设计触发条件及 ADR/迁移回退状态。候选节点收束再链接 candidate.json，并在 docs/roadmap.md 写入本版交接路径。缺任一来源时节点不能通过。未来候选不自动成为本版实现或下一正式版本。下轮版本策划必须先读取这份交接记录和本版真实验收结论。`;
+  return `本版须由 Version PM 维护 ${version.documentRoot}/roadmap-handoff.md，并在候选体验前同步 docs/roadmap.md。开发规划 JSON 必须写 roadmapHandoff:{"owner":"Version PM","path":"${version.documentRoot}/roadmap-handoff.md","acceptance":["可核验标准"]}，在开发任务说明中写明归属与验收；这是 Version PM 的节点收束职责，不分派给游戏 Feature PM。即使旧规划漏列，开发节点收束也必须补齐交接：写明版本 ID，链接已批准的 design-review.md 与实际 development.json，逐项区分本轮已实现并实测、仍待验证、未来候选；写明后续候选的依赖、验收证据、返工或重新设计触发条件及 ADR/迁移回退状态。候选节点收束再链接 candidate.json，并在 docs/roadmap.md 写入本版交接路径。缺任一来源时节点不能通过。未来候选不自动成为本版实现或下一正式版本。下轮版本策划必须先读取这份交接记录和本版真实验收结论。`;
 }
 
 export function assertApprovedRoadmapHandoff(
@@ -2526,11 +2527,15 @@ export function stageTaskDirection(version: FormalVersion, task: VersionStageTas
 
 export function stageFinalizingDirection(version: FormalVersion): string {
   const tasks = stageTasksForCurrentNode(version);
+  const roadmapReconciliation =
+    version.currentStage === 'development' && roadmapHandoffDirection(version)
+      ? `\n你是 ${version.documentRoot}/roadmap-handoff.md 的唯一责任人。先核对 development-tasks.md 是否写明 Version PM 归属与可核验标准；本轮旧规划若遗漏，在节点收束时补记规划缺口及责任，再依据已接受任务的实际证据完成交接。不得把未实测的未来候选写成已交付，也不得让游戏 Feature PM 代写。`
+      : '';
   const moduleReconciliation =
     version.currentStage === 'module-design'
       ? `\n在写详细策划汇总前，读取 ${version.documentRoot}/module-design-tasks.json 的 crossModuleContracts，并按每项任务的直接验收对当前模块产物做一次轻量跨模块对账。先用下方来源提交逐项查看任务实际改动的文档差异，再只读取被差异引用的权威来源段落；不要重读整版历史。对每一条新增或改写的跨模块数值、单位、公式、能量/材料/热流、账户归属、程序身份和玩家余态，记录“改动行→权威来源行→相同或冲突”，不能只抽查清单已点名的 J1 等例子。再用场景键、切片、事实 ID 和版本键定向搜索当前版本全部模块正文及唯一世界理论的消费位置，形成“改动事实→权威来源→所有消费者”的双向核对表；只读取命中段落，不重读全版文档；任何仍在使用旧数值或旧状态的消费者都视为同版冲突，也不能因物理、法力或生命模块在上一轮已闭合就略过。逐项核对事实与版本键、逐付款方和跨账户合计、AST/hash 同一性或别名、六类结果的公开余态。把实际核对的关键行及来源路径写进汇总；只看任务状态或关键词检查不算对账。若发现同一键在两个模块含义或数值不同，或某模块宣称的已批准范围与权威正文冲突，不能写“已联签”并推进主策审核；明确指出冲突及对应任务，保留恢复证据并报告阻断，由原模块任务修正，不由你代写策划正文。未决定的首批范围仍交主策判断是否需要制作人门禁；纸面核对只运行直接文档检查。`
       : '';
-  return `${versionStageDirection(version, version.currentStage)}\n[formal-stage-finalizing]\n你现在以 Version PM 身份收束本节点，所有 Feature PM 的任务均已分别提交。只整合下面带来源的任务结论，不重新实现任务、不重跑已通过的定向命令。若任务证据不足，应报告阻断而不是编造通过。开发完成后的节点不得编辑 docs/status.md 或其他前置策划输入。${moduleReconciliation}\n<stage-task-results>${JSON.stringify(tasks.map((task) => ({ id: task.id, title: task.title, ...(version.currentStage === 'module-design' ? { acceptance: task.acceptance } : {}), commit: task.commit, evidence: task.evidence })))}</stage-task-results>\n开发节点的最终完整门禁由此收束运行在集成代码树上完成；QA 不得重复该门禁。`;
+  return `${versionStageDirection(version, version.currentStage)}\n[formal-stage-finalizing]\n你现在以 Version PM 身份收束本节点，所有 Feature PM 的任务均已分别提交。只整合下面带来源的任务结论，不重新实现任务、不重跑已通过的定向命令。若任务证据不足，应报告阻断而不是编造通过。开发完成后的节点不得编辑 docs/status.md 或其他前置策划输入。${moduleReconciliation}${roadmapReconciliation}\n<stage-task-results>${JSON.stringify(tasks.map((task) => ({ id: task.id, title: task.title, ...(version.currentStage === 'module-design' ? { acceptance: task.acceptance } : {}), commit: task.commit, evidence: task.evidence })))}</stage-task-results>\n开发节点的最终完整门禁由此收束运行在集成代码树上完成；QA 不得重复该门禁。`;
 }
 
 function expectedVersionStageStep(
@@ -6045,6 +6050,13 @@ async function consumeTaskOwnedVersionItem(
     }
     const raw = await readJson(resolve(root, manifest));
     if (stage === 'module-design') assertModuleDesignTaskPlan(raw);
+    if (stage === 'development' && roadmapHandoffDirection(version)) {
+      assertRoadmapHandoffTaskPlan(raw, `${version.documentRoot}/roadmap-handoff.md`);
+      const planSummary = await readFile(resolve(root, summary), 'utf8');
+      if (!planSummary.includes('roadmap-handoff.md') || !planSummary.includes('Version PM')) {
+        throw new Error('开发任务说明须明确 Version PM 的路线图交接归属与验收');
+      }
+    }
     const tasks = parseStageTaskManifest(
       raw,
       stage,
