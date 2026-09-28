@@ -2278,6 +2278,28 @@ function producerDesignFeedback(version: FormalVersion): string {
   return `${feedback?.length ? `制作人退回意见（优先于旧候选方案）：${JSON.stringify(feedback)}。` : ''}${selectedScope ? `制作人已选择首批 ${selectedScope.choice}，原话：${selectedScope.gate.resolutionHistory?.at(-1)?.feedback ?? ''}。${fullDesignApproved ? '完整策划随后也已由制作人批准。' : '这只是首批范围选择，不是完整策划或游戏开发批准。'}不要再次要求选择 A/B/C，应在该范围下给出完整可审阅方案。` : ''}`;
 }
 
+function approvedDesignHandoff(version: FormalVersion): string {
+  const approval = version.orchestration?.decisionGates
+    .filter(
+      (gate) =>
+        gate.kind === 'producer-escalated-design' &&
+        gate.stage === 'design-review' &&
+        gate.status === 'approved' &&
+        !approvedDesignScopeChoice(gate),
+    )
+    .at(-1);
+  const feedback = approval?.resolutionHistory
+    ?.filter((entry) => entry.decision === 'approved' && entry.feedback?.trim())
+    .at(-1)?.feedback;
+  return feedback ? `制作人对完整详细策划的批准及交付要求：${feedback}。` : '';
+}
+
+function roadmapHandoffDirection(version: FormalVersion): string {
+  const approval = approvedDesignHandoff(version);
+  if (!/(路线图|roadmap|交接|下一轮|下轮)/i.test(approval)) return '';
+  return `本版须由 Version PM 维护 ${version.documentRoot}/roadmap-handoff.md，并在候选体验前同步 docs/roadmap.md。交接记录逐项链接已批准的世界原则和模块合同，区分本轮已实现并实测、仍待验证、未来候选；写明后续候选的依赖、验收证据、返工或重新设计触发条件及 ADR/迁移回退状态。未来候选不自动成为本版实现或下一正式版本。下轮版本策划必须先读取这份交接记录和本版真实验收结论。`;
+}
+
 export function versionStageItemId(
   versionId: string,
   stage: VersionStage,
@@ -2357,6 +2379,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
     `执行策略：${policy.mode === 'reduced' ? '精简执行' : '完整执行'}。理由：${policy.reason}`,
     policy.evidence.length > 0 ? `策略依据：${policy.evidence.join('、')}` : '',
     stage === 'design-review' ? producerDesignFeedback(version) : '',
+    ['development', 'candidate', 'archived'].includes(stage)
+      ? `${approvedDesignHandoff(version)}${roadmapHandoffDirection(version)}`
+      : '',
     stageSpecific,
     formalWorkItems,
     `将公开结论写入 ${artifact}，同步必要长期文档和开发日志。`,
@@ -2413,7 +2438,11 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
       ?.decision === 'changes-requested'
       ? `\n这是策划体验验收退回的修复轮次。先读取 ${version.documentRoot}/design-acceptance.json 中失败场景及实际操作证据，只规划为兑现已批准策划所需的修正成果；保留已通过场景和开发来源，修后再进策划体验验收，不得改策划以迁就代码。`
       : '';
-  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
+  const approvedHandoff =
+    stage === 'development' || stage === 'candidate'
+      ? `\n${approvedDesignHandoff(version)}${roadmapHandoffDirection(version)}`
+      : '';
+  return `[formal-stage-task-plan:${stage}]\n你是本正式版本的 Version PM。只规划当前“${label}”节点的交付成果，不实现这些成果，也不创建新的正式版本。\n版本方向：${version.direction}\n当前节点目标：${STAGE_DELIVERABLES[stage] ?? stage}\n已批准范围修订：${formalScopeRevision(version)}；版本文档：${version.documentRoot}。\n先读取当前节点必要的已批准策划、产品意图及上一节点结果；从中提取可独立验收的成果，不把调研、编码、测试等同一成果内部步骤拆成多个 Feature PM。若一个成果已足够，就只列一个任务。不要预先规划后续节点。QA、缺陷复验和候选节点的任务只写测试结论或候选材料，不修改产品实现或游戏测试。${stage === 'design-acceptance' ? '本节点安排未参与实现的主策或策划独立黑盒体验；任务只写当前版本证据目录，必须覆盖每项实际开发工作及跨模块玩家流程，不按代码模块分派给原开发者，也不重复完整代码门禁。' : ''}${designPlan}${contextGuidance}${reentryGuidance}${acceptanceReentry}${approvedHandoff}\n写入 ${manifest}，格式为 {"tasks":[{"id":"稳定短 ID","title":"标题","objective":"成果目标","deliverables":["具体交付物"],"acceptance":["可核验标准"],"dependsOn":["同节点前驱 ID"],"readPaths":["必要输入路径"],"writePaths":["独占写入路径"]}]}。不同任务的重叠写入范围必须有明确依赖；共享节点总报告和 docs/status.md 留给 Version PM 收束。以当前批准范围为边界；新产品解释或不可逆取舍先升级，不得写成既定任务。另写简短 ${version.documentRoot}/${label}-tasks.md 供人审阅。`;
 }
 
 export function repeatedModuleDesignTaskIds(

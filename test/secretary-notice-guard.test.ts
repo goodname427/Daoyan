@@ -765,6 +765,11 @@ describe('formal version producer decisions', () => {
     expect(versionProducerDecision('我再看看，晚点回复')).toBeNull();
     expect(versionProducerDecision('另外我有一个新方向')).toBeNull();
     expect(versionProducerDecision('新增审批确认功能')).toBeNull();
+    expect(
+      versionProducerDecision(
+        '批准当前完整详细策划进入开发；请在本版交付中补齐可追溯的路线图与交接记录，列明下轮候选的依赖和返工触发条件。',
+      ),
+    ).toBe('approved');
     expect(versionMessageIsNewDirection('另外我有一个新方向')).toBe(true);
     expect(versionMessageIsNewDirection('新增审批确认功能')).toBe(true);
     expect(versionMessageIsNewDirection('我再看看，晚点回复')).toBe(false);
@@ -1276,6 +1281,14 @@ describe('formal version stage dispatch', () => {
       '批准完整策划',
     );
     expect(requiresProducerDesignReapproval(version)).toBe(false);
+    version.currentStage = 'development';
+    expect(stageTaskPlanDirection(version)).not.toContain('roadmap-handoff.md');
+    const approvedFeedback = full.resolutionHistory?.at(-1);
+    if (!approvedFeedback) throw new Error('missing approved feedback');
+    approvedFeedback.feedback = '批准完整详细策划进入开发；本版交付可追溯路线图与交接记录。';
+    expect(stageTaskPlanDirection(version)).toContain('roadmap-handoff.md');
+    expect(stageTaskPlanDirection(version)).toContain('制作人对完整详细策划的批准');
+    expect(versionStageDirection(version, 'candidate')).toContain('docs/roadmap.md');
   });
 
   it('holds a candidate environment failure without scheduling another PM round', () => {
