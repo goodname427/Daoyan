@@ -1,19 +1,20 @@
 {
   "tasks": [
     {
-      "id": "mdx-world-review",
-      "title": "有限作用域详细策划的独立主策复审",
-      "objective": "在已批准的范围修订 13 内，独立判断五项 mdx 成果与生命合同能否组成自洽、可供制作人审阅的统一世界规则方案，并明确未闭合事项的去向。",
+      "id": "mdy-world-review",
+      "title": "逐读证据与统一世界规则的独立主策复审",
+      "objective": "在已批准的范围修订 13 内，独立审核五项 mdy 详细策划是否闭合上一轮退回合同，并判断完整规则方案能否交制作人审阅。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项审核结论、定位证据、反例和遗留事项去向。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdx-world-review.json：记录本任务交付物和实际直接检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项审核、定位证据、反例、结论与未闭合事项去向。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdy-world-review.json：记录本任务交付与实际直接检查。"
       ],
       "acceptance": [
-        "以制作人原始方向、范围修订 13、意图对齐记录、上轮 mdw 退回合同及本轮五项 mdx 细则、结果和模块汇总为输入；对每个前轮阻断点标明已覆盖、仍有缺口或须制作人判断，并给出可定位证据。任务完成及纸面参数不能自动等于方案通过。",
-        "从唯一世界理论复核 J1→H2 有限正向域的非循环主辅来源、装载与作用、材料/热/反作用、封印残量、读费和毛价、payer/grant、逐载体 M/tick/神识/队列准入；在同一 S0 与版本锁下复算条件成功、无源拒绝、获准空读和同刻竞争的两本守恒账、自然先序、已付前序和失败余态。B4、AT0、普通驱动及其他域外动作不得借 J1→H2 的来源、价格或容量。",
-        "用接力护送、自修复信标及至少一个未按玩法名称预设的相邻跨实体或事件情形，反证无源、额外供能、二次回收、连续碰撞、迟到补源、创建者死亡、100/20 最后一击、死亡与身份三分判、撤权、双订阅和队列满；区分可组合行为与真正理论缺口，不新增专名元法术。",
-        "核对鼠标、键盘、手柄、妖兽 AI、实体事件和敌方修士在相同世界初态、AST/hash、来源、授权、时序和 seed 下的等价条件；审查推演台编写与预算、演武场观察、返回同书修订的成功、拒绝、获准空读、未知和域外纸面脚本。对照旧原型、已采纳 ADR 与现行可体验入口，明确当前运行事实、新规则设计及开发后原读、实耗和实玩证据的等级，不把原型兼容当作策划约束。",
-        "给出主策审核结论。已批准原则内的可闭合矛盾形成精确的详细策划退回合同；若须新产品解释或不可逆取舍，以通俗语言比较玩家效果、优点、代价和推荐理由交制作人判断。只有阻断关闭且整版可审阅才建议交制作人；不预选开发切片，不修改模块细则、游戏实现、游戏测试或共享节点总报告。"
+        "以制作人意图、范围修订 13、mdx 主策退回结论及本轮五项 mdy 成果为准，逐项判定共同初态四格和逐读报价两项旧缺口是已覆盖、仍有缺口还是须制作人判断；每项给出可定位的文档或旧原型行为证据，任务完成和纸面条件成功均不自动等于整版通过。",
+        "在同一 S0、seed、世界序和版本锁下，交叉核对十五个物理读 ID 的来源、阶段、快照复用或新 I/O、失证重读，与 payer/grant、价格原子、法力毛账、材料/热/反作用及封印残量；复算 JH+、JH−、JH∅、JH× 和另付 P1 新读分支，检查自然先序、已付前序、失败余态及作用后余量不能二次领取。",
+        "核对同版 AST/hash 假设、逐体 M/tick/S/队列准入与 U=1 一订阅两信封串行，不将双订阅或他体容量并入证书；对真实 AST、原读、实扣、容量和实玩标明未来验收证据，不能把设计参数写成已测事实。",
+        "以接力护送、自修复信标及至少一个未按玩法专名预设的相邻跨实体或事件情形，反证无源、额外供能、二次回收、连续碰撞、迟到补源、创建者死亡、100/20 最后一击、生命三分判、撤权、同刻竞争、队列满及域外作用；区分可组合行为、明确不可表达与真正理论缺口，不扩张元法术或暗选开发切片。",
+        "审查鼠标、键盘、手柄、妖兽 AI、实体事件与敌方修士的规范意图等价条件，以及推演台编写和预算、演武场绑定观察、返回同一法术书改 hash 的成功、拒绝、获准空读、未知和域外纸面流程；对照已采纳 ADR、架构不变量与当前可体验旧原型，说明新规则实施所需的覆盖或重做影响，不以原型兼容限制规则。",
+        "给出主策审核结论：已批准原则内仍可闭合的矛盾写成精确的详细策划退回合同；若完整玩家方案涉及新的产品解释、首批窄域是否满足版本目标或不可逆取舍，以通俗语言比较玩家效果、优点、代价及推荐理由交制作人判断。只在方案完整可审阅时建议提交制作人；不修改模块细则、游戏实现、游戏测试、共享节点总报告或 docs/status.md。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -25,11 +26,11 @@
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-action-domain.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-decidable-price.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-entry-script.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-provenance.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-budget.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-four-grid.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-bridge-four-grid.json",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
@@ -46,14 +47,11 @@
         "src/core/pricing.ts",
         "src/game/battle.ts",
         "src/app/LabView.tsx",
-        "src/app/CombatView.tsx",
-        "test/core.test.ts",
-        "test/combat.test.ts",
-        "test/entity-vnext.test.ts"
+        "src/app/CombatView.tsx"
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdx-world-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdy-world-review.json"
       ]
     }
   ]
