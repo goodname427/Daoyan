@@ -986,6 +986,12 @@ describe('formal version stage dispatch', () => {
     expect(stageFinalizingDirection(version)).toContain('不能写“已联签”并推进主策审核');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
+    expect(versionStageDirection(version, 'charter-draft')).toContain('docs/roadmap.md');
+    expect(versionStageDirection(version, 'charter-draft')).toContain('roadmap-handoff.md');
+    const charter = structuredClone(version);
+    charter.currentStage = 'charter-draft';
+    expect(stageTaskPlanDirection(charter)).toContain('docs/roadmap.md');
+    expect(stageTaskPlanDirection(charter)).toContain('roadmap-handoff.md');
     expect(versionStageDirection(version, 'design-review')).toContain('未列举情形');
     expect(versionStageDirection(version, 'design-review')).toContain(
       '不得要求开发后才可能取得的真实运行读数',
