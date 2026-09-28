@@ -1,0 +1,76 @@
+{
+  "taskId": "mdag-life-boundary",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "消费 mdag-physical-contact、mdag-ledger-resign 两份 completed 直接前驱，按物理 S0/seed、C/N/X、普通 k0 板阈值及 Q/热/残片、独立 B4 供料与逐 payer 条件账重签生命边界。区分 LifeId 与 assessmentId、关键 k_m/k_a 和保存/控制三链，逐格裁定成功、拒绝、空读、未知、域外、竞争、创建者死亡和 POST 失证；普通修壳不构成复苏或第二次 DeathBarrier。34 M 仍因 16 读逐 ID 覆盖缺口而为条件价；运行原读、规范 AST/hash、载体旧占用、生命观察与玩家实玩未验。",
+  "commitStatus": "blocked: git add exited 1 because .git/index.lock could not be created (Permission denied); no local commit",
+  "contractGap": "module-design-tasks.json only listed design markdown in writePaths; current runtime stageTasks contract also lists this exact task evidence JSON. intent-alignment.json, predecessor task JSON and module-design-tasks.json are outside this task readPaths; used only for task metadata/predecessor status, not numeric authority.",
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdag-life-boundary\"),v=[\"module-design-mdag-physical-contact.json\",\"module-design-mdag-ledger-resign.json\"].map(n=>JSON.parse(f.readFileSync(p+\"tasks/\"+n,\"utf8\")));a.ok(t);a.deepEqual(v.map(x=>x.status),[\"completed\",\"completed\"]);a.deepEqual(t.writePaths,[p+\"life-identity-design.md\",p+\"tasks/module-design-mdag-life-boundary.json\"]);for(const s of [\"## `mdag-life-boundary`\",\"panel-front\",\"Wpeak=(3/2)/3=1/2\",\"fragment-B1-01\",\"assessmentId\",\"LifeId\",\"DeathBarrier\",\"创建者死亡\",\"POST 失证\",\"获准空读\",\"undeterminedMaterial\",\"outOfDomain\",\"同刻争款\",\"读逐 ID 端点/授权投影\",\"纸面边界、未执行运行验证\"])a.ok(d.includes(s),s);a.equal(10,4+2+4);a.equal(3,2+1);a.equal(4,2+1+1);a.equal(100,53+47);a.equal(32-8,12+12);a.equal(50,16+5+10+3+16);a.equal(9+11+12+1+2,35);a.equal(12+4+8+2,26);console.log(\"PASS mdag life boundaries, predecessors, arithmetic and runtime paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdag life boundaries, predecessors, arithmetic and runtime paths"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdag-life-boundary.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.ok(e.commands.every(c=>c.exitCode===0));a.equal(e.failedAttempts[0].exitCode,1);a.ok(e.summary.includes(\"16 读逐 ID\"));console.log(\"PASS mdag life evidence and exact runtime writePaths\")'",
+      "exitCode": 0,
+      "output": "PASS mdag life evidence and exact runtime writePaths"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS exact runtime writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS exact runtime writePaths worktree scope"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdag-life-boundary.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.ok(d.includes(\"仅 `n≤16` 且逐阶段足额时余 `16−n`\"));a.ok(e.commands.every(c=>c.exitCode===0));a.equal(e.failedAttempts.length,4);console.log(\"PASS final mdag life contract and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS final mdag life contract and evidence"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied; .git is read-only in this workspace, so no staging or local commit occurred."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json",
+      "exitCode": 1,
+      "reason": "An evidence-file patch left a literal leading + before a JSON object; corrected the character and reran formatting successfully."
+    },
+    {
+      "command": "node -e 'const e=require(\"./docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json\"); if(e.commands.length!==7||e.commands.some(c=>c.exitCode!==0))process.exit(1); console.log(\"PASS seven recorded direct checks\")'",
+      "exitCode": 1,
+      "reason": "The same malformed JSON caused an initial parse failure; after removing the stray + the evidence file parses."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json",
+      "exitCode": 1,
+      "reason": "The final n≤16 wording changed Markdown table width; reformatted the life document and reran the direct format check."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-life-boundary.json"
+  ]
+}
