@@ -1,0 +1,65 @@
+{
+  "taskId": "mdaa-carrier-key",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "新增 J1/M1/B1 同版 AST、事件与逐体预算联签附节。核对 D1 26 M/176 tick/37 S、B4 34 M/232 tick/40 S、J1 35–36 M/38 S 的原子、响应峰、引用/FIFO/订阅与结构页条件；本轮无新增读/槽，候选界不变。列五项纸面反证、理论/桥接准入及拒因；真实 AST/hash、逐 VM tick、同时活 S 和部位容量留待获批开发后。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\").split(\"### `mdaa-carrier-key`\")[1];for(const s of [\"26 M\",\"176 tick\",\"37 S\",\"34 M\",\"232 tick\",\"40 S\",\"35 M\",\"36 M\",\"38 S\",\"B1 碰撞后换结构版\",\"同撞双观察\",\"两订阅借一位\",\"队列实满与容量未读\",\"创建者死亡后撤派生权\",\"capacityUnknown\",\"unknownPrice\",\"逐 VM tick\",\"同时活 S\",\"部位容量\"])a.ok(d.includes(s),s);a.equal(193,176+12+5);a.equal(249,232+12+5);a.equal(37,8+2+5+12+10);a.equal(40,8+1+2+19+10);a.equal(38,12+15+1+10);console.log(\"PASS mdaa carrier appendix coverage and paper arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdaa carrier appendix coverage and paper arithmetic",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",d=f.readFileSync(q,\"utf8\");let n=0;for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),x);n++}}console.log(\"PASS \"+n+\" local document links\")'",
+      "exitCode": 0,
+      "output": "PASS 45 local document links",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json') | Sort-Object; $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw \"Changed paths mismatch: $($actual -join ', ')\" }; Write-Output 'PASS only mdaa-carrier-key writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdaa-carrier-key writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-carrier-key.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "格式化证据 JSON，并重新检查两份 writePaths。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "格式化策划文档后，以最终双文件 prettier --check 复验。"
+    }
+  ]
+}
