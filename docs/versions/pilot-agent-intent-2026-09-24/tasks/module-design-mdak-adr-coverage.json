@@ -1,0 +1,47 @@
+{
+  "taskId": "mdak-adr-coverage",
+  "status": "completed",
+  "summary": "本轮已按 S0/seed、B4-v1/slice-B4-01、十九 readId/priceVersion/receiptId、AST/hash 与 capacityCertificateVersion 定向核对物理、账本、程序、生命、理论、桥接及总览；19 组 readId 对应一致，复算为 29 M/≤271 tick、B4 本人条件 44/余 6 M、安装新增设计峰 559 S。旧 34/16、232/249 tick/40 S 隔离为历史条件。ADR-0017 至 0020 的沿用/拟覆盖、旧资产隔离/等价迁移/回退及擦边、双接触、获准空读、POST 失证、同 lot 竞争、旧程序重扣反例已核；同 payer 两先序分别为 B4 已付44/余6与共享账户已付49/余1，合法互斥尝试为 B4 已付30/余20，跨 payer 不借款或复制切片。总览首段仍留 mdaj 时点状态冲突，主策 drb6 为 changes-requested；封闭审计与通用探查的玩家边界及 44/6 M、559 S 对可施放性的范围内判断待主策复核。真实 grant/样本、净入/收据、规范 AST/hash、容量原读及 VM 实耗留开发验收；缺运行签名不构成设计字段、报价或设计容量 unknown 的理由。本证据完成不代表 ADR 采纳、整版联签或运行成功。",
+  "scope": {
+    "readOnlyPredecessors": [
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json"
+    ],
+    "writePaths": [
+      "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json"
+    ]
+  },
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check 'docs/adr/0024-自然接触与旧运动命中语义覆盖.md' 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json'",
+      "exitCode": 0,
+      "output": "Checking formatting...\\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- 'docs/adr/0024-自然接触与旧运动命中语义覆盖.md' 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json'",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$task=(Get-Content '.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json' -Raw | ConvertFrom-Json).stageTasks | Where-Object id -eq 'mdak-adr-coverage'; $actual=@(git -c core.quotePath=false status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\\\','/') } | Sort-Object); $expected=@($task.writePaths | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdak ADR exact writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdak ADR exact writePaths"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json\",x=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(x.taskId,\"mdak-adr-coverage\");a.equal(x.status,\"completed\");a.equal(x.commands.length,3);a.ok(x.commands.every(c=>c.exitCode===0));a.equal(x.failedAttempts.length,1);a.equal(x.failedAttempts[0].exitCode,1);a.deepEqual(x.evidence,x.scope.writePaths);a.ok(x.summary.includes(\"本轮\"));console.log(\"PASS mdak ADR evidence schema and recorded outcomes\")'",
+      "exitCode": 0,
+      "output": "PASS mdak ADR evidence schema and recorded outcomes"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),f=require(\"node:fs\"),p=\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",t=JSON.parse(f.readFileSync(p,\"utf8\")).stageTasks.find(x=>x.id===\"mdak-adr-coverage\"),s=c.execFileSync(\"git\",[\"-c\",\"core.quotePath=false\",\"status\",\"--porcelain\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(s,[...t.writePaths].sort());console.log(\"PASS mdak ADR exact writePaths\")'",
+      "exitCode": 1,
+      "reason": "Node child_process spawnSync git EPERM；改由 PowerShell 直接调用 git 复核并通过。"
+    }
+  ],
+  "evidence": [
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json"
+  ]
+}
