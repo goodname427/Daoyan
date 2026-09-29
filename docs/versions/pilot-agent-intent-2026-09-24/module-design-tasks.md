@@ -1,16 +1,16 @@
-# module-design 本轮任务：B4 逐读覆盖与价版
+# module-design 本轮任务：drb4 十九读与同键重签
 
-最新 drb3 定向退回 B4 十六项前读的端点、获准投影、授权、碰后版本和逐读价；当前 n=unknown、Quote=unknownPrice。首批 A 与此前完整策划的批准仍有效。本轮只规划纸面补证和同键消费者重签，不新增玩家规则、实现或实际可玩验收。
+**问题与范围。** drb4 定向退回 B4 十六项 R0–R3 和三项独立 POST 的逐字段来源、有限端点、授权、新鲜版本、逐项正价及可执行价版；物理 `n` 与账本 `n_extra` 同键冲突，旧复合读价未证明符合已采纳 ADR 0019。首批 A 的 J1、D1、B1 自然接触和 B4 独立来源作为已闭合纸面前驱，只核对，不重做。目标是补齐设计时可判的合同并让消费者同键重签；非目标是游戏实现、新版本、旧框架重做、未来预设与敌方行为开发。运行原读、规范 hash、实扣和实玩由后续阶段验收。
 
-| 模块任务 | 独占交付物 | 相对 mdag 新增判断、反例与验收 |
-| --- | --- | --- |
-| 物理材料 mdah-b4-reads | physics-material-design.md | 逐项签十六前读及三 POST 的有限端点、字段、投影、grant 与碰后版本；核有证、空读、越界、失权、再撞。已闭合 B1 接触只读。 |
-| 法力账本 mdah-b4-prices | mana-ledger-design.md | 逐读正价及价版，判 n=0 或有限 n>0；按阶段复算 B4 本账户，核竞争、拒绝与 POST 失证。 |
-| 程序载体 mdah-b4-program | programmable-spells-design.md | 重签 AST/hash 纸面别名、读索引和 M/tick/S 条件界；核双接触、壳损与球本体容量。 |
-| 生命身份 mdah-b4-life | life-identity-design.md | 按新壳读与付款核惰性修壳、遗体身份和失败余态，不推成复苏。 |
-| 唯一理论 mdah-theory | world-theory-draft.md | 按新事实/价版重放自然先序、逐账付款、程序与生命；核六类余态和 POST 失证。 |
-| 玩家桥接 mdah-bridge | player-bridge-design.md | 六入口及同书往返消费现行五份权威，重签公开提示、私值裁剪与失败余额。 |
+| 受影响模块与任务           | 独占策划正文                    | 相对 mdah 新增判断、反例与直接验收                                                                                                                                     |
+| -------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 物理材料 `mdai-b4-fields`  | `physics-material-design.md`    | 十九读逐 `{endpointId,field,phase}` 签≤4端点、投影、授权与撤权、碰后各版本；消除 `n/n_extra` 混义。复算 `ok([])`、失权、超端点、旧版本、双接触及再撞。                 |
+| 法力账本 `mdai-b4-quote`   | `mana-ledger-design.md`         | 逐字段核 ADR 0019 或有界物理审计原子，签正价、工作界、payer/grant、独立收款槽、ReadTx 与新价版；复算逐账锁付、空读、有价尝试、欠费、竞争和 POST 失证，不预设旧 34/16。 |
+| 程序载体 `mdai-b4-carrier` | `programmable-spells-design.md` | 按新读价重编 AST 设计表达/别名、索引和 M/tick/S 静态界，核球本体页槽、旧占用、双接触和 `capacityUnknown`；旧 40 S/232/249 tick 不自动沿用。                            |
+| 生命身份 `mdai-b4-life`    | `life-identity-design.md`       | 核普通 `k0` 修补与 `k_m/k_a`、LifeId/DeathBarrier 的不变边界，以及创建者死亡撤权、已付与未执行余态。                                                                   |
+| 唯一理论 `mdai-world`      | `world-theory-draft.md`         | 按同场景、事实、读、来源、账户、收据、价版重放公理、初态、能量/材料/逐账量及成功和失败分支；反查其他消费者的冲突位置。                                                 |
+| 玩家桥接 `mdai-bridge`     | `player-bridge-design.md`       | 六入口与推演台同书往返消费现行五份权威；逐格核公开提示、私值裁剪、失败余额，旧成功数字仅在新合同证明后展示。                                                           |
 
-依赖：物理读证 → 账本价版 → 程序与生命 → 唯一理论 → 玩家桥接。每项独占一份模块正文；module-design.md、docs/status.md 与最终一致性由 Version PM 收束。ADR 0024、World/VM 接入和真实体验沿已有后续门禁，不在本节点重派。
+依赖为物理 → 账本 → 程序与生命 → 唯一理论 → 桥接。各任务独占一份模块正文；`module-design.md`、`docs/status.md` 和最终跨模块一致性由 Version PM 收束。若十九读、价版或容量仍有必填设计字段为 `unknown/pending`，不得向下游签可执行成功，应列具体阻断。设计可以给明确公理、参数、逐步账目与未来可执行验收，不能把纸面值称作实测。
 
-同一事实用 S0-physical-v1/seed-physical-v1、C-B1-01→N-B1-impact-01→X-B1-shell-v1、B4-v1/slice-B4-01、readId/receiptId/payerId/priceVersion 及碰后结构/材料/接触/锚版核对。物理签端点与 E0/12、q；账本签逐账户 M；程序签 AST/hash 与容量；生命签身份；理论签因果；桥接签公开投影。消费方定向反查当前正文和唯一理论的同键段落，逐项对照现行来源结论；冲突或不能静态定价列阻断。纸面参数与账目不得称为现场原读、实扣或实玩。
+**跨模块核对键。** 物理拥有 `S0-physical-v1/seed-physical-v1`、`C-B1-01→N-B1-impact-01→X-B1-shell-v1`、`B4-v1/slice-B4-01`、十九 `readId` 的端点/版本与 `E0/12/q`；账本拥有 `payerId/payerGrantId/receiptId/priceVersion` 和逐付款方 M；程序拥有 AST/hash 或纸面别名、容量和 M/tick/S 证书；生命拥有 LifeId 与死亡授权；唯一理论联签，桥接只公开获准投影。对变动的场景键、切片、事实 ID 和价版定向反查本版其他模块及唯一理论命中段，交相应归属者同步或明列阻断。ADR 0024 仍待采纳；代码接入、旧资产处理与真实玩家体验留后续门禁。
