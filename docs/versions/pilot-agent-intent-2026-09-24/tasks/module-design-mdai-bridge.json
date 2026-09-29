@@ -90,6 +90,11 @@
       "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai exact worktree writePaths'",
       "exitCode": 0,
       "output": "PASS mdai exact worktree writePaths"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdai-bridge\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-bridge.json\",\"utf8\")),b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\").split(\"## `mdai-bridge`\")[1],phys=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),ledger=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),prog=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),life=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),theory=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),review=f.readFileSync(p+\"design-review.md\",\"utf8\"),overview=f.readFileSync(p+\"module-design.md\",\"utf8\");a.deepEqual(j.dependsOn,[\"mdai-world\"]);a.ok(j.writePaths.includes(\"docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md\"));a.ok(e.summary.includes(\"六入口同键同价同拒因\"));for(const [s,ks] of [[phys,[\"B4-v1\",\"slice-B4-01\",\"mdai-b4-fields\",\"C-B1-01\"]],[ledger,[\"mdai-B4-audit-v1\",\"receipt-B4-read\",\"44 M\"]],[prog,[\"AST-B4-mdai-audit-v1\",\"B4-R19-projection-v1\",\"C-B4-mdai-carrier-v1\",\"314 S\",\"330 tick\"]],[life,[\"DeathBarrier\",\"assessmentId\",\"k0\"]],[theory,[\"mdai-world\",\"mdai-B4-audit-v1\",\"DeathBarrier\"]]])for(const k of ks)a.ok(s.includes(k),k);for(const k of [\"44 M\",\"余 6\",\"39/暂余 11\",\"2/余 48\",\"capacityUnknown\",\"C-B1-01\",\"C-B1-02\",\"ok([],observedAt\",\"同 payer / 同 slice 竞争\",\"创建者死亡\",\"未知\"])a.ok(b.includes(k),k);a.ok(review.includes(\"drb4-world-closure-review\"));a.ok(review.includes(\"changes-requested\"));a.ok(overview.includes(\"34/16\"));a.ok(overview.includes(\"40 S/249 tick\"));a.ok(e.checks.remainingBlockers.includes(\"drb4\"));console.log(\"PASS mdai current authority and consumer reconciliation\")'",
+      "exitCode": 0,
+      "output": "PASS mdai current authority and consumer reconciliation"
     }
   ],
   "failedAttempts": [
@@ -102,6 +107,11 @@
       "check": "跨正文共享具体 R0 断言",
       "exitCode": 1,
       "result": "第二脚本误要求生命的模板表逐字出现 Read-B4-main-R0；生命以 Ri 范围模板展开，属于检查脚本假设错误。随后改用定向现行段与桥接键、算术断言通过。"
+    },
+    {
+      "check": "本轮跨正文断言使用了与桥接表格不符的样本文字“B1 首撞”",
+      "exitCode": 1,
+      "result": "mdai-bridge 实际用 C-B1-01/C-B1-02 表示自然接触键；断言失败属于脚本样本词不匹配。改按事实键重跑后跨模块与消费者反查通过。"
     }
   ],
   "evidencePaths": [
