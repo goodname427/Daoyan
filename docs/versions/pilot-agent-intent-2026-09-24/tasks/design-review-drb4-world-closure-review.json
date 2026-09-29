@@ -1,0 +1,93 @@
+{
+  "taskId": "drb4-world-closure-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "独立复核六项最新 mdah 来源、跨模块账本与世界合同。十九项 readId 可追踪但未逐项签齐字段授权/样本版本、正价/付款/收据槽和可执行 priceVersion；物理 n 与账本 n_extra 存同键冲突，故 B4 Quote=unknownPrice。J1/D1/B1 因果及成功、合法空读、无权、未知、域外、竞争、双接触、再撞、POST 失证、创建者死亡和未列举实体/事件规则只闭合于条件纸面。ADR 0017–0020 继续约束；ADR 0024 未采纳；旧资产迁移/回退与 World→compiler→VM 新合同接入待运行验证。退回物理材料和法力账本定向补证，再令消费者同键重签。本轮没有新增制作人取舍。",
+  "classification": {
+    "closedOnPaper": [
+      "S0/seed and factId/readId/sourceLotId/sliceId/payerId/version-key chain for J1, D1, natural B1 C/N/X and independent B4 source",
+      "Separate natural B1 energy/material from B4 feedstock and payer accounts",
+      "Paper rules for success, authorized empty read, precheck refusal versus invoked denied probe, unknown, out-of-domain, competition, double contact, recollision, POST evidence loss, creator death and unlisted entity/event"
+    ],
+    "sameKeyConflict": [
+      "Physics n ambiguously means executed authorized reads and also zero under full 16-read coverage; ledger n_extra means additional priced reads",
+      "Pending 1 M composite reads lack reconciliation with adopted ADR-0019 per-field positive pricing and public work bounds"
+    ],
+    "missingDesignEvidence": [
+      "Per-read and independent POST field provenance, finite endpoints, phases, projection, grants, revocation and fresh structural/material/contact/anchor/environment/meter sample versions",
+      "Per-field positive prices, payment authority, unique receipt slots, staged payment rules and signed executable priceVersion",
+      "Canonical B4 AST/hash and object-local capacity certificate"
+    ],
+    "runtimeValidationPending": [
+      "World to compiler to VM to World unified Node transaction, real reads, grants, payer receipts, M/tick/S and six-entry shared-book flow",
+      "ADR-0024 adoption and old DSL/blueprint/preset/save migration, rejection and rollback verification",
+      "Counterexample execution and comparison against static resource bounds"
+    ]
+  },
+  "ownershipAndPassCriteria": {
+    "physicsMaterial": "mdah-b4-reads owns the per-read/post endpoint-field-phase source, finite endpoint, projection/grant/revocation and fresh sample versions; remove n ambiguity. Pass only when every one of 16 R0-R3 and 3 independent POST rows is determinate without unknown placeholders.",
+    "manaLedger": "mdah-b4-prices owns ADR-0019 reconciliation, positive public field prices/work bounds, payer authorization, unique receipt slots, staged payment and signed priceVersion. Pass only when each atom can yield an authorized ReadTx or a separately priced invoked refusal, with executable staged settlement.",
+    "consumers": "After physical and ledger signatures, program regenerates canonical AST/hash, M/tick/S bounds and capacity; life rechecks ordinary k0 and LifeId/death authority; theory, bridge and overview re-sign the same keys before chief review.",
+    "runtime": "Development integration must execute one Node World/compiler/VM/World path from fixed S0/seed, compare grouped/stepped updates, scheduling order and listed counterexamples, and prove static bounds are at least measured use; old assets must be preserved, migrated or specifically rejected with rollback evidence."
+  },
+  "producerDecision": "none; no new player-facing interpretation or irreversible choice was evidenced",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb4-world-closure-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-reads.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-bridge.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+    "src/core/world.ts",
+    "src/core/compiler.ts",
+    "src/core/vm.ts"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/design-review-drb4-world-closure-review.json\",\"utf8\")),d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\"),s=d.split(\"## `drb4-world-closure-review` 本轮复核补记\")[1];a.equal(j.taskId,\"drb4-world-closure-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");a.ok(s);for(const p of j.evidence)a.ok(f.existsSync(p),p);for(const x of [\"已闭合（纸面）\",\"同键冲突\",\"缺证\",\"待运行验证\",\"POST-B4-main\",\"POST-B4-heat\",\"POST-B4-material\",\"ADR-0017\",\"ADR-0024\",\"World→compiler→VM\",\"创建者死亡\",\"未列举实体/事件\",\"不升级制作人\"])a.ok(s.includes(x),x);console.log(\"PASS drb4 task identity, evidence paths, classifications and closure matrix\")'",
+      "exitCode": 0,
+      "output": "PASS drb4 task identity, evidence paths, classifications and closure matrix"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb4-world-closure-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb4-world-closure-review.json",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/design-review-drb4-world-closure-review.json\",\"utf8\")),d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\"),s=d.split(\"## `drb4-world-closure-review` 本轮复核补记\")[1];a.equal(j.taskId,\"drb4-world-closure-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");a.ok(s);for(const p of j.evidence)a.ok(f.existsSync(p),p);for(const x of [\"已闭合（纸面）\",\"同键冲突\",\"缺证\",\"待运行验证\",\"POST-B4-main\",\"POST-B4-heat\",\"POST-B4-material\",\"ADR-0017\",\"ADR-0024\",\"World→compiler→VM\",\"创建者死亡\",\"未列举实体/事件\",\"不升级制作人\"])a.ok(s.includes(x),x);console.log(\"PASS drb4 task identity, evidence paths, classifications and closure matrix\")'",
+      "exitCode": 1,
+      "reason": "首次内容断言要求新追加段显式列出三个 POST ID；追加补记后该检查通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb4-world-closure-review.json",
+      "exitCode": 1,
+      "reason": "格式检查发现追加内容需由 Prettier 规范化；执行 --write 后最终 --check 通过。"
+    }
+  ],
+  "scopeNote": "仅追加指定 findings 并登记此精确任务 JSON；不改模块正文、ADR、实现、测试、节点报告或 status。不运行统一 verify，不执行 commit/push/tag/release。"
+}
