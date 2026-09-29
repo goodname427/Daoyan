@@ -1,0 +1,111 @@
+{
+  "taskId": "mdai-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "在首批 A 已批准范围内重签玩家桥接现行 mdai-bridge：同一本 book-mdu-01/v1 的编辑、演武绑定观察、返书改程序，六入口同键同价同拒因；B4-v1/slice-B4-01 十九项有限读、mdai-B4-audit-v1、逐 payer 条件账、十格公开提示及私值裁剪。只签纸面合同，drb4 仍 changes-requested，真实 Quote=unknownPrice、球容量 capacityUnknown。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json"
+    ],
+    "readOnlyPredecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json",
+    "nonGoals": "不改模块权威、总览、ADR、代码或真实存档；不把条件成功、纸面 hash 和容量候选写成已可玩。"
+  },
+  "checks": {
+    "actualResult": "物理 mdai-b4-fields、账本 mdai-b4-quote、程序 mdai-b4-carrier、生命 mdai-b4-life 和唯一理论 mdai-world 的同一 B4-v1/slice-B4-01、十九读、priceVersion、程序假设身份与因果余态在本桥接当前段纸面相合。直接算术复核十九读 29 M/≤271 tick、完整 44 M/余 6、POST 全失证已付 39/暂余 11、独立空读 2/余 48。J1 本人 32 加 P0/P2 的 1/2、条件 P1 的 1，为跨账户 35/36；D1 本人 26/余 14；彼此不代付。旧 mdah 桥接保留为历史且顶部撤证，module-design.md 仍停 mdah 待 Version PM 收束。真实 grant、校准样本、净入/实扣、规范 hash、球容量与 VM 实耗缺，当前不得展示可执行成功。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md#mdai-b4-fields; world-theory-draft.md#mdai-world",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "C-B1-01",
+          "N-B1-impact-01",
+          "X-B1-shell-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "V0…VP"
+        ],
+        "result": "十九项逐 endpoint/field/phase 和独立 POST、自然 10=4+2+4 E0/原板 3q=2q+残片 q、B4 独立 100=53+47 E0/12/包 32/12→8/12/仓 4q=2q+q+q 与桥接一致；未由 M 推 E0。"
+      },
+      {
+        "source": "mana-ledger-design.md#mdai-b4-quote; docs/adr/0019-属性探查与资源账本.md#决策三",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "acct-B1-B4",
+          "payerGrant-B4-v1",
+          "receipt-B4-funded-v1"
+        ],
+        "result": "固定审计公开 p(E)/t(F,E) 与任意单字段探查分开；R 阶段每次 6、POST 5、十九读 29、装 5、作用 10，总 44/余 6，attempt 1 与成功互斥；J1/P0/P1/P2、D1 独立账户未并款。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdai-b4-carrier",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdai-audit-v1",
+          "B4-R19-projection-v1",
+          "H_B4_mdai_assumed_v1",
+          "C-B4-mdai-carrier-v1"
+        ],
+        "result": "B4 新身份不是旧 B4 的别名，十九索引和 313/330 tick、314 S 为条件界；J1 纸面别名与 D1 独立证书不互借。规范 hash、页/槽/FIFO/旧占用未证。"
+      },
+      {
+        "source": "life-identity-design.md#mdai-b4-life; world-theory-draft.md#mdai-world",
+        "versionKeys": [
+          "LifeId",
+          "assessmentId",
+          "DeathBarrier",
+          "rev-B4-read-v1",
+          "rev-B4-post-v1"
+        ],
+        "result": "普通 k0 壳修不复苏；创建者四证齐才第五阶段签一次屏障、第六阶段撤派生未来权，B1 自有来源/账户/grant 另验；POST 未证包余待测。"
+      }
+    ],
+    "consumerReverseCheck": "player-bridge-design.md#mdai-bridge 已消费现行五正文与唯一理论；module-design.md:1–22 仍以 mdah 受阻、旧候选读与 34/16 M、40 S/232/249 tick 展示，Version PM 须改为十九固定读、新价版条件 44/6、314 S/313/330 tick 条件界与真实证阻断，主策再复核。真实六入口、共享书持久化和同书往返留开发及候选验收。",
+    "remainingBlockers": "drb4 仍 changes-requested；主策待审封闭固定审计与通用单字段探查边界、44/6 对可施放性的影响。缺现场 grant/撤权/样本、付款收据、规范 AST/hash、本体容量及 VM tick/S，不得宣称可执行成功。若出现任意读、跨体免费权限/来源、关键复苏或死后独立提款，退权威和主策，不由桥接私定。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\").split(\"## `mdai-bridge`\")[1];for(const k of [\"book-mdu-01/v1\",\"mdai-B4-audit-v1\",\"AST-B4-mdai-audit-v1\",\"POST-B4-material\",\"44 M\",\"余 6\",\"39/暂余 11\",\"2/余 48\",\"capacityUnknown\",\"DeathBarrier\",\"鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士\"])a.ok(b.includes(k),k);a.deepEqual([4*(1+2+1+2)+(2+1+2),4*(10+14+11+21)+(14+11+22),29+5+10,50-44,24+5+10,50-39,50-2],[29,271,44,6,39,11,48]);console.log(\"PASS mdai bridge direct contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdai bridge direct contract"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json\",e=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(e.taskId,\"mdai-bridge\");a.equal(e.status,\"completed\");a.equal(e.scope.writePaths.length,2);a.ok(e.commands.every(x=>x.exitCode===0));a.equal(e.failedAttempts.length,2);console.log(\"PASS mdai evidence JSON\")'",
+      "exitCode": 0,
+      "output": "PASS mdai evidence JSON"
+    },
+    {
+      "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai exact worktree writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdai exact worktree writePaths"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "check": "跨正文共享读模板断言",
+      "exitCode": 1,
+      "result": "首次脚本误要求物理逐行表出现程序模板字面 Read-B4-main-Ri；物理实际列 Read-B4-main-R0 等，属于检查脚本假设错误，文档无此冲突。"
+    },
+    {
+      "check": "跨正文共享具体 R0 断言",
+      "exitCode": 1,
+      "result": "第二脚本误要求生命的模板表逐字出现 Read-B4-main-R0；生命以 Ri 范围模板展开，属于检查脚本假设错误。随后改用定向现行段与桥接键、算术断言通过。"
+    }
+  ],
+  "evidencePaths": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md#mdai-bridge同键同价有限十九读与玩家投影范围修订-13",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json"
+  ]
+}
