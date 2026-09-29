@@ -1,19 +1,19 @@
 {
   "tasks": [
     {
-      "id": "drb5-world-closure-review",
-      "title": "mdai 首批 A 同版世界合同主策复核",
-      "objective": "独立审核六项 mdai 详细策划及模块总览的同键闭合；若仍有冲突或缺证，给原权威归属和定向退回条件。",
+      "id": "drb6-world-closure-review",
+      "title": "mdaj 首批 A 同版世界合同主策复核",
+      "objective": "独立审核四项 mdaj 修订、模块总览与 drb5 退回项，判定范围修订 13 的首批 A 纸面规则能否跨模块联签；冲突须给原归属和可判恢复条件。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项证据、反例、冲突归属和审核建议，保留历史记录。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json：记录任务 ID、审核结论、证据路径及通过的直接文档检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮证据、反例、审核结论和定向退回建议，保留历史发现。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json：记录任务 ID、结论、证据路径和实际通过的直接检查。"
       ],
       "acceptance": [
-        "以制作人原始方向、范围修订 13、已选首批 A 及既有审批事实为边界，核六项 mdai 交付、module-design.md 的阻断结论与上一轮 drb4 发现；区分现行权威、历史条件数、纸面证明及留待开发的运行证据，不把任务 completed 等同跨模块联签。",
-        "逐 readId 核 B4 十六项 R0–R3 与三项独立 POST 的字段来源、phase、投影、授权、版本和 n_19/n_extra；按 ADR 0019 对照物理现行段的旧待定价、空读 50→49，与账本 mdai 价版中该读 2 M、空读 50→48 的同键冲突。复算逐 payer/receipt、锁付、成功与拒绝余态；冲突未消除时不得把 29 M 读价、44 M 已付/余 6 M 或旧 34/16 宣告为同版可执行成功。",
-        "按同一 S0/seed、factId、readId、sourceLotId、sliceId、priceVersion 和程序身份，复核 J1、D1、B1 自然接触→B4 的来源、双边物理/材料/热、付款授权、AST 与本体容量、生命身份和六入口同书流程；覆盖合法空读、无权、失鲜、未知价/容量、域外、竞争、双接触、再撞、POST 失证、创建者死亡，以及未按玩法名列举的实体与事件。",
-        "逐项标为已闭合、同键冲突、缺设计证或待运行验证，给文件或行为证据、原权威归属、最小复核范围和可判通过条件；核 ADR 0017–0020 与待采纳 ADR 0024 的覆盖、旧原型重做影响及 World→compiler→VM 接入边界。未来法球付费响应、更多预设和敌方修士仅用作扩展反例，不扩入首批实现。",
-        "只有新增产品解释或不可逆取舍才提交制作人通俗的玩家效果、选项优缺点、代价、推荐及理由；既有文档同键冲突直接定向退回。不得修改模块正文、ADR、游戏实现或测试，不以纸面审核代替开发实测或玩家体验。"
+        "以制作人原始方向、意图对齐、范围修订 13、已选首批 A 和既有审批事实为边界，对照 drb5、四项 mdaj 交付及 module-design.md 阻断；逐项标为已闭合、同键冲突、缺设计证或待开发实测，不把 completed、条件数和旧草案当作联签或运行证据。",
+        "按 S0-physical-v1/seed-physical-v1、B4-v1/slice-B4-01、readId/priceVersion/receiptId、AST 假设及容量版，复核十九读字段、授权、阶段、新价、合法空读 2 M/50→48、逐 payer 已付/释锁、安装峰 559 S 与响应峰 314 S；重点检查物理 704/710、程序 960、理论 1287–1290 及总览指出的现行状态冲突。旧 1 M 只作历史候选。",
+        "以 J1、D1、B1 自然接触→B4 独立来源及六入口同书往返核物理、资源、程序、生命与桥接闭合；覆盖获准空读、无权/隐藏、失鲜、未知价或容量、域外、竞争、双接触、再撞、POST 失证、创建者死亡及未列举实体/事件。逐项列文件或行为证据、权威归属、最小复核范围和通过条件。",
+        "核 ADR 0017–0020、待采纳 ADR 0024、旧原型重做影响与 World→compiler→VM 接入边界；真实 grant/原读/收据、规范 hash、球容量、VM M/tick/S 实耗和推演台—演武场实玩只列开发后验收条件。未来法球付费响应、更多预设与敌方修士仅作扩展反例。",
+        "仅有新增玩家规则或不可逆取舍时，向制作人给通俗选项、玩家效果、利弊、代价和推荐理由；同键文档冲突定向退回原归属。不修改模块正文、ADR、游戏实现或测试；共享 design-review.md、design-review.json 与 docs/status.md 留 Version PM 收束。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -24,13 +24,11 @@
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb4-world-closure-review.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
@@ -49,7 +47,7 @@
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json"
       ]
     }
   ]
