@@ -1002,6 +1002,7 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskPlanDirection(version)).toContain('不得要求尚未实现的运行读数');
     expect(stageTaskPlanDirection(version)).toContain('对象与端点 ID');
     expect(stageTaskPlanDirection(version)).toContain('不能因运行尚未产生签名');
+    expect(stageTaskPlanDirection(version)).toContain('总览是否仍阻断');
     expect(versionStageDirection(version, 'module-design')).toContain('真实样本值、实际收据');
     expect(stageTaskPlanDirection(version)).toContain('逐付款方与跨账户合计');
     expect(stageTaskPlanDirection(version)).toContain('同一 AST/hash 或别名');
@@ -1016,6 +1017,7 @@ describe('formal version stage dispatch', () => {
     expect(stageFinalizingDirection(version)).toContain('逐项查看任务实际改动的文档差异');
     expect(stageFinalizingDirection(version)).toContain('不能只抽查清单已点名的 J1 等例子');
     expect(stageFinalizingDirection(version)).toContain('双向核对表');
+    expect(stageFinalizingDirection(version)).toContain('旧游戏状态语义');
     expect(stageFinalizingDirection(version)).toContain('不能写“已联签”并推进主策审核');
     expect(versionStageDirection(version, 'charter-draft')).toContain('intent-alignment.json');
     expect(versionStageDirection(version, 'charter-draft')).toContain('未列举情形');
@@ -1031,6 +1033,7 @@ describe('formal version stage dispatch', () => {
     );
     expect(versionStageDirection(version, 'design-review')).toContain('连续退回时逐项比较新旧证据');
     expect(versionStageDirection(version, 'design-review')).toContain('穷尽同键冲突');
+    expect(versionStageDirection(version, 'design-review')).toContain('不单独阻断纸面策划联签');
     expect(versionStageDirection(version, 'module-design')).toMatch(
       /^\[formal-stage:module-design\]/,
     );
@@ -1076,6 +1079,7 @@ describe('formal version stage dispatch', () => {
       'readPaths 漏列所需来源时报告合同缺口',
     );
     expect(stageTaskDirection(version, version.stageTasks[0])).toContain('不能因运行尚未产生签名');
+    expect(stageTaskDirection(version, version.stageTasks[0])).toContain('总览是否仍阻断');
   });
 
   it('passes a rejected producer design choice into the next module plan', () => {
