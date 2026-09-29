@@ -1,0 +1,130 @@
+{
+  "taskId": "mdah-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "outcome": "design-replay-completed; B4 executable Quote and cross-module signoff remain blocked",
+  "writePaths": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json"
+  ],
+  "sources": {
+    "chiefReview": "design-review.md#drb3-world-closure-review: changes-requested, B4 field grants and price mapping remain unsigned",
+    "directPredecessors": [
+      "tasks/module-design-mdah-b4-program.json: completed; executable Quote and capacity certificate blocked",
+      "tasks/module-design-mdah-b4-life.json: completed; executable Quote and life observation unverified"
+    ],
+    "physics": "physics-material-design.md#mdag-physical-contact/#mdah-b4-reads: S0-physical-v1/seed-physical-v1, C-B1-01→N-B1-impact-01→X-B1-shell-v1, B4-v1/slice-B4-01; 16 candidate R0-R3 reads and 3 independent POSTs, no field grants or samples",
+    "ledger": "mana-ledger-design.md#mdah-b4-prices: mdah-B4-read-v1[pending], Quote=unknownPrice, acct-B1-B4/payerGrant-B4-v1, separate M_unavailable.read/post slots",
+    "program": "programmable-spells-design.md#mdah-b4-program: AST-B4-mdaa-assumed-v1/H_B4_assumed_v1 assumption, canonical hash unknown, capacityUnknown, conditional 19 indices/40 S/232/249 tick",
+    "life": "life-identity-design.md#mdah-b4-life: ordinary k0 only, LifeId/assessmentId and critical chains separate",
+    "consumerGap": "player-bridge-design.md#mdag-bridge-reconcile and module-design.md#mdag currently consume older B4 price/read wording; Version PM must close after source authorities sign"
+  },
+  "reconciliation": {
+    "physics": "Natural ±6 μ·L/s, 10=4+2+4 E0 and corpse 3q=2q+fragment q precede paid work; independent B4 72+28=100=53+47 E0/12, package 32/12→8/12, 24/12=12/12 shell work+12/12 heat, depot 4q=2q isolated+q shell+q waste. No M/E0/q conversion or duplicate damage.",
+    "payerAccounts": "J1 self 9+11+12=32 M; P0 1, P2 2, optional authorized P1 1, cross-account 35/36 M. D1 own net 40, debit 12+4+8+2=26, conditional 14. B4 own net 50, only if all 19 reads each valid 1 M and n_extra=0 then debit 16+5+10+3=34, post balance 16; pre-POST paid 31/temporary 19. Current receipts absent.",
+    "conditionalPrice": "n_extra denotes additional priced reads beyond 16 pre-reads and 3 POSTs; physical/ledger n terminology conflicts. Only if each read is authorized and valid 1 M with unchanged other slots does 34+n_extra / 16−n_extra apply for 0≤n_extra≤16; otherwise sum per-read p_i and issue new priceVersion. ADR-0019 relation/field pricing and public bound unsigned.",
+    "programCertificate": "B4 assumed AST/hash is independent from J1 single fifteen-read alias and D1. Canonical AST bytes/SHA-256, descriptor, field projection, price, page/FIFO/old occupancy and VM usage are not measured. New reads force recompilation and M/tick/S recertification; capacityUnknown until same-version raw reads.",
+    "visibleResidual": "Only authorized ordinary-shell facts, own settled payments/temporary balance and clipped reason; no hidden endpoint, other payer balance, unobserved package remainder or resurrection.",
+    "branches": [
+      "conditional success prerequisite",
+      "contact without fracture",
+      "no collision",
+      "authorized empty read",
+      "pre-read refusal versus invoked denied read",
+      "raw read/price/capacity unknown",
+      "out of domain",
+      "same payer/lot competition",
+      "recollision and simultaneous double contact",
+      "POST loss of evidence"
+    ],
+    "blockers": [
+      "B4-read-coverage-v1",
+      "B4-post-evidence-v1",
+      "B4-payer-receipt-v1",
+      "B4-program-identity-v1",
+      "physical/ledger n definition conflict",
+      "ADR-0019 composite versus per-field price mapping"
+    ],
+    "developmentAcceptance": "Obtain actual two-ended read samples and grants, posted per-payer debit/receipts, canonical AST/hash, carrier capacity/occupancy and VM tick/S, six-entry same-book experience in approved development; paper arithmetic is not runtime evidence."
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),s=d.split(\"## `mdah-theory`\")[1].split(\"## 修订纪律\")[0],pr=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-b4-program.json\",\"utf8\")),li=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-b4-life.json\",\"utf8\"));a.ok(s);a.equal(pr.status,\"completed\");a.equal(li.status,\"completed\");for(const k of [\"mdah-B4-read-v1[pending]\",\"Quote=unknownPrice\",\"capacityUnknown\",\"C-B1-01→N-B1-impact-01→X-B1-shell-v1\",\"slice-B4-01\",\"factId\",\"priceVersion\",\"Read-B4-material-R0\",\"POST-B4-main/heat/material\",\"获准空\",\"接触不破\",\"无撞\",\"拒绝\",\"域外\",\"竞争\",\"再撞\",\"双接触\",\"POST 失证\",\"LifeId\",\"assessmentId\",\"Version PM\"])a.ok(s.includes(k),k);a.equal(10,4+2+4);a.equal(100,72+28);a.equal(100,53+47);a.equal(24,12+12);a.equal(34,16+3+5+10);a.equal(50,34+16);a.equal(31,16+5+10);a.equal(35,32+1+2);a.equal(36,35+1);a.equal(40,26+14);a.equal(232,19*10+10+20+12);a.equal(249,232+12+5);a.equal(40,8+1+2+19+10);console.log(\"PASS mdah theory keys, branches, predecessors and paper arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdah theory keys, branches, predecessors and paper arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json"
+      ]
+    },
+    {
+      "command": "$actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdah exact two writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdah exact two writePaths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-theory.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdah-theory\"),docs=[\"physics-material-design.md\",\"mana-ledger-design.md\",\"programmable-spells-design.md\",\"life-identity-design.md\"].map(x=>f.readFileSync(p+x,\"utf8\"));a.equal(e.taskId,\"mdah-theory\");a.equal(e.status,\"completed\");a.deepEqual(e.writePaths,t.writePaths);a.deepEqual(e.evidence,t.writePaths);for(const phase of [\"R0\",\"R1\",\"R2\",\"R3\"])for(const family of [\"main\",\"aux\",\"heat\",\"material\"]){const id=\"Read-B4-\"+family+\"-\"+phase;for(const d of docs)a.ok(d.includes(id),id)}for(const family of [\"main\",\"heat\",\"material\"]){const id=\"POST-B4-\"+family;for(const d of docs)a.ok(d.includes(id),id)}console.log(\"PASS mdah exact contract and 16+3 source consumers\")'",
+      "exitCode": 0,
+      "output": "PASS mdah exact contract and 16+3 source consumers",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json",
+      "exitCode": 1,
+      "reason": "Initial evidence JSON formatting differed from Prettier; formatted the JSON and reran the same check."
+    },
+    {
+      "command": "rg -n 'mdah|priceVersion|slice-B4-01|B4-v1|readId' docs/versions/pilot-agent-intent-2026-09-24/{physics-material-design.md,mana-ledger-design.md,programmable-spells-design.md,life-identity-design.md,world-theory-draft.md,module-design.md}",
+      "exitCode": 1,
+      "reason": "PowerShell does not expand brace path syntax; repeated with literal paths."
+    },
+    {
+      "command": "rg -n 'hitProjectile|movePower|life = 2.4|damage' src/core/world.ts src/core/world.test.ts src/core/compiler.ts src/core/vm.ts",
+      "exitCode": 1,
+      "reason": "src/core/world.test.ts does not exist; located relevant test/entity-vnext.test.ts and read targeted lines."
+    },
+    {
+      "command": "rg --files src test tests | rg '(world|spell|vm).*(test|spec)\\.(ts|tsx)$'",
+      "exitCode": 1,
+      "reason": "tests directory does not exist; located relevant test/entity-vnext.test.ts by targeted content search."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-theory.json"
+  ]
+}
