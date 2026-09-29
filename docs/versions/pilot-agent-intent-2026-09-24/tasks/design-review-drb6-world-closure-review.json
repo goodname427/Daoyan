@@ -1,0 +1,72 @@
+{
+  "taskId": "drb6-world-closure-review",
+  "status": "completed",
+  "reviewDecision": "changes-requested",
+  "summary": "四项 mdaj 的物理旧价、十九读与安装设计峰已修订，首批 A 的有限纸面算术可复核；物理、程序、账本、生命、理论和总览的现行消费者状态仍同键冲突，详细策划联签定向退回。真实授权、原读、收据、规范 hash、球容量、VM 实耗及实玩留开发验收；既有制作人范围与开发批准不撤销。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json"
+    ],
+    "nonGoals": "不改模块正文、ADR、实现、测试、共享审核结论、状态或运行态；不运行统一代码门禁，不提交、推送或发布。"
+  },
+  "checks": {
+    "paperClosed": [
+      "mdaj-B4-audit-v1 十九读字段、授权设计、阶段与正价",
+      "Read-B4-material-R0 合法空读 2 M/≤21 tick，条件 50→48",
+      "B4 条件读 29 M、全链已付 44 M/余 6 M、POST 全失证已付 39 M/暂余 11 M 并释锁 5 M",
+      "S_install 559 S、S_response 314 S、条件 Smax 559 S",
+      "J1、D1、B1 自然接触至 B4 独立来源、普通 k0 生命边界及六入口同书往返的有限纸面分支"
+    ],
+    "sameKeyConflicts": [
+      "physics-material-design.md:704,710 安装设计界仍称未证",
+      "programmable-spells-design.md:960 消费者仍称待更新",
+      "mana-ledger-design.md:944 程序旧身份和下游待消费",
+      "life-identity-design.md:723 总览仅 mdah 的旧判断",
+      "world-theory-draft.md:1287-1290 桥接待派及缺 559 S 的过时句",
+      "module-design.md:1-20 旧物理阻断及安装峰消费状态待 Version PM 重核"
+    ],
+    "designEvidenceGap": "ADR 0024 待采纳；若扩大任意字段探查或首批付费响应，需要原权威另签价格、程序与边界。本轮未发现必须请制作人重复选择首批 A 的新规则。",
+    "afterDevelopmentAcceptance": "真实逐端 grant/撤权与原读、净入/锁/不可取收据、规范 AST/hash、球容量与旧占用、World→compiler→VM 的物理和 M/tick/S 实耗、推演台至演武场六入口同书实玩。"
+  },
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb6-world-closure-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-20",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:631-710",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:886-946",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:866-960",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:676-723",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1239-1293",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:366-385",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"## \"+String.fromCharCode(96)+\"drb6-world-closure-review\").at(-1),j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb6-world-closure-review.json\",\"utf8\"));a.equal(j.taskId,\"drb6-world-closure-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");for(const x of [\"同键冲突\",\"已闭合\",\"待开发实测\",\"559 S\",\"314 S\",\"50→48\",\"39/11\",\"World→共享 AST→compiler→VM→World\"])a.ok(d.includes(x),x);a.ok(j.commands.every(x=>x.command&&x.exitCode===0));console.log(\"PASS drb6 evidence, review categories, budget and acceptance boundary\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段\").at(-1),y=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\").at(-1),r=s=>s.split(/\\r?\\n/).filter(z=>/^\\| `(?:Read-B4-|POST-B4-)/.test(z)).slice(0,19),u=r(x),v=r(y),id=z=>z.match(/(?:Read-B4-(?:main|aux|heat|material)-R[0-3]|POST-B4-(?:main|heat|material))/)?.[0];a.equal(u.length,19);a.equal(v.length,19);for(let i=0;i<19;i++)a.equal(id(u[i]),id(v[i]));for(const s of [\"2 M/≤21 tick\",\"50→48\",\"S_install=max(279,559,281)=559 S\"])a.ok((x+f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\")).includes(s),s);console.log(\"PASS drb6 19 read IDs, current empty-read price and installation peak\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "$expected=@(\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json\") | Sort-Object; $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,\"/\") } | Sort-Object); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error \"writePaths mismatch\"; exit 1 }; Write-Output \"PASS drb6 exact two writePaths\"",
+      "exitCode": 0
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb6-world-closure-review.json\",\"utf8\")),want=[p+\"design-review-findings.md\",p+\"tasks/design-review-drb6-world-closure-review.json\"].sort(),got=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(String.fromCharCode(92),\"/\")).sort();a.deepEqual(j.scope.writePaths,want);a.deepEqual(got,want);console.log(\"PASS drb6 exact two writePaths\")'",
+      "exitCode": 1,
+      "reason": "Node 子进程调用 git 时宿主返回 spawnSync git EPERM；改由 PowerShell 直接运行 git status 完成同一范围检查。"
+    }
+  ]
+}
