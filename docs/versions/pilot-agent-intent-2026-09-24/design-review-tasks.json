@@ -1,19 +1,19 @@
 {
   "tasks": [
     {
-      "id": "drb6-world-closure-review",
-      "title": "mdaj 首批 A 同版世界合同主策复核",
-      "objective": "独立审核四项 mdaj 修订、模块总览与 drb5 退回项，判定范围修订 13 的首批 A 纸面规则能否跨模块联签；冲突须给原归属和可判恢复条件。",
+      "id": "drb7-world-closure-review",
+      "title": "mdak 首批 A 同版世界合同主策复核",
+      "objective": "独立审核六项 mdak 修订及模块汇总是否消除 drb6 的同键冲突，判断范围修订 13 与首批 A 的详细策划能否作为自洽、可审阅的同版方案。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮证据、反例、审核结论和定向退回建议，保留历史发现。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json：记录任务 ID、结论、证据路径和实际通过的直接检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐项裁定、证据、反例及通过或定向退回条件，保留历史记录。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json：记录任务 ID、审核结论、证据路径和实际通过的直接检查。"
       ],
       "acceptance": [
-        "以制作人原始方向、意图对齐、范围修订 13、已选首批 A 和既有审批事实为边界，对照 drb5、四项 mdaj 交付及 module-design.md 阻断；逐项标为已闭合、同键冲突、缺设计证或待开发实测，不把 completed、条件数和旧草案当作联签或运行证据。",
-        "按 S0-physical-v1/seed-physical-v1、B4-v1/slice-B4-01、readId/priceVersion/receiptId、AST 假设及容量版，复核十九读字段、授权、阶段、新价、合法空读 2 M/50→48、逐 payer 已付/释锁、安装峰 559 S 与响应峰 314 S；重点检查物理 704/710、程序 960、理论 1287–1290 及总览指出的现行状态冲突。旧 1 M 只作历史候选。",
-        "以 J1、D1、B1 自然接触→B4 独立来源及六入口同书往返核物理、资源、程序、生命与桥接闭合；覆盖获准空读、无权/隐藏、失鲜、未知价或容量、域外、竞争、双接触、再撞、POST 失证、创建者死亡及未列举实体/事件。逐项列文件或行为证据、权威归属、最小复核范围和通过条件。",
-        "核 ADR 0017–0020、待采纳 ADR 0024、旧原型重做影响与 World→compiler→VM 接入边界；真实 grant/原读/收据、规范 hash、球容量、VM M/tick/S 实耗和推演台—演武场实玩只列开发后验收条件。未来法球付费响应、更多预设与敌方修士仅作扩展反例。",
-        "仅有新增玩家规则或不可逆取舍时，向制作人给通俗选项、玩家效果、利弊、代价和推荐理由；同键文档冲突定向退回原归属。不修改模块正文、ADR、游戏实现或测试；共享 design-review.md、design-review.json 与 docs/status.md 留 Version PM 收束。"
+        "以制作人原始方向、intent-alignment.json、范围修订 13、首批 A 和既有审批事实为边界，对照 drb6 退回项、六项 mdak 交付与 module-design.md 当前首段；逐项标为已闭合、仍冲突、缺设计证或待开发实测，给出现行文件或行为证据。不能用任务 completed、历史段落或条件数代替同版联签。",
+        "按 S0-physical-v1/seed-physical-v1、B4-v1/slice-B4-01、十九 readId、priceVersion/receiptId、AST/hash 假设和容量版核查物理、账本、程序、生命、唯一理论、桥接及总览；复算合法空读 2 M/50→48、B4 本人条件 44 M/余 6 M、POST 失证 39 M/暂余 11 M、程序安装设计峰 559 S 与准入 C_S−O≥559，区分纸面上界、实际容量和运行扣款。",
+        "用 J1 有源杆推、D1 有源起步、B1 自然接触到 B4 独立来源壳修及六入口同书往返核对共同因果；覆盖获准空读、无权或隐藏、失鲜、未知价或容量、域外、同 payer/lot 竞争、双接触、再撞、POST 失证、创建者死亡和未列举实体/事件。核对自然事实、授权、付款方、已付与释锁及失败余态；未来付费法球响应、更多预设和敌方修士仅作扩展反例。",
+        "检查封闭 B4 审计与 ADR-0019 通用探查的边界、44/6 M 与 559 S 对可施放性的影响、ADR-0017 至 0020 和待采纳 ADR-0024 的覆盖及旧原型隔离/回退。真实 grant/原读/收据、规范 AST/hash、球容量和旧占用、World→compiler→VM 实耗及推演台—演武场实玩只列开发后验收，不以设计审核伪称已实现。",
+        "若仍有同键冲突，指出权威归属、最小退回范围和可判通过条件；只有确需新增玩家规则或不可逆取舍时，给制作人通俗选项、玩家效果、代价与推荐理由。不得修改模块正文、ADR、游戏实现或测试；共享 design-review.md、design-review.json 和 docs/status.md 留 Version PM 收束。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -24,11 +24,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-program-status.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-ledger-status.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
@@ -47,7 +49,7 @@
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json"
       ]
     }
   ]
