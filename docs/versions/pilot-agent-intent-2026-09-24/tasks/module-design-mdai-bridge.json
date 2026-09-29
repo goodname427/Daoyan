@@ -2,17 +2,19 @@
   "taskId": "mdai-bridge",
   "status": "completed",
   "scopeRevision": 13,
-  "summary": "在首批 A 已批准范围内重签玩家桥接现行 mdai-bridge：同一本 book-mdu-01/v1 的编辑、演武绑定观察、返书改程序，六入口同键同价同拒因；B4-v1/slice-B4-01 十九项有限读、mdai-B4-audit-v1、逐 payer 条件账、十一格公开提示及私值裁剪。只签纸面合同，drb4 仍 changes-requested，真实 Quote=unknownPrice、球容量 capacityUnknown。",
+  "summary": "在首批 A、范围修订 13 内完成 mdai-bridge 有限纸面合同：book-mdu-01/v1 三程序同书往返、六入口同键同价同拒因、B4-v1/slice-B4-01 十一格提示和逐 payer 实收据投影。对账物理/账本/程序/生命/mdai-world：十九读 29 M/≤271 tick，完整条件 44 M/余 6，POST 全失证 39/暂余 11，获准空读 2/余 48；旧 34/16 与 40 S/232/249 tick 不作新价成功文案。物理当前段残留 mdah 旧价条件句、module-design.md 尚未消费 mdai，新价同键主结论以账本 mdai-B4-audit-v1 为准；两处交归属者和 Version PM 收束。真实样本、收据、规范 hash、容量及 VM 实耗缺，当前 Quote=unknownPrice/capacityUnknown，drb4 仍 changes-requested。",
   "scope": {
     "writePaths": [
       "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
       "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json"
     ],
-    "readOnlyPredecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json",
-    "nonGoals": "不改模块权威、总览、ADR、代码或真实存档；不把条件成功、纸面 hash 和容量候选写成已可玩。"
+    "nonGoals": "不改模块权威、总览、ADR、代码或真实存档；不把条件成功、纸面 hash 和容量候选写成已可玩。",
+    "readOnlyPredecessors": [
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json"
+    ]
   },
   "checks": {
-    "actualResult": "物理 mdai-b4-fields、账本 mdai-b4-quote、程序 mdai-b4-carrier、生命 mdai-b4-life 和唯一理论 mdai-world 的同一 B4-v1/slice-B4-01、十九读、priceVersion、程序假设身份与因果余态在本桥接当前段纸面相合。直接算术复核十九读 29 M/≤271 tick、完整 44 M/余 6、POST 全失证已付 39/暂余 11、独立空读 2/余 48。J1 本人 32 加 P0/P2 的 1/2、条件 P1 的 1，为跨账户 35/36；D1 本人 26/余 14；彼此不代付。旧 mdah 桥接保留为历史且顶部撤证，module-design.md 仍停 mdah 待 Version PM 收束。真实 grant、校准样本、净入/实扣、规范 hash、球容量与 VM 实耗缺，当前不得展示可执行成功。",
+    "actualResult": "定向核验本轮合同 stageTasks.mdai-bridge 的两个 writePaths 与 mdai-world completed 前驱；现行物理 mdai-b4-fields 逐端字段及 V0…VP、账本 mdai-B4-audit-v1 价格与逐 payer 账、程序新 AST/hash 假设和 313/330 tick/314 S 条件界、生命四证与唯一理论主结论同键。桥接十一格的公开提示、实结扣款、私值裁剪和余态与这些现行主结论相合；物理当前段内部残留旧价条件文字及模块总览旧消费未闭合，已列阻断。未获取现场原件，未宣称可玩。",
     "authorityReconciliation": [
       {
         "source": "physics-material-design.md#mdai-b4-fields; world-theory-draft.md#mdai-world",
@@ -62,15 +64,20 @@
         "result": "普通 k0 壳修不复苏；创建者四证齐才第五阶段签一次屏障、第六阶段撤派生未来权，B1 自有来源/账户/grant 另验；POST 未证包余待测。"
       }
     ],
-    "consumerReverseCheck": "player-bridge-design.md#mdai-bridge 已消费现行五正文与唯一理论；module-design.md:1–22 仍以 mdah 受阻、旧候选读与 34/16 M、40 S/232/249 tick 展示，Version PM 须改为十九固定读、新价版条件 44/6、314 S/313/330 tick 条件界与真实证阻断，主策再复核。真实六入口、共享书持久化和同书往返留开发及候选验收。",
-    "remainingBlockers": "drb4 仍 changes-requested；主策待审封闭固定审计与通用单字段探查边界、44/6 对可施放性的影响。缺现场 grant/撤权/样本、付款收据、规范 AST/hash、本体容量及 VM tick/S，不得宣称可执行成功。若出现任意读、跨体免费权限/来源、关键复苏或死后独立提款，退权威和主策，不由桥接私定。",
+    "consumerReverseCheck": "桥接 mdai-bridge 已消费物理 mdai-b4-fields、账本 mdai-b4-quote、程序 mdai-b4-carrier、生命 mdai-b4-life 和唯一理论 mdai-world 的现行主结论；物理当前段约第 635、688、696 行仍夹有 mdah[pending]/34+n_extra/空读旧价的历史条件文字，须由物理归属者标清，不能压过账本新价。module-design.md:1–22 仍停 mdah/34/16/40 S/249 tick，Version PM 须按新价版与条件容量更新。六入口实玩、共享书持久化和往返留开发及候选验收。",
+    "remainingBlockers": "drb4 仍 changes-requested；主策待审封闭固定审计与通用单字段探查边界、44/6 对可施放性的影响。缺现场 grant/撤权/样本、付款收据、规范 AST/hash、本体容量及 VM tick/S，不得宣称可执行成功。若出现任意读、跨体免费权限/来源、关键复苏或死后独立提款，退权威和主策，不由桥接私定。 物理 mdai 当前段的旧价条件文字与总览下游旧价文案均待归属者/Version PM 标清或更新，桥接不代改合同外正文。",
     "currentRoundResult": "复核现行 mdai-world、四份权威正文、主策 drb4、ADR 0019 与总览后，保留 44/6、39/11、2/48 及十九读身份；修正桥接十一格数量、D1 独立条件证称谓，并明确每个失败停点按逐 payer 实结收据复算余额、锁款不算已付。真实样本/收据/规范 hash/容量及 VM 实耗仍阻断可执行成功；module-design.md 由 Version PM 收束。"
   },
   "commands": [
     {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\").split(\"## `mdai-bridge`\")[1];for(const k of [\"book-mdu-01/v1\",\"mdai-B4-audit-v1\",\"AST-B4-mdai-audit-v1\",\"POST-B4-material\",\"44 M\",\"余 6\",\"39/暂余 11\",\"2/余 48\",\"capacityUnknown\",\"DeathBarrier\",\"鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士\"])a.ok(b.includes(k),k);a.deepEqual([4*(1+2+1+2)+(2+1+2),4*(10+14+11+21)+(14+11+22),29+5+10,50-44,24+5+10,50-39,50-2],[29,271,44,6,39,11,48]);console.log(\"PASS mdai bridge direct contract\")'",
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),root=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\"),t=j.stageTasks.find(x=>x.id===\"mdai-bridge\"),e=JSON.parse(f.readFileSync(root+\"tasks/module-design-mdai-bridge.json\",\"utf8\")),pre=JSON.parse(f.readFileSync(root+\"tasks/module-design-mdai-world.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.deepEqual(t.dependsOn,[pre.taskId]);a.equal(pre.status,\"completed\");a.equal(e.evidence.length,2);for(const p of e.scope.writePaths)a.ok(f.existsSync(p),p);console.log(\"PASS mdai bridge exact contract, predecessor and formal evidence\")'",
       "exitCode": 0,
-      "output": "PASS mdai bridge direct contract"
+      "output": "PASS mdai bridge exact contract, predecessor and formal evidence"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),r=n=>f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/\"+n,\"utf8\"),b=r(\"player-bridge-design.md\").split(\"## `mdai-bridge`\")[1],tab=b.split(\"### 逐 payer 扣款和同键正反例\")[1].split(\"### 当前权威反查\")[0],rows=tab.split(/\\r?\\n/).filter(x=>/^\\| (?:破壳且|接触未破|真正无撞|独立无撞直扫|无权、|`unknownPrice`|域外|同 payer|再撞|作用后 POST|创建者死亡)/.test(x));a.equal(rows.length,11);for(const k of [\"book-mdu-01/v1\",\"鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士\",\"B4-v1\",\"slice-B4-01\",\"mdai-B4-audit-v1\",\"AST-B4-mdai-audit-v1\",\"H_B4_mdai_assumed_v1\",\"C-B4-mdai-carrier-v1\",\"paid_B4=Σ\",\"POST-B4-material\",\"DeathBarrier\",\"Version PM\"])a.ok(b.includes(k),k);for(const [file,key] of [[\"physics-material-design.md\",\"mdai-b4-fields\"],[\"mana-ledger-design.md\",\"mdai-b4-quote\"],[\"programmable-spells-design.md\",\"mdai-b4-carrier\"],[\"life-identity-design.md\",\"mdai-b4-life\"],[\"world-theory-draft.md\",\"mdai-world\"]])a.ok(r(file).includes(key),file);a.deepEqual([4*(1+2+1+2)+(2+1+2),4*(10+14+11+21)+(14+11+22),29+5+10,50-44,24+5+10,50-39,50-2],[29,271,44,6,39,11,48]);console.log(\"PASS mdai bridge eleven states, authority keys and conditional accounts\")'",
+      "exitCode": 0,
+      "output": "PASS mdai bridge eleven states, authority keys and conditional accounts"
     },
     {
       "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json",
@@ -83,29 +90,9 @@
       "output": ""
     },
     {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json\",e=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(e.taskId,\"mdai-bridge\");a.equal(e.status,\"completed\");a.equal(e.scope.writePaths.length,2);a.ok(e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.length>=2);console.log(\"PASS mdai evidence JSON\")'",
-      "exitCode": 0,
-      "output": "PASS mdai evidence JSON"
-    },
-    {
       "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai exact worktree writePaths'",
       "exitCode": 0,
       "output": "PASS mdai exact worktree writePaths"
-    },
-    {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdai-bridge\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-bridge.json\",\"utf8\")),b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\").split(\"## `mdai-bridge`\")[1],phys=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),ledger=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),prog=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),life=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),theory=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),review=f.readFileSync(p+\"design-review.md\",\"utf8\"),overview=f.readFileSync(p+\"module-design.md\",\"utf8\");a.deepEqual(j.dependsOn,[\"mdai-world\"]);a.ok(j.writePaths.includes(\"docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md\"));a.ok(e.summary.includes(\"六入口同键同价同拒因\"));for(const [s,ks] of [[phys,[\"B4-v1\",\"slice-B4-01\",\"mdai-b4-fields\",\"C-B1-01\"]],[ledger,[\"mdai-B4-audit-v1\",\"receipt-B4-read\",\"44 M\"]],[prog,[\"AST-B4-mdai-audit-v1\",\"B4-R19-projection-v1\",\"C-B4-mdai-carrier-v1\",\"314 S\",\"330 tick\"]],[life,[\"DeathBarrier\",\"assessmentId\",\"k0\"]],[theory,[\"mdai-world\",\"mdai-B4-audit-v1\",\"DeathBarrier\"]]])for(const k of ks)a.ok(s.includes(k),k);for(const k of [\"44 M\",\"余 6\",\"39/暂余 11\",\"2/余 48\",\"capacityUnknown\",\"C-B1-01\",\"C-B1-02\",\"ok([],observedAt\",\"同 payer / 同 slice 竞争\",\"创建者死亡\",\"未知\"])a.ok(b.includes(k),k);a.ok(review.includes(\"drb4-world-closure-review\"));a.ok(review.includes(\"changes-requested\"));a.ok(overview.includes(\"34/16\"));a.ok(overview.includes(\"40 S/249 tick\"));a.ok(e.checks.remainingBlockers.includes(\"drb4\"));console.log(\"PASS mdai current authority and consumer reconciliation\")'",
-      "exitCode": 0,
-      "output": "PASS mdai current authority and consumer reconciliation"
-    },
-    {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\").split(\"## `mdai-bridge`\")[1],e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-bridge.json\",\"utf8\")),table=b.split(\"### 逐 payer 扣款和同键正反例\")[1].split(\"### 当前权威反查\")[0],rows=table.split(/\\r?\\n/).filter(x=>/^\\| (?:破壳且|接触未破|真正无撞|独立无撞直扫|无权、|`unknownPrice`|域外|同 payer|再撞|作用后 POST|创建者死亡)/.test(x));a.equal(rows.length,11);for(const k of [\"对十一格及 J1/D1\",\"本程序独立条件证\",\"paid_B4=Σ\",\"balance_B4=\",\"mdai-B4-audit-v1\",\"C-B4-mdai-carrier-v1\",\"39/暂余 11\",\"2/余 48\"])a.ok(b.includes(k),k);a.equal(e.taskId,\"mdai-bridge\");a.equal(e.status,\"completed\");a.ok(e.summary.includes(\"十一格公开提示\"));a.deepEqual([4*(1+2+1+2)+(2+1+2),29+5+10,50-44,24+5+10,50-39,50-2],[29,44,6,39,11,48]);console.log(\"PASS mdai bridge eleven cases and receipt balance\")'",
-      "exitCode": 0,
-      "output": "PASS mdai bridge eleven cases and receipt balance"
-    },
-    {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=n=>f.readFileSync(p+n,\"utf8\"),b=r(\"player-bridge-design.md\").split(\"## `mdai-bridge`\")[1],src=[[\"physics-material-design.md\",\"mdai-b4-fields\"],[\"mana-ledger-design.md\",\"mdai-B4-audit-v1\"],[\"programmable-spells-design.md\",\"AST-B4-mdai-audit-v1\"],[\"life-identity-design.md\",\"mdai-b4-life\"],[\"world-theory-draft.md\",\"mdai-world\"]];for(const [path,key] of src){a.ok(r(path).includes(key),path);a.ok(b.includes(key),\"bridge:\"+key)}a.ok(r(\"design-review.md\").includes(\"changes-requested\"));a.ok(r(\"module-design.md\").includes(\"34/16\"));a.ok(b.includes(\"Version PM\"));console.log(\"PASS mdai five authority consumers and pending overview\")'",
-      "exitCode": 0,
-      "output": "PASS mdai five authority consumers and pending overview"
     }
   ],
   "failedAttempts": [
@@ -130,7 +117,7 @@
       "result": "Node SyntaxError: Invalid string escape；改以有效引号定向读取后成功，非合同内容冲突。"
     }
   ],
-  "evidencePaths": [
+  "evidence": [
     "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md#mdai-bridge同键同价有限十九读与玩家投影范围修订-13",
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json"
   ]
