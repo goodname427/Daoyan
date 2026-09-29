@@ -8,6 +8,7 @@ import {
 import { ensureVersionStageItem } from '../scripts/secretary-notice-guard';
 import { createSecretaryState } from '../scripts/secretary-state';
 import {
+  assertModuleDesignReworkCoverage,
   assertModuleDesignTaskPlan,
   assertRoadmapHandoffTaskPlan,
   assertStageTaskPaths,
@@ -31,6 +32,30 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('requires every rejected same-key consumer to have a writing owner', () => {
+    const root = 'docs/versions/v2';
+    const review = {
+      reviewDecision: 'changes-requested',
+      checks: {
+        sameKeyConflicts: [
+          'physics-material-design.md:704,710 stale bound',
+          'mana-ledger-design.md:944 stale consumer',
+          'module-design.md:1-20 stale summary',
+        ],
+      },
+    };
+    const plan = {
+      tasks: [task('physics', [], [`${root}/physics-material-design.md`])],
+    };
+    expect(() => assertModuleDesignReworkCoverage(plan, review, root)).toThrow(
+      'mana-ledger-design.md',
+    );
+    plan.tasks.push(task('ledger', ['physics'], [`${root}/mana-ledger-design.md`]));
+    expect(() => assertModuleDesignReworkCoverage(plan, review, root)).not.toThrow();
+    expect(() =>
+      assertModuleDesignReworkCoverage(plan, { reviewDecision: 'approved' }, root),
+    ).not.toThrow();
+  });
   it('requires a Version PM owned roadmap handoff with design and delivery evidence', () => {
     const path = 'docs/versions/v2/roadmap-handoff.md';
     const plan = {

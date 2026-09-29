@@ -212,6 +212,37 @@ export function assertModuleDesignTaskPlan(value: unknown): void {
   }
 }
 
+/** A rejected lead review may name stale consumers outside the modules changed last round. */
+export function assertModuleDesignReworkCoverage(
+  plan: unknown,
+  review: unknown,
+  documentRoot: string,
+): void {
+  if (!isRecord(review) || review.reviewDecision !== 'changes-requested') return;
+  const checks = isRecord(review.checks) ? review.checks : undefined;
+  const conflicts = checks?.sameKeyConflicts;
+  if (!isStrings(conflicts)) return;
+  if (!isRecord(plan) || !Array.isArray(plan.tasks)) {
+    throw new Error('详细策划修订缺少任务清单');
+  }
+  const writes = new Set(
+    plan.tasks
+      .filter(isRecord)
+      .flatMap((task) => (isStrings(task.writePaths) ? task.writePaths : []))
+      .map((path) => normalizedPath(path)),
+  );
+  const omitted = new Set<string>();
+  for (const conflict of conflicts) {
+    const match = conflict.match(/(?:^|[\s(])([a-zA-Z0-9_-]+\.md):\d+/);
+    if (!match || match[1] === 'module-design.md') continue; // Version PM owns the summary.
+    const path = `${normalizedPath(documentRoot)}/${match[1]}`;
+    if (!writes.has(path)) omitted.add(path);
+  }
+  if (omitted.size > 0) {
+    throw new Error(`详细策划修订未覆盖主策指出的同键消费者：${[...omitted].join('、')}`);
+  }
+}
+
 /** Keep the version-wide handoff owned by Version PM, outside Feature PM write scopes. */
 export function assertRoadmapHandoffTaskPlan(value: unknown, expectedPath: string): void {
   const handoff = isRecord(value) ? value.roadmapHandoff : undefined;

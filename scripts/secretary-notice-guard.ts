@@ -156,6 +156,7 @@ import {
 import { parseInvocationTokens, versionStageUsage } from './version-usage';
 import { writeVersionRetrospective } from './version-retrospective';
 import {
+  assertModuleDesignReworkCoverage,
   assertModuleDesignTaskPlan,
   assertRoadmapHandoffTaskPlan,
   assertStageTaskPaths,
@@ -6087,7 +6088,23 @@ async function consumeTaskOwnedVersionItem(
       throw new Error('Version PM 节点规划只能提交当前任务清单及其说明');
     }
     const raw = await readJson(resolve(root, manifest));
-    if (stage === 'module-design') assertModuleDesignTaskPlan(raw);
+    if (stage === 'module-design') {
+      assertModuleDesignTaskPlan(raw);
+      const latestReview = [...(version.stageTasks ?? [])]
+        .reverse()
+        .find((task) => task.stage === 'design-review' && task.status === 'accepted');
+      if (latestReview) {
+        const reviewPath = resolve(
+          root,
+          version.documentRoot,
+          'tasks',
+          `design-review-${latestReview.id}.json`,
+        );
+        if (existsSync(reviewPath)) {
+          assertModuleDesignReworkCoverage(raw, await readJson(reviewPath), version.documentRoot);
+        }
+      }
+    }
     if (stage === 'development' && roadmapHandoffDirection(version)) {
       assertRoadmapHandoffTaskPlan(raw, `${version.documentRoot}/roadmap-handoff.md`);
       const planSummary = await readFile(resolve(root, summary), 'utf8');
