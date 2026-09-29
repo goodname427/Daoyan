@@ -1,0 +1,157 @@
+{
+  "taskId": "mdal-physical-consumer",
+  "status": "completed",
+  "summary": "按 drb7 退回核对 mdak 新增的现行消费者表，修正文档 706/708：标明唯一理论消费者状态句仍与总览/主策当前状态冲突并归理论原任务；总览 1–13 已撤旧物理阻断、结论为交主策复审，不再被物理正文写成仍旧阻断。将 mdah 十六读候选明确标为历史并由 mdai 固定十九读合同取代。接触、材料、热和读字段设计规则未改。",
+  "scope": {
+    "problem": "drb7 指出物理 706 仍把理论称为待纠桥接旧价，708 仍称总览留旧物理阻断，与理论/总览当前文字和最新审核冲突。",
+    "nonGoals": "不改接触/材料数值、账本、程序、生命、理论、桥接、总览或 ADR；不把纸面价、容量判准或条件余额写成实测/实扣，不声明跨模块联签或 ADR-0024 已采纳。",
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json"
+    ]
+  },
+  "reconciliation": {
+    "latestReview": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb7-world-closure-review六项-mdak--与同版世界合同复核2026-09-29",
+      "versionKeys": ["drb7-world-closure-review", "changes-requested", "mdak-physical-status"],
+      "result": "最新主策指定仅修正消费者流程时态：物理 706/708；不重做已闭合十九读、账目或安装设计界。首批 A 和既有开发批准仍有效，无新制作人取舍。"
+    },
+    "physicalAndLedger": {
+      "sources": [
+        "physics-material-design.md#mdai-b4-fields",
+        "mana-ledger-design.md#mdai-b4-quote/mdak-ledger-status"
+      ],
+      "versionKeys": [
+        "S0-physical-v1/seed-physical-v1",
+        "C-B1-01/N-B1-impact-01/X-B1-shell-v1",
+        "XB1-shell-v1/ML-B1-shell-k0-v1/contact-B1-impact-v1",
+        "B4-v1/slice-B4-01",
+        "mdai-B4-audit-v1/audit-work-v1",
+        "Read-B4-material-R0"
+      ],
+      "result": "物理独占自然双端接触、材料 Q[k0]/阈值/热与十九读的 endpoint/field/phase、V0…VP 设计键。自然首撞为 -6/+6、10=4+2+4 E0、3q=2q+fragment q；B4 独立 100=53+47 E0/12、slice 32/12→8/12、壳功/热各 12/12、Depot 4q=2q+q+q。M 不兑 E0/q。账本独占 mdai-B4-audit-v1 价、收据和付款：材料 R0 2 M/≤21 tick；十九读 29 M/≤271 tick，B4 本人条件净入50、读29+装5+作用10=已付44/余6。POST 全失证已付39/暂余11并释未用锁5，包余待测。"
+    },
+    "payers": {
+      "source": "mana-ledger-design.md#mdai-b4-quote",
+      "versionKeys": ["acct-B1-B4", "payerGrant-B4-v1", "receipt-B4-funded-v1", "mdai-B4-audit-v1"],
+      "result": "B4 全链 50=29+5+10+6，成功款均归 acct-B1-B4 本人；receipt-B4-funded-v1 是条件净入身份，不是实收据。J1 本人32=9+11+12，P0/P2 各自付1/2、可选 P1 自付1，跨账户 35/36 不写成 J1 本人余额。D1 本人40=26+14。付款许可不授物理读取权限；预检拒绝零新扣，实发且可支付的互斥合法拒绝尝试才可能付1 M/1 tick。"
+    },
+    "programAndCapacity": {
+      "source": "programmable-spells-design.md#mdai-b4-carrier/mdaj-carrier-install/mdak-program-status",
+      "versionKeys": [
+        "book-mdu-01/v1",
+        "AST-B4-mdai-audit-v1",
+        "H_B4_mdai_assumed_v1",
+        "B4-R19-projection-v1",
+        "C-B4-mdai-carrier-v1",
+        "S_install=Smax=559 S"
+      ],
+      "result": "十九索引0–18 和本版描述符对应；H_B4_mdai_assumed_v1 是纸面定位符，旧 B4 AST/hash 非别名。安装设计界分别为单页279 S、转交双页加槽559 S、释放暂存后281 S、响应峰314 S，新增 Smax=559 S；运行须 C_S−O≥559 且同版证明分项容量。真实规范 AST/SHA-256、证书覆盖、球页/槽/FIFO/帧实容、旧占用及 VM 实耗未证，状态仍 capacityUnknown，不得报 queueFull 或实际可施放。"
+    },
+    "lifeAndCausality": {
+      "sources": [
+        "life-identity-design.md#mdai-b4-life/mdak-life-status",
+        "world-theory-draft.md#mdai-world/mdak-theory-status",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
+      ],
+      "versionKeys": ["LifeId", "assessmentId", "k0", "k_m", "k_a", "ADR-0024:待采纳"],
+      "result": "普通 k0 壳损/补不推出 k_m/k_a、生命三链修复或旧 LifeId 复苏；已结自然 C/N/X 与已付款不因后续拒绝/再撞倒带。理论 1289–1301 当前仍有总览 blocked/待重核的流程句，与总览 1–13 及 drb7 定向结论冲突；这是真实消费者状态阻断，归理论原任务修正，不改变物理数值。ADR-0024 仍是待采纳提案，物理文档不暗示其生效。"
+    },
+    "bridgeAndOverview": {
+      "sources": ["player-bridge-design.md#mdaj-bridge-consumers", "module-design.md:1-13"],
+      "versionKeys": [
+        "mdai-B4-audit-v1",
+        "Read-B4-material-R0",
+        "receiptId",
+        "C-B4-mdai-carrier-v1"
+      ],
+      "result": "桥接 370–385 已消费 2/48、44/6、39/11 与 559 S 设计界；仅投影获准普通壳事实、玩家本人真实已结/暂余/释锁和裁剪拒因，POST 未读包余显示待测，不展示他人余额。总览 1–13 已撤销旧物理价/安装峰/消费者不同步阻断，公开状态为交主策复审而非主策通过；物理正文不再称总览仍因旧物理行 blocked，也不替 Version PM 宣告整版完成。"
+    },
+    "cases": [
+      "合法空读：仅四端 C/R/D/W 存在、逐字段获权、可见、V0 与鲜样齐且 Read-B4-material-R0 实际返回 ok([])，才有唯一成功 ReadTx/receipt，按新目录2 M/≤21 tick，条件50→48；不装载、不作用。无撞或空集合未经授权读取都不证明合法空读。",
+      "无权预拒：缺 grant、无可修缺口、隐藏或不存在，在读前同形 deniedOrUnavailable；无成功 ReadTx、零新扣、条件余额保持50，释放未执行锁。只有已经调用且足额可支付的合法尝试才按互斥规则结1 M/1 tick，不能叠成功价。",
+      "双接触：同刻两 C 可提交；球壳只产生一个双 parent X，不产生遗体普通 k0 缺口，不凭双接触发 B4 读/作用收据。",
+      "再撞：C-B1-02 用新速度与接触/结构/锚/仪表版本重求，撤旧未执行 Quote/锁/容量覆盖；首撞自然 C/N/X、热/残片、已结读款和已提交作用不倒带。",
+      "容量：559 S 是程序原子转交安装设计界且要求 C_S−O≥559 和分项证明；球实容/旧占用/规范 hash/运行峰未知时为 capacityUnknown，不将设计界冒充实容或将未知容量冒充 queueFull。"
+    ],
+    "blockers": [
+      "theory-consumer-state-conflict: world-theory-draft.md 1299–1301 still labels overview blocked or pending recheck; latest drb7 says module-design.md 1–13 has withdrawn the old physical blocker and is awaiting producer review.",
+      "runtime-evidence-pending: true grants, fresh samples, receipts/actual payer settlement, canonical AST/hash, certificate coverage, sphere capacity/old occupancy, VM M/tick/S and six-entry play remain development/candidate acceptance items.",
+      "ADR-0024 remains proposed and not adopted."
+    ]
+  },
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),th=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),ov=f.readFileSync(p+\"module-design.md\",\"utf8\"),led=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),li=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),br=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),rv=f.readFileSync(p+\"design-review-findings.md\",\"utf8\");const row706=d.split(\"\\n\").find(x=>x.includes(\"[唯一理论 `mdai-world`\")),row708=d.split(\"\\n\").find(x=>x.includes(\"[模块总览](./module-design.md) 1–13\"));a.ok(row706&&row706.includes(\"消费者流程状态另有冲突\")&&row706.includes(\"归理论原任务处理\"));a.ok(row708&&row708.includes(\"总览现行状态为交主策复审\")&&row708.includes(\"不再声称总览仍因旧物理句\"));a.ok(d.includes(\"历史阶段记录：`mdah-b4-reads`\"));a.ok(d.includes(\"mdai-B4-audit-v1\")&&d.includes(\"2 M/≤21 tick\")&&d.includes(\"50→48\")&&d.includes(\"S_install=Smax=559 S\")&&d.includes(\"capacityUnknown\"));for(const [s,k] of [[th,\"mdai-B4-audit-v1\"],[ov,\"交主策复审\"],[led,\"29 M/≤271 tick\"],[pr,\"AST-B4-mdai-audit-v1\"],[li,\"k_m/k_a\"],[br,\"POST 全失证\"]])a.ok(s.includes(k),k);for(const k of [\"drb7-world-closure-review\",\"706\",\"708\",\"2 M/≤21 tick\",\"50→48\",\"capacityUnknown\",\"559 S\"])a.ok(rv.includes(k),k);a.equal(50-2,48);a.equal(29+5+10,44);a.equal(50-44,6);a.equal(29+5+5,39);a.equal(50-39,11);a.equal(279*2+1,559);a.equal(Math.max(559,314),559);a.ok(d.includes(\"10=4+2+4 E0\")&&d.includes(\"4q=2q+q+q\"));console.log(\"PASS mdal consumer reconciliation, versions, payer arithmetic, examples and 559 S design/runtime boundary\")'",
+      "exitCode": 0,
+      "output": "PASS mdal consumer reconciliation, versions, payer arithmetic, examples and 559 S design/runtime boundary",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json"
+      ]
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @( 'docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json' | Sort-Object ); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error ('writePaths mismatch: ' + ($actual -join ', ')); exit 1 }; Write-Output 'PASS exact two-path worktree scope'",
+      "exitCode": 0,
+      "output": "PASS exact two-path worktree scope",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\");a.ok(d.includes(\"<a id=\\\"mdah-b4-reads十六项逐读判定与独立-post设计审计\\\"></a>\"));for(const file of [\"life-identity-design.md\",\"world-theory-draft.md\"]){const s=f.readFileSync(p+file,\"utf8\");a.ok(s.includes(\"physics-material-design.md#mdah-b4-reads十六项逐读判定与独立-post设计审计\"),file+\" reference\");}console.log(\"PASS historical mdah anchor preserved for life/theory references\")'",
+      "exitCode": 0,
+      "output": "PASS historical mdah anchor preserved for life/theory references",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),th=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),ov=f.readFileSync(p+\"module-design.md\",\"utf8\"),led=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),li=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),br=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),rv=f.readFileSync(p+\"design-review-findings.md\",\"utf8\");const row706=d.split(\"\\n\").find(x=>x.startsWith(\"| [唯一理论\")),row708=d.split(\"\\n\").find(x=>x.startsWith(\"| [模块总览]\"));a.ok(row706&&row706.includes(\"流程状态另有冲突\")&&row706.includes(\"归理论原任务处理\"));a.ok(row708&&row708.includes(\"总览现行状态为交主策复审\")&&row708.includes(\"不再声称总览仍因旧物理句\"));a.ok(d.includes(\"历史阶段记录：`mdah-b4-reads`\"));a.ok(d.includes(\"mdai-B4-audit-v1\")&&d.includes(\"2 M/≤21 tick\")&&d.includes(\"50→48\")&&d.includes(\"S_install=Smax=559 S\")&&d.includes(\"capacityUnknown\"));for(const [s,k] of [[th,\"mdai-B4-audit-v1\"],[ov,\"交主策复审\"],[led,\"29 M/≤271 tick\"],[pr,\"AST-B4-mdai-audit-v1\"],[li,\"k_m/k_a\"],[br,\"POST 全失证\"]])a.ok(s.includes(k),k);for(const k of [\"drb7-world-closure-review\",\"706\",\"708\",\"2 M/≤21 tick\",\"50→48\",\"capacityUnknown\",\"559 S\"])a.ok(rv.includes(k),k);a.equal(50-2,48);a.equal(29+5+10,44);a.equal(50-44,6);a.equal(29+5+5,39);a.equal(50-39,11);a.equal(279*2+1,559);a.equal(Math.max(559,314),559);a.ok(d.includes(\"10=4+2+4 E0\")&&d.includes(\"4q=2q+q+q\"));console.log(\"PASS mdal consumer reconciliation, versions, payer arithmetic, examples and 559 S design/runtime boundary\")'",
+      "exitCode": 1,
+      "reason": "初次交叉来源脚本假定 Prettier 前的表格行前缀不带空格/格式变化，行定位断言失败；改按稳定行内 authority 标记查找后完全相同的内容与算式断言通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
+  ]
+}
