@@ -100,9 +100,14 @@
       "output": "PASS mdak theory exact worktree writePaths"
     },
     {
-      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdak-theory-status.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId);a.equal(e.taskId,\"mdak-theory-status\");a.equal(e.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.equal(e.scope.readOnlyPredecessors.length,4);a.ok(e.scope.readOnlyPredecessors.every(x=>JSON.parse(f.readFileSync(x,\"utf8\")).status===\"completed\"));a.ok(e.commands.length>=4&&e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.length===1&&e.failedAttempts[0].exitCode===1);a.deepEqual(e.evidence,t.writePaths);console.log(\"PASS mdak theory evidence matches task contract and four completed predecessors\")'",
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdak-theory-status.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId);a.equal(e.taskId,\"mdak-theory-status\");a.equal(e.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.equal(e.scope.readOnlyPredecessors.length,4);a.ok(e.scope.readOnlyPredecessors.every(x=>JSON.parse(f.readFileSync(x,\"utf8\")).status===\"completed\"));a.ok(e.commands.length>=4&&e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.length>=2&&e.failedAttempts.every(x=>x.exitCode===1));a.deepEqual(e.evidence,t.writePaths);console.log(\"PASS mdak theory evidence matches task contract and four completed predecessors\")'",
       "exitCode": 0,
       "output": "PASS mdak theory evidence matches task contract and four completed predecessors"
+    },
+    {
+      "command": "$p='docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json'; $j=Get-Content $p -Raw | ConvertFrom-Json; $allowed=@($j.scope.writePaths); $changed=@(git diff --name-only); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; $changed+=@(git ls-files --others --exclude-standard); $outside=@($changed | Where-Object {$_ -notin $allowed}); if($outside.Count){Write-Error \"Changes outside writePaths: $outside\"; exit 1}; Write-Output \"PASS current worktree scope: $($changed.Count) changed paths, all within writePaths\"",
+      "exitCode": 0,
+      "output": "PASS current worktree scope: 1 changed paths, all within writePaths"
     }
   ],
   "failedAttempts": [
@@ -111,6 +116,11 @@
       "exitCode": 1,
       "output": "AssertionError [ERR_ASSERTION]: 同 payer/lot",
       "resolution": "理论新增段补明同 payer/lot 竞争标签；同一断言重跑退出码 0。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json",
+      "exitCode": 1,
+      "reason": "追加本轮范围复核命令后，证据 JSON 缩进未符合 Prettier；本轮据此记录失败，再格式化并复跑检查。"
     }
   ],
   "evidence": [
