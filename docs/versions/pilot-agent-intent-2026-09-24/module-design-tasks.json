@@ -1,14 +1,14 @@
 {
   "tasks": [
     {
-      "id": "mdai-b4-fields",
-      "title": "B4 十九读物理字段与 n_extra 边界",
-      "objective": "消除物理 n 与账本 n_extra 同键冲突，签十九项有限物理读取合同。",
+      "id": "mdaj-physical-price",
+      "title": "B4 物理读现行价版与空读余态校正",
+      "objective": "消除物理现行段与账本同一空读的新旧价冲突，保持十九项字段及物理事实不变。",
       "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"],
       "acceptance": [
-        "相对 mdah 新增统一定义：十九项内已执行获准读数与十九项外 n_extra 分开，字段差价不得冒充额外 readId。逐行签 Read-B4-{main,aux,heat,material}-R0…R3 和 POST-B4-main/heat/material 的 phase、每个 {endpointId,field} 来源、端点总数≤4、objectId、获准 projection/grant/撤权及结构、材料、接触、锚、环境、仪表、采样版本；POST 头和环须独立后态证，不复用 R3。",
-        "在 S0-physical-v1/seed-physical-v1 与 B4-v1/slice-B4-01 下复算完整覆盖、合法 ok([])、无权、隐藏/不存在同形、超端点、失鲜、再撞、双接触；逐项给可用字段或拒因，必需设计字段不得留 unknown/pending。B1 已闭合 C-B1-01→N-B1-impact-01→X-B1-shell-v1、E0/12、q 仅核现行来源。",
-        "定向反查变动场景键、readId、factId、版本键在本版其他模块与唯一理论的消费段，列待重签位置；原始运行读数留开发。"
+        "相对 mdai 新增判断：修现行物理第 635、688、694–696 行的旧 pending 价版、过时消费状态及 Read-B4-material-R0=ok([]) 的旧 1 M/50→49；逐项对照账本 mdai-B4-audit-v1 的同 ID 2 M/≤21 tick、条件 50→48。旧 1 M 仅留历史候选；十九字段、grant、V0…VP、n_19/n_extra、自然 C→N→X 与 E0/q 不改，纸面数不得称实扣。",
+        "以 B4-v1/slice-B4-01/readId/priceVersion 复算合法空读、无撞获准直扫、无权、隐藏、不存在、失鲜、超端点、再撞和双接触；逐例列自然事实、读收据、已付及未执行锁。空集合不得从无撞或隐藏直接推定，须有授权端点与鲜值。",
+        "定向反查变动 readId/priceVersion/receiptId 在现行账本、程序、生命、理论、桥接、总览的命中段，逐项列一致、须同步或阻断；直接验收对照账本第 888–946 行和 ADR 0019 现行结论。真实原读、grant 与收据留开发。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -16,98 +16,53 @@
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/adr/0019-属性探查与资源账本.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"],
-      "contextPolicy": "continue",
-      "contextReason": "物理权威和 B1 夹具未变，沿用已核推理并消除 mdah 的十九读缺证与 n 混义。"
-    },
-    {
-      "id": "mdai-b4-quote",
-      "title": "B4 十九读逐字段报价与付款",
-      "objective": "依物理字段与 ADR 0019 签正价、工作界、付款账户和可执行价版。",
-      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"],
-      "acceptance": [
-        "相对 mdah 逐 readId 和 {endpointId,field,phase} 对照现行物理投影，按 ADR 0019 单字段式与公开保守上界计价，或给出有元数据目录、字段覆盖和有界工作的物理审计原子及合规证明；旧 1 M/≤10 tick 复合候选价不得直接沿用。每项签正价、tick 界、payerId/payerGrantId、物理 grant 与付款许可关系、不可复用收款槽、receiptId、互斥拒绝尝试、ReadTx 和新 priceVersion；价差不得泄漏私值。",
-        "据物理 n_extra 和阶段先序重算 B4 净入 50、逐项锁付、已付及余额；旧 16+5+10+3=34 M/余 16 M 仅在十九读逐笔齐证、n_extra=0、容量足够且新价式相等时保留，不预设 34+n_extra。J1 本人 32 与 P0/P2 1/2、可选 P1 1 分账户再列跨账户 35/36；D1 40/26 只读核对。",
-        "同 readId/receiptId/sourceLotId/sliceId/priceVersion 逐账复算成功、合法空、预检拒绝、ADR 有价尝试、未知价、域外、同 payer/lot 竞争、再撞、POST 失证与欠费，区分已结不退和未执行锁释放。必需价格或付款权 pending 则 Quote=unknownPrice 并阻断成功；实收据及 VM 实耗留开发。"
-      ],
-      "dependsOn": ["mdai-b4-fields"],
-      "readPaths": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
-        "docs/adr/0019-属性探查与资源账本.md"
-      ],
-      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"],
       "contextPolicy": "fresh",
-      "contextReason": "mdah 将未按 ADR 0019 逐字段证明的复合价和 n 混义带入 34/16，报价前提需依新字段重建。"
+      "contextReason": "旧 pending 价在 mdai 字段补证后仍被当作现行条件，须依据 drb5 和当前账本重新审读这段。"
     },
     {
-      "id": "mdai-b4-carrier",
-      "title": "B4 程序身份与本体容量重签",
-      "objective": "让共享 AST 和球本体准入消费十九读及新价版。",
+      "id": "mdaj-carrier-install",
+      "title": "B4 程序安装峰设计上界",
+      "objective": "给十九读程序安装阶段可计算的静态神识峰，与响应峰合成同版准入证。",
       "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"],
       "acceptance": [
-        "相对 mdah 按十九读逐字段和 priceVersion 重编规范 AST 设计表达或明确纸面别名、readId 索引、M/tick/S 静态证书及球本体页/槽/FIFO/引用/帧/旧占用的有限容量；不得沿旧索引、40 S/232/249 tick 或称纸面别名为运行 hash。J1 同 AST/hash 别名与十五读、D1 独立程序只读核对。",
-        "同 B4-v1/slice-B4-01、readId/receiptId/factId 复算单订阅、双接触、再撞、感官或执行部位损坏、空读、无权、unknownPrice、欠费；容量未获准读为 capacityUnknown，证实满才 queueFull，已付和自然 C/N/X 不倒带。",
-        "直接对照现行物理字段、账本价版及 ADR 0019 结论；必要设计合同缺签则列阻断。运行 AST/hash、实际容量和 VM 峰留开发。"
+        "相对 mdai 新增判断：对照物理十九投影和账本 mdai-B4-audit-v1/audit-work-v1，逐安装阶段列同时活 AST/代码、十九索引及投影、订阅、信封、引用、队列、帧和旧占用的计数与有限上限，算出有数字的 S_install 设计界，签 Smax=max(314,S_install)；纸面 hash 与球容量不冒充运行签名。",
+        "同 AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1 或有据别名、projectionHash、十九索引 0…18、priceVersion 和容量版，重核 Mmax≥44 M、读≤271 tick、响应≤330 tick、响应峰314 S 的覆盖前提；物理字段或价版变更须撤旧证重编。静态界须设计为开发后可验不低于 VM 实耗。",
+        "用旧占用、双接触、合法空、撤权、unknownPrice、容量不可读及 FIFO 实满作反例，分判已付/释锁与 capacityUnknown/queueFull；规范 AST/hash、页≤4096 B、槽/帧/FIFO、运行峰与 VM tick 留开发验收。"
       ],
-      "dependsOn": ["mdai-b4-quote"],
+      "dependsOn": ["mdaj-physical-price"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/adr/0019-属性探查与资源账本.md",
         "docs/adr/0020-事件执行上下文与生命周期.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"],
       "contextPolicy": "continue",
-      "contextReason": "程序身份与容量职责未变，只需重签受新读价影响的索引和证书。"
+      "contextReason": "十九索引和响应预算已核实，同一程序正文只需补独立安装峰及取大规则。"
     },
     {
-      "id": "mdai-b4-life",
-      "title": "B4 普通壳与生命授权边界重签",
-      "objective": "核新读价不把惰性壳修补、创建者死亡或旧身份误写成复苏。",
-      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
-      "acceptance": [
-        "相对 mdah 对照现行物理 k0 缺口/修补、结构材料版、十九读授权和账本逐 payer 收据，重签普通壳与 k_m/k_a、保存/控制三链、LifeId/assessmentId/DeathBarrier 的边界；POST 壳读不推出生命恢复或二次死亡屏障。",
-        "同 B4-v1/slice-B4-01/factId/readId/priceVersion 核已修、未破、合法空、无权、未知、域外、竞争、再撞、POST 失证和创建者死亡的自然余态、已付、派生 grant 撤销与旧身份；每项引用现行物理和账本结论。",
-        "若新读价不触及生命规则，写清不变的因果证；现场生命观测与复苏实现留开发后。"
-      ],
-      "dependsOn": ["mdai-b4-quote"],
-      "readPaths": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
-        "docs/adr/0020-事件执行上下文与生命周期.md"
-      ],
-      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
-      "contextPolicy": "continue",
-      "contextReason": "普通壳与 LifeId 边界已核，沿用并核新十九读、付款和撤权余态。"
-    },
-    {
-      "id": "mdai-world",
-      "title": "唯一世界理论同键复算",
-      "objective": "在唯一理论正文统一物理、价版、程序和生命结论。",
+      "id": "mdaj-theory-consumers",
+      "title": "唯一世界理论 B4 同键消费状态对齐",
+      "objective": "更正唯一理论的消费者完成状态，按现行物理、账本和程序重核同一事实链。",
       "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
       "acceptance": [
-        "相对 mdah 按消歧 n_extra、十九 readId、新 priceVersion、AST/预算/容量及 LifeId 边界，以 S0-physical-v1/seed-physical-v1、C-B1-01→N-B1-impact-01→X-B1-shell-v1、B4-v1/slice-B4-01 同键复算；逐项引用四份现行权威，不以旧 34/16 或 40 S/232/249 tick 条件数宣布成功。",
-        "同一初态列公理、参数、逐步 E0/12/q 与逐 payer M/receipt、程序先序；核成功前提、未破、无撞、ok([])、拒绝、unknownPrice/capacityUnknown、域外、同 payer/lot 竞争、再撞、双接触、POST 失证及创建者死亡的自然事实与已付/未执行余态。",
-        "定向反查变动场景键、readId、factId、priceVersion 在本版其他模块与 module-design.md 的消费段；需同步的交独占模块或列 Version PM 收束/阻断。真实运行源值留开发。"
+        "相对 mdai 新增判断：定向更正理论第 1287–1290 行把已完成桥接与已对账但阻断的总览写作未重签的时序清单；按前驱交付更新物理冲突与安装峰状态，不改公理、29/44/6 条件价或 E0/q。",
+        "以 S0-physical-v1/seed-physical-v1、B4-v1/slice-B4-01、readId/priceVersion/receiptId/AST 设计身份，重核自然 C→N→X、独立来源、逐 payer 账及锁；合法空读2 M/50→48、十九读29、装载5、作用10、全链44/余6 均只在齐证条件下成立。逐格核成功、拒绝、空、未知、域外、竞争、POST 失证的自然事实和已付/释锁，不写运行成功。",
+        "定向反查同键在物理、账本、程序、生命、桥接和总览现行段的消费者，列一致、须桥接修正或 Version PM 收束的位置；新玩家规则或不可逆选择明确阻断交主策，不在正文自定。"
       ],
-      "dependsOn": ["mdai-b4-carrier", "mdai-b4-life"],
+      "dependsOn": ["mdaj-physical-price", "mdaj-carrier-install"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
@@ -117,25 +72,23 @@
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
-        "docs/adr/0019-属性探查与资源账本.md",
-        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
       "contextPolicy": "continue",
-      "contextReason": "唯一理论职责和自然先序未重置，只重放新读价影响的同一事实链。"
+      "contextReason": "理论自然先序与纸面账已核，只校正模块完成时序和同键消费状态。"
     },
     {
-      "id": "mdai-bridge",
-      "title": "首批 A 玩家桥接同键重签",
-      "objective": "六入口与同书流程只展示可证的同版事实、价格和拒因。",
+      "id": "mdaj-bridge-consumers",
+      "title": "玩家桥接 B4 消费状态与公开余态对齐",
+      "objective": "使六入口与同书纸面流程消费同版现行权威和准确模块状态。",
       "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
       "acceptance": [
-        "相对 mdah 对照物理十九读、账本 priceVersion/逐 payer 收据、程序 AST/hash 纸面别名及容量、生命边界和唯一理论，重签 book-mdu-01/v1 的推演台编辑→演武绑定观察→返书改程序纸面流程；鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士在规范意图、授权、可见集、付款、版本、世界序同键时同价同拒因，入口不赠权或钱。",
-        "以 B4-v1/slice-B4-01、factId/readId/receiptId/priceVersion 逐格核修壳、未破、无撞、ok([])、无权、unknownPrice/capacityUnknown、域外、竞争、再撞、POST 失证及创建者死亡的公开提示、逐 payer 可见扣款和私值裁剪；新价未证不沿旧 34/16 与 40 S/232/249 tick 成功文案。",
-        "定向反查本版其他模块与唯一理论同键消费段，只消费现行权威结论；module-design.md 待改处交 Version PM，未闭合列阻断。六入口实玩与同书往返留开发及候选。"
+        "相对 mdai 新增判断：定向核桥接第 358、362 行对物理旧价与总览的措辞；物理修后不再把旧 1 M/50→49 写为现行条件，总览已消费新价但仍阻断，不可称未消费。逐项对照物理、账本、程序、生命、理论当前结论，不由桥接重定字段、价或容量。",
+        "按 B4-v1/slice-B4-01/readId/mdai-B4-audit-v1/receiptId、book-mdu-01/v1 与 AST 设计身份，纸面核推演台编辑→演武绑定观察→返书改程序的六入口等价；逐格核合法空2 M/50→48、条件成功44/余6、无权、隐藏、不存在、失鲜、unknownPrice/capacityUnknown、域外、竞争、再撞、POST 失证和创建者死亡的公开提示、本人已付/释锁与私值裁剪。成功、拒绝、空、未知、域外、竞争逐项对照现行来源。",
+        "同键定向反查理论、总览及其他现行模块的消费位置，列 Version PM 收束或阻断；敌方修士仅为入口等价反例，六入口实玩、同书往返、运行 hash、收据和 VM 实耗留开发/候选。"
       ],
-      "dependsOn": ["mdai-world"],
+      "dependsOn": ["mdaj-theory-consumers"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
@@ -146,27 +99,24 @@
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
-        "docs/adr/0019-属性探查与资源账本.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json"
       ],
       "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
       "contextPolicy": "continue",
-      "contextReason": "六入口与同书规则未重置，仅旧条件展示随价版和容量证改写。"
+      "contextReason": "六入口矩阵和新价投影已完成，沿已核规则修正物理与总览的状态措辞。"
     }
   ],
   "modules": [
-    { "id": "physics-material", "title": "物理材料字段", "taskId": "mdai-b4-fields" },
-    { "id": "mana-ledger", "title": "法力账本与价格", "taskId": "mdai-b4-quote" },
-    { "id": "programmable-spells", "title": "程序载体与容量", "taskId": "mdai-b4-carrier" },
-    { "id": "life-identity", "title": "生命身份", "taskId": "mdai-b4-life" },
-    { "id": "world-theory", "title": "唯一世界理论", "taskId": "mdai-world" },
-    { "id": "player-bridge", "title": "玩家意图桥接", "taskId": "mdai-bridge" }
+    { "id": "physics-material", "title": "物理材料字段", "taskId": "mdaj-physical-price" },
+    { "id": "programmable-spells", "title": "程序载体与容量", "taskId": "mdaj-carrier-install" },
+    { "id": "world-theory", "title": "唯一世界理论", "taskId": "mdaj-theory-consumers" },
+    { "id": "player-bridge", "title": "玩家意图桥接", "taskId": "mdaj-bridge-consumers" }
   ],
   "crossModuleContracts": [
-    "物理材料是 S0-physical-v1/seed-physical-v1、C-B1-01→N-B1-impact-01→X-B1-shell-v1、B4-v1/slice-B4-01、十九 readId 的 {endpointId,field,phase}/投影/grant/版本、E0/12、q 和 n_extra 权威；账本、程序、生命、理论、桥接按同 factId/readId/sourceLotId/sliceId/物理版本消费。字段差价不增加 readId，三 POST 各有独立后态证。",
-    "法力账本是逐 readId/字段的 ADR 0019 正价与工作界、payerId/payerGrantId、receiptId/收款槽、ReadTx、priceVersion、逐账户锁付和余额权威；程序、生命、理论、桥接消费。B4 本人 50 与 J1 本人 32、第三方 P0/P2 1/2、可选 P1 1 分列再算跨账户 35/36；34/16 只在新报价复算相等时保留。成功、拒绝、空、未知、域外与竞争逐账核已付和未执行锁。",
-    "程序是 book-mdu-01/v1、B4 AST/hash 设计表达或纸面别名、十九 readId 索引、球本体页/槽/FIFO/帧及 M/tick/S 证书覆盖范围权威；理论和桥接按同 AST/hash 或别名、priceVersion、容量版消费。运行 hash、真实占用和 VM 实耗留开发。",
-    "生命是 k0 与 k_m/k_a、LifeId/assessmentId、保存/控制链和 DeathBarrier 权威；理论与桥接按同 factId/readId/priceVersion 消费。B4 惰性壳修不自动复苏，创建者死亡撤派生 grant 而不撤已结事实或收据。",
-    "唯一理论用同场景键、factId/readId/sourceLotId/sliceId/payerId/receiptId/priceVersion 联签自然先序、来源、逐账付款、程序容量、生命身份及成功/拒绝/空/未知/域外/竞争余态；桥接投六入口。module-design.md 与 docs/status.md 由 Version PM 依定向反查收束，冲突列阻断。ADR 0024 尚待采纳，World→compiler→VM、旧资产及实玩留后续门禁。"
+    "物理正文独占 S0-physical-v1/seed-physical-v1、B4-v1/slice-B4-01、十九 readId 的端点/字段/阶段投影、grant、V0…VP、自然 C→N→X 及 E0/q；账本、程序、生命、理论、桥接按同 factId/readId/structureVersion/materialVersion/contactVersion 消费。合法 ok([]) 须授权且有鲜值。",
+    "法力账本 mdai-B4-audit-v1/audit-work-v1 独占十九读逐项 M/tick、payerId/payerGrantId、receiptId/ReadTx、不可取收款、逐账户已付/锁/余；物理、程序、理论、桥接按 B4-v1/slice-B4-01/readId/priceVersion/receiptId 消费。合法空读2 M/50→48；全链29读+5装载+10作用=44 M/余6仅齐证条件。J1本人32、P0本人1、P2本人2、可选P1本人1，跨账户35/36；D1本人40/余14；B4本人50独立。成功、拒绝、空、未知、域外、竞争、POST失证逐 payer 核已付和释锁。",
+    "程序正文独占 book-mdu-01/v1、AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1 或有据别名、十九索引/projectionHash、Mmax/Wmax/Smax 及安装/响应覆盖；理论、桥接按同 AST/hash 设计身份、priceVersion、capacityVersion 消费。S_install 须可计算，Smax=max(314,S_install)；纸面 hash 和球容量不冒充实证，capacityUnknown 与同版实满 queueFull 分判。",
+    "生命正文独占 k0/k_m/k_a、LifeId/assessmentId、DeathBarrier 及死亡后派生 grant 撤权；理论、桥接只读消费同 factId/readId/priceVersion。普通壳修补不自动复苏，创建者死亡不回滚自然事实、已付或球自有授权；结构和身份键未变不重派生命写入。",
+    "唯一理论按 S0/seed、factId/readId/sourceLotId/sliceId/payerId/receiptId/priceVersion/AST 设计身份合并四权威的自然先序、逐账和程序界；桥接按同键投公开视图与六入口。总览 module-design.md、docs/status.md 留 Version PM 收束。真实原读、grant、收据、规范 hash、容量/VM 实耗与实玩留开发/候选。"
   ]
 }
