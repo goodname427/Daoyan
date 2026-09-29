@@ -1,0 +1,106 @@
+{
+  "taskId": "mdaj-physical-price",
+  "status": "completed",
+  "summary": "修正物理现行段旧 pending 价版和材料 R0 空读旧价；按 mdai-B4-audit-v1 同 ID 16 字段/4 端、2 M/≤21 tick 复算条件 50→48。十九读投影、授权、V0…VP、n_19/n_extra、自然 C→N→X 与 E0/q 不变；九类边界分别注明自然事实、收据、条件已付及未执行锁。定向对账账本、程序、生命、理论、桥接、总览及 ADR 0019；无运行签名，未声称实扣或可执行成功。",
+  "actualResult": "策划正文与任务证据通过定向检查；当前环境禁止写入 .git/index.lock，本地提交未形成，文件留在工作区供秘书收取或在可写 Git 环境提交。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json"
+    ],
+    "nonGoals": "不改其他模块、ADR、代码、运行状态或历史章节；不签真实 grant、收据、规范 hash、容量或 VM 实耗。"
+  },
+  "checks": {
+    "currentKeys": [
+      "S0-physical-v1/seed-physical-v1",
+      "B4-v1/slice-B4-01",
+      "Read-B4-material-R0",
+      "priceVersion=mdai-B4-audit-v1",
+      "workVersion=audit-work-v1",
+      "receipt-B4-read-[readId]-[requestId]-v1"
+    ],
+    "cases": "合法空读、无撞获准直扫、无权、隐藏、不存在、失鲜、超端点、再撞、双接触；另核完整覆盖与 POST 失证。空集合须四端授权、可见、V0 与逐端鲜值及实际无匹配。",
+    "account": "条件读 29 M/≤271 tick、装载 5、作用 10、全链已付 44/余 6；材料 R0 单读 2 M/≤21 tick、条件余 48；POST 全失证条件已付 39/暂余 11。成功与 attempt 收款互斥，未执行锁释放，纸面数非实扣。",
+    "authorityReconciliation": [
+      {
+        "source": "mana-ledger-design.md:888-946; ADR 0019:97-110",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "Read-B4-material-R0",
+          "receipt-B4-read-[readId]-[requestId]-v1"
+        ],
+        "result": "一致：固定审计封闭价与同形拒绝；预检零扣，可支付已调用 attempt 独收 1 M/1 tick。"
+      },
+      {
+        "source": "programmable-spells-design.md:866-912",
+        "versionKeys": ["AST-B4-mdai-audit-v1", "B4-R19-projection-v1", "C-B4-mdai-carrier-v1"],
+        "result": "设计价与十九索引一致；规范 hash、S_install、球容量和 VM 实耗阻断运行准入。"
+      },
+      {
+        "source": "life-identity-design.md:676-721",
+        "versionKeys": ["LifeId", "assessmentId", "k0"],
+        "result": "一致：普通壳修不复苏或修关键链，真实身份评估待开发。"
+      },
+      {
+        "source": "world-theory-draft.md:1241-1290",
+        "versionKeys": ["mdai-B4-audit-v1", "V0…VP"],
+        "result": "数值一致；1287–1290 称桥接未重签的消费状态须由理论归属同步。"
+      },
+      {
+        "source": "player-bridge-design.md:295-364",
+        "versionKeys": ["mdai-B4-audit-v1", "Read-B4-material-R0", "receiptId"],
+        "result": "价格及公开余态一致；362 行总览只有旧口径的状态须由桥接归属同步。"
+      },
+      {
+        "source": "module-design.md:1-20",
+        "versionKeys": ["mdai-B4-audit-v1", "Read-B4-material-R0", "receipt-B4-read-*"],
+        "result": "已识别新价且判物理旧价阻断；本轮修正后须 Version PM 复核并更新现行结论。"
+      }
+    ],
+    "remaining": "主策判断封闭审计与通用探查的玩家边界、条件 44/6 的可施放性；开发提供逐端真实 grant/鲜值、实入账与收据、规范 AST/hash、球容量/旧占用、VM tick/S、六入口体验。当前 Quote=unknownPrice、capacityUnknown，不把设计价格或容量标为运行闭合。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1),y=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\").at(-1),r=t=>t.split(/\\r?\\n/).filter(z=>/^\\| \\x60(?:Read-B4-|POST-B4-)/.test(z)),u=r(x),v=r(y);a.equal(u.length,19);a.equal(v.length,19);for(let i=0;i<19;i++){a.equal(u[i].split(\"\\x60\")[1],v[i].split(\"\\x60\")[1]);a.equal(u[i].split(\"|\")[2].replace(/；[234]\\s*$/,\"\").replace(/\\s/g,\"\"),v[i].split(\"|\")[2].replace(/\\s/g,\"\"))}for(const k of [\"priceVersion=mdai-B4-audit-v1\",\"2 M/≤21 tick\",\"50→余 48\",\"| 无撞获准直扫\",\"| 无权\",\"| 隐藏\",\"| 不存在\",\"| 失鲜\",\"| 超端点\",\"| 再撞\",\"| 双接触\",\"**现行同键对账\",\"Quote=unknownPrice\",\"capacityUnknown\"])a.ok(x.includes(k),k);a.ok(v.find(z=>z.includes(\"Read-B4-material-R0\")).includes(\"2 M / 21 tick\"));console.log(\"PASS mdaj 19 IDs/projections, R0 price, nine cases and blockers\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj 19 IDs/projections, R0 price, nine cases and blockers"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @( 'docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json' | Sort-Object ); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdaj exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS mdaj exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "commandSummary": "首次十九行同键检查逐字比较物理字段列与账本字段列，未去掉物理列末尾的端点数；断言在 Read-B4-main-R0 失败。",
+      "exitCode": 1,
+      "reason": "检查脚本归一化遗漏物理表的 `；2/3/4` 端点数，修正比较式后同键检查通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json",
+      "exitCode": 1,
+      "reason": "首次证据 JSON 缩进未符合 Prettier；格式化后重跑。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；当前沙盒只允许读取 .git，未形成本地提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json"
+  ]
+}
