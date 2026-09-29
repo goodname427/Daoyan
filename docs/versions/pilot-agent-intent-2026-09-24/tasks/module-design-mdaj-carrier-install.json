@@ -1,0 +1,107 @@
+{
+  "taskId": "mdaj-carrier-install",
+  "status": "completed",
+  "summary": "已消费 completed 的 mdaj-physical-price 前驱证据并对齐十九物理投影与 mdai-B4-audit-v1/audit-work-v1；逐安装时相复算暂存页和常驻页共存峰 S_install=559 S、响应峰 314 S，签纸面 Smax=max(314,559)=559 S。已复核条件 Mmax≥44 M、十九读≤271 tick、响应≤330 tick、旧占用及七类反例的已付/释锁和 capacityUnknown/queueFull。主策仍须判断固定审计与单字段探查的玩家边界，以及 44/6 M 与 559 S 设计需求对可施放性的影响；当前没有运行签名，整版仍待主策复核。",
+  "actualResult": "策划文档完成定向对账与轻量检查；设计界非球容量实测或可执行 Quote。本轮仅修改合同允许的策划正文与任务证据。当前沙盒只允许读取 .git，git add 无法创建 .git/index.lock，本地提交未形成。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json"
+    ],
+    "nonGoals": "不改物理、账本、生命、理论、桥接、ADR、代码或其他版本任务；不把纸面 hash、容量、收据或价格称为实证。"
+  },
+  "checks": {
+    "predecessor": "tasks/module-design-mdaj-physical-price.json: taskId=mdaj-physical-price, status=completed；同一 Read-B4-material-R0 的现行条件价 2 M/≤21 tick、50→48，十九投影未变。",
+    "designKey": "S0-physical-v1/seed-physical-v1; B4-v1/slice-B4-01; book-mdu-01/v1; AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1 (纸面定位符，旧 H_B4_assumed_v1 非别名); B4-R19-projection-v1; index 0…18; mdai-B4-audit-v1/audit-work-v1; C-B4-mdai-carrier-v1; V0…VP",
+    "installCount": "单页 AST 8+索引19+字段对199+端点引用53=279 S；私有暂存279；原子转交两页558+64 B槽1=559；释放暂存并订阅279+槽1+订阅1=281；信封在世界队列、球内引用1+FIFO1=283；唯一帧31后响应314。S_install=max(279,559,281)=559，Smax=max(314,559)=559 S；旧占用 O 另计，准入要求同版 C_S−O≥559 及各分项足额。",
+    "resourceCoverage": "十九索引各有 projectionHash/readId/phase/receiptId；R0…R3 每阶段 6 M/≤56 tick，POST 5 M/≤47 tick；读29 M/≤271 tick，装载5 M、作用10 M，条件本人50=44+6 M；响应271+10+20+12+12+5=330 tick。逐项静态 M/W/S 上界须由开发后 VM 实耗验证。",
+    "counterexamples": "旧占用已证不足 capacityFull、未知 capacityUnknown；双接触与后封仅球内 FIFO 同版实满 queueFull，否则 capacityUnknown；合法空材料 R0 独收2 M/≤21 tick、条件余48；撤权预检零新扣且释锁，合法已发探查 attempt 与成功价互斥；unknownPrice/容量不可读不开新 VM 且释未执行锁；FIFO 实满后封零新扣。已结自然事实与合法已付保留。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md:631-705; tasks/module-design-mdaj-physical-price.json",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "V0…VP",
+          "Read-B4-material-R0"
+        ],
+        "result": "物理独占十九端点/字段/阶段及 C→N→X；首撞10=4+2+4 E0、3q=2q+残片q，B4 独立100=53+47 E0/12、包32/12→8/12、仓4q=2q+q+q。空读已与新价同键对齐，物理数不转 M。"
+      },
+      {
+        "source": "mana-ledger-design.md:888-946",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "acct-B1-B4",
+          "payerGrant-B4-v1",
+          "receipt-B4-read-[readId]-[requestId]-v1"
+        ],
+        "result": "账本独占 p(E)、t(F,E)、独立 ReadTx/收款槽/锁；B4 本人50=29+5+10+6 M。J1 本人32、P0/P2各1/2、可选P1自付1，跨账户35/36；D1本人40=26+14，不代 B4 付款。"
+      },
+      {
+        "source": "programmable-spells-design.md:866-960",
+        "versionKeys": [
+          "AST-B4-mdai-audit-v1",
+          "H_B4_mdai_assumed_v1",
+          "B4-R19-projection-v1",
+          "C-B4-mdai-carrier-v1"
+        ],
+        "result": "程序独占纸面 AST 身份、十九索引、安装/响应同时活 S 和 Smax=559；规范字节/hash、页≤4096 B、槽/帧/FIFO、旧占用、运行峰及 VM tick 待开发。"
+      },
+      {
+        "source": "ADR 0019 决策三; ADR 0020; life-identity-design.md:676-723; design-review-findings.md:1118-1167",
+        "versionKeys": [
+          "Audit-B4-v1",
+          "factId",
+          "k0/k_m/k_a",
+          "LifeId",
+          "drb5-world-closure-review"
+        ],
+        "result": "ADR 0019 约束通用字段探查与同形拒绝；ADR 0020 世界信封不提供球内 FIFO；普通壳修不复苏；主策复核仍 changes-requested。"
+      }
+    ],
+    "playerVisible": "仅获准壳态、本人真实已付/暂余和裁剪拒因；POST 未读包余待测，隐藏端点和他人账户不显示。",
+    "remaining": "开发生成规范 AST 字节/SHA-256、十九 projectionHash、真实 grant/到账/ReadTx/LoadTx/Tx 收据、页≤4096 B、槽/帧/FIFO/旧占用及容量原读、逐时 S 峰和 VM tick；若字段、价版、布局或容量版改变，撤旧证、重编并重算。当前 Quote=unknownPrice，capacityUnknown。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1),y=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\").at(-1),ids=z=>[...z.matchAll(/^\\| `((?:Read-B4-|POST-B4-)[^`]+)`/gm)].map(m=>m[1]),u=ids(x),v=ids(y);a.equal(u.length,19);a.deepEqual(u,v);a.equal(8+19+199+53,279);a.equal(2*279+1,559);a.equal(8+1+1+1+1+19+199+53+31,314);a.equal(4*56+47,271);a.equal(271+10+20+12+12+5,330);for(const k of [\"S_install=max(279,559,281)=559 S\",\"Smax=max(314,559)=559 S\",\"C_S−O≥559\",\"50→48\",\"capacityUnknown\",\"queueFull\",\"H_B4_mdai_assumed_v1\",\"mdai-B4-audit-v1\"])a.ok(d.includes(k),k);console.log(\"PASS mdaj 19 IDs, install 559 S, response 314 S, 271/330 tick and boundary keys\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj 19 IDs, install 559 S, response 314 S, 271/330 tick and boundary keys"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdaj-carrier-install.json\",\"utf8\")),d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\");a.equal(e.taskId,\"mdaj-carrier-install\");a.equal(e.status,\"completed\");a.equal(e.scope.writePaths.length,2);a.ok(d.includes(\"Smax=max(314,559)=559 S\"));a.ok(e.commands.every(x=>x.exitCode===0));console.log(\"PASS mdaj task evidence, exact two writePaths and 559 S signature\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj task evidence, exact two writePaths and 559 S signature"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json' | Sort-Object); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdaj exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS mdaj exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；当前沙盒对 .git 为只读，无法形成本地提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-carrier-install.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-physical-price.json"
+  ]
+}
