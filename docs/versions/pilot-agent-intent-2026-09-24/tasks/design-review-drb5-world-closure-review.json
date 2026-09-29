@@ -1,0 +1,96 @@
+{
+  "taskId": "drb5-world-closure-review",
+  "status": "completed",
+  "reviewDecision": "changes-requested",
+  "summary": "六项 mdai 已完成设计交付，十九读的逐端投影和 mdai-B4-audit-v1 纸面价可对齐；物理现行段仍以 mdah pending 和 material-R0 空读 1 M/50→49 消费同键，新账本定 2 M/50→48。module-design 阻断成立，29 M 与 44 M/余 6 M 仅是新目录条件算术，旧 34 M/余 16 M 仅是旧价条件，均非当前可执行成功。理论/桥接另有消费状态时序句待定向核对，程序 S_install 设计上界、规范 hash、球容量及真实样本/授权/付款/VM 用量待补。无新增制作人取舍。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json"
+    ],
+    "nonGoals": "不修改模块权威、ADR、代码、状态；不运行统一 verify 门禁；不提交、推送、打 tag。"
+  },
+  "checks": {
+    "reviewStatus": "changes-requested；详细策划联签阻断，任务 completed 只表示本轮审核交付",
+    "readIds": "R0–R3 的 main/aux/heat/material 16 项及 POST main/heat/material 3 项在物理、账本和本轮审核表顺序同键；纸面 F=199/E=53，读 29 M/≤271 tick",
+    "priceConflict": "physics-material-design.md:635,688,694-696 保留 mdah pending/空读 1 M 条件；mana-ledger-design.md:903,926,937 对 material-R0 定 2 M/50→48；module-design.md:12,18,20 阻断",
+    "paperLedger": "同 payer 50→44→39→33→27→21；R3 后已付29，锁15、可用6；作用后已付39/暂余11；POST 2/1/2 后已付44/余6。POST 全失证释锁5。J1 本人32，P0/P2 1/2、可选 P1 1；D1 本人26/余14，均独立",
+    "evidenceGap": "程序响应 314 S/≤330 tick 有条件，安装峰 S_install 尚无数值上界；实 grant/读样本/收据、规范 AST/hash、球本体旧占用和 VM 实耗缺失，当前 Quote=unknownPrice/capacityUnknown",
+    "focusedReturn": "物理原归属消除同键旧价与已完成任务待办句；理论 1287-1290、桥接 358/362 定向核消费状态；Version PM 待更正后重核总览，主策再重判"
+  },
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb5-world-closure-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-20",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb4-world-closure-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb4-world-closure-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-bridge.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:631-698",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:886-946",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:870-928",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:676-723",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1243-1291",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:295-364",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+    "src/core/world.ts",
+    "src/core/compiler.ts",
+    "src/core/vm.ts"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",p=f.readFileSync(b+\"physics-material-design.md\",\"utf8\"),l=f.readFileSync(b+\"mana-ledger-design.md\",\"utf8\"),d=f.readFileSync(b+\"design-review-findings.md\",\"utf8\").split(\"## `drb5-world-closure-review`\").at(-1),rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=s=>s.split(/\\r?\\n/).filter(x=>x.startsWith(\"| `\")&&rx.test(x)).slice(0,19),x=rows(p.slice(p.indexOf(\"## B4 十九读字段\"))),y=rows(l.slice(l.indexOf(\"## B4 固定投影审计原子\"))),z=rows(d);a.equal(x.length,19);a.equal(y.length,19);a.equal(z.length,19);let F=0,E=0,M=0,T=0;for(let i=0;i<19;i++){const id=x[i].match(rx)[1],q=y[i].split(\"|\"),v=q[3].match(/(\\d+)\\/(\\d+)/),w=q[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(y[i].match(rx)[1],id);a.equal(z[i].match(rx)[1],id);a.ok(x[i].includes(\"sample-\"+id+\"-v1\"),id);a.equal(+w[1],+v[2]===2?1:2);a.equal(+w[2],1+(+v[1])+(+v[2]));F+=+v[1];E+=+v[2];M+=+w[1];T+=+w[2]}a.deepEqual([F,E,M,T,50-M-5-10],[199,53,29,271,6]);a.ok(p.includes(\"若账本新价恰为 `1 M` 才有条件 `50→49`\"));a.ok(l.includes(\"`50→48`\"));a.ok(d.includes(\"changes-requested\")&&d.includes(\"同键冲突\"));console.log(\"PASS drb5 19 readIds, phase prices, totals, and conflict evidence\")'",
+      "exitCode": 0,
+      "output": "PASS drb5 19 readIds, phase prices, totals, and conflict evidence"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",ids=[\"mdai-b4-fields\",\"mdai-b4-quote\",\"mdai-b4-carrier\",\"mdai-b4-life\",\"mdai-world\",\"mdai-bridge\"];for(const id of ids)a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");const m=f.readFileSync(b+\"module-design.md\",\"utf8\");a.ok(m.includes(\"阶段结论为阻断\")&&m.includes(\"mdai-B4-audit-v1\")&&m.includes(\"50→48\"));const r=f.readFileSync(b+\"design-review-findings.md\",\"utf8\").split(\"## `drb5-world-closure-review`\").at(-1);for(const id of ids)a.ok(r.includes(id),id);for(const s of [\"changes-requested\",\"同键冲突\",\"缺设计证\",\"待运行验证\",\"World→compiler→VM\"])a.ok(r.includes(s),s);console.log(\"PASS drb5 six deliveries, module block, and review categories\")'",
+      "exitCode": 0,
+      "output": "PASS drb5 six deliveries, module block, and review categories"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 1,
+      "reason": "新增审核表初次未符合 Prettier；只格式化目标文档后同一检查通过。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",ids=[\"mdai-b4-fields\",\"mdai-b4-quote\",\"mdai-b4-carrier\",\"mdai-b4-life\",\"mdai-world\",\"mdai-bridge\"];for(const id of ids)a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");const m=f.readFileSync(b+\"module-design.md\",\"utf8\").split(\"---\")[0];a.ok(m.includes(\"阶段结论为阻断\")&&m.includes(\"mdai-B4-audit-v1\")&&m.includes(\"50→48\"));const r=f.readFileSync(b+\"design-review-findings.md\",\"utf8\").split(\"## `drb5-world-closure-review`\").at(-1);for(const id of ids)a.ok(r.includes(id),id);for(const s of [\"changes-requested\",\"同键冲突\",\"缺设计证\",\"待运行验证\",\"World→compiler→VM\"])a.ok(r.includes(s),s);console.log(\"PASS drb5 six deliveries, module block, and review categories\")'",
+      "exitCode": 1,
+      "reason": "检查脚本用首个 Markdown 表格分隔线截断总览，漏掉 50→48；改为读取完整总览后通过。"
+    },
+    {
+      "command": "Get-Content docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json",
+      "exitCode": 1,
+      "reason": "开工检查时目标 JSON 尚未创建；随后在指定 writePath 新建。"
+    },
+    {
+      "command": "rg -n \"mdai|29 M|44 M|余 6|Read-B4|POST-B4|priceVersion|n_extra|unknownPrice\" docs/versions/pilot-agent-intent-2026-09-24/{physics-material-design,mana-ledger-design,programmable-spells-design,life-identity-design,world-theory-draft,player-bridge-design}.md",
+      "exitCode": 1,
+      "reason": "PowerShell 不支持该 Bash 花括号路径展开；改用逐个精确路径读取。"
+    },
+    {
+      "command": "rg -n \"^## `drb5|^  \\\"taskId\\\"|^  \\\"failedAttempts\\\"\" docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb5-world-closure-review.json",
+      "exitCode": 1,
+      "reason": "PowerShell 双引号内反引号影响了正则；该行号查询不参与审核判定，目标路径及 JSON 已由直接检查通过。"
+    }
+  ]
+}
