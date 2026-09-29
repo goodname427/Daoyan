@@ -1,9 +1,9 @@
-# design-review 本轮任务：首批 A 同版世界合同复核
+# design-review 本轮任务：mdai 同版闭合复核
 
-**问题与范围。** 六项 `mdah-*` 模块成果已交付；最新[模块总览](./module-design.md)仍未签跨模块闭合：B4 十六项前读和三项 POST 的字段授权、版本及价证不足，物理与账本对 `n` 的定义冲突。范围修订 13、首批 A 与既有完整策划批准是边界；条件纸面数值和任务完成状态不能替代本轮复核。
+**问题与范围。** 六项 `mdai-*` 详细策划已交付，但[模块总览](./module-design.md)仍将跨模块联签判为阻断：物理现行段的旧空读价与账本新价版冲突。审核限于范围修订 13 和已选首批 A；既有审批事实不因本轮纸面冲突改变。
 
-**唯一成果。** `drb4-world-closure-review` 由主策独立核对模块、唯一理论和玩家桥接，先裁定 B4 逐读与价格阻断，再检查 J1、D1、B1→B4 及未列举实体/事件反例、ADR 覆盖和旧实现接入。结论追加到[审核发现](./design-review-findings.md)，证据写入 `tasks/design-review-drb4-world-closure-review.json`。同节点无前驱；两条写入路径由该任务独占。
+**唯一成果。** `drb5-world-closure-review` 由主策独立复核十九读、逐字段报价、来源与付款、程序容量、生命身份、唯一理论及六入口桥接，并用 J1、D1、B1→B4 和未列举实体/事件反证。结论追加到[审核发现](./design-review-findings.md)，任务证据写入 `tasks/design-review-drb5-world-closure-review.json`。同节点无前驱，两处写入由本任务独占。
 
-**验收边界。** 区分设计已闭合、缺设计证、待开发实测及确需制作人决定；缺口标原权威归属与通过条件，新增产品或不可逆取舍才给通俗比较和推荐。未来法球付费响应、更多预设与敌方修士仅作扩展反例。本任务不改模块策划、ADR、游戏代码或测试，不规划后续节点。共享 `design-review.md`、`design-review.json` 和 `docs/status.md` 留给 Version PM 收束。
+**验收边界。** 按现行同键证据判定已闭合、冲突、缺设计证和待开发实测；冲突或缺证须指出原权威归属和通过条件。只有新增玩家规则或不可逆取舍才给制作人通俗比较与推荐。未来法球付费响应、更多预设及敌方修士只作扩展反例。本任务不改模块正文、ADR、游戏代码或测试，也不规划后续节点。共享 `design-review.md`、`design-review.json` 和 `docs/status.md` 由 Version PM 收束。
 
 机器合同见 [design-review-tasks.json](./design-review-tasks.json)。
