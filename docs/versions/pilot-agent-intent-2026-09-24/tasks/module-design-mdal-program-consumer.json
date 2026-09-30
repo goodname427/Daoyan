@@ -1,0 +1,126 @@
+{
+  "taskId": "mdal-program-consumer",
+  "status": "completed",
+  "summary": "依最新 drb7 和只读前驱 mdal-physical-consumer 校正程序 960、970–973：生命 723–748、理论 1289–1301、桥接 370–385 已纸面消费十九读、新价与 559 S；总览 1–13 已撤旧物理/安装/消费者阻断并交主策复审，仍非主策通过或运行验收。保留稳定物理/身份规则、有限 B4 设计合同及现有条件价格/容量边界；其他归属文件的旧流程时态如实列为待其清理。无新玩家规则或实测成功声称。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json"
+    ],
+    "readOnlyPredecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+    "nonGoals": "不改其他模块、总览、ADR 或代码；不宣告整版完成，不把纸面别名、条件收据、559 S 设计界当运行证明。"
+  },
+  "reconciliation": {
+    "latestReview": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/design-review.md:1-12; docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb7-world-closure-review",
+      "keys": ["drb7-world-closure-review", "changes-requested"],
+      "result": "仅退回消费者流程时态。总览已交主策复审，旧 mdaj 阻断撤销；其他模块旧 blocked/drb5/drb6 状态句由原归属清理，程序页不代 Version PM 裁定整版。"
+    },
+    "physical": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:637-710; docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+      "keys": [
+        "S0-physical-v1/seed-physical-v1",
+        "B4-v1/slice-B4-01",
+        "V0…VP",
+        "C-B1-01/N-B1-impact-01/X-B1-shell-v1"
+      ],
+      "result": "物理独占十九 readId 的 endpointId/field/phase、grant/撤权/样本、自然 C/N/X 及 E0/q。首撞两端 −6/+6 μ·L/s、10=4+2+4 E0、壳 3q=2q+残片q；B4 独立来源 100=53+47 E0/12、包 32/12→8/12、仓 4q=隔离2q+壳q+废料q。自然过程零 B4 M/VM tick；699–710 已承认程序 559 S 纸面界与总览旧阻断撤销。"
+    },
+    "ledger": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:896-946; docs/adr/0019-属性探查与资源账本.md",
+      "keys": [
+        "mdai-B4-audit-v1/audit-work-v1",
+        "acct-B1-B4/payerGrant-B4-v1",
+        "receipt-B4-funded-v1",
+        "Read-B4-material-R0"
+      ],
+      "result": "账本独占 p(E)=1 M/2 端、2 M/3–4 端及 t(F,E)=1+F+E；十九读 29 M/≤271 tick，材料 R0 获准空读 2 M/≤21 tick、条件 50→48。B4 本人条件净入 50，十九读 29+装载5+作用10=已付44/余6；每 readId 唯一 ReadTx/receiptId，不可取槽及锁/释锁。POST 三项未执行已付39/暂余11、释锁5。J1 本人32=9+11+12，P0/P2 各自1/2、可选 P1 自付1，跨账户35/36；D1 本人40=26+14；均不代 B4 付款。真实净入及收据未证。"
+    },
+    "life": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:723-748",
+      "keys": ["LifeId", "assessmentId", "k0/k_m/k_a"],
+      "result": "现行数值/身份段已消费新价、十九读和559 S；普通 k0 壳修不复苏旧 LifeId，四证不足为 unknown/unknown。723/734/748 的总览 blocked 流程句与总览1–13冲突，归生命原任务清理。"
+    },
+    "theory": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1289-1301",
+      "keys": ["book-mdu-01/v1", "B4-v1/slice-B4-01", "mdai-B4-audit-v1", "C-B4-mdai-carrier-v1"],
+      "result": "已消费十九读、44/6 M、279/559/281/314 S、C_S−O≥559、≤313/330 tick 条件证和桥接交付；1293/1299/1301 的旧总览 blocked/待重核时态与总览1–13冲突，归理论原任务。自然先于付费，已结不倒带。"
+    },
+    "bridge": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:370-385",
+      "keys": ["B4-v1/slice-B4-01", "readId/receiptId/priceVersion", "book-mdu-01/v1"],
+      "result": "已消费新价、559 S、同书六入口和授权裁剪：只显示获准壳态、本人真实已结/暂余、裁剪拒因，POST 未读包余“待测”；385 的旧总览阻断/drb5 归桥接原任务清理，六入口实玩未证。"
+    },
+    "overview": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-13",
+      "keys": ["mdai-B4-audit-v1", "Read-B4-material-R0", "C-B4-mdai-carrier-v1"],
+      "result": "现行总览含 2 M/≤21 tick、29+5+10=44/余6 M、279/559/281/314 S 和 C_S−O≥559，撤旧阻断并交主策复审；不是主策批准、ADR-0024采纳或游戏运行验收。"
+    },
+    "programIdentity": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:870-944",
+      "keys": [
+        "book-mdu-01/v1",
+        "AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1",
+        "B4-R19-projection-v1",
+        "C-B4-mdai-carrier-v1",
+        "mdai-B4-audit-v1"
+      ],
+      "result": "同一 B4 纸面 AST 定位符覆盖七字段模板、十九 readId 索引0–18、V0…VP、每 ID 投影/收据与已提交 factId 事件；旧 B4 hash 非别名。J1 同 AST/hash 纸面别名与十五读独立核；D1 独立 AST/hash 和 payer。运行规范字节/SHA-256仍未知。"
+    }
+  },
+  "paperChecks": {
+    "staticBounds": "四个 R 阶段各6 M/≤56 tick，POST5 M/≤47 tick，共十九读29 M/≤271 tick；F=4×41+35=199，E=4×11+9=53。单页8+19+199+53=279 S，原子转交2×279+1=559 S，释放暂存后279+1+1=281 S，响应281+1+1+31=314 S，故S_install=Smax=559 S；条件响应≤330=271+10+20+12+12+5 tick。需同版 C_S−O≥559、页≤4096 B、槽64 B及订阅/FIFO/引用/帧分项足额；不借世界队列。",
+    "positive": "单订阅全 grant/鲜样/付款/容量齐证时，十九读与装载/作用由 acct-B1-B4 条件支付29+5+10=44 M，50余6；自然 C/N/X 与E0/q另账，玩家只见获准壳态及本人真实收据/暂余。",
+    "negative": "旧占用或FIFO未读为capacityUnknown，不能报queueFull；同版FIFO实满才对双接触后封报queueFull，已提交两C、一球壳X和先封实付保留。Vi/VP失鲜或grant撤销撤未执行Quote/锁和容量覆盖，不伪称新ReadTx/收据，新请求重读重报。POST全失证时24+5+10=39 M已付、暂余11、未用锁5释放，包余待测，已结作用/壳/桶/热/切片退役不倒带。"
+  },
+  "remaining": {
+    "planner": "固定封闭审计与 ADR-0019 通用逐字段探查的玩家边界，以及条件44/余6 M和559 S对可施放性的影响，仍待主策复核；主策最新 drb7 为 changes-requested。无本任务新增制作人取舍。",
+    "crossModule": "生命723/734/748、理论1293/1299/1301、桥接385和ADR-0024的旧总览时态由各原归属修正；本任务只修改程序消费者断言。",
+    "development": "逐端真实grant/撤权/校准原读、本人净入与唯一不可取收据、规范AST字节/运行SHA-256、球页/槽/U/FIFO/引用/帧/旧占用实测、逐VM M/tick/S及六入口实玩。当前Quote=unknownPrice、capacityUnknown，条件价格及静态界本身已设计闭合。",
+    "architecture": "ADR-0020已采纳且本轮不改其运行语义；替换旧hitProjectile/damage/life/Wm须架构归属先采纳ADR-0024（当前待采纳），按隔离旧资产、等价证明/原子迁移、安全回退办理；会丢原件/新版增量或重扣时拒绝运行回退。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",g=n=>f.readFileSync(b+n,\"utf8\"),seg=(n,x,y)=>g(n).split(/\\r?\\n/).slice(x-1,y).join(\"\\n\"),p=g(\"programmable-spells-design.md\"),cur=p.split(\"### `mdal-program-consumer`\").at(-1),ph=seg(\"physics-material-design.md\",699,710),l=seg(\"mana-ledger-design.md\",920,946),life=seg(\"life-identity-design.md\",723,748),t=seg(\"world-theory-draft.md\",1289,1301),br=seg(\"player-bridge-design.md\",370,385),m=seg(\"module-design.md\",1,13),r=seg(\"design-review.md\",1,12);for(const [s,x] of [[\"559 S\",ph],[\"mdai-B4-audit-v1\",l],[\"559 S\",life],[\"559 S\",t],[\"559 S\",br],[\"交主策复审\",m],[\"drb7-world-closure-review\",r],[\"changes-requested\",r],[\"生命 723–748\",cur],[\"理论 1289–1301\",cur],[\"总览 1–13\",cur],[\"B4-v1/slice-B4-01\",cur],[\"book-mdu-01/v1\",cur],[\"AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1\",cur],[\"B4-R19-projection-v1\",cur],[\"C-B4-mdai-carrier-v1\",cur],[\"mdai-B4-audit-v1\",cur],[\"十九\",cur],[\"ADR-0024\",cur]])a.ok(x.includes(s),s);a.ok(p.includes(\"总览](./module-design.md) 1–13 已列新价与 `559 S`\"));a.ok(p.includes(\"1–13 已列 `2 M/≤21 tick`\"));a.ok(!cur.includes(\"总览只记\"));console.log(\"PASS mdal six-key current authorities and consumer status\")'",
+      "exitCode": 0,
+      "output": "PASS mdal six-key current authorities and consumer status"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",\"utf8\"),s=p.split(\"### `mdal-program-consumer`\").at(-1);a.equal(4*4+3,19);a.equal(4*41+35,199);a.equal(4*11+9,53);a.equal(4*6+5,29);a.equal(4*56+47,271);a.equal(29+5+10,44);a.equal(50-44,6);a.equal(8+19+199+53,279);a.equal(2*279+1,559);a.equal(279+1+1,281);a.equal(281+1+1+31,314);a.equal(271+10+20+12+12+5,330);a.equal(24+5+10,39);a.equal(50-39,11);for(const k of [\"索引 `0…18`\",\"C_S−O≥559\",\"capacityUnknown\",\"不标 `queueFull`\",\"同版原读证实满\",\"grant 撤销\",\"不能伪称已执行 `ReadTx/receiptId` 或仍锁定\",\"未用 POST 锁 `5` 释放\",\"包余仍“待测”\",\"n_extra>0\",\"待采纳提案\"])a.ok(s.includes(k),k);console.log(\"PASS mdal nineteen reads, M/tick/S arithmetic and capacity/stale/POST counterexamples\")'",
+      "exitCode": 0,
+      "output": "PASS mdal nineteen reads, M/tick/S arithmetic and capacity/stale/POST counterexamples"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=b+\"programmable-spells-design.md\",e=b+\"tasks/module-design-mdal-program-consumer.json\",j=JSON.parse(f.readFileSync(e,\"utf8\")),s=c.execFileSync(\"git\",[\"status\",\"--porcelain\",\"--untracked-files=all\"],{encoding:\"utf8\"}).split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(s,[d,e].sort());a.equal(j.taskId,\"mdal-program-consumer\");a.equal(j.status,\"completed\");a.deepEqual(j.scope.writePaths,[d,e]);a.ok(j.commands.length>=2);a.ok(j.commands.every(x=>x.exitCode===0&&typeof x.command===\"string\"));a.ok(j.failedAttempts.some(x=>x.exitCode===1));a.ok(j.evidence.includes(d+\"#mdal-program-consumer现行消费裁定与运行门槛\"));console.log(\"PASS mdal exact writePaths and evidence schema\")'",
+      "exitCode": 0,
+      "output": "PASS mdal exact writePaths and evidence schema",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "$p='docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json'; $j=Get-Content $p -Raw | ConvertFrom-Json; $i=0; foreach($c in $j.commands){$i++; Write-Output \"RUN $i: $($c.command)\"; Invoke-Expression $c.command; $code=if($LASTEXITCODE -ne $null){$LASTEXITCODE}else{$?}; Write-Output \"ACTUAL_EXIT=$code\"; if(-not $code){exit 1}}",
+      "exitCode": 1,
+      "output": "PowerShell ParserError: Variable reference is not valid. ':' was not followed by a valid variable name character at `RUN $i:`; the check commands did not start."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md#mdal-program-consumer现行消费裁定与运行门槛",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md#mdak-program-status同键消费者与有限准入状态",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md#当前轮次drb7-world-closure-reviewmdak-首批-a-同版世界合同复核范围修订-13"
+  ]
+}
