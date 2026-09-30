@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { analyzeBook, parseSpellbook, TICK_MS } from '../src/core/index';
 import { Battle } from '../src/game/battle';
 import { importSpellPresets, SPELL_PRESETS } from '../src/app/spellPresets';
+import { appendFirstBatchSpell } from '../src/game/firstBatch';
+import { appendB4Spell, runFirstBatchB4 } from '../src/game/firstBatchB4';
 
 const SRC = join(process.cwd(), 'src', 'game', 'spells.dy');
 
@@ -25,6 +27,70 @@ describe('战斗初始化', () => {
     expect(b.player.alive).toBe(true);
     expect(b.foesLeft()).toBe(3);
     expect(b.state).toBe('fighting');
+  });
+});
+
+describe('首批有限世界槽位边界', () => {
+  it('invalidates the first B4 success after recontact without inventing a second quote', () => {
+    const book = parseSpellbook(appendB4Spell(''));
+    expect(runFirstBatchB4(book, 'success').success).toBe(true);
+    const after = runFirstBatchB4(book, 'recontact');
+    expect(after.naturalContacts).toBe(2);
+    expect(after.success).toBe(false);
+    expect(after.nextResponse).toEqual({
+      contactCommitted: true,
+      quote: 'invalidated',
+      capacity: 'capacityUnknown',
+      capacityReadCount: 0,
+      capacityReadPaid: 0,
+      freshReadReceipts: 0,
+      vmRan: false,
+    });
+    expect(after.readReceipts).toBe(19);
+    expect(after.actionFacts).toBe(1);
+    expect(after.payerPaid).toBe(44);
+    expect(after.shellAfter).toBeNull();
+    expect(after.reason).toContain('第二 VM 未执行');
+    for (const [scenario, capacity] of [
+      ['recontactMeasured', 'sufficient'],
+      ['recontactQueueFull', 'queueFull'],
+    ] as const) {
+      const measured = runFirstBatchB4(book, scenario);
+      expect(measured.naturalContacts).toBe(2);
+      expect(measured.success).toBe(false);
+      expect(measured.nextResponse).toEqual({
+        contactCommitted: true,
+        quote: 'invalidated',
+        capacity,
+        capacityReadCount: 2,
+        capacityReadPaid: 4,
+        freshReadReceipts: 0,
+        vmRan: false,
+      });
+      expect(measured.readReceipts).toBe(19);
+      expect(measured.actionFacts).toBe(1);
+      expect(measured.payerPaid).toBe(48);
+      expect(measured.payerBalance).toBe(2);
+      expect(measured.shellAfter).toBeNull();
+      expect(measured.reason).toContain('第二 VM 未执行');
+    }
+    const incomplete = runFirstBatchB4(
+      parseSpellbook(appendB4Spell('').replace('首批B4审计(1, 18)', '首批B4审计(1, 17)')),
+      'recontact',
+    );
+    expect(incomplete.success).toBe(false);
+    expect(incomplete.naturalContacts).toBe(1);
+    expect(incomplete.nextResponse?.contactCommitted).toBe(false);
+  });
+
+  it('binding does not create source, grants or a false legacy Battle action', () => {
+    const book = parseSpellbook(appendFirstBatchSpell(readFileSync(SRC, 'utf8'), 'J1'));
+    const battle = new Battle(book, { playerBindings: { '1': 'J1执行' } });
+    const before = battle.player.mana;
+    expect(battle.castPlayer('1')).toBe(false);
+    expect(battle.player.mana).toBe(before);
+    expect(battle.world.driveActionFacts).toHaveLength(0);
+    expect(battle.log.join(' ')).toContain('登记来源、授权和容量');
   });
 });
 

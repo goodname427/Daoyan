@@ -2,7 +2,7 @@
   "taskId": "dev-player-a3",
   "status": "partial",
   "completed": false,
-  "summary": "当前工作树的同书编辑、预算、有限 World/VM 观察与返书撤旧报价，经 91 项定向测试和 Chromium 同书 trace 复核；旧同名存档定位拒绝并保留原件。活动波次仍为旧 Battle，未取得实体证书；B4 再撞后二次重读、重报价和容量三分判未完成，因此 dev-player-a3 整体不可标 completed。",
+  "summary": "当前工作树的同书编辑、预算、有限 World/VM 观察与返书撤旧报价已有审查前定向测试和 Chromium 同书 trace。旧同名存档定位拒绝并保留原件。再撞以获准实付的 World 本人容量新读及游戏桥接层 FIFO 实占区分 sufficient、queueFull、capacityUnknown，均不执行第二 VM。本次审核修复使推演台身份和 J1、D1、B4 演武入口按当前术的递归同书依赖闭包编译；两层辅助术改写后新预算和 hash 可计算，真实 World/VM 冒烟保持三术成功，旧报价不沿用。当前类型检查和定向静态检查通过；Vitest 与浏览器因沙盒 spawn EPERM 尚待调度器复验。活动波次仍为旧 Battle，未取得实体证书，因此 dev-player-a3 整体不可标 completed。",
   "measurements": {
     "J1": {
       "readReceipts": 15,
@@ -31,6 +31,19 @@
       "extraTicks": 21,
       "emptyReceipt": true,
       "extraActionFacts": 0
+    },
+    "B4RecontactCapacity": {
+      "unknown": { "capacityReads": 0, "extraMana": 0, "status": "capacityUnknown" },
+      "sufficient": { "capacityReads": 2, "extraMana": 4, "status": "sufficient" },
+      "full": { "capacityReads": 2, "extraMana": 4, "status": "queueFull" },
+      "secondVmRuns": 0
+    },
+    "sameBookTransitiveHelper": {
+      "entries": ["J1执行", "D1执行", "B4修壳"],
+      "dependencyDepth": 2,
+      "allHashesChangedAfterHelperEdit": true,
+      "allWorldVmSuccessAfterEdit": true,
+      "unrelatedSpellExcludedFromEntryHash": true
     }
   },
   "commands": [
@@ -40,19 +53,14 @@
       "result": "当前工作树 TypeScript 检查通过。"
     },
     {
-      "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
+      "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
       "exitCode": 0,
-      "result": "4 个文件、91 项定向游戏和 UI 测试通过。"
+      "result": "真实 World/VM 冒烟通过；再撞三支区分，两层同书辅助术改写后 J1、D1、B4 各生成新 hash，预算覆盖 VM 实耗并保持真实执行成功；辅助术增加世界读取会更新 J1 静态耗时预算。"
     },
     {
-      "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-narrow|uses two main views and an embedded blueprint mode'",
+      "command": "npx eslint src/game/finiteProgram.ts src/game/firstBatch.ts src/game/firstBatchB4.ts src/app/LabView.tsx src/demo/firstBatchSmoke.ts test/first-batch-player.test.ts test/render.test.tsx e2e/candidate.spec.ts --max-warnings 0",
       "exitCode": 0,
-      "result": "Chromium 同书、390×780 窄屏、双主视图共 3 条通过。"
-    },
-    {
-      "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book' --trace on",
-      "exitCode": 0,
-      "result": "Chromium 同书路径 1 条通过，保存逐步操作与页面快照 trace。"
+      "result": "审核修复涉及的 TypeScript/TSX 定向 ESLint 通过。"
     },
     {
       "command": "node scripts/check-docs.mjs",
@@ -60,9 +68,9 @@
       "result": "162 个 Markdown 文件的文档结构与链接检查通过。"
     },
     {
-      "command": "npx prettier --check docs/reference/spell-authoring.md docs/reference/entities-and-attributes.md docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
+      "command": "npx prettier --check src/game/finiteProgram.ts src/game/firstBatch.ts src/game/firstBatchB4.ts src/app/LabView.tsx src/demo/firstBatchSmoke.ts test/first-batch-player.test.ts test/render.test.tsx e2e/candidate.spec.ts docs/reference/spell-authoring.md docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
       "exitCode": 0,
-      "result": "本轮四份文档和证据文件格式检查通过。"
+      "result": "审核修复涉及的代码、测试与文档格式检查通过。"
     },
     {
       "command": "git diff --check",
@@ -70,7 +78,71 @@
       "result": "当前已跟踪改动无空白错误。"
     }
   ],
+  "priorValidation": [
+    {
+      "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
+      "result": "审查前代码树 91 项通过；本次代码变更后需重跑。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-narrow|uses two main views and an embedded blueprint mode'",
+      "result": "审查前 Chromium 3 条通过；本次界面变更后需重跑。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book' --trace on",
+      "result": "审查前同书 trace 已保存；不能作为本次修复后的浏览器通过证据。"
+    }
+  ],
   "failedAttempts": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 1,
+      "reason": "首次放入推演台身份 useMemo 时位于 activeSpell 声明前；已移动到声明后，最终同命令通过。"
+    },
+    {
+      "command": "npx prettier --check src/game/finiteProgram.ts src/game/firstBatch.ts src/game/firstBatchB4.ts src/app/LabView.tsx src/demo/firstBatchSmoke.ts test/first-batch-player.test.ts test/render.test.tsx e2e/candidate.spec.ts docs/reference/spell-authoring.md docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
+      "exitCode": 1,
+      "reason": "本次新增代码的四个文件尚未按仓库格式排版；定向写入格式后最终检查通过。"
+    },
+    {
+      "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
+      "exitCode": 1,
+      "reason": "新增界面预算断言先用辅助术局部变量替换，J1 当前最大耗时仍由原主链决定，预算未改变；调整为有价世界读取后冒烟复测通过。"
+    },
+    {
+      "command": "npx vitest run test/first-batch-player.test.ts test/render.test.tsx",
+      "exitCode": 1,
+      "reason": "本次辅助法术审核修复后的定向测试在 Vite 配置加载时被沙盒阻止 esbuild 子进程 spawn EPERM，测试体未启动。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book|candidate-first-batch-helper-edit'",
+      "exitCode": 1,
+      "reason": "本次辅助法术浏览器路径在测试体启动前被沙盒阻止子进程 spawn EPERM，旧 trace 不能证明当前树。"
+    },
+    {
+      "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
+      "exitCode": 1,
+      "reason": "首次新增三分判断言把两笔 World 本人探查误写为 2 M；直接冒烟测得实付 4 M，随后修正断言并重跑通过。"
+    },
+    {
+      "command": "npx vitest run test/combat.test.ts",
+      "exitCode": 1,
+      "reason": "本次修复后的定向 Vitest 在配置加载时被沙盒阻止 esbuild 子进程 spawn EPERM，测试体未启动。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book'",
+      "exitCode": 1,
+      "reason": "本次三分判修复后的 Chromium 直接路径被沙盒阻止子进程 spawn EPERM，浏览器测试体未启动。"
+    },
+    {
+      "command": "npx vitest run test/combat.test.ts test/render.test.tsx",
+      "exitCode": 1,
+      "reason": "本次修复后的直接测试在配置加载时被沙盒阻止 esbuild 子进程 spawn EPERM，测试体未启动。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book'",
+      "exitCode": 1,
+      "reason": "本次修复后的 Chromium 直接路径被沙盒阻止子进程 spawn EPERM，浏览器测试体未启动。"
+    },
     {
       "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
       "exitCode": 1,
@@ -93,27 +165,36 @@
     }
   ],
   "evidence": [
+    "src/game/finiteProgram.ts",
+    "src/game/firstBatch.ts",
+    "src/app/LabView.tsx",
+    "src/game/firstBatchB4.ts",
+    "src/demo/firstBatchSmoke.ts",
+    "test/combat.test.ts",
     "e2e/candidate.spec.ts",
     "test/first-batch-player.test.ts",
     "test/render.test.tsx",
     "test/persistence.test.ts",
     "docs/reference/spell-authoring.md",
     "docs/reference/entities-and-attributes.md",
-    "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md"
+  ],
+  "priorArtifacts": [
     "test-results/candidate-candidate-first-batch-same-book-chromium/trace.zip",
     "playwright-report/index.html",
     "test-results/.last-run.json"
   ],
   "limitations": [
     "演武场观察区使用独立真实 World；活动波次 Battle 尚未提供实体、来源、授权、价格和容量证书，旧画布按键触发有限术安全拒绝。",
-    "B4 再撞只实测第二条自然接触并撤销旧报价提示，尚未执行第二次修壳的重读、重报价和容量三分判。",
+    "B4 再撞实测第二条自然接触，撤销旧成功覆盖与报价；无权容量读判 capacityUnknown，获准两笔 World 本人容量实读后结合桥接层一位本体 FIFO 的实际在途意图判 sufficient 或 queueFull。核心尚无动态本体 FIFO 原读接口，活动战斗不能借此有限场景证书。第二次付费修补不在首批范围，尚无新 B4 读集或报价。",
     "B4 获准空读在同一 World 经直接 vmB4Read 执行，额外 21 tick 不在首次 VM.run 返回值中。",
     "域外关键回路修复由游戏入口预检拒绝，不代表核心 VM 通用域证明。",
-    "本轮未主动运行 npm run verify 或 npm run verify:full；首次提交的钩子意外触发 verify 并失败，Feature PM 在最终汇总代码树负责统一门禁。",
-    "当前工作树尚有前驱未提交实现，且 test/first-batch-player.test.ts 不在此任务声明的 writePaths；文档证据提交不表示实现已集成或全量验收。",
-    "首次本地提交被仓库钩子自动执行的 npm run verify 阻断；该全量命令并非本轮请求的直接检查，失败事实记录在 failedAttempts，未列入 commands。"
+    "本轮未主动运行 npm run verify 或 npm run verify:full；调度器在最终汇总代码树负责统一门禁。",
+    "审查修复后 Vitest 和浏览器均在启动前遇到沙盒 spawn EPERM；审查前通过记录及 trace 已单列，不能证明当前树。",
+    "当前工作树尚有前驱未提交实现；本次任务写入路径已包含 test/first-batch-player.test.ts。本任务未提交或推送。",
+    "此前本地提交尝试被仓库钩子自动执行的 npm run verify 阻断；失败事实记录在 failedAttempts，不能视为本轮完整门禁。"
   ],
-  "committed": true,
+  "committed": false,
   "pushed": false,
-  "commitScope": "仅本轮四份文档与证据文件；前驱实现及范围外 test/first-batch-player.test.ts 留在工作区供 Feature PM 集成。"
+  "commitScope": null
 }

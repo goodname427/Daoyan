@@ -1140,6 +1140,15 @@ body,
   border-radius: 6px;
 }
 
+.finite-observation {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.finite-observation > div {
+  margin-top: 8px;
+}
+
 .preset-item + .preset-item {
   margin-top: 10px;
   padding-top: 10px;
@@ -1858,6 +1867,12 @@ body,
   }
 
   .lab-app .spell-catalog {
+    display: block;
+    flex: 0 1 auto;
+    max-height: 210px;
+  }
+
+  .lab-app .spell-catalog .catalog-group {
     display: none;
   }
 

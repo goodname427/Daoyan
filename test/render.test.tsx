@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import * as externalMetas from '../src/game/externalMetas';
-import { defMeta, getMeta, T } from '../src/core/index';
+import { defMeta, getMeta, parseSpellbook, T, World } from '../src/core/index';
 import { SAVE_INCREMENTAL_KEY, SAVE_STORAGE_KEY } from '../src/app/persistence';
+import { appendFirstBatchSpell } from '../src/game/firstBatch';
+import { compileFiniteProgram } from '../src/game/finiteProgram';
 
 async function renderReady(element: ReactElement) {
   const view = render(element);
@@ -42,6 +44,78 @@ afterEach(() => {
 });
 
 describe('app rendering smoke test', () => {
+  it('does not list targets whose position is unavailable to the player', async () => {
+    const senseQuote = World.prototype.senseQuote;
+    vi.spyOn(World.prototype, 'senseQuote').mockImplementation(function (
+      this: World,
+      reader,
+      targetId,
+      field,
+    ) {
+      if (targetId !== reader.id && field === 'position') return null;
+      return senseQuote.call(this, reader, targetId, field);
+    });
+    const { App } = await import('../src/app/App');
+    const view = await renderReady(<App />);
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
+    const target = view.getByRole('combobox', { name: '探查目标' }) as HTMLSelectElement;
+    expect(target.options).toHaveLength(1);
+    expect(target.textContent).toBe('无目标');
+  });
+
+  it('edits one finite spell, binds it, observes real receipts, then invalidates the old quote', async () => {
+    const { App } = await import('../src/app/App');
+    const view = await renderReady(<App />);
+    fireEvent.click(view.getByRole('button', { name: '加入J1执行' }));
+    const identity = view.getByLabelText('首批程序身份');
+    const originalHash = identity.textContent?.match(/[a-f0-9]{64}/)?.[0];
+    expect(originalHash).toMatch(/^[a-f0-9]{64}$/);
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    fireEvent.change(view.getByRole('combobox', { name: '1' }), { target: { value: 'J1执行' } });
+    fireEvent.click(view.getByRole('button', { name: '有源执行' }));
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('原读收据 15');
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('本人已付 32 M');
+    fireEvent.click(view.getByRole('button', { name: /推演台/ }));
+    fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
+    const editor = view.container.querySelector('.code-input') as HTMLTextAreaElement;
+    fireEvent.change(editor, {
+      target: { value: editor.value.replace('首批J1原读(1, 14)', '首批J1原读(1, 13)') },
+    });
+    await waitFor(() =>
+      expect(view.getByLabelText('首批程序身份').textContent).not.toContain(originalHash),
+    );
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    expect(view.queryByLabelText('有限世界收据')).toBeNull();
+  });
+
+  it('updates the finite entry budget and hash when a same-book helper is edited', async () => {
+    const { LabView } = await import('../src/app/LabView');
+    const source = appendFirstBatchSpell(
+      'spell 二级 -> num { return 0 }\nspell 旁注 -> num { return 二级() }',
+      'J1',
+    ).replace('spell J1执行 -> bool {', 'spell J1执行 -> bool {\n旁注()');
+    function Harness() {
+      const [book, setBook] = useState(source);
+      return <LabView source={book} onSourceChange={setBook} initialSelection="spell:J1执行" />;
+    }
+    const view = render(<Harness />);
+    const identity = view.getByLabelText('首批程序身份');
+    const oldHash = compileFiniteProgram(parseSpellbook(source), 'J1执行').astHash;
+    expect(identity.textContent).toContain(oldHash);
+    const oldBudget = view.container.querySelector('.cost-card')?.textContent;
+    fireEvent.click(view.getByRole('button', { name: /^二级/ }));
+    const editor = view.container.querySelector('.code-input') as HTMLTextAreaElement;
+    fireEvent.change(editor, {
+      target: { value: editor.value.replace('return 0', '自身位置()\nreturn 0') },
+    });
+    fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
+    await waitFor(() =>
+      expect(view.getByLabelText('首批程序身份').textContent).not.toContain(oldHash),
+    );
+    expect(view.container.querySelector('.cost-card')?.textContent).not.toBe(oldBudget);
+  });
+
   it('shows a paid unavailable sense result in the lab sandbox', async () => {
     const { LabView } = await import('../src/app/LabView');
     const view = render(
@@ -199,6 +273,7 @@ describe('app rendering smoke test', () => {
     fireEvent.click(view.getByRole('button', { name: /演武场/ }));
     expect(view.getByLabelText('授权属性面板').textContent).toContain('无目标');
     expect(view.getByLabelText('授权属性面板').textContent).not.toContain('speedMax');
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
     fireEvent.click(view.getByRole('button', { name: '读取自身快照' }));
     const panel = view.getByLabelText('授权属性面板');
@@ -208,8 +283,8 @@ describe('app rendering smoke test', () => {
     expect(target.options.length).toBeGreaterThan(1);
     fireEvent.change(target, { target: { value: target.options[1].value } });
     fireEvent.click(view.getByRole('button', { name: '读取目标快照' }));
-    expect(panel.textContent).toContain('不可探查');
-    expect(panel.textContent).toContain('尚无获准快照');
+    expect(panel.textContent).toContain('position');
+    expect(panel.textContent).toContain('hp未知');
 
     fireEvent.click(view.getByRole('button', { name: /推演台/ }));
     fireEvent.click(view.getByRole('button', { name: /演武场/ }));
@@ -359,6 +434,7 @@ describe('app rendering smoke test', () => {
     expect((view.getByRole('button', { name: '开启目标监控' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
     const target = view.getByRole('combobox', { name: '探查目标' }) as HTMLSelectElement;
     fireEvent.change(target, { target: { value: target.options[1].value } });

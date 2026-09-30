@@ -60,6 +60,19 @@ function normalizeState(
     };
   }
   const spellSource = migratedBook.source;
+  if (legacySemantics) {
+    const finiteName = ['J1执行', 'D1执行', 'B4修壳'].find((name) => migratedBook.book[name]);
+    if (finiteName) {
+      const line =
+        value.spellSource
+          .split(/\r?\n/)
+          .findIndex((entry) => entry.includes(`spell ${finiteName}`)) + 1;
+      return {
+        ok: false,
+        message: `旧存档第 ${line} 行“${finiteName}”缺少可证明的规范程序、作用时点、来源、权限、价格与容量；原件已保留。`,
+      };
+    }
+  }
 
   const attrs = { ...defaults.arenaAttrs };
   if (value.arenaAttrs !== undefined && !isRecord(value.arenaAttrs)) {

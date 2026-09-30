@@ -788,6 +788,10 @@ export class Battle {
     const spell = spellOverride ?? a.bindings[slot];
     if (!spell) return false;
     if (!this.program.index.has(spell)) return false;
+    if (spell === 'J1执行' || spell === 'D1执行' || spell === 'B4修壳') {
+      this.pushLog(`「${spell}」需在首批有限世界观察中登记来源、授权和容量后执行。`);
+      return false;
+    }
 
     const cost = this.costs[spell];
     if (cost && cost.errors.length > 0) {
