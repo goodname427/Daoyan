@@ -3926,7 +3926,7 @@ async function reconcileItem(
   const acknowledgedWaiting =
     ['retry-wait', 'tracking'].includes(item.status) &&
     Boolean(item.retryAt) &&
-    itemOrchestration.acknowledgedWaitingSnapshot === waitingSnapshot;
+    sameWaitingEvidence(itemOrchestration.acknowledgedWaitingSnapshot, waitingSnapshot);
   if (run.status === 'waiting-producer') {
     const worker = await activeWorkerProcess(item, true);
     if (worker || isOwnedProcessAlive(run.processPid, run.processIdentity, 0)) {
@@ -4265,6 +4265,21 @@ export function snapshotPredatesLaunch(
   const snapshot = Date.parse(snapshotUpdatedAt);
   const launch = Date.parse(launchStartedAt);
   return Number.isFinite(snapshot) && Number.isFinite(launch) && snapshot < launch;
+}
+
+/** Dispatch attempt is local bookkeeping; it must not turn the same recovery file into a new blocker. */
+export function sameWaitingEvidence(acknowledged: string | undefined, current: string): boolean {
+  if (!acknowledged) return false;
+  if (acknowledged === current) return true;
+  try {
+    const left: unknown = JSON.parse(acknowledged);
+    const right: unknown = JSON.parse(current);
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== 6 || right.length !== 6)
+      return false;
+    return [0, 1, 3, 4, 5].every((index) => left[index] === right[index]);
+  } catch {
+    return false;
+  }
 }
 
 export function isBootstrapGraceActive(

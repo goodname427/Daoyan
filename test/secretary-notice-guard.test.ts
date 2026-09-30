@@ -20,6 +20,7 @@ import {
   resolveInboxIntent,
   runArgs,
   snapshotPredatesLaunch,
+  sameWaitingEvidence,
   taskFailureCoveredByFeatureGate,
   formatActiveRunStatus,
   deliveryCompletionMessage,
@@ -211,6 +212,52 @@ describe('secretary worker process launch', () => {
     expect(
       routingRetryAlreadyScheduled('retry-wait', '2026-09-28T01:45:33Z', snapshot, 'new-run'),
     ).toBe(false);
+  });
+  it('keeps an acknowledged quota blocker tied to recovery evidence, not dispatch attempts', () => {
+    const previous = JSON.stringify([
+      'run-202',
+      'run-202',
+      1,
+      'recoverable',
+      '2026-09-29T06:05:00Z',
+      'usage limit',
+    ]);
+    const retried = JSON.stringify([
+      'run-202',
+      'run-202',
+      2,
+      'recoverable',
+      '2026-09-29T06:05:00Z',
+      'usage limit',
+    ]);
+    expect(sameWaitingEvidence(previous, retried)).toBe(true);
+    expect(
+      sameWaitingEvidence(
+        previous,
+        JSON.stringify([
+          'run-202',
+          'run-202',
+          2,
+          'recoverable',
+          '2026-09-30T01:29:00Z',
+          'usage limit',
+        ]),
+      ),
+    ).toBe(false);
+    expect(
+      sameWaitingEvidence(
+        previous,
+        JSON.stringify([
+          'run-202',
+          'run-202',
+          2,
+          'recoverable',
+          '2026-09-29T06:05:00Z',
+          'new error',
+        ]),
+      ),
+    ).toBe(false);
+    expect(sameWaitingEvidence(previous, 'malformed')).toBe(false);
   });
   it('rebases a failed routing task only past clean commits outside its task scope', () => {
     const safe = {
