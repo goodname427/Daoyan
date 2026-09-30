@@ -20,6 +20,7 @@ import {
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
+  fastGateAfterRepair,
   fastGateCommandProgress,
   failedNpmCommandFromOutput,
   highestTier,
@@ -1542,9 +1543,13 @@ async function runReviewFix(
   const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
   const outputFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.md`);
   const logFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.log`);
+  const formalWritePaths = formalStageWritePaths(activeDirection);
+  const formalBoundary = formalWritePaths.length
+    ? `本正式任务只能修改以下写入路径（含目录内文件）：\n${formalWritePaths.map((path) => `- ${path}`).join('\n')}\n临时验证文件放在仓库外，结束前清理仓库内的临时文件。只运行问题相关的直接检查；快速门禁、完整门禁由调度器在你退出后运行。任务范围外的状态、开发日志与控制面文件由原负责人维护。\n\n`
+    : '';
   const prompt = `你是道衍项目的修复 Agent。遵守 AGENTS.md，在当前工作区修复独立审查发现的问题；不要 commit、push 或 tag。
 
-原始目标：${plan.summary}
+${formalBoundary}原始目标：${plan.summary}
 审查结论：${review.summary}
 问题：
 ${review.findings
@@ -2696,12 +2701,10 @@ try {
     previousFailureSignature = signature;
     activeValidationProgress.independentReview = null;
     const validationFingerprint = await validationStageFingerprint();
-    if (activeValidationProgress.fastGate) {
-      activeValidationProgress.fastGate = {
-        ...activeValidationProgress.fastGate,
-        ...validationFingerprint,
-      };
-    }
+    activeValidationProgress.fastGate = fastGateAfterRepair(
+      activeValidationProgress.fastGate,
+      validationFingerprint,
+    );
     await persistCheckpoint('active');
     if (repeatedNoProgress >= 1) {
       throw new Error(`局部修复对同一未关闭 finding 无进展：${finding.summary}`);
@@ -2710,123 +2713,151 @@ try {
   };
 
   let fastGateRound = activeValidationProgress.fastGate?.attempts ?? 0;
-  if (validationStages.has('fast-gate')) {
-    const commandSequence = await configuredFastGateCommands();
-    let pendingCommands =
-      activeValidationProgress.fastGate &&
-      !activeValidationProgress.fastGate.passed &&
-      (await validationStageMatches(activeValidationProgress.fastGate))
-        ? activeValidationProgress.fastGate.pendingCommands
-        : [];
-    let completedCommands =
-      pendingCommands.length > 0 ? activeValidationProgress.fastGate!.completedCommands : [];
-    let failedCommand: string[] = pendingCommands[0] ?? [];
+  if (validationStages.has('fast-gate') || validationStages.has('independent-review')) {
     while (true) {
-      fastGateRound += 1;
-      currentPhase = `Feature 快速门禁${failedCommand.length > 0 ? '定向复核' : ''}第 ${fastGateRound} 轮`;
-      await persistCheckpoint('active');
-      const verification = await runDeliveryVerification(
-        runDirectory,
-        fastGateRound,
-        'fast',
-        failedCommand,
-      );
-      if (verification.code === 0) {
-        if (failedCommand.length === 0) {
-          completedCommands = commandSequence;
-          pendingCommands = [];
-        } else {
-          completedCommands = [...completedCommands, failedCommand];
-          pendingCommands = pendingCommands.slice(1);
-        }
-        const validationFingerprint = await validationStageFingerprint();
-        activeValidationProgress.fastGate = {
-          ...validationFingerprint,
-          completedCommands,
-          pendingCommands,
-          passed: pendingCommands.length === 0,
-          attempts: fastGateRound,
-        };
-        await persistCheckpoint('active');
-        if (pendingCommands.length === 0) break;
-        failedCommand = pendingCommands[0];
-        continue;
-      }
-      failedCommand = verification.failedCommand;
-      if (pendingCommands.length === 0) {
-        const progress = fastGateCommandProgress(commandSequence, failedCommand);
-        completedCommands = progress.completedCommands;
-        pendingCommands = progress.pendingCommands;
-      }
-      const validationFingerprint = await validationStageFingerprint();
-      activeValidationProgress.fastGate = {
-        ...validationFingerprint,
-        completedCommands,
-        pendingCommands,
-        passed: false,
-        attempts: fastGateRound,
-      };
-      await persistCheckpoint('active');
-      await repairAndCheckProgress(
-        {
-          verdict: 'fix',
-          summary: `Feature 快速门禁的失败命令 ${failedCommand.join(' ')} 留在原 PM 运行内修复。`,
-          findings: [
+      if (
+        configuredValidationStages.includes('fast-gate') &&
+        !(
+          activeValidationProgress.fastGate?.passed &&
+          (await validationStageMatches(activeValidationProgress.fastGate))
+        )
+      ) {
+        const commandSequence = await configuredFastGateCommands();
+        let pendingCommands =
+          activeValidationProgress.fastGate &&
+          !activeValidationProgress.fastGate.passed &&
+          (await validationStageMatches(activeValidationProgress.fastGate))
+            ? activeValidationProgress.fastGate.pendingCommands
+            : [];
+        let completedCommands =
+          pendingCommands.length > 0 ? activeValidationProgress.fastGate!.completedCommands : [];
+        let failedCommand: string[] = pendingCommands[0] ?? [];
+        while (true) {
+          fastGateRound += 1;
+          currentPhase = `Feature 快速门禁${failedCommand.length > 0 ? '定向复核' : ''}第 ${fastGateRound} 轮`;
+          await persistCheckpoint('active');
+          const verification = await runDeliveryVerification(
+            runDirectory,
+            fastGateRound,
+            'fast',
+            failedCommand,
+          );
+          if (verification.code === 0) {
+            if (failedCommand.length === 0) {
+              completedCommands = commandSequence;
+              pendingCommands = [];
+            } else {
+              completedCommands = [...completedCommands, failedCommand];
+              pendingCommands = pendingCommands.slice(1);
+            }
+            const validationFingerprint = await validationStageFingerprint();
+            activeValidationProgress.fastGate = {
+              ...validationFingerprint,
+              completedCommands,
+              pendingCommands,
+              passed: pendingCommands.length === 0,
+              attempts: fastGateRound,
+            };
+            await persistCheckpoint('active');
+            if (pendingCommands.length === 0) break;
+            failedCommand = pendingCommands[0];
+            continue;
+          }
+          failedCommand = verification.failedCommand;
+          if (pendingCommands.length === 0) {
+            const progress = fastGateCommandProgress(commandSequence, failedCommand);
+            completedCommands = progress.completedCommands;
+            pendingCommands = progress.pendingCommands;
+          }
+          const validationFingerprint = await validationStageFingerprint();
+          activeValidationProgress.fastGate = {
+            ...validationFingerprint,
+            completedCommands,
+            pendingCommands,
+            passed: false,
+            attempts: fastGateRound,
+          };
+          await persistCheckpoint('active');
+          await repairAndCheckProgress(
             {
-              severity: 'high',
-              title: `修复失败命令：${failedCommand.join(' ')}`,
-              detail: (verification.stderr || verification.stdout).slice(-5000),
-              paths: [],
+              verdict: 'fix',
+              summary: `Feature 快速门禁的失败命令 ${failedCommand.join(' ')} 留在原 PM 运行内修复。`,
+              findings: [
+                {
+                  severity: 'high',
+                  title: `修复失败命令：${failedCommand.join(' ')}`,
+                  detail: (verification.stderr || verification.stdout).slice(-5000),
+                  paths: [],
+                },
+              ],
             },
-          ],
-        },
-        '门禁失败',
-      );
-      failedCommand = pendingCommands[0] ?? failedCommand;
-    }
-  }
-
-  if (validationStages.has('independent-review')) {
-    let reviewBoundary: ReviewBoundary | null = null;
-    if (activeReviewStall?.count && activeReviewStall.count >= 3) {
-      throwIfReviewStalled(
-        activeReview ?? {
-          verdict: 'fix',
-          summary: '历史审查记录显示主要文件的高等级阻断持续存在',
-          findings: [],
-        },
-      );
-    }
-    while (true) {
-      reviewRound += 1;
-      currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;
-      await persistCheckpoint('active');
-      const reviewRun = await askReviewerWithRecovery(
-        plan,
-        activeBaseline,
-        runDirectory,
-        reviewRound,
-        reviewBoundary,
-      );
-      activeReview = reviewRun.result;
-      activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
-      activeReviewStall = advanceReviewStall(activeReviewStall, activeReview);
-      console.log(
-        `[${reviewBoundary ? '增量复审' : '独立审查'}] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
-      );
-      await persistCheckpoint('active');
-      throwIfReviewStalled(activeReview);
-      if (activeReview.verdict === 'pass') {
-        activeValidationProgress.independentReview = {
-          ...(await validationStageFingerprint()),
-          result: activeReview,
-          passed: true,
-          attempts: reviewRound,
-        };
-        await persistCheckpoint('active');
-        break;
+            '门禁失败',
+          );
+          failedCommand = pendingCommands[0] ?? failedCommand;
+        }
       }
-      reviewBoundary = await repairAndCheckProgress(activeReview, '审查 finding');
+
+      if (
+        configuredValidationStages.includes('independent-review') &&
+        !(
+          activeValidationProgress.independentReview?.passed &&
+          activeValidationProgress.independentReview.result.verdict === 'pass' &&
+          (await validationStageMatches(activeValidationProgress.independentReview))
+        )
+      ) {
+        let reviewBoundary: ReviewBoundary | null = null;
+        if (activeReviewStall?.count && activeReviewStall.count >= 3) {
+          throwIfReviewStalled(
+            activeReview ?? {
+              verdict: 'fix',
+              summary: '历史审查记录显示主要文件的高等级阻断持续存在',
+              findings: [],
+            },
+          );
+        }
+        while (true) {
+          reviewRound += 1;
+          currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;
+          await persistCheckpoint('active');
+          const reviewRun = await askReviewerWithRecovery(
+            plan,
+            activeBaseline,
+            runDirectory,
+            reviewRound,
+            reviewBoundary,
+          );
+          activeReview = reviewRun.result;
+          activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+          activeReviewStall = advanceReviewStall(activeReviewStall, activeReview);
+          console.log(
+            `[${reviewBoundary ? '增量复审' : '独立审查'}] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
+          );
+          await persistCheckpoint('active');
+          throwIfReviewStalled(activeReview);
+          if (activeReview.verdict === 'pass') {
+            activeValidationProgress.independentReview = {
+              ...(await validationStageFingerprint()),
+              result: activeReview,
+              passed: true,
+              attempts: reviewRound,
+            };
+            await persistCheckpoint('active');
+            break;
+          }
+          reviewBoundary = await repairAndCheckProgress(activeReview, '审查 finding');
+        }
+      }
+
+      const fastGateCurrent =
+        !configuredValidationStages.includes('fast-gate') ||
+        (activeValidationProgress.fastGate?.passed === true &&
+          (await validationStageMatches(activeValidationProgress.fastGate)));
+      const reviewCurrent =
+        !configuredValidationStages.includes('independent-review') ||
+        (activeValidationProgress.independentReview?.passed === true &&
+          activeValidationProgress.independentReview.result.verdict === 'pass' &&
+          (await validationStageMatches(activeValidationProgress.independentReview)));
+      if (fastGateCurrent && reviewCurrent) break;
     }
   }
 
