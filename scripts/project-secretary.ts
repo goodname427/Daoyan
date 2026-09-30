@@ -16,6 +16,7 @@ import {
   writeFormalVersion,
 } from './version-lifecycle';
 import { refreshWindowsUserEnvironment } from './windows-user-environment';
+import { classifyScopeAmendmentAdvance } from './scope-amendment-advance';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const secretaryRoot = resolve(
@@ -290,16 +291,11 @@ async function amendTaskScope(taskId: string, reason: string, additions: string[
           .trim()
           .split(/\r?\n/u)
           .filter(Boolean);
-  const allowedControlAdvance = [
-    'docs/agent-workflow.md',
-    'package.json',
-    'scripts/agent-dispatcher.ts',
-    'scripts/project-secretary.ts',
-  ];
+  const advance = classifyScopeAmendmentAdvance(intervening, task.writePaths);
   if (
     head !== checkpoint.baseline &&
     (!intervening.length ||
-      intervening.some((path) => !allowedControlAdvance.includes(path)) ||
+      advance.unrelatedPaths.length > 0 ||
       execFileSync('git', ['merge-base', checkpoint.baseline ?? '', head], {
         cwd: root,
         encoding: 'utf8',
@@ -369,7 +365,8 @@ async function amendTaskScope(taskId: string, reason: string, additions: string[
     reason: reason.trim(),
     baseline: checkpoint.baseline,
     amendedAtHead: head,
-    interveningControlPaths: intervening,
+    interveningControlPaths: advance.controlPaths,
+    interveningTaskPaths: advance.taskPaths,
     previousWritePaths: task.writePaths,
     addedWritePaths: normalized,
     remainingOutOfScope: [...dirty].filter(
