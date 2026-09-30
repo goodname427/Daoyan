@@ -54,7 +54,7 @@ export function scopeAmendmentAdvanceMatches(
     JSON.stringify(classified.controlPaths) ===
       JSON.stringify(audit.interveningControlPaths ?? []) &&
     JSON.stringify(classified.taskPaths) === JSON.stringify(audit.interveningTaskPaths ?? []) &&
-    JSON.stringify([...new Set([...audit.previousWritePaths, ...audit.addedWritePaths])]) ===
-      JSON.stringify(amendedWritePaths)
+    JSON.stringify([...new Set([...audit.previousWritePaths, ...audit.addedWritePaths])].sort()) ===
+      JSON.stringify([...new Set(amendedWritePaths)].sort())
   );
 }

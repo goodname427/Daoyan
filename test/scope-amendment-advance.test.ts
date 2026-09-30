@@ -44,6 +44,13 @@ describe('scope amendment after a partial task commit', () => {
     expect(
       scopeAmendmentAdvanceMatches(
         audit,
+        committedPaths,
+        [...previousWritePaths, ...addedWritePaths].sort(),
+      ),
+    ).toBe(true);
+    expect(
+      scopeAmendmentAdvanceMatches(
+        audit,
         [...committedPaths, 'docs/status.md'],
         [...previousWritePaths, ...addedWritePaths],
       ),
