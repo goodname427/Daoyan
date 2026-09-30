@@ -2534,6 +2534,57 @@ try {
     }
   }
 
+  // A stopped formal task may have an audited, narrowly amended write contract.
+  // Let its original repair route remove draft paths that still belong to the
+  // Version PM or to temporary smoke checks before any delivery gate is reused.
+  if (
+    options.resumeDirectory &&
+    /^\[formal-stage-deliverable:development:/u.test(activeDirection) &&
+    existsSync(resolve(runDirectory, 'scope-amendment.json'))
+  ) {
+    const scopes = formalStageWritePaths(activeDirection);
+    for (let round = 1; round <= 2; round += 1) {
+      const dirty = [...(await workspaceFileSnapshot()).keys()];
+      const outside = dirty.filter(
+        (path) => !scopes.some((scope) => pathMatchesTaskScope(path, scope)),
+      );
+      if (outside.length === 0) break;
+      currentPhase = `写入边界修复第 ${round} 轮`;
+      await persistCheckpoint('active');
+      const before = await workspaceFingerprint();
+      activeRepairerTokens = addTokenUsage(
+        activeRepairerTokens,
+        await runReviewFixWithRecovery(
+          plan,
+          {
+            verdict: 'fix',
+            summary: '正式任务写入范围已由主 Agent 审计修订；清理剩余合同外草稿，再重新验证。',
+            findings: [
+              {
+                severity: 'high',
+                title: '清理合同外改动',
+                paths: outside,
+                detail: `这些文件仍在任务独占写入范围外：${outside.join('、')}。原始内容已备份在运行目录 scope-draft-backup。保留合同内的真实 World/VM 实现及必要测试；将临时 smoke 检查并入合同内测试后移除临时文件，撤回共享状态/开发日志/秘书测试的任务外改动。不要扩大任务范围、提交、推送或修改正式运行状态。`,
+              },
+            ],
+          },
+          runDirectory,
+          round,
+        ),
+      );
+      if (before === (await workspaceFingerprint())) throw new Error('写入边界修复没有改变工作区');
+      activeValidationProgress.fastGate = null;
+      activeValidationProgress.independentReview = null;
+      activeReview = null;
+      await persistCheckpoint('active');
+    }
+    const remaining = [...(await workspaceFileSnapshot()).keys()].filter(
+      (path) => !scopes.some((scope) => pathMatchesTaskScope(path, scope)),
+    );
+    if (remaining.length > 0)
+      throw new Error(`写入边界修复仍有合同外文件：${remaining.join('、')}`);
+  }
+
   const candidateTask = plan.tasks.find((task) => task.id === 'formal-candidate');
   if (candidateTask) {
     const manifest = candidateManifestPath(candidateTask.objective);
