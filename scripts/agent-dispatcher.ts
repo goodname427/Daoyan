@@ -71,6 +71,10 @@ import {
 } from './worker-session-reuse';
 import { findTaskCommitEvidence } from './task-commit-evidence';
 import { runInvocationUsage } from './version-usage';
+import {
+  scopeAmendmentAdvanceMatches,
+  type ScopeAmendmentAdvanceAudit,
+} from './scope-amendment-advance';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const policyPath = resolve(root, 'agents/policy.json');
@@ -2333,10 +2337,9 @@ try {
     const scopeAmendment = await readFile(resolve(runDirectory, 'scope-amendment.json'), 'utf8')
       .then(
         (value) =>
-          JSON.parse(value) as {
+          JSON.parse(value) as ScopeAmendmentAdvanceAudit & {
             baseline?: string;
             amendedAtHead?: string;
-            interveningControlPaths?: string[];
           },
       )
       .catch(() => null);
@@ -2346,15 +2349,10 @@ try {
       checkpoint.error?.startsWith('正式节点任务改动超出独占写入范围：') &&
       scopeAmendment?.baseline === checkpoint.baseline &&
       scopeAmendment.amendedAtHead === currentHead.stdout.trim() &&
-      JSON.stringify(scopeAmendment.interveningControlPaths) ===
-        JSON.stringify(committedAdvancePaths) &&
-      committedAdvancePaths.every((path) =>
-        [
-          'docs/agent-workflow.md',
-          'package.json',
-          'scripts/agent-dispatcher.ts',
-          'scripts/project-secretary.ts',
-        ].includes(path),
+      scopeAmendmentAdvanceMatches(
+        scopeAmendment,
+        committedAdvancePaths,
+        formalStageWritePaths(checkpoint.direction),
       );
     let selectivelyReusableTaskRuns: TaskRun[] | null = null;
     let selectiveRecoverySafe = false;
