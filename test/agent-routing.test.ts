@@ -15,6 +15,7 @@ import {
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
+  fastGateAfterRepair,
   fastGateCommandProgress,
   failedNpmCommandFromOutput,
   isValidationTreePath,
@@ -447,6 +448,20 @@ ${JSON.stringify({
         ['npm', 'run', 'test'],
       ],
     });
+  });
+
+  it('reruns a passed fast gate after review repair while preserving failed-command recovery', () => {
+    const evidence = {
+      workspaceFingerprint: 'old-tree',
+      configFingerprint: 'config',
+      completedCommands: [['npm', 'run', 'typecheck']],
+      pendingCommands: [['npm', 'run', 'test']],
+      passed: false,
+      attempts: 1,
+    };
+    const repaired = { workspaceFingerprint: 'repaired-tree', configFingerprint: 'config' };
+    expect(fastGateAfterRepair({ ...evidence, passed: true }, repaired)).toBeNull();
+    expect(fastGateAfterRepair(evidence, repaired)).toEqual({ ...evidence, ...repaired });
   });
 
   it('skips upstream Feature gates when the final-tree full gate evidence is reusable', () => {

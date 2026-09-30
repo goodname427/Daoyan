@@ -1288,6 +1288,8 @@ describe('formal version stage dispatch', () => {
     version.currentStage = 'development';
     version.nodes.find((node) => node.id === 'development')!.startedAt = '2026-09-28T00:04:00.000Z';
     expect(stageTaskPlanDirection(version)).toContain('新任务 ID 不得复用');
+    expect(stageTaskPlanDirection(version)).toContain('contextPolicy');
+    expect(stageTaskPlanDirection(version)).toContain('独立审查保有与执行分离的只读会话');
     expect(
       ensureVersionStageItem(state, version, '2026-09-28T00:05:00.000Z')?.orchestration
         ?.formalStageStep,

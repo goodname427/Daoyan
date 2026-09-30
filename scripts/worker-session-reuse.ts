@@ -16,6 +16,60 @@ export interface WorkerSession {
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type DocumentContextPolicy = 'auto' | 'continue' | 'fresh';
 
+interface FormalStageContext {
+  stage: string;
+  taskId: string;
+  versionId: string;
+  scopeRevision: number;
+  stageStep: string;
+  contract: Record<string, unknown>;
+}
+
+function formalStageContext(direction: string): FormalStageContext | null {
+  const header = direction.match(
+    /^\[formal-stage-(?:deliverable|verification):([a-z][a-z-]*):([a-zA-Z0-9_-]+)\]\n你是此项有界交付的 Feature PM。版本 ([a-z0-9._-]+)，节点 ([a-z][a-z-]*)，范围修订 (\d+)。/u,
+  );
+  if (!header || header[1] !== header[4]) return null;
+  const prefix = '只完成本合同：\n';
+  const suffix = '\n直接前驱的有限证据索引：';
+  const start = direction.indexOf(prefix);
+  const end = start < 0 ? -1 : direction.indexOf(suffix, start + prefix.length);
+  if (end < 0) return null;
+  try {
+    const value: unknown = JSON.parse(direction.slice(start + prefix.length, end));
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+    const contract = value as Record<string, unknown>;
+    const scopeRevision = Number(header[5]);
+    if (
+      contract.id !== header[2] ||
+      contract.stage !== header[1] ||
+      contract.scopeRevision !== scopeRevision ||
+      !Number.isSafeInteger(scopeRevision) ||
+      !Array.isArray(contract.writePaths) ||
+      !contract.writePaths.every((path) => typeof path === 'string')
+    )
+      return null;
+    const versionRoot = `docs/versions/${header[3]}/`;
+    const evidence = contract.writePaths.some(
+      (path) =>
+        typeof path === 'string' &&
+        path.replaceAll('\\', '/').startsWith(`${versionRoot}tasks/`) &&
+        path.replaceAll('\\', '/').endsWith(`-${header[2]}.json`),
+    );
+    if (!evidence) return null;
+    return {
+      stage: header[1],
+      taskId: header[2],
+      versionId: header[3],
+      scopeRevision,
+      stageStep: typeof contract.stageStep === 'string' ? contract.stageStep : 'primary',
+      contract,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function formalDocumentContract(direction: string): Record<string, unknown> | null {
   if (!/^\[formal-stage-deliverable:module-design:[a-zA-Z0-9_-]+\]/u.test(direction)) return null;
   const prefix = '只完成本合同：\n';
@@ -51,6 +105,40 @@ export function formalDocumentSessionKey(direction: string): string | null {
   } catch {
     return null;
   }
+}
+
+export interface WorkerSessionScope {
+  key: string;
+  taskId: string;
+  policy: DocumentContextPolicy;
+}
+
+/** Reviewers keep their own history, never the writer's editable session. */
+export function independentReviewSessionKey(scope: WorkerSessionScope): string {
+  return `independent-review:${scope.key}:${scope.taskId}`;
+}
+
+/** One rule for formal task execution, node review and their repair rounds. */
+export function formalWorkerSessionScope(direction: string): WorkerSessionScope | null {
+  const context = formalStageContext(direction);
+  if (!context) return null;
+  const { stage, taskId, versionId, scopeRevision, stageStep, contract } = context;
+  const policy =
+    contract.contextPolicy === 'continue' || contract.contextPolicy === 'fresh'
+      ? contract.contextPolicy
+      : 'auto';
+  const documentKey = stage === 'module-design' ? formalDocumentSessionKey(direction) : null;
+  const versionRoot = `docs/versions/${versionId}/`;
+  const writes = (contract.writePaths as string[]).map((path) => path.replaceAll('\\', '/'));
+  const artifacts = writes.filter((path) => !path.startsWith(`${versionRoot}tasks/`));
+  const documentOnly =
+    artifacts.length > 0 && artifacts.every((path) => path.startsWith(versionRoot));
+  const key =
+    documentKey ??
+    (documentOnly
+      ? `formal:${stage}:${scopeRevision}:${versionId}:${stageStep}:artifacts:${JSON.stringify(artifacts.sort())}`
+      : `formal:${stage}:${scopeRevision}:${versionId}:${stageStep}:task:${taskId}`);
+  return { key, taskId, policy };
 }
 
 /** Version PM decides whether old reasoning is useful; absent policy preserves old manifests. */
@@ -94,9 +182,14 @@ export function workerInvocationArgs(
   outputFile: string,
   persistent: boolean,
   resumeSessionId: string | null,
+  resumeOptions: string[] = [],
 ): string[] {
   if (resumeSessionId) {
     if (!SESSION_ID.test(resumeSessionId)) throw new Error('无效的待续接会话 ID');
+    const sandboxFlag = freshArgs.indexOf('-s');
+    const approvalFlag = freshArgs.indexOf('-a');
+    const sandbox = sandboxFlag >= 0 ? freshArgs[sandboxFlag + 1] : '';
+    const approval = approvalFlag >= 0 ? freshArgs[approvalFlag + 1] : '';
     return [
       'exec',
       'resume',
@@ -104,6 +197,11 @@ export function workerInvocationArgs(
       model,
       '-c',
       `model_reasoning_effort="${reasoning}"`,
+      ...(sandbox === 'read-only' || sandbox === 'workspace-write'
+        ? ['-c', `sandbox_mode="${sandbox}"`]
+        : []),
+      ...(approval === 'never' ? ['-c', 'approval_policy="never"'] : []),
+      ...resumeOptions,
       '-o',
       outputFile,
       resumeSessionId,

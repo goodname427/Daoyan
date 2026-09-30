@@ -183,6 +183,18 @@ export function fastGateCommandProgress(
   };
 }
 
+export function fastGateAfterRepair<
+  T extends { passed: boolean; workspaceFingerprint: string; configFingerprint: string },
+>(
+  evidence: T | null,
+  fingerprint: { workspaceFingerprint: string; configFingerprint: string },
+): T | null {
+  if (!evidence || evidence.passed) return null;
+  // A failed gate may resume its remaining commands after repair. A passed
+  // gate must be rerun on the repaired tree rather than inheriting its pass.
+  return { ...evidence, ...fingerprint };
+}
+
 export function pendingValidationStages(
   stages: FeatureValidationStage[],
   evidence: {

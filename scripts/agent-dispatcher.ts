@@ -20,6 +20,7 @@ import {
   buildLocalPlan,
   classifyAgentFailure,
   escalateTier,
+  fastGateAfterRepair,
   fastGateCommandProgress,
   failedNpmCommandFromOutput,
   highestTier,
@@ -59,14 +60,14 @@ import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
 import { taskDependencyContext } from './task-context';
 import {
-  formalDocumentContextPolicy,
-  formalDocumentSessionKey,
-  formalDocumentTaskId,
+  formalWorkerSessionScope,
+  independentReviewSessionKey,
   readWorkerSession,
   reusableWorkerSession,
   saveWorkerSession,
   workerSessionId,
   workerInvocationArgs,
+  type WorkerSessionScope,
 } from './worker-session-reuse';
 import { findTaskCommitEvidence } from './task-commit-evidence';
 import { runInvocationUsage } from './version-usage';
@@ -937,6 +938,16 @@ function codexArgs(route: ModelRoute, sandbox: 'read-only' | 'workspace-write'):
   ];
 }
 
+function sessionScopeForRun(runDirectory: string): WorkerSessionScope {
+  return (
+    formalWorkerSessionScope(activeDirection) ?? {
+      key: `feature-run:${relative(root, runDirectory).replaceAll('\\', '/')}`,
+      taskId: '',
+      policy: 'auto',
+    }
+  );
+}
+
 async function askPlanner(
   direction: string,
   route: ModelRoute,
@@ -1063,9 +1074,7 @@ async function runTask(
   let totalAttempts = 0;
   let escalations = 0;
   let lastOutputFile = '';
-  const documentSessionKey = formalDocumentSessionKey(activeDirection);
-  const documentContextPolicy = formalDocumentContextPolicy(activeDirection);
-  const documentTaskId = formalDocumentTaskId(activeDirection);
+  const sessionScope = sessionScopeForRun(runDirectory);
   let skipSavedSession = false;
 
   while (true) {
@@ -1077,27 +1086,26 @@ async function runTask(
       const logFile = resolve(runDirectory, `${task.id}-${slug}-attempt-${totalAttempts}.log`);
       lastOutputFile = outputFile;
       console.log(`\n[执行 ${task.id}] ${task.title} -> ${route.model} (${route.reasoning})`);
-      const previousSession =
-        documentSessionKey && !skipSavedSession
-          ? reusableWorkerSession(
-              await readWorkerSession(root, documentSessionKey, route.model, route.reasoning),
-              documentSessionKey,
-              route.model,
-              route.reasoning,
-              documentContextPolicy,
-              documentTaskId,
-            )
-          : null;
+      const previousSession = !skipSavedSession
+        ? reusableWorkerSession(
+            await readWorkerSession(root, sessionScope.key, route.model, route.reasoning),
+            sessionScope.key,
+            route.model,
+            route.reasoning,
+            sessionScope.policy,
+            sessionScope.taskId || null,
+          )
+        : null;
       const workerArgs = workerInvocationArgs(
         codexArgs(route, 'workspace-write'),
         route.model,
         route.reasoning,
         outputFile,
-        Boolean(documentSessionKey),
+        true,
         previousSession?.sessionId ?? null,
       );
       const result = await runProcess('codex', workerArgs, {
-        input: `${previousSession ? '这是同一模块文档的新一轮修订。保留已核实的推理脉络，但以本轮合同、当前文件和最新主策退回为准；旧结论与当前权威冲突时重新核对，不沿用旧批准。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext)}`,
+        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext)}`,
         logFile,
         stream: true,
         heartbeatLabel: `执行 ${task.id} / ${route.model}`,
@@ -1109,11 +1117,11 @@ async function runTask(
       const output = failureText(result);
       const invocationTokens = parseTokenUsage(output);
       tokensUsed = addTokenUsage(tokensUsed, invocationTokens);
-      if (result.code === 0 && documentSessionKey) {
+      if (result.code === 0) {
         const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
         if (sessionId) {
           await saveWorkerSession(root, {
-            key: documentSessionKey,
+            key: sessionScope.key,
             sessionId,
             model: route.model,
             reasoning: route.reasoning,
@@ -1123,7 +1131,7 @@ async function runTask(
                 ? null
                 : (previousSession?.knownTokens ?? 0) + invocationTokens,
             updatedAt: new Date().toISOString(),
-            ...(documentTaskId ? { ownerTaskId: documentTaskId } : {}),
+            ...(sessionScope.taskId ? { ownerTaskId: sessionScope.taskId } : {}),
           });
         }
       }
@@ -1446,20 +1454,53 @@ ${incremental ? '这是修复后的增量复审。只复核未关闭 finding、�
 ${plan.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}
 
 只有存在必须在交付前修复的问题时 verdict=fix；纯建议或未来增强使用 low finding 且 verdict=pass。`;
-  const result = await runProcess(
-    'codex',
-    [...codexArgs(route, 'read-only'), '--output-schema', reviewSchemaPath, '-o', outputFile, '-'],
-    {
-      input: prompt,
-      logFile,
-      heartbeatLabel: `独立审查 / 第 ${round} 轮 / ${route.model}`,
-      workerModel: route.model,
-      workerRole: '审查 Agent',
-      progressFile: resolve(runDirectory, 'progress.json'),
-      timeoutMs: minutes(policy.timeouts.reviewers[highestTier(plan.tasks)]),
-    },
-  );
-  const tokensUsed = parseTokenUsage(failureText(result));
+  const scope = sessionScopeForRun(runDirectory);
+  const reviewKey = independentReviewSessionKey(scope);
+  let previousSession = incremental
+    ? reusableWorkerSession(
+        await readWorkerSession(root, reviewKey, route.model, route.reasoning),
+        reviewKey,
+        route.model,
+        route.reasoning,
+        scope.policy,
+        scope.taskId || null,
+      )
+    : null;
+  const invoke = (sessionId: string | null) =>
+    runProcess(
+      'codex',
+      workerInvocationArgs(
+        [...codexArgs(route, 'read-only'), '--output-schema', reviewSchemaPath],
+        route.model,
+        route.reasoning,
+        outputFile,
+        true,
+        sessionId,
+        ['--output-schema', reviewSchemaPath],
+      ),
+      {
+        input: prompt,
+        logFile,
+        heartbeatLabel: `独立审查 / 第 ${round} 轮 / ${route.model}`,
+        workerModel: route.model,
+        workerRole: '审查 Agent',
+        progressFile: resolve(runDirectory, 'progress.json'),
+        timeoutMs: minutes(policy.timeouts.reviewers[highestTier(plan.tasks)]),
+      },
+    );
+  let result = await invoke(previousSession?.sessionId ?? null);
+  let tokensUsed = parseTokenUsage(failureText(result));
+  if (
+    result.code !== 0 &&
+    previousSession &&
+    /session (?:not found|unavailable)|failed to (?:load|resume) session|无法恢复会话/i.test(
+      failureText(result),
+    )
+  ) {
+    previousSession = null;
+    result = await invoke(null);
+    tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(failureText(result)));
+  }
   if (result.code !== 0) {
     throw new AgentCallError(
       `独立审查失败，详见 ${logFile}`,
@@ -1467,8 +1508,22 @@ ${plan.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}
       tokensUsed,
     );
   }
+  const review = validateReview(parseJsonFile(await readFile(outputFile, 'utf8')));
+  const sessionId = workerSessionId(failureText(result)) ?? previousSession?.sessionId;
+  if (sessionId) {
+    await saveWorkerSession(root, {
+      key: reviewKey,
+      sessionId,
+      model: route.model,
+      reasoning: route.reasoning,
+      turns: (previousSession?.turns ?? 0) + 1,
+      knownTokens: tokensUsed === null ? null : (previousSession?.knownTokens ?? 0) + tokensUsed,
+      updatedAt: new Date().toISOString(),
+      ...(scope.taskId ? { ownerTaskId: scope.taskId } : {}),
+    });
+  }
   return {
-    result: validateReview(parseJsonFile(await readFile(outputFile, 'utf8'))),
+    result: review,
     tokensUsed,
     route,
     attempts: attempt,
@@ -1542,9 +1597,13 @@ async function runReviewFix(
   const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
   const outputFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.md`);
   const logFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.log`);
+  const formalWritePaths = formalStageWritePaths(activeDirection);
+  const formalBoundary = formalWritePaths.length
+    ? `本正式任务只能修改以下写入路径（含目录内文件）：\n${formalWritePaths.map((path) => `- ${path}`).join('\n')}\n临时验证文件放在仓库外，结束前清理仓库内的临时文件。只运行问题相关的直接检查；快速门禁、完整门禁由调度器在你退出后运行。任务范围外的状态、开发日志与控制面文件由原负责人维护。\n\n`
+    : '';
   const prompt = `你是道衍项目的修复 Agent。遵守 AGENTS.md，在当前工作区修复独立审查发现的问题；不要 commit、push 或 tag。
 
-原始目标：${plan.summary}
+${formalBoundary}原始目标：${plan.summary}
 审查结论：${review.summary}
 问题：
 ${review.findings
@@ -1552,18 +1611,15 @@ ${review.findings
   .join('\n')}
 
 完成必要的代码、测试和文档修改，并运行最相关的验证。`;
-  const documentSessionKey = formalDocumentSessionKey(activeDirection);
-  const documentTaskId = formalDocumentTaskId(activeDirection);
-  let previousSession = documentSessionKey
-    ? reusableWorkerSession(
-        await readWorkerSession(root, documentSessionKey, route.model, route.reasoning),
-        documentSessionKey,
-        route.model,
-        route.reasoning,
-        formalDocumentContextPolicy(activeDirection),
-        documentTaskId,
-      )
-    : null;
+  const sessionScope = sessionScopeForRun(runDirectory);
+  let previousSession = reusableWorkerSession(
+    await readWorkerSession(root, sessionScope.key, route.model, route.reasoning),
+    sessionScope.key,
+    route.model,
+    route.reasoning,
+    sessionScope.policy,
+    sessionScope.taskId || null,
+  );
   const invoke = (sessionId: string | null) =>
     runProcess(
       'codex',
@@ -1572,11 +1628,11 @@ ${review.findings
         route.model,
         route.reasoning,
         outputFile,
-        Boolean(documentSessionKey),
+        true,
         sessionId,
       ),
       {
-        input: `${sessionId ? '这是同一模块文档的修复。当前审查和权威文件优先于旧会话结论。\n\n' : ''}${prompt}`,
+        input: `${sessionId ? '这是同一交付范围的审核修复。保留原执行脉络，但当前审核、合同和权威文件优先于旧会话结论。\n\n' : ''}${prompt}`,
         logFile,
         stream: true,
         heartbeatLabel: `审查修复 / 第 ${round} 轮 / ${route.model}`,
@@ -1606,21 +1662,19 @@ ${review.findings
       tokensUsed,
     );
   }
-  if (documentSessionKey) {
-    const output = failureText(result);
-    const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
-    if (sessionId) {
-      await saveWorkerSession(root, {
-        key: documentSessionKey,
-        sessionId,
-        model: route.model,
-        reasoning: route.reasoning,
-        turns: (previousSession?.turns ?? 0) + 1,
-        knownTokens: tokensUsed === null ? null : (previousSession?.knownTokens ?? 0) + tokensUsed,
-        updatedAt: new Date().toISOString(),
-        ...(documentTaskId ? { ownerTaskId: documentTaskId } : {}),
-      });
-    }
+  const output = failureText(result);
+  const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
+  if (sessionId) {
+    await saveWorkerSession(root, {
+      key: sessionScope.key,
+      sessionId,
+      model: route.model,
+      reasoning: route.reasoning,
+      turns: (previousSession?.turns ?? 0) + 1,
+      knownTokens: tokensUsed === null ? null : (previousSession?.knownTokens ?? 0) + tokensUsed,
+      updatedAt: new Date().toISOString(),
+      ...(sessionScope.taskId ? { ownerTaskId: sessionScope.taskId } : {}),
+    });
   }
   return tokensUsed;
 }
@@ -2696,12 +2750,10 @@ try {
     previousFailureSignature = signature;
     activeValidationProgress.independentReview = null;
     const validationFingerprint = await validationStageFingerprint();
-    if (activeValidationProgress.fastGate) {
-      activeValidationProgress.fastGate = {
-        ...activeValidationProgress.fastGate,
-        ...validationFingerprint,
-      };
-    }
+    activeValidationProgress.fastGate = fastGateAfterRepair(
+      activeValidationProgress.fastGate,
+      validationFingerprint,
+    );
     await persistCheckpoint('active');
     if (repeatedNoProgress >= 1) {
       throw new Error(`局部修复对同一未关闭 finding 无进展：${finding.summary}`);
@@ -2710,123 +2762,151 @@ try {
   };
 
   let fastGateRound = activeValidationProgress.fastGate?.attempts ?? 0;
-  if (validationStages.has('fast-gate')) {
-    const commandSequence = await configuredFastGateCommands();
-    let pendingCommands =
-      activeValidationProgress.fastGate &&
-      !activeValidationProgress.fastGate.passed &&
-      (await validationStageMatches(activeValidationProgress.fastGate))
-        ? activeValidationProgress.fastGate.pendingCommands
-        : [];
-    let completedCommands =
-      pendingCommands.length > 0 ? activeValidationProgress.fastGate!.completedCommands : [];
-    let failedCommand: string[] = pendingCommands[0] ?? [];
+  if (validationStages.has('fast-gate') || validationStages.has('independent-review')) {
     while (true) {
-      fastGateRound += 1;
-      currentPhase = `Feature 快速门禁${failedCommand.length > 0 ? '定向复核' : ''}第 ${fastGateRound} 轮`;
-      await persistCheckpoint('active');
-      const verification = await runDeliveryVerification(
-        runDirectory,
-        fastGateRound,
-        'fast',
-        failedCommand,
-      );
-      if (verification.code === 0) {
-        if (failedCommand.length === 0) {
-          completedCommands = commandSequence;
-          pendingCommands = [];
-        } else {
-          completedCommands = [...completedCommands, failedCommand];
-          pendingCommands = pendingCommands.slice(1);
-        }
-        const validationFingerprint = await validationStageFingerprint();
-        activeValidationProgress.fastGate = {
-          ...validationFingerprint,
-          completedCommands,
-          pendingCommands,
-          passed: pendingCommands.length === 0,
-          attempts: fastGateRound,
-        };
-        await persistCheckpoint('active');
-        if (pendingCommands.length === 0) break;
-        failedCommand = pendingCommands[0];
-        continue;
-      }
-      failedCommand = verification.failedCommand;
-      if (pendingCommands.length === 0) {
-        const progress = fastGateCommandProgress(commandSequence, failedCommand);
-        completedCommands = progress.completedCommands;
-        pendingCommands = progress.pendingCommands;
-      }
-      const validationFingerprint = await validationStageFingerprint();
-      activeValidationProgress.fastGate = {
-        ...validationFingerprint,
-        completedCommands,
-        pendingCommands,
-        passed: false,
-        attempts: fastGateRound,
-      };
-      await persistCheckpoint('active');
-      await repairAndCheckProgress(
-        {
-          verdict: 'fix',
-          summary: `Feature 快速门禁的失败命令 ${failedCommand.join(' ')} 留在原 PM 运行内修复。`,
-          findings: [
+      if (
+        configuredValidationStages.includes('fast-gate') &&
+        !(
+          activeValidationProgress.fastGate?.passed &&
+          (await validationStageMatches(activeValidationProgress.fastGate))
+        )
+      ) {
+        const commandSequence = await configuredFastGateCommands();
+        let pendingCommands =
+          activeValidationProgress.fastGate &&
+          !activeValidationProgress.fastGate.passed &&
+          (await validationStageMatches(activeValidationProgress.fastGate))
+            ? activeValidationProgress.fastGate.pendingCommands
+            : [];
+        let completedCommands =
+          pendingCommands.length > 0 ? activeValidationProgress.fastGate!.completedCommands : [];
+        let failedCommand: string[] = pendingCommands[0] ?? [];
+        while (true) {
+          fastGateRound += 1;
+          currentPhase = `Feature 快速门禁${failedCommand.length > 0 ? '定向复核' : ''}第 ${fastGateRound} 轮`;
+          await persistCheckpoint('active');
+          const verification = await runDeliveryVerification(
+            runDirectory,
+            fastGateRound,
+            'fast',
+            failedCommand,
+          );
+          if (verification.code === 0) {
+            if (failedCommand.length === 0) {
+              completedCommands = commandSequence;
+              pendingCommands = [];
+            } else {
+              completedCommands = [...completedCommands, failedCommand];
+              pendingCommands = pendingCommands.slice(1);
+            }
+            const validationFingerprint = await validationStageFingerprint();
+            activeValidationProgress.fastGate = {
+              ...validationFingerprint,
+              completedCommands,
+              pendingCommands,
+              passed: pendingCommands.length === 0,
+              attempts: fastGateRound,
+            };
+            await persistCheckpoint('active');
+            if (pendingCommands.length === 0) break;
+            failedCommand = pendingCommands[0];
+            continue;
+          }
+          failedCommand = verification.failedCommand;
+          if (pendingCommands.length === 0) {
+            const progress = fastGateCommandProgress(commandSequence, failedCommand);
+            completedCommands = progress.completedCommands;
+            pendingCommands = progress.pendingCommands;
+          }
+          const validationFingerprint = await validationStageFingerprint();
+          activeValidationProgress.fastGate = {
+            ...validationFingerprint,
+            completedCommands,
+            pendingCommands,
+            passed: false,
+            attempts: fastGateRound,
+          };
+          await persistCheckpoint('active');
+          await repairAndCheckProgress(
             {
-              severity: 'high',
-              title: `修复失败命令：${failedCommand.join(' ')}`,
-              detail: (verification.stderr || verification.stdout).slice(-5000),
-              paths: [],
+              verdict: 'fix',
+              summary: `Feature 快速门禁的失败命令 ${failedCommand.join(' ')} 留在原 PM 运行内修复。`,
+              findings: [
+                {
+                  severity: 'high',
+                  title: `修复失败命令：${failedCommand.join(' ')}`,
+                  detail: (verification.stderr || verification.stdout).slice(-5000),
+                  paths: [],
+                },
+              ],
             },
-          ],
-        },
-        '门禁失败',
-      );
-      failedCommand = pendingCommands[0] ?? failedCommand;
-    }
-  }
-
-  if (validationStages.has('independent-review')) {
-    let reviewBoundary: ReviewBoundary | null = null;
-    if (activeReviewStall?.count && activeReviewStall.count >= 3) {
-      throwIfReviewStalled(
-        activeReview ?? {
-          verdict: 'fix',
-          summary: '历史审查记录显示主要文件的高等级阻断持续存在',
-          findings: [],
-        },
-      );
-    }
-    while (true) {
-      reviewRound += 1;
-      currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;
-      await persistCheckpoint('active');
-      const reviewRun = await askReviewerWithRecovery(
-        plan,
-        activeBaseline,
-        runDirectory,
-        reviewRound,
-        reviewBoundary,
-      );
-      activeReview = reviewRun.result;
-      activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
-      activeReviewStall = advanceReviewStall(activeReviewStall, activeReview);
-      console.log(
-        `[${reviewBoundary ? '增量复审' : '独立审查'}] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
-      );
-      await persistCheckpoint('active');
-      throwIfReviewStalled(activeReview);
-      if (activeReview.verdict === 'pass') {
-        activeValidationProgress.independentReview = {
-          ...(await validationStageFingerprint()),
-          result: activeReview,
-          passed: true,
-          attempts: reviewRound,
-        };
-        await persistCheckpoint('active');
-        break;
+            '门禁失败',
+          );
+          failedCommand = pendingCommands[0] ?? failedCommand;
+        }
       }
-      reviewBoundary = await repairAndCheckProgress(activeReview, '审查 finding');
+
+      if (
+        configuredValidationStages.includes('independent-review') &&
+        !(
+          activeValidationProgress.independentReview?.passed &&
+          activeValidationProgress.independentReview.result.verdict === 'pass' &&
+          (await validationStageMatches(activeValidationProgress.independentReview))
+        )
+      ) {
+        let reviewBoundary: ReviewBoundary | null = null;
+        if (activeReviewStall?.count && activeReviewStall.count >= 3) {
+          throwIfReviewStalled(
+            activeReview ?? {
+              verdict: 'fix',
+              summary: '历史审查记录显示主要文件的高等级阻断持续存在',
+              findings: [],
+            },
+          );
+        }
+        while (true) {
+          reviewRound += 1;
+          currentPhase = `${reviewBoundary ? '增量复审' : '独立审查'}第 ${reviewRound} 轮`;
+          await persistCheckpoint('active');
+          const reviewRun = await askReviewerWithRecovery(
+            plan,
+            activeBaseline,
+            runDirectory,
+            reviewRound,
+            reviewBoundary,
+          );
+          activeReview = reviewRun.result;
+          activeReviewerTokens = addTokenUsage(activeReviewerTokens, reviewRun.tokensUsed);
+          activeReviewStall = advanceReviewStall(activeReviewStall, activeReview);
+          console.log(
+            `[${reviewBoundary ? '增量复审' : '独立审查'}] ${activeReview.verdict}: ${activeReview.summary} (${reviewRun.route.model}, ${reviewRun.attempts} 次尝试)`,
+          );
+          await persistCheckpoint('active');
+          throwIfReviewStalled(activeReview);
+          if (activeReview.verdict === 'pass') {
+            activeValidationProgress.independentReview = {
+              ...(await validationStageFingerprint()),
+              result: activeReview,
+              passed: true,
+              attempts: reviewRound,
+            };
+            await persistCheckpoint('active');
+            break;
+          }
+          reviewBoundary = await repairAndCheckProgress(activeReview, '审查 finding');
+        }
+      }
+
+      const fastGateCurrent =
+        !configuredValidationStages.includes('fast-gate') ||
+        (activeValidationProgress.fastGate?.passed === true &&
+          (await validationStageMatches(activeValidationProgress.fastGate)));
+      const reviewCurrent =
+        !configuredValidationStages.includes('independent-review') ||
+        (activeValidationProgress.independentReview?.passed === true &&
+          activeValidationProgress.independentReview.result.verdict === 'pass' &&
+          (await validationStageMatches(activeValidationProgress.independentReview)));
+      if (fastGateCurrent && reviewCurrent) break;
     }
   }
 
