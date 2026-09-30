@@ -2276,6 +2276,32 @@ try {
       ) &&
       checkpoint.taskRuns.length > 0 &&
       checkpoint.taskRuns.every((run) => run.configFingerprint === currentConfigFingerprint);
+    const scopeAmendment = await readFile(resolve(runDirectory, 'scope-amendment.json'), 'utf8')
+      .then(
+        (value) =>
+          JSON.parse(value) as {
+            baseline?: string;
+            amendedAtHead?: string;
+            interveningControlPaths?: string[];
+          },
+      )
+      .catch(() => null);
+    const auditedScopeAdvance =
+      fingerprintMismatch &&
+      checkpoint.status === 'recoverable' &&
+      checkpoint.error?.startsWith('正式节点任务改动超出独占写入范围：') &&
+      scopeAmendment?.baseline === checkpoint.baseline &&
+      scopeAmendment.amendedAtHead === currentHead.stdout.trim() &&
+      JSON.stringify(scopeAmendment.interveningControlPaths) ===
+        JSON.stringify(committedAdvancePaths) &&
+      committedAdvancePaths.every((path) =>
+        [
+          'docs/agent-workflow.md',
+          'package.json',
+          'scripts/agent-dispatcher.ts',
+          'scripts/project-secretary.ts',
+        ].includes(path),
+      );
     let selectivelyReusableTaskRuns: TaskRun[] | null = null;
     let selectiveRecoverySafe = false;
     if (
@@ -2321,6 +2347,7 @@ try {
       !failedRoutingRecoveryCanRebase &&
       !completedCommitCanResume &&
       !unrelatedCommittedAdvance &&
+      !auditedScopeAdvance &&
       !selectiveRecoverySafe
     ) {
       throw new Error(
@@ -2344,6 +2371,8 @@ try {
       console.log(
         '[秘书接管] 基线之后只有任务范围外的已提交控制面改动；保留任务结果并重做当前树的验证与审查。',
       );
+    } else if (auditedScopeAdvance) {
+      console.log('[秘书接管] 已审计的写入合同修订与独立控制面提交；保留原 PM 草稿并重新验证。');
     } else if (fingerprintMismatch && selectiveRecoverySafe) {
       console.log('[选择性恢复] 工作区变化均可归属到当前计划，将逐项复核已有 Task 证据。');
     } else if (fingerprintMismatch) {
@@ -2353,7 +2382,10 @@ try {
     }
     activePlan = checkpoint.plan;
     activeBaseline =
-      emptyRecoveryCanRebase || failedRoutingRecoveryCanRebase || unrelatedCommittedAdvance
+      emptyRecoveryCanRebase ||
+      failedRoutingRecoveryCanRebase ||
+      unrelatedCommittedAdvance ||
+      auditedScopeAdvance
         ? currentHead.stdout.trim()
         : checkpoint.baseline;
     activeDirection = checkpoint.direction;
@@ -2363,7 +2395,8 @@ try {
         !completedCommitCanResume &&
         !emptyRecoveryCanRebase &&
         !failedRoutingRecoveryCanRebase &&
-        !unrelatedCommittedAdvance) ||
+        !unrelatedCommittedAdvance &&
+        !auditedScopeAdvance) ||
       options.takeover;
     if (options.takeover) {
       activeTaskRuns = [];
@@ -2377,14 +2410,17 @@ try {
     } else {
       activeTaskRuns = checkpoint.taskRuns;
     }
-    activeReview = resetCompletedWork || unrelatedCommittedAdvance ? null : checkpoint.review;
+    activeReview =
+      resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance
+        ? null
+        : checkpoint.review;
     // A disjoint control-plane commit invalidates a review pass, but it cannot
     // close an existing product-code blocker recorded in this run's reviews.
     activeReviewStall =
       (await reviewStallFromRunHistory(runDirectory)) ??
-      (unrelatedCommittedAdvance ? undefined : checkpoint.reviewStall);
+      (unrelatedCommittedAdvance || auditedScopeAdvance ? undefined : checkpoint.reviewStall);
     activeValidationProgress =
-      resetCompletedWork || unrelatedCommittedAdvance
+      resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance
         ? { fastGate: null, independentReview: null }
         : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
     activePlannerTokens = checkpoint.plannerTokens;
@@ -2397,7 +2433,8 @@ try {
         !completedCommitCanResume &&
         !emptyRecoveryCanRebase &&
         !failedRoutingRecoveryCanRebase &&
-        !unrelatedCommittedAdvance) ||
+        !unrelatedCommittedAdvance &&
+        !auditedScopeAdvance) ||
       checkpoint.takeover === true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {
