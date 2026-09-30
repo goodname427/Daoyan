@@ -1,6 +1,16 @@
 # 策划审核节点公开结论
 
-## 当前轮次：`drb8-world-closure-review`（mdal 首批 A 世界合同复审，范围修订 13）
+## 当前轮次：`drb9-world-vm-reentry-review`（开发停滞后的世界合同复核，范围修订 13）
+
+**结论：有限纸面策划审核继续通过（`approved`）。** 主策已按[本轮逐项发现](./design-review-findings.md#drb9-world-vm-reentry-reviewdevelopment-5-停滞后的世界合同与接入复核2026-10-01)核对六项现行模块、[唯一世界理论](./world-theory-draft.md)和已批准的首批 A。J1 有源杆推、D1 有源起步、B1 自然首撞后 B4 普通惰性壳修仍共用实体、自然事实、来源、授权、付款、程序容量及生命身份合同；法球或机关、无撞、失证、竞争、再撞、死亡撤权等未列举情形按同一合同处理。未发现需改已批准玩家效果、资源价或身份判据的实质同键冲突，本轮无新增制作人取舍。
+
+**架构覆盖与验收界线。** [ADR-0024](../../adr/0024-自然接触与旧运动命中语义覆盖.md)已采纳为设计覆盖；本轮逐条核对 ADR-0018：保留已付惯性和来源守恒，覆盖自动补 `Wm`、旧三池作为新库存及 `damage` 池/HP 命中，传送仍在本次范围外。现有 `World→共享 AST→compiler→VM→World` 必须按 J1 主源和包同笔双端、独立辅源、两次取得前热基线，D1 自身来源，以及 B1 `C→N→X` 先于 B4 独立付费的顺序接入。纸面 `44 M/余 6 M`、`559 S` 等条件值不是实测；旧程序和存档须按 ADR 保留原件、新版增量及可拒绝的回退路径。程序、理论、桥接和账本中少量过时流程句由原归属定向清理，不阻断本次玩法、资源和身份联签。
+
+**开发阻断保持。** [development-5 中止报告](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/report.json)、[恢复点](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/recovery.json)和审查 1、3、4 表明 J1 原读仍把 `JH-*` 误判为热端，缺主源与包同笔双端、独立辅源，热 R0 取得后才读；审查 4 的局部修补没有关闭这些阻断。三行为尚无通过的真实 World/VM 运行交付，逐端原读和授权、收据、规范 AST/hash、球容量、VM `M/tick/S` 实耗及同书实玩留在开发和候选阶段核实。若实证与同一事实、价、来源或身份键冲突，只退命中权威与直接消费者，不用纸面审核替代运行验收。
+
+**来源与检查。** 本阶段整合提交 `baee3ddd7a20d6dd8bcc1eaff9035cd7c72494e1` 的[精确任务结果](./tasks/design-review-drb9-world-vm-reentry-review.json)、[逐项发现](./design-review-findings.md#drb9-world-vm-reentry-reviewdevelopment-5-停滞后的世界合同与接入复核2026-10-01)及[正式运行报告](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-design-review-98/report.json)。任务记 `completed`、`reviewDecision=approved`，五条最终直接检查退出码为 0，一条首次格式检查失败已记录并修复；Version PM 未重跑来源命令或代码门禁。结构化结论见 [design-review.json](./design-review.json)，版本节点登记留 notice guard。
+
+## 历史轮次：`drb8-world-closure-review`（mdal 首批 A 世界合同复审，范围修订 13）
 
 **结论：纸面策划审核通过（`approved`）。** 制作人已批准首批 A 和完整策划进入开发；本轮主策只复核修订后的模块合同，不重开玩家范围或替代开发验收。六项 `mdal-*` 模块交付和[主策逐项发现](./design-review-findings.md#drb8-world-closure-review六项-mdal--后首批-a-世界合同复审2026-09-30)可在同一有限初态下联签，未发现新增玩家可见规则、不可逆取舍或实质同键冲突。上一轮 `drb7` 的退回保留为历史记录。
 
