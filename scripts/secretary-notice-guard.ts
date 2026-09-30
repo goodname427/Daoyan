@@ -2491,12 +2491,7 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
     stage === 'module-design'
       ? `\n先列出本版本真实受影响的模块与跨模块合同，再按可独立审阅的模块设计成果分派任务；资源、账户、市场这类不同职责不能因同属一个版本就合并成一份扩写稿。每个模块任务写明单独的策划交付物、上下游接口、具体设计内容与直接验收；基础世界理论可由一个任务负责，其他模块引用同一正文，Version PM 最终核对一致性。跨模块合同必须指定权威来源、消费方和同一事实的核对键；涉及账户时分开逐付款方与跨账户合计，涉及程序时明确同一 AST/hash 或别名及证书覆盖范围，涉及状态时逐一核对成功、拒绝、空、未知、域外和竞争余态。下游任务只要新增或改写其他模块的数值、单位、公式、能量流、材料/热或状态断言，即使本轮只修局部界面，也必须把对应权威模块文档列入 readPaths 和直接验收；不能因该模块在上一轮已闭合而省去。下游任务验收须要求对照现行来源结论，不能只检查关键词出现。对本轮变动的场景键、切片、事实 ID 和版本键，使用定向搜索反向搜索同一事实键在当前版本其他模块正文与唯一世界理论中的消费位置；只读取命中段落，把需要同步更正的消费者纳入本轮任务边界或明确列为阻断，不能只修主策点名的两行。纯文档任务可要求有明确公理、初态、参数、逐步账目、反例和未来可执行验收；不得要求尚未实现的运行读数或物理实测作为策划交付。确实需要实测的项目列入开发后验收，不把假设值伪称实测；若缺的是尚未批准的世界规则，交主策判断是否升级制作人。任务清单还必须有 modules:[{"id":"模块标识","title":"模块名称","taskId":"独占该模块设计的任务 ID"}] 和非空 crossModuleContracts:["模块间交互合同"]；每个模块使用不同任务 ID。若只有一个模块，增加非空 singleModuleReason 解释边界。${producerDesignFeedback(version)}`
       : '';
-  const contextGuidance =
-    stage === 'module-design'
-      ? `\n${DESIGN_TIME_CONTRACT_BOUNDARY}\n${DESIGN_DOCUMENT_PROCESS_BOUNDARY}\n每个模块任务另写 contextPolicy（continue 或 fresh）及 contextReason。修订同一文档且原问题和已核实推理仍适用时选择 continue；规则前提重置、文档职责改变或旧上下文已造成重复误判时选择 fresh，并说明具体原因。不要按固定轮数强制新开。秘书只在文档、已批准范围和模型配置一致且会话可恢复时实际续接；旧清单未写此字段时由秘书按这些条件自动判断。`
-      : stage === 'design-review'
-        ? `\n${DESIGN_DOCUMENT_PROCESS_BOUNDARY}`
-        : '';
+  const contextGuidance = `\n每项任务另写 contextPolicy（continue 或 fresh）及 contextReason。同一交付范围沿用已核实的执行或审核脉络时选 continue；规则前提重置、职责改变或旧上下文反复误导时选 fresh，并说明原因。不要按固定轮数强制新开。秘书只在作用域、角色、已批准范围、模型与推理配置一致且会话可恢复时实际续接；独立审查保有与执行分离的只读会话。旧清单未写此字段时按这些条件自动判断。${stage === 'module-design' ? `\n${DESIGN_TIME_CONTRACT_BOUNDARY}\n${DESIGN_DOCUMENT_PROCESS_BOUNDARY}` : stage === 'design-review' ? `\n${DESIGN_DOCUMENT_PROCESS_BOUNDARY}` : ''}`;
   const priorModuleTasks =
     stage === 'module-design'
       ? (version.stageTasks ?? []).filter((task) => task.stage === stage).map((task) => task.id)
