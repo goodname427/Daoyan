@@ -1,47 +1,43 @@
 {
   "tasks": [
     {
-      "id": "drb8-world-closure-review",
-      "title": "mdal 首批 A 同版世界合同主策复审",
-      "objective": "独立核对六项 mdal 交付、模块总览与已采纳 ADR-0024，裁定范围修订 13 的首批 A 详细策划能否作为同键自洽且可审阅的方案。",
+      "id": "drb9-world-vm-reentry-review",
+      "title": "首批 A 停滞开发的世界合同与 World/VM 接入复核",
+      "objective": "主策核对 B1 自然接触壳损与 ADR 0018、已批准详细策划的关系，形成 J1、D1、B1→B4 接入现有 World/VM 的窄范围实现合同及反例。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加 drb8 逐项裁定、证据、反例与通过或定向退回条件，保留历史轮次。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json：记录任务 ID、审核结论、证据路径和实际通过的直接检查。"
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐条覆盖裁定、World/VM 接入合同、反例、证据及阻断条件，保留旧轮次。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json：记录任务 ID、审核结论、证据路径和实际通过的直接文档检查。"
       ],
       "acceptance": [
-        "以制作人方向、intent-alignment.json、范围修订 13、首批 A 及既有批准事实为边界，对照 drb7 退回项、六项 mdal 结果和 module-design.md 当前首段；逐项标为纸面闭合、玩法/资源/身份等同键冲突、缺设计证或待开发实测，并给出现行文件证据。任务 completed 与条件算式不能替代主策联签。",
-        "按 S0-physical-v1/seed-physical-v1、C-B1-01/N-B1-impact-01/X-B1-shell-v1、B4-v1/slice-B4-01、十九 readId、payerId/payerGrantId/receiptId/priceVersion、AST/hash 假设、capacityVersion、LifeId/assessmentId 反查物理、账本、程序、生命、唯一理论、桥接、ADR 和总览的同版消费者；复算 J1、D1 与 B4 各自付款，获准空读 2 M/50→48、B4 条件 44 M/余 6 M、POST 全失证 39 M/暂余 11 M、安装设计峰 559 S 和 C_S−O≥559，区分设计界、可执行前提与实际运行证据。",
-        "从 J1 有源杆推、D1 有源起步、B1 自然接触后 B4 独立来源普通壳修与推演台同书编辑—演武场绑定观察—返书修改核共同因果；覆盖成功、拒绝、合法空、未知、域外、同 payer/lot 竞争、失鲜、双接触、再撞、POST 失证、创建者死亡以及未列举实体或事件。自然事实与已付不倒带；未来法球付费响应、更多预设和敌方修士行为仅作扩展反例，不扩入首批 A。",
-        "区分模块现行规则或资源事实冲突与仅因 module-design.md 后来收束而过时的任务完成、总览阻断、主策轮次或 ADR 状态措辞。后者列为原归属定向文档清理，不单独阻断纸面联签或制造下一轮同义修订。ADR-0024 已采纳为旧运行语义替换前的架构门禁，须核其覆盖 ADR 0017–0020、旧资产隔离、等价迁移与失败回退；不得写成 World/VM 已迁移，也不得因缺运行实测退回纸面设计。",
-        "若有实质缺口，指出权威归属、最小退回范围和可判通过条件；确需新增玩家规则或不可逆取舍时，先向制作人给出通俗选项、玩家效果、代价与推荐理由。真实 grant/原读/收据、规范 AST/hash、球容量与旧占用、World→compiler→VM 实耗及实际同书体验列为开发后验收。不得修改模块正文、ADR、游戏实现或测试；共享 design-review.md、design-review.json 和 docs/status.md 留 Version PM 收束。"
+        "以范围修订 13、首批 A、module-design.md 现行总览、六项现行模块合同、drb8 联签及已采纳 ADR-0024 为边界；核原 development-5 合同、审查、恢复证据与当前代码。旧 charter 和代码仅作旧解读及运行事实，不替代制作人意图或设计权威。",
+        "逐条裁定 ADR 0018 的惯性、Wm 自动补给、三池来源/预留/退款、damage 池命中限制、传送和迁移哪些被 ADR-0024 覆盖、哪些仍有效或只在隔离旧语义中有效。B1 自然 C→N→X 的双端接触及普通 k0 壳损不从旧 damage 池付款、不再调用 hitProjectile/HP 双扣；B4 使用独立获准来源和付款，不凭空添阈值或玩家规则。",
+        "对 J1 一次有源杆推、D1 一次有源起步、B1 自然首撞后 B4 普通壳修，分别给出共享 AST→compiler→VM→现有 World→事件/账本的接入点、原读、source lot、payer/grant、C/N/X 与付费作用先序、结构/生命余态、报价与容量证书、静态界及实耗待验项。独立 PilotWorld、夹具 execute() 或纸面条件账不能代替真实 World/VM。",
+        "给出有证首撞壳损正例及擦边未破、无源或无权、获准空读、隐藏或失鲜、未知价或容量、同刻双接触、同 payer/lot 竞争、再撞、POST 失证、死亡撤权和域外反例的自然事实、付款与失败余态。已结自然事实和已付不倒带；B4 不修生命关键回路或复苏旧 LifeId。区分设计条件值与真实原读、收据、规范 AST/hash、逐体容量和 M/tick/S 待测。",
+        "实质玩法、资源、身份同键冲突须定位权威与最小退回范围；过时的完成或 ADR 状态措辞仅列原归属定向清理，不单独阻断纸面合同。若必须改变已批准玩家规则或作不可逆架构取舍，向制作人列通俗选项、玩家效果、代价和推荐理由，停在既有门禁；不得把新解释写成既定开发任务。",
+        "只修改本任务两个独占证据；不改游戏实现、测试、模块正文、ADR、共享 design-review.md、design-review.json、docs/status.md 或其他任务证据。只做 JSON、链接、格式、范围及写入冲突的直接文档检查。"
       ],
       "dependsOn": [],
       "readPaths": [
         ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/report.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/recovery.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-1-gpt-6-sol-attempt-1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-3-gpt-6-sol-attempt-1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-4-gpt-6-sol-attempt-1.json",
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-bridge-consumer.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/architecture/invariants.md",
-        "docs/adr/0017-统一实体控制属性模型.md",
         "docs/adr/0018-运动供能与命中守恒.md",
-        "docs/adr/0019-属性探查与资源账本.md",
-        "docs/adr/0020-事件执行上下文与生命周期.md",
         "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
         "src/core/world.ts",
         "src/core/compiler.ts",
@@ -49,8 +45,10 @@
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json"
-      ]
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json"
+      ],
+      "contextPolicy": "fresh",
+      "contextReason": "本轮由 drb8 纸面联签转为 development-5 停滞后的实现接入复核；旧审核会话的推理及反复修复脉络可能误导当前代码与 ADR 覆盖判断。保留文件、审查和恢复点为有限输入，独立审核角色重新起会话。"
     }
   ]
 }

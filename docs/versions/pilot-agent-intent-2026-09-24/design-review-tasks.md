@@ -1,7 +1,7 @@
-# design-review 本轮任务：mdal 同版闭合复审
+# design-review 本轮任务：首批 A 的 World/VM 接入复核
 
-**问题与范围。** 上轮 `drb7` 退回各模块的旧流程状态措辞；六项 `mdal-*` 及 Version PM 总览已完成同键纸面对账，ADR-0024 已采纳为设计覆盖，运行尚未迁移。本轮只审核范围修订 13、首批 A 的完整详细策划，不扩充玩法或代替开发验收。
+**问题与范围。** 原 `formal-pilot-agent-intent-2026-09-24-13-development-5` 在开发审查后停滞。范围修订 13、首批 A 和 `drb8` 纸面联签不在此重做；本轮只核 B1 自然壳损与 ADR 0018、已采纳 ADR-0024 的覆盖关系，并明确 J1、D1、B1→B4 如何进入现有 World/VM。非目标是开发、重审无关模块、扩充法球付费响应或敌方修士玩法。验收是可执行的窄合同、逐条旧条款裁定和正反例，不把独立 PilotWorld 或纸面账当作运行成功。
 
-**唯一成果。** `drb8-world-closure-review` 由主策独立复核上轮退回项、六项交付、世界因果和资源预算、跨实体反例、六入口同书路径及 ADR 迁移回退。逐项裁定追加到[审核发现](./design-review-findings.md)，任务证据写入 `tasks/design-review-drb8-world-closure-review.json`。同节点无前驱，两处写入由本任务独占。
+**唯一成果。** `drb9-world-vm-reentry-review` 由主策完成，独占追加[审核发现](./design-review-findings.md)，并写入 `tasks/design-review-drb9-world-vm-reentry-review.json`。同节点无前驱，不把调研、编码、测试拆成多个成果。旧任务 ID 和证据保留；本轮选 `fresh`，因为职责已从纸面联签转为停滞开发的接入复核，仍以旧文件、审查及恢复记录为证据。
 
-**验收边界。** 实质同键冲突或缺设计证须定向退回；仅过时的总览、轮次和 ADR 状态句交原归属定向清理，不单独阻断纸面联签。已采纳 ADR 不代表旧运行语义已迁移。真实授权、收据、AST/hash、容量、VM 实耗及推演台—演武场实玩留开发后验收。新玩家规则或不可逆取舍才向制作人提交通俗比较与推荐。共享 `design-review.md`、`design-review.json` 和 `docs/status.md` 留 Version PM 收束。机器合同见 [design-review-tasks.json](./design-review-tasks.json)。
+**裁决边界。** ADR-0024 仅在明确覆盖处取代 ADR 0018；已采纳设计不等于旧 `hitProjectile/damage`、自动 `Wm` 或固定寿命运行态已迁移。主策须区分自然 C→N→X 和 B4 付费作用的来源、付款、失败余态及待测证书。新增已批准范围外的玩家规则或不可逆取舍才走制作人门禁。共享 `design-review.md`、`design-review.json` 和 `docs/status.md` 留 Version PM 收束；本轮只做轻量文档检查。机器合同见 [design-review-tasks.json](./design-review-tasks.json)。
