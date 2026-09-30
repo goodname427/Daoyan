@@ -2343,16 +2343,48 @@ try {
           },
       )
       .catch(() => null);
+    const amendmentHead = scopeAmendment?.amendedAtHead ?? '';
+    const amendmentHeadIsAncestor = /^[0-9a-f]{40}$/u.test(amendmentHead)
+      ? await git(['merge-base', '--is-ancestor', amendmentHead, currentHead.stdout.trim()])
+      : null;
+    const amendmentAdvance =
+      amendmentHeadIsAncestor?.code === 0
+        ? await git([
+            '-c',
+            'core.quotePath=false',
+            'diff',
+            '--name-only',
+            '-z',
+            checkpoint.baseline,
+            amendmentHead,
+            '--',
+          ])
+        : null;
+    const postAmendmentAdvance =
+      amendmentHeadIsAncestor?.code === 0
+        ? await git([
+            '-c',
+            'core.quotePath=false',
+            'diff',
+            '--name-only',
+            '-z',
+            amendmentHead,
+            currentHead.stdout.trim(),
+            '--',
+          ])
+        : null;
     const auditedScopeAdvance =
       fingerprintMismatch &&
       checkpoint.status === 'recoverable' &&
       checkpoint.error?.startsWith('正式节点任务改动超出独占写入范围：') &&
       scopeAmendment?.baseline === checkpoint.baseline &&
-      scopeAmendment.amendedAtHead === currentHead.stdout.trim() &&
+      amendmentAdvance?.code === 0 &&
+      postAmendmentAdvance?.code === 0 &&
       scopeAmendmentAdvanceMatches(
         scopeAmendment,
-        committedAdvancePaths,
+        amendmentAdvance.stdout.split('\0').filter(Boolean),
         formalStageWritePaths(checkpoint.direction),
+        postAmendmentAdvance.stdout.split('\0').filter(Boolean),
       );
     let selectivelyReusableTaskRuns: TaskRun[] | null = null;
     let selectiveRecoverySafe = false;
