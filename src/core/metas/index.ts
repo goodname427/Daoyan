@@ -19,6 +19,7 @@ import * as math from './math';
 import * as sense from './sense';
 import * as vector from './vector';
 import * as unified from './unified';
+import * as firstBatch from './firstBatch';
 
 import { allMetas } from '../meta';
 import type { MetaDef } from '../meta';
@@ -44,6 +45,7 @@ const fallbackModules: Record<string, MetaModule> = {
   './attribute.ts': attribute,
   './input.ts': input,
   './unified.ts': unified,
+  './firstBatch.ts': firstBatch,
 };
 
 const modules: Record<string, MetaModule> = { ...fallbackModules, ...autoModules };

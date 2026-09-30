@@ -1,0 +1,199 @@
+{
+  "taskId": "dev-world-a3",
+  "status": "completed",
+  "completed": true,
+  "summary": "已在现有共享 AST→compiler→VM→World 链接入并实测 J1 一次有源杆推、D1 一次有源起步及 B1 自然首撞后的 B4 普通惰性 k0 壳修。J1/D1/B4 分别取得 15/14/19 笔真实原读，VM 主付款方实耗为 32 M/187 tick/0 S、26 M/174 tick/0 S、44 M/302 tick/0 S；J1 跨三付款方合计 35 M，静态 M/tick/S 上界逐项不小于实耗。B1 先提交 C→N→X 与材料 3→2、碎片 0→1；B4 在自然事实之后修壳 2→3、废料 0→1，三笔 POST 均获同版证明。审核修复使缺材料库存的破壳保持未定，从耗散中先扣已证形变再占用热汇，并补齐 reset 有限状态清理、B4 目标与材料 lot 绑定及 J1/D1 执行体容量版本复核。",
+  "measurements": {
+    "J1": {
+      "astHash": "f1d5a2ad42fbec68ad02b7ef8ac8ea8609a28c432c9c3d5e7cbf25b003d76c79",
+      "canonicalAstBytes": 3052,
+      "readReceipts": 15,
+      "static": { "mana": 87, "ticks": 271, "shenshiPeak": 0 },
+      "vm": { "mana": 32, "ticks": 187, "shenshiPeak": 0 },
+      "payerReceipts": { "primary": 32, "P0": 1, "P2": 2, "total": 35 },
+      "capacity": { "total": 128, "occupiedBefore": 0, "reservedPeak": 38, "availableAfter": 90 }
+    },
+    "D1": {
+      "astHash": "2a633bae3d42ccbc2074fb8c7bb9d5fac4b9d6af54b7419e8deb91193ce252b6",
+      "canonicalAstBytes": 2769,
+      "readReceipts": 14,
+      "static": { "mana": 54, "ticks": 241, "shenshiPeak": 0 },
+      "vm": { "mana": 26, "ticks": 174, "shenshiPeak": 0 },
+      "capacity": { "total": 128, "occupiedBefore": 0, "reservedPeak": 37, "availableAfter": 91 }
+    },
+    "B1_B4": {
+      "astHash": "d3b13c166debcf7e92f4b3299d73dd0826f4bd6a1572233796810f4185327a0a",
+      "canonicalAstBytes": 3198,
+      "readReceipts": 19,
+      "static": { "mana": 53, "ticks": 451, "shenshiPeak": 0 },
+      "vm": { "mana": 44, "ticks": 302, "shenshiPeak": 0 },
+      "capacity": {
+        "total": 1024,
+        "occupiedBefore": 0,
+        "reservedPeak": 559,
+        "availableAfter": 465
+      },
+      "natural": {
+        "contactImpulse": 6,
+        "dissipatedEnergy": 6,
+        "deformation": 2,
+        "heat": 4,
+        "shellBefore": 3,
+        "shellAfter": 2,
+        "fragmentAfter": 1
+      },
+      "repair": { "shellAfter": 3, "wasteAfter": 1, "packageAfter": 8, "payerBalanceAfter": 6 }
+    }
+  },
+  "reviewRepair": {
+    "missingMaterialInventory": "达到破壳阈值但缺附着或碎片 lot 时仅保留双端 C 与 unknown 材料结果，不签 N/X、不减 attachedK0；定向测试核对余态。",
+    "mixedMaterialEnergy": "一端已证破壳、另一端未定时，从总耗散先扣已证形变，只将剩余量暂存具名热汇；候选形变功超过耗散则撤去临时材料转移、保留双端 C 并标材料未定。",
+    "j1PayerTotals": "主 payer 的 H1/十一笔非覆盖读/作用分别付 9/11/12 M，P0 付 1 M，P2 付 2 M；跨 payer 合计 35 M，VM 返回主 payer 32 M。",
+    "lint": "world.ts 的可选数值过滤改用 !== null && !== undefined，保留原有空值语义；npm run lint 实际退出 0。",
+    "docsCheck": "九个首批有界执行元法术标为 internalOnly；getMeta、编译器和 VM 仍可调用，publicMetas 不计入玩家参考。真实生成脚本的 --check 模式确认现有参考页与 94 个公开元法术一致；本沙盒 npm run docs:check 因 tsx/esbuild spawn EPERM 未完整运行。",
+    "worldReset": "reset 清除有限世界的来源、库存、授权、容量、自然身体和接触、会话、锁与各类事实及收据，重开 finiteInitialOpen 和接触策略；成功 B4/J1/D1 后重新使用来源 ID 建立新场景的定向断言通过。",
+    "b4TargetLot": "B1 破壳要求附着与碎片 lot 归属当前身体；B4 计划、锁和作用阶段逐次核对自然 X 的 bodyId、目标身体绑定的附着 lot、ownerId、数量与结构版本。两具身体同数量、审计 lot 归属另一目标的反例在计划登记时拒绝且自然事实、库存与法力余态不变。",
+    "driveCapacityFreshness": "J1/D1 容量证书登记、会话准入及每次读和阶段执行均核对执行体当前材料结构版本；错误版本登记失败，自然破壳使已登记证书失鲜后会话或 VM 执行失败，不新增付款和动作事实。",
+    "evidencePath": "test/entity-vnext.test.ts"
+  },
+  "commands": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "result": "最终代码树 TypeScript 检查通过。"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "result": "审核指出的 src/core/world.ts eqeqeq 报错已修复；ESLint 零错误、零警告。"
+    },
+    {
+      "command": "npx eslint src/core/meta.ts src/core/metas/firstBatch.ts test/entity-vnext.test.ts --max-warnings 0",
+      "exitCode": 0,
+      "result": "本轮公开目录隔离改动的定向 ESLint 检查通过。"
+    },
+    {
+      "command": "npx eslint src/core/world.ts test/entity-vnext.test.ts --max-warnings 0",
+      "exitCode": 0,
+      "result": "reset、B4 目标材料绑定及 J1/D1 容量失鲜修复的定向 ESLint 检查通过。"
+    },
+    {
+      "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
+      "exitCode": 0,
+      "result": "仓库外 loader 直接执行允许测试文件中 14 个相关测试体：自然接触与 lot 归属、B4 成功/错目标 lot、reset、J1/D1 成功/容量失鲜及撤权余态；全部断言通过。"
+    },
+    {
+      "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-docs-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url scripts/generate-meta-reference.ts --check",
+      "exitCode": 0,
+      "result": "实际元法术参考生成脚本只读检查通过：94 个公开元法术，现有 docs/reference/meta-spells.md 同版。仓库外 loader 仅绕过本沙盒 tsx/esbuild 子进程权限限制。"
+    },
+    {
+      "command": "node scripts/check-docs.mjs",
+      "exitCode": 0,
+      "result": "文档检查通过：161 个 Markdown 文件，版本 0.2.0。"
+    },
+    {
+      "command": "$path=Join-Path $env:TEMP 'daoyan-a3-drive-smoke.mjs'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
+      "exitCode": 0,
+      "result": "真实 World/VM 的 J1/D1 逐端原读、逐 payer、来源、余态和静态上界实测通过。临时脚本位于仓库外。"
+    },
+    {
+      "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
+      "exitCode": 0,
+      "result": "真实 World/VM 的 B1→B4、19 笔审计、三 POST、再次自然撞击、材料与热账实测通过。临时脚本位于仓库外。"
+    },
+    {
+      "command": "npx prettier --check src/core/world.ts test/entity-vnext.test.ts docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
+      "exitCode": 0,
+      "result": "上一轮相关代码、测试和文档格式检查通过。"
+    },
+    {
+      "command": "npx prettier --check src/core/meta.ts src/core/metas/firstBatch.ts test/entity-vnext.test.ts docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
+      "exitCode": 0,
+      "result": "本轮公开目录隔离涉及的代码、测试和任务文档格式检查通过。"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "改动无空白错误。"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
+      "exitCode": 1,
+      "reason": "新增 reset 断言初稿使用 Vitest 的 not.toBe，仓库外简化 runner 未实现该方法；改为等价布尔断言后同命令退出 0。"
+    },
+    {
+      "command": "npm run test -- test/secretary-dashboard.test.ts -t \"routes rejected candidate feedback into repair instead of the next-version backlog\"",
+      "exitCode": 1,
+      "reason": "本沙盒加载 vite.config.ts 时 esbuild spawn EPERM，测试体未执行。PM 快速门禁中的 20 秒超时用例只依赖 scripts/project-secretary.ts、版本状态模块及 test/helpers/secretary-guard.ts；修复路径均不在本任务 writePaths，不能以 src/core 改动签销。"
+    },
+    {
+      "command": "npm run docs:check",
+      "exitCode": 1,
+      "reason": "tsx 启动 esbuild 子进程时本沙盒返回 spawn EPERM，生成脚本未运行；另用仓库外 Node loader 对实际生成脚本运行 --check 通过。"
+    },
+    {
+      "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-docs-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url scripts/generate-meta-reference.ts --check",
+      "exitCode": 1,
+      "reason": "临时 loader 初稿未处理 package.json 的导入属性；补足 JSON 加载后同命令退出 0。"
+    },
+    {
+      "command": "npm run test -- test/entity-vnext.test.ts -t \"finite natural contact|sourced action\"",
+      "exitCode": 1,
+      "reason": "本轮定向 Vitest 在加载配置时 esbuild 子进程 spawn EPERM；目标测试体未执行，改用仓库外 Node loader 直接执行相关测试体。"
+    },
+    {
+      "command": "npm run test -- test/entity-vnext.test.ts",
+      "exitCode": 1,
+      "reason": "Vitest 加载配置时 esbuild 启动子进程返回 spawn EPERM；目标测试体未执行。"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 1,
+      "reason": "新增 B4 定向测试初稿对 analyzeBook 返回值和 Record 索引的类型使用错误；修正后同命令退出 0。"
+    },
+    {
+      "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
+      "exitCode": 1,
+      "reason": "临时单测试 runner 初稿未提供 it.each；补充后四个定向测试体退出 0。"
+    },
+    {
+      "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
+      "exitCode": 1,
+      "reason": "B4 临时测量初稿的 POST port 版本仍用撞后 v1，未采用修后 v2；修正后该命令退出 0。"
+    },
+    {
+      "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
+      "exitCode": 1,
+      "reason": "旧临时脚本调用已废弃的 registerFiniteAuditStaticCertificate；改为 World 身体证书真值。"
+    },
+    {
+      "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
+      "exitCode": 1,
+      "reason": "初版 B4 修后未恢复普通 panelAttached，第二次自然首撞未产生壳损；修正 World 余态后通过。"
+    },
+    {
+      "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
+      "exitCode": 1,
+      "reason": "新撤权余态断言把势能扣 48 错认为源端实得 48，遗漏取得热 8；改为实得 40 后通过。"
+    }
+  ],
+  "evidence": [
+    "test/entity-vnext.test.ts",
+    "src/core/meta.ts",
+    "src/core/world.ts",
+    "src/core/metas/firstBatch.ts",
+    "src/core/b4Audit.ts",
+    "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json"
+  ],
+  "limitations": [
+    "Vitest 定向命令在当前沙盒的 esbuild spawn EPERM 下没有通过记录；调度器负责退出后的快速/完整门禁。",
+    "秘书 dashboard 用例在 PM 快速门禁中出现 20 秒超时；其测试、守卫和项目秘书实现均位于本任务 writePaths 外。本沙盒定向复跑在 Vitest 配置阶段遇到 esbuild spawn EPERM，未取得该超时的运行栈，须由原 PM 在控制面范围复现并修复。",
+    "旧 UI/Battle 按键、hitProjectile/damage、自动回蓝和固定寿命的域外调用尚未迁移到首批有限世界行为。"
+  ],
+  "committed": false,
+  "pushed": false
+}

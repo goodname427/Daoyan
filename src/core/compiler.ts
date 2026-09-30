@@ -3,6 +3,7 @@ import { DYN_CAP, T, shenshiOf } from './types';
 import type { Type, Value } from './types';
 import { getMeta, metaIndex } from './meta';
 import { DEFAULT_SCAN_CAP } from './analyzer';
+import { canonicalSpellBook, sha256Hex } from './canonical';
 
 export const Op = {
   PUSHK: 0,
@@ -51,6 +52,9 @@ export interface Program {
   fns: CompiledFn[];
   index: Map<string, number>;
   entry: number;
+  /** Canonical shared AST bytes and SHA-256 identity for versioned world admission. */
+  canonicalAst: string;
+  astHash: string;
 }
 
 interface ScopeVar {
@@ -370,7 +374,8 @@ export function compileProgram(book: SpellBook, entry?: string): Program {
   const name = entry ?? names[0];
   const e = name === undefined ? undefined : index.get(name);
   if (e === undefined) throw new Error(`入口法术不存在: ${String(name)}`);
-  return { fns, index, entry: e };
+  const canonicalAst = canonicalSpellBook(book);
+  return { fns, index, entry: e, canonicalAst, astHash: sha256Hex(canonicalAst) };
 }
 
 export { DEFAULT_SCAN_CAP };
