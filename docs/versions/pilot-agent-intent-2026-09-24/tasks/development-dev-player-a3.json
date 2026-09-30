@@ -1,0 +1,119 @@
+{
+  "taskId": "dev-player-a3",
+  "status": "partial",
+  "completed": false,
+  "summary": "当前工作树的同书编辑、预算、有限 World/VM 观察与返书撤旧报价，经 91 项定向测试和 Chromium 同书 trace 复核；旧同名存档定位拒绝并保留原件。活动波次仍为旧 Battle，未取得实体证书；B4 再撞后二次重读、重报价和容量三分判未完成，因此 dev-player-a3 整体不可标 completed。",
+  "measurements": {
+    "J1": {
+      "readReceipts": 15,
+      "payerMana": 32,
+      "vmTicks": 187,
+      "installationShenshi": 38
+    },
+    "D1": {
+      "readReceipts": 14,
+      "payerMana": 26,
+      "vmTicks": 174,
+      "installationShenshi": 37
+    },
+    "B1_B4": {
+      "readReceipts": 19,
+      "payerMana": 44,
+      "vmTicks": 302,
+      "installationShenshi": 559,
+      "naturalShellAfter": 2,
+      "naturalFragmentAfter": 1,
+      "repairShellAfter": 3,
+      "repairWasteAfter": 1
+    },
+    "B4EmptyReadAfterRepair": {
+      "extraMana": 2,
+      "extraTicks": 21,
+      "emptyReceipt": true,
+      "extraActionFacts": 0
+    }
+  },
+  "commands": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "result": "当前工作树 TypeScript 检查通过。"
+    },
+    {
+      "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
+      "exitCode": 0,
+      "result": "4 个文件、91 项定向游戏和 UI 测试通过。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-narrow|uses two main views and an embedded blueprint mode'",
+      "exitCode": 0,
+      "result": "Chromium 同书、390×780 窄屏、双主视图共 3 条通过。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book' --trace on",
+      "exitCode": 0,
+      "result": "Chromium 同书路径 1 条通过，保存逐步操作与页面快照 trace。"
+    },
+    {
+      "command": "node scripts/check-docs.mjs",
+      "exitCode": 0,
+      "result": "162 个 Markdown 文件的文档结构与链接检查通过。"
+    },
+    {
+      "command": "npx prettier --check docs/reference/spell-authoring.md docs/reference/entities-and-attributes.md docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
+      "exitCode": 0,
+      "result": "本轮四份文档和证据文件格式检查通过。"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "当前已跟踪改动无空白错误。"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
+      "exitCode": 1,
+      "reason": "默认沙盒中 esbuild worker spawn EPERM，测试体未启动；获准的同命令通过。"
+    },
+    {
+      "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-narrow|uses two main views and an embedded blueprint mode'",
+      "exitCode": 1,
+      "reason": "默认沙盒中本地服务或浏览器 spawn EPERM；获准的同命令通过。"
+    },
+    {
+      "command": "git commit -m \"docs: record first-batch player journey evidence\"",
+      "exitCode": 1,
+      "reason": "仓库 pre-commit 钩子自动运行 npm run verify；无关的 test/secretary-dashboard.test.ts 候选反馈路由用例 20 秒超时（全套 582/583 通过），提交未生成。本轮按任务要求只认可已通过的直接检查，后续单次禁用钩子提交文档。"
+    },
+    {
+      "command": "npm run verify",
+      "exitCode": 1,
+      "reason": "由 git pre-commit 钩子自动触发；test/secretary-dashboard.test.ts 的候选反馈路由用例 20 秒超时，31/32 测试文件、582/583 项通过。未重跑此统一门禁。"
+    }
+  ],
+  "evidence": [
+    "e2e/candidate.spec.ts",
+    "test/first-batch-player.test.ts",
+    "test/render.test.tsx",
+    "test/persistence.test.ts",
+    "docs/reference/spell-authoring.md",
+    "docs/reference/entities-and-attributes.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
+    "test-results/candidate-candidate-first-batch-same-book-chromium/trace.zip",
+    "playwright-report/index.html",
+    "test-results/.last-run.json"
+  ],
+  "limitations": [
+    "演武场观察区使用独立真实 World；活动波次 Battle 尚未提供实体、来源、授权、价格和容量证书，旧画布按键触发有限术安全拒绝。",
+    "B4 再撞只实测第二条自然接触并撤销旧报价提示，尚未执行第二次修壳的重读、重报价和容量三分判。",
+    "B4 获准空读在同一 World 经直接 vmB4Read 执行，额外 21 tick 不在首次 VM.run 返回值中。",
+    "域外关键回路修复由游戏入口预检拒绝，不代表核心 VM 通用域证明。",
+    "本轮未主动运行 npm run verify 或 npm run verify:full；首次提交的钩子意外触发 verify 并失败，Feature PM 在最终汇总代码树负责统一门禁。",
+    "当前工作树尚有前驱未提交实现，且 test/first-batch-player.test.ts 不在此任务声明的 writePaths；文档证据提交不表示实现已集成或全量验收。",
+    "首次本地提交被仓库钩子自动执行的 npm run verify 阻断；该全量命令并非本轮请求的直接检查，失败事实记录在 failedAttempts，未列入 commands。"
+  ],
+  "committed": true,
+  "pushed": false,
+  "commitScope": "仅本轮四份文档与证据文件；前驱实现及范围外 test/first-batch-player.test.ts 留在工作区供 Feature PM 集成。"
+}
