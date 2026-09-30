@@ -280,7 +280,32 @@ async function amendTaskScope(taskId: string, reason: string, additions: string[
     throw new Error('恢复点不是已退出的写入范围阻断');
   }
   const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-  if (head !== checkpoint.baseline) throw new Error('恢复点基线与当前提交不一致');
+  const intervening =
+    head === checkpoint.baseline
+      ? []
+      : execFileSync('git', ['diff', '--name-only', checkpoint.baseline ?? '', head], {
+          cwd: root,
+          encoding: 'utf8',
+        })
+          .trim()
+          .split(/\r?\n/u)
+          .filter(Boolean);
+  const allowedControlAdvance = [
+    'docs/agent-workflow.md',
+    'package.json',
+    'scripts/agent-dispatcher.ts',
+    'scripts/project-secretary.ts',
+  ];
+  if (
+    head !== checkpoint.baseline &&
+    (!intervening.length ||
+      intervening.some((path) => !allowedControlAdvance.includes(path)) ||
+      execFileSync('git', ['merge-base', checkpoint.baseline ?? '', head], {
+        cwd: root,
+        encoding: 'utf8',
+      }).trim() !== checkpoint.baseline)
+  )
+    throw new Error('恢复点之后含有未经核实的提交变化');
   if (!reason.trim() || additions.length === 0) throw new Error('需要说明原因和精确新增路径');
   const dirty = new Set([
     ...execFileSync('git', ['diff', '--name-only'], { cwd: root, encoding: 'utf8' })
@@ -342,7 +367,9 @@ async function amendTaskScope(taskId: string, reason: string, additions: string[
   const audit = {
     taskId,
     reason: reason.trim(),
-    baseline: head,
+    baseline: checkpoint.baseline,
+    amendedAtHead: head,
+    interveningControlPaths: intervening,
     previousWritePaths: task.writePaths,
     addedWritePaths: normalized,
     remainingOutOfScope: [...dirty].filter(
