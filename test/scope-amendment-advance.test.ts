@@ -44,10 +44,33 @@ describe('scope amendment after a partial task commit', () => {
     expect(
       scopeAmendmentAdvanceMatches(
         audit,
+        committedPaths,
+        [...previousWritePaths, ...addedWritePaths].sort(),
+      ),
+    ).toBe(true);
+    expect(
+      scopeAmendmentAdvanceMatches(
+        audit,
         [...committedPaths, 'docs/status.md'],
         [...previousWritePaths, ...addedWritePaths],
       ),
     ).toBe(false);
     expect(scopeAmendmentAdvanceMatches(audit, committedPaths, previousWritePaths)).toBe(false);
+    expect(
+      scopeAmendmentAdvanceMatches(
+        audit,
+        committedPaths,
+        [...previousWritePaths, ...addedWritePaths].sort(),
+        ['scripts/scope-amendment-advance.ts', 'test/scope-amendment-advance.test.ts'],
+      ),
+    ).toBe(true);
+    expect(
+      scopeAmendmentAdvanceMatches(
+        audit,
+        committedPaths,
+        [...previousWritePaths, ...addedWritePaths].sort(),
+        ['src/game/firstBatch.ts'],
+      ),
+    ).toBe(false);
   });
 });

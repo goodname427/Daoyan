@@ -45,16 +45,20 @@ export function scopeAmendmentAdvanceMatches(
   audit: ScopeAmendmentAdvanceAudit | null,
   committedPaths: string[],
   amendedWritePaths: string[],
+  postAuditPaths: string[] = [],
 ): boolean {
   if (!audit || !Array.isArray(audit.previousWritePaths) || !Array.isArray(audit.addedWritePaths))
     return false;
   const classified = classifyScopeAmendmentAdvance(committedPaths, audit.previousWritePaths);
   return (
     classified.unrelatedPaths.length === 0 &&
+    postAuditPaths.every((path) =>
+      scopeAmendmentControlPaths.includes(path as (typeof scopeAmendmentControlPaths)[number]),
+    ) &&
     JSON.stringify(classified.controlPaths) ===
       JSON.stringify(audit.interveningControlPaths ?? []) &&
     JSON.stringify(classified.taskPaths) === JSON.stringify(audit.interveningTaskPaths ?? []) &&
-    JSON.stringify([...new Set([...audit.previousWritePaths, ...audit.addedWritePaths])]) ===
-      JSON.stringify(amendedWritePaths)
+    JSON.stringify([...new Set([...audit.previousWritePaths, ...audit.addedWritePaths])].sort()) ===
+      JSON.stringify([...new Set(amendedWritePaths)].sort())
   );
 }
