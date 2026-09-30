@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { closeSync, existsSync, openSync } from 'node:fs';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -49,6 +49,7 @@ function printHelp(): void {
   npm run secretary:stop
   npm run secretary:resume-design-review
   npm run secretary:replan-stalled-development
+  npm run secretary:amend-task-scope -- <task-id> <reason> <additional-path> [additional-path...]
   npm run secretary:withdraw-design-escalation -- <gate-id> <reason> <evidence-path>
 
 秘书会结合对话与项目状态自行识别问题、新方向、回复和继续工作。notice guard 仅监听文件、HTTP、子进程退出和恢复定时器；空闲时不会调用模型。`);
@@ -226,6 +227,156 @@ async function resumeDesignReview(): Promise<void> {
   await writeFormalVersion(root, version);
   console.log(
     `[常驻秘书] 已解除“${version.title}”的重复主策审核技术暂停；请启动 notice guard 从既有节点继续。`,
+  );
+}
+
+/** Repair an omitted technical output path without replacing the running PM's draft. */
+async function amendTaskScope(taskId: string, reason: string, additions: string[]): Promise<void> {
+  const current = await readState();
+  if (!current || isOwnedProcessAlive(current.pid, current.processIdentity)) {
+    throw new Error('修订任务写入合同前须停止 notice guard');
+  }
+  if (current.items.some((item) => isOwnedProcessAlive(item.processPid, item.processIdentity))) {
+    throw new Error('修订任务写入合同前须等待 PM 与执行 Agent 退出');
+  }
+  const version = await readFormalVersion(root);
+  if (!version || version.currentStage !== 'development') throw new Error('当前不是开发节点');
+  const task = version.stageTasks?.find(
+    (entry) => entry.id === taskId && entry.status === 'pending',
+  );
+  const item = [...current.items]
+    .reverse()
+    .find(
+      (entry) =>
+        entry.status === 'retry-wait' &&
+        entry.orchestration?.formalVersionId === version.id &&
+        entry.orchestration.formalTaskId === taskId &&
+        entry.runDirectory,
+    );
+  if (!task || !item?.runDirectory) throw new Error('缺少同一待恢复任务及未接纳的写入合同');
+  const runDirectory = resolve(item.runDirectory);
+  const withinRuns = relative(resolve(root, '.daoyan-agent', 'runs'), runDirectory);
+  if (!withinRuns || withinRuns.startsWith('..') || isAbsolute(withinRuns)) {
+    throw new Error('恢复目录不在正式运行目录内');
+  }
+  const recoveryPath = resolve(runDirectory, 'recovery.json');
+  const checkpoint = JSON.parse(await readFile(recoveryPath, 'utf8')) as {
+    status?: string;
+    phase?: string;
+    error?: string;
+    baseline?: string;
+    processPid?: number;
+    processIdentity?: string;
+    direction?: string;
+    resolvedDirection?: string;
+    [key: string]: unknown;
+  };
+  if (
+    checkpoint.status !== 'recoverable' ||
+    checkpoint.phase !== 'Git 交付' ||
+    !checkpoint.error?.startsWith('正式节点任务改动超出独占写入范围：') ||
+    isOwnedProcessAlive(checkpoint.processPid ?? 0, checkpoint.processIdentity ?? '')
+  ) {
+    throw new Error('恢复点不是已退出的写入范围阻断');
+  }
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  if (head !== checkpoint.baseline) throw new Error('恢复点基线与当前提交不一致');
+  if (!reason.trim() || additions.length === 0) throw new Error('需要说明原因和精确新增路径');
+  const dirty = new Set([
+    ...execFileSync('git', ['diff', '--name-only'], { cwd: root, encoding: 'utf8' })
+      .trim()
+      .split(/\r?\n/u),
+    ...execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split(/\r?\n/u),
+  ]);
+  const normalized = [...new Set(additions.map((path) => path.replaceAll('\\', '/')))];
+  for (const path of normalized) {
+    if (
+      !path ||
+      path.startsWith('/') ||
+      path.includes('..') ||
+      !dirty.has(path) ||
+      !/^(?:docs\/reference\/[^/]+\.md|scripts\/generate-[^/]+\.ts|test\/[^/.][^/]*\.test\.ts)$/u.test(
+        path,
+      )
+    ) {
+      throw new Error(`新增路径不是当前任务可核实的技术产物：${path}`);
+    }
+  }
+  const replaceContract = (direction: string): string => {
+    const prefix = '只完成本合同：\n';
+    const suffix = '\n直接前驱的有限证据索引：';
+    const start = direction.indexOf(prefix);
+    const end = start < 0 ? -1 : direction.indexOf(suffix, start + prefix.length);
+    if (end < 0 || !direction.startsWith(`[formal-stage-deliverable:development:${taskId}]`)) {
+      throw new Error('恢复方向与开发任务不一致');
+    }
+    const embedded = JSON.parse(direction.slice(start + prefix.length, end)) as {
+      id: string;
+      writePaths: string[];
+    };
+    if (
+      embedded.id !== taskId ||
+      JSON.stringify(embedded.writePaths) !== JSON.stringify(task.writePaths)
+    ) {
+      throw new Error('恢复方向的写入合同与正式版本不一致');
+    }
+    embedded.writePaths = [...new Set([...embedded.writePaths, ...normalized])];
+    return (
+      direction.slice(0, start + prefix.length) +
+      JSON.stringify(embedded, null, 2) +
+      direction.slice(end)
+    );
+  };
+  const direction = replaceContract(checkpoint.direction ?? '');
+  const resolvedDirection =
+    checkpoint.resolvedDirection === checkpoint.direction
+      ? direction
+      : replaceContract(checkpoint.resolvedDirection ?? '');
+  const auditPath = resolve(runDirectory, 'scope-amendment.json');
+  if (existsSync(auditPath)) throw new Error('该恢复点已有写入合同修订，拒绝重复扩张');
+  const audit = {
+    taskId,
+    reason: reason.trim(),
+    baseline: head,
+    previousWritePaths: task.writePaths,
+    addedWritePaths: normalized,
+    remainingOutOfScope: [...dirty].filter(
+      (path) =>
+        path &&
+        ![...task.writePaths, ...normalized].some(
+          (scope) => path === scope || path.startsWith(`${scope}/`),
+        ),
+    ),
+    amendedAt: new Date().toISOString(),
+  };
+  for (const path of audit.remainingOutOfScope) {
+    const source = resolve(root, path);
+    const relativeSource = relative(root, source);
+    if (
+      !relativeSource ||
+      relativeSource.startsWith('..') ||
+      isAbsolute(relativeSource) ||
+      !existsSync(source)
+    )
+      continue;
+    const backup = resolve(runDirectory, 'scope-draft-backup', path);
+    await mkdir(dirname(backup), { recursive: true });
+    await copyFile(source, backup);
+  }
+  task.writePaths = [...new Set([...task.writePaths, ...normalized])];
+  await writeFormalVersion(root, version);
+  const updated = { ...checkpoint, direction, resolvedDirection };
+  const temporary = `${recoveryPath}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(updated, null, 2)}\n`, 'utf8');
+  await rename(temporary, recoveryPath);
+  await writeFile(auditPath, `${JSON.stringify(audit, null, 2)}\n`, 'utf8');
+  console.log(
+    `[常驻秘书] 已审计修订 ${taskId} 的 ${normalized.length} 项技术写入路径；原恢复点和 PM 草稿保留。`,
   );
 }
 
@@ -430,6 +581,8 @@ if (command === 'run') {
   await stopGuard();
 } else if (command === 'resume-design-review') {
   await resumeDesignReview();
+} else if (command === 'amend-task-scope') {
+  await amendTaskScope(args[1] ?? '', args[2] ?? '', args.slice(3));
 } else if (command === 'replan-stalled-development') {
   await replanStalledDevelopment();
 } else if (command === 'withdraw-design-escalation') {
