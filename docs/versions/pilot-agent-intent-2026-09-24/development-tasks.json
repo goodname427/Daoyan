@@ -9,7 +9,9 @@
   },
   "tasks": [
     {
-      "id": "dev-world-a2",
+      "id": "dev-world-a3",
+      "contextPolicy": "fresh",
+      "contextReason": "development-5 的旧执行上下文连续把 J1 原读与来源接错，且未交付真实 World/VM 黑盒；以 drb9 已核实的规则和旧运行证据重新建立执行脉络，不续跑旧 PM。",
       "title": "现有 World/VM 上的首批三行为",
       "objective": "在现有 World/VM 的共享 AST→compiler→VM→World 执行链中，以同一实体、自然接触、来源、事件、授权、付款和生命合同实现 J1 一次有源杆推、D1 一次有源起步、B1 自然首撞后 B4 一次普通惰性 k0 壳修。",
       "deliverables": [
@@ -40,7 +42,8 @@
         "docs/adr/0020-事件执行上下文与生命周期.md",
         "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
         "src/core",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-3/review-4-gpt-6-sol-attempt-1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/report.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-4-gpt-6-sol-attempt-1.json",
         "test/core.test.ts",
         "test/entity-vnext.test.ts"
       ],
@@ -49,11 +52,14 @@
         "test/core.test.ts",
         "test/entity-vnext.test.ts",
         "test/dsl-migration.test.ts",
-        "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json"
       ]
     },
     {
-      "id": "dev-player-a2",
+      "id": "dev-player-a3",
+      "contextPolicy": "fresh",
+      "contextReason": "玩家闭环尚无已核实的同范围执行会话可续接，且必须以本轮接纳的真实 World/VM 新合同为前提；从已批准桥接策划与前驱实测建立独立执行脉络。",
       "title": "首批三行为的推演台与演武场闭环",
       "objective": "消费已接纳的真实 World/VM 合同，将首批 A 接入同一法术书的编辑、预算、绑定、观察和返书改写；旧原型资产只在证明等价时迁入。",
       "deliverables": [
@@ -68,7 +74,7 @@
         "旧法术和存档不能证明 AST、作用时点、价、权限、容量与返回值等价时定位拒绝并保留原件；不补造来源、grant、余额或活动队列，不把旧固定寿命、自动回蓝和固定伤害静默变成新规则。",
         "受影响路径的定向测试与推演台—演武场—返书实际体验有可复核记录；若玩家路径需要新增世界公理或超出首批 A 的原子效果，报告阻断并退回相应权威合同。"
       ],
-      "dependsOn": ["dev-world-a2"],
+      "dependsOn": ["dev-world-a3"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
@@ -97,7 +103,8 @@
         "e2e/candidate.spec.ts",
         "docs/reference/spell-authoring.md",
         "docs/reference/entities-and-attributes.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json"
       ]
     }
   ]
