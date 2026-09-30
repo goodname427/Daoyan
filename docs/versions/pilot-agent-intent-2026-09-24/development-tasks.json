@@ -1,24 +1,33 @@
 {
+  "roadmapHandoff": {
+    "owner": "Version PM",
+    "path": "docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md",
+    "acceptance": [
+      "开发节点收束时写明版本 ID，链接已批准的 design-review.md 与实际 development.json；列出已确认世界规则与模块合同，依据任务实测逐项区分已实现、待验证、未来候选，不以纸面条件账冒充游戏结果。",
+      "记载法球付费事件、更多预设、敌方修士候选的依赖、验收证据及返工或重新设计触发条件，并核实 ADR 0017–0020、ADR 0024 与旧内容迁移回退状态；候选体验前在 docs/roadmap.md 写入本交接路径，候选节点收束时补链实际 candidate.json。"
+    ]
+  },
   "tasks": [
     {
-      "id": "dev-world-a",
-      "title": "统一世界核心与首批三行为",
-      "objective": "在无头核心中以同一实体、自然演化、来源、事件、程序、权限和逐付款方账本合同实现首批 A 的 J1 一次有源杆推、D1 修士一次有源起步、B1 首撞后 B4 一次普通惰性 k0 壳修补。",
+      "id": "dev-world-a2",
+      "title": "现有 World/VM 上的首批三行为",
+      "objective": "在现有 World/VM 的共享 AST→compiler→VM→World 执行链中，以同一实体、自然接触、来源、事件、授权、付款和生命合同实现 J1 一次有源杆推、D1 一次有源起步、B1 自然首撞后 B4 一次普通惰性 k0 壳修。",
       "deliverables": [
-        "可由 Node 无头运行的核心实现及对应定向测试，覆盖三行为和共同的实体、物理、资源、事件与程序合同。",
+        "可由 Node 无头运行的现有 World/VM 接入与定向核心测试，覆盖三行为和共同的实体、物理、资源、事件与程序合同；独立 PilotWorld 或只在测试夹具成立的 execute() 不能代替游戏核心。",
         "三行为的实测证据：同版原读和误差、来源及材料/能量/热/反作用账、逐 payer/grant 收据、规范 AST/hash、逐体容量与既有占用、VM tick 和神识峰值。",
-        "核心规则、首批适用边界和旧原型/ADR 差异的可追溯技术说明；需要改变已批准世界原则或不可逆架构时先报告阻断和取舍，不暗中采纳。"
+        "核心规则、首批适用边界、现有 World/VM 接入点与旧原型/ADR 差异的可追溯技术说明；无法闭合的世界规则先报告阻断，不以工程默认值补洞。"
       ],
       "acceptance": [
-        "J1、D1、B4 分别按已批准的独立来源和价证准入，不借用他体账户或容量；纸面 32 M 本人及 35/36 M 跨账户、D1 26 M、B4 34 M 只在同版真实读数满足前提时成立，静态资源上界不小于实耗。",
-        "无术时自然碰撞和惯性先提交；有术时来源取得、装载、授权、付款、作用、维持/生命评估与事件派发遵守同一世界序。无源、无权、空读、未知价/容量、域外、同刻竞争、再撞和作用后读失证保留已付与自然事实，不生成免费功、材料、法力或伤害。",
+        "现有 World→共享 AST→compiler→VM→World 链可执行 J1、D1、B1→B4 的同版黑盒正例；直接观察真实 World/VM 的自然事实、作用、付款收据和余态。纸面 J1/D1/B4 价格、B4 十九读与 44 M/余 6 M、安装峰 559 S 只在真实读数、价版、容量和旧占用满足前提时成立；静态 M/tick/S 上界不小于 VM 实耗。",
+        "B1 首撞按已批准有限接触与材料规则先提交 C→N→X 的双端自然事实和有证据的普通 k0 壳损，B4 再以独立来源修壳；自然过程不扣 M，不用旧 damage/HP 双计。不得凭空设破壳阈值，也不得只保留拒绝支线；若材料、阈值或先序合同不闭合，定位权威键和反例退主策。无源、无权、获准空读、隐藏/失鲜、未知价/容量、同刻双接触、同 payer/同 lot 竞争、再撞、POST 失证、死亡与域外均保留已付和自然事实，不造免费功、材料、法力或伤害。",
         "B4 仅修普通惰性 k0 壳，不产生复苏或关键回路修复；D1 仅一次有源起步，J1 仅一次有源杆推。续步、攻击、法球再次付费响应、更多预设和敌方修士内容不作为本任务成功行为。",
-        "同一规范意图在相同状态、能力、授权、来源、付款方、版本与先序下得到相同世界结果；跨入口事件字段按授权裁剪，死亡撤权及资源耗尽有确定失败余态。定向核心测试和实际测量证据可复核。"
+        "同一规范意图在相同状态、能力、授权、来源、付款方、版本与先序下得到相同世界结果；跨入口事件字段按授权裁剪，死亡撤权及资源耗尽有确定失败余态。ADR 0024 对旧 ADR 0017–0020 的覆盖与旧 World 自动回蓝、固定寿命、hitProjectile/damage、旧 VM Actor 付款及按键耦合的处置可核查；定向测试和实际测量不能由独立 PilotWorld、手填条件账或夹具替代。"
       ],
       "dependsOn": [],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
@@ -29,7 +38,9 @@
         "docs/adr/0018-运动供能与命中守恒.md",
         "docs/adr/0019-属性探查与资源账本.md",
         "docs/adr/0020-事件执行上下文与生命周期.md",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
         "src/core",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-3/review-4-gpt-6-sol-attempt-1.json",
         "test/core.test.ts",
         "test/entity-vnext.test.ts"
       ],
@@ -42,22 +53,22 @@
       ]
     },
     {
-      "id": "dev-player-a",
-      "title": "首批三行为玩家闭环与原型资产处置",
-      "objective": "把已验收的核心合同接入推演台和演武场，使玩家能用同一法术书编辑、预算、绑定、观察三行为，再返回修改并重报价；旧原型资产只在证明等价时迁入。",
+      "id": "dev-player-a2",
+      "title": "首批三行为的推演台与演武场闭环",
+      "objective": "消费已接纳的真实 World/VM 合同，将首批 A 接入同一法术书的编辑、预算、绑定、观察和返书改写；旧原型资产只在证明等价时迁入。",
       "deliverables": [
-        "推演台、演武场及战斗桥接的首批三路径实现和定向游戏、界面及浏览器测试。",
+        "推演台、演武场及战斗桥接的首批三路径实现和定向游戏、界面及浏览器测试；游戏层不重写世界规则或用 E2E 夹具模拟核心成功。",
         "对旧 DSL/蓝图、预设、绑定和本机存档的等价迁移或定位拒绝实现与测试，保留不可等价原件并记录安全回退边界。",
         "玩家可见的来源、本人付款、预算、拒因与余态说明及同书往返实玩证据；旧原型兼容状态和候选验证入口的交接说明。"
       ],
       "acceptance": [
-        "从推演台同书编辑和预算，进入演武场绑定并观察 J1、D1、B4 的条件成功及失败，再返回原书改程序或读集后产生新 hash、撤销旧报价；不把纸面条件价或未实测行为显示为已可玩事实。",
+        "从推演台同书编辑和预算，进入演武场绑定并观察 J1、D1、B1→B4 的真实条件成功及失败，再返回原书改程序或读集后产生新规范 AST/hash、撤销旧报价；实际游戏路径调用前驱的现有 World/VM，不把纸面条件价或未实测行为显示为已可玩事实。",
         "鼠标、键盘、手柄、妖兽 AI、实体事件和敌方修士仅作为意图来源接入或作等价合同验证；相同世界输入等价、不同权限和账户分别裁剪。敌方修士新行为仍属未来候选，不在本版实现。",
         "无源、无权、获准空读、未知、域外、同刻竞争、再撞容量三分判和 POST 失证的提示、本人账与已提交自然/付费事实一致；私有余额、隐藏目标和未获准字段不经界面或日志泄露。",
         "旧法术和存档不能证明 AST、作用时点、价、权限、容量与返回值等价时定位拒绝并保留原件；不补造来源、grant、余额或活动队列，不把旧固定寿命、自动回蓝和固定伤害静默变成新规则。",
         "受影响路径的定向测试与推演台—演武场—返书实际体验有可复核记录；若玩家路径需要新增世界公理或超出首批 A 的原子效果，报告阻断并退回相应权威合同。"
       ],
-      "dependsOn": ["dev-world-a"],
+      "dependsOn": ["dev-world-a2"],
       "readPaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
@@ -65,6 +76,7 @@
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
         "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
         "src/core",
         "src/game",
         "src/app",
