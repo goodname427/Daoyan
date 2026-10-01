@@ -304,9 +304,12 @@ export function workflowHealthSignal(input: {
   progressUpdatedAt: string;
   now: string;
 }): 'repeated-finding' | 'repeated-recovery' | 'stale-progress' | null {
-  if (input.reviewStallCount >= 2) return 'repeated-finding';
   const lastProgress = Date.parse(input.progressUpdatedAt);
   const now = Date.parse(input.now);
+  if (Number.isFinite(lastProgress) && Number.isFinite(now) && now - lastProgress >= 30 * 60_000) {
+    return 'stale-progress';
+  }
+  if (input.reviewStallCount >= 2) return 'repeated-finding';
   // A resumed process with fresh progress is not a live recovery failure.
   if (
     input.recoveryAttempts >= 2 &&
@@ -315,9 +318,6 @@ export function workflowHealthSignal(input: {
     now - lastProgress >= activeHealthIntervalMs
   ) {
     return 'repeated-recovery';
-  }
-  if (Number.isFinite(lastProgress) && Number.isFinite(now) && now - lastProgress >= 30 * 60_000) {
-    return 'stale-progress';
   }
   return null;
 }
@@ -343,14 +343,13 @@ export function progressNoticeDecision(
   intervalMs = progressNoticeIntervalMs,
 ): { notify: boolean; phase: string; heartbeat: boolean } {
   const phase = progressNoticePhase(rawPhase);
-  if (phase !== lastPhase) return { notify: true, phase, heartbeat: false };
   const previous = Date.parse(lastNoticeAt);
   const current = Date.parse(now);
   return {
     notify:
-      Number.isFinite(previous) && Number.isFinite(current) && current - previous >= intervalMs,
+      !Number.isFinite(previous) || (Number.isFinite(current) && current - previous >= intervalMs),
     phase,
-    heartbeat: true,
+    heartbeat: phase === lastPhase,
   };
 }
 
@@ -3673,10 +3672,17 @@ async function reportRunProgress(item: SecretaryItem, run: RunSnapshot): Promise
     item.summary = message;
     item.updatedAt = now;
   }
-  if (!decision.notify) {
+  const actionableHealth = health && health !== 'repeated-finding';
+  const notify =
+    decision.notify ||
+    (actionableHealth && decision.phase !== (orchestration.lastProgressPhase ?? ''));
+  if (!notify || health === 'repeated-finding') {
     if (summaryChanged) await saveState();
     return;
   }
+  // A repeated review finding is not yet a terminal outcome. The PM's bounded
+  // review-stall guard emits the actionable block once it actually stops;
+  // stale progress takes priority above so a hung PM remains visible.
   orchestration.lastProgressPhase = decision.phase;
   orchestration.lastProgressNoticeAt = now;
   await saveState();
@@ -3860,7 +3866,12 @@ async function reconcileItem(
         : task.parentScope === 'version'
           ? '【版本工作项】'
           : '【Feature 工作项】';
-      await emitNotice('task-complete', `${label}${task.taskTitle}已完成。`, item, task);
+      await emitNotice(
+        'task-complete',
+        `${label}${task.taskTitle}：执行已结束，节点仍待验收。`,
+        item,
+        task,
+      );
     }
   }
   if (run.status === 'review-ready' || run.status === 'delivered') {

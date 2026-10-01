@@ -428,7 +428,7 @@ describe('secretary worker process launch', () => {
       ]),
     ).toEqual(['src/core/world.ts', 'test/entity-vnext.test.ts']);
   });
-  it('reports phase transitions immediately and long phases at a bounded interval', () => {
+  it('bounds progress notices across rapid review and repair transitions', () => {
     const started = '2026-09-21T00:00:00.000Z';
     expect(progressNoticeDecision('', '', '独立审查第 1 轮', started)).toEqual({
       notify: true,
@@ -436,11 +436,14 @@ describe('secretary worker process launch', () => {
       heartbeat: false,
     });
     expect(
+      progressNoticeDecision('独立审查', started, 'Feature 快速门禁', '2026-09-21T00:02:00.000Z'),
+    ).toEqual({ notify: false, phase: 'Feature 快速门禁', heartbeat: false });
+    expect(
       progressNoticeDecision('独立审查', started, '独立审查第 2 轮', '2026-09-21T00:29:59.000Z'),
     ).toEqual({ notify: false, phase: '独立审查', heartbeat: true });
     expect(
-      progressNoticeDecision('独立审查', started, '独立审查第 3 轮', '2026-09-21T00:30:00.000Z'),
-    ).toEqual({ notify: true, phase: '独立审查', heartbeat: true });
+      progressNoticeDecision('独立审查', started, '自动修复', '2026-09-21T00:30:00.000Z'),
+    ).toEqual({ notify: true, phase: '自动修复', heartbeat: false });
   });
 
   it('uses a deterministic source revision when an isolated guard has no Git metadata', async () => {
@@ -1624,6 +1627,13 @@ describe('formal version stage dispatch', () => {
     ).toBe('repeated-recovery');
     expect(
       workflowHealthSignal({ ...healthy, progressUpdatedAt: '2026-09-23T13:00:00.000Z' }),
+    ).toBe('stale-progress');
+    expect(
+      workflowHealthSignal({
+        ...healthy,
+        reviewStallCount: 2,
+        progressUpdatedAt: '2026-09-23T13:00:00.000Z',
+      }),
     ).toBe('stale-progress');
   });
 
