@@ -250,7 +250,7 @@ export interface TaskReuseEvidence {
 }
 
 const POST_FEATURE_GATE_REPORT =
-  /^(?:(?:development\.md|roadmap-handoff\.md)|(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/;
+  /^(?:(?:development\.md|roadmap-handoff\.md)|(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)-[^/]+(?:\.json|\/.*))$/;
 
 /**
  * Formal-version reports written after the Feature gate are not implementation

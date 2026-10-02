@@ -17,6 +17,7 @@ import {
   assertTaskWriteScope,
   parseStageTaskManifest,
   parseStageTaskResult,
+  stageTaskTechnicalBlockerReason,
   readyStageTasks,
 } from '../scripts/version-stage-tasks';
 
@@ -147,6 +148,25 @@ describe('stage-owned task contracts', () => {
     expect(() => parseStageTaskResult({ ...result, artifacts: [] }, 'physics')).toThrow(
       '缺少实际检查',
     );
+  });
+  it('keeps a documented browser permission blocker distinct from missing delivery evidence', () => {
+    const blocked = {
+      taskId: 'da-a-flow',
+      status: 'blocked',
+      completed: false,
+      summary: '独立策划尚未取得玩家页面操作证据',
+      evidence: ['docs/versions/v2/tasks/design-acceptance-da-a-flow/browser-attempts.json'],
+      openDeviations: [{ kind: 'technical-blocker', status: 'open', actual: '用户拒绝浏览器访问' }],
+      confirmedImplementationDeviations: [],
+    };
+    expect(stageTaskTechnicalBlockerReason(blocked, 'da-a-flow')).toBe('用户拒绝浏览器访问');
+    expect(
+      stageTaskTechnicalBlockerReason({ ...blocked, openDeviations: [] }, 'da-a-flow'),
+    ).toBeNull();
+    expect(
+      stageTaskTechnicalBlockerReason({ ...blocked, status: 'completed' }, 'da-a-flow'),
+    ).toBeNull();
+    expect(stageTaskTechnicalBlockerReason(blocked, 'other-task')).toBeNull();
   });
   it('requires one detailed-design owner per declared module', () => {
     const tasks = [task('resources'), task('market')];
