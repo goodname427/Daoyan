@@ -291,16 +291,16 @@ ${JSON.stringify({
       JSON.parse(readFileSync(resolve('agents/policy.json'), 'utf8')),
     );
     expect(configured.version).toBe(1);
-    expect(configured.planner.model).toBe('gpt-6-luna');
-    expect(configured.tiers.economy.model).toBe('gpt-6-luna');
-    expect(configured.tiers.standard.model).toBe('gpt-6.1-sol');
-    expect(configured.tiers.advanced.model).toBe('gpt-6.1-sol');
-    expect(configured.tiers.critical.model).toBe('gpt-6-astra');
-    expect(configured.reviewers.standard.model).toBe('gpt-6.1-sol');
-    expect(configured.reviewers.advanced.model).toBe('gpt-6.1-sol');
-    expect(configured.reviewers.critical.model).toBe('gpt-6-astra');
+    expect(configured.planner.model).toBe('gpt-5.6-luna');
+    expect(configured.tiers.economy.model).toBe('gpt-5.6-luna');
+    expect(configured.tiers.standard.model).toBe('gpt-5.6-sol');
+    expect(configured.tiers.advanced.model).toBe('gpt-5.6-sol');
+    expect(configured.tiers.critical.model).toBe('gpt-5.6-sol');
+    expect(configured.reviewers.standard.model).toBe('gpt-5.6-sol');
+    expect(configured.reviewers.advanced.model).toBe('gpt-5.6-sol');
+    expect(configured.reviewers.critical.model).toBe('gpt-5.6-sol');
     expect(JSON.parse(readFileSync(resolve('agents/secretary.json'), 'utf8')).triage.model).toBe(
-      'gpt-6-luna',
+      'gpt-5.6-luna',
     );
     expect(validatePlan(plan([task('a')]), 1).tasks).toHaveLength(1);
     expect(() => validatePlan(plan([task('a'), task('b')]), 1)).toThrow('超过上限');
