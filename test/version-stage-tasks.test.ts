@@ -17,6 +17,7 @@ import {
   assertTaskWriteScope,
   parseStageTaskManifest,
   parseStageTaskResult,
+  stageTaskImplementationDeviationReason,
   stageTaskTechnicalBlockerReason,
   readyStageTasks,
 } from '../scripts/version-stage-tasks';
@@ -167,6 +168,35 @@ describe('stage-owned task contracts', () => {
       stageTaskTechnicalBlockerReason({ ...blocked, status: 'completed' }, 'da-a-flow'),
     ).toBeNull();
     expect(stageTaskTechnicalBlockerReason(blocked, 'other-task')).toBeNull();
+  });
+  it('returns a signed negative design verdict to development without treating an environment gap as pass', () => {
+    const blocked = {
+      taskId: 'da-a-flow',
+      status: 'blocked',
+      completed: false,
+      summary: '独立实玩发现旧 Battle 缺证拒绝偏差，截图仍待补',
+      evidence: ['docs/versions/v2/tasks/design-acceptance-da-a-flow/experience.md'],
+      commands: [{ command: 'node docs/versions/v2/tasks/check.mjs', exitCode: 0 }],
+      independence: { participatedInDevelopment: false },
+      runtimeConfiguration: { playerOperations: 38 },
+      confirmedImplementationDeviations: [
+        { id: 'DV01', evidence: 'docs/versions/v2/tasks/independent-play.json' },
+      ],
+    };
+    expect(stageTaskImplementationDeviationReason(blocked, 'da-a-flow')).toBe('DV01');
+    expect(stageTaskTechnicalBlockerReason(blocked, 'da-a-flow')).toBeNull();
+    expect(
+      stageTaskImplementationDeviationReason(
+        { ...blocked, runtimeConfiguration: { playerOperations: 0 } },
+        'da-a-flow',
+      ),
+    ).toBeNull();
+    expect(
+      stageTaskImplementationDeviationReason(
+        { ...blocked, commands: [{ command: 'node check.mjs', exitCode: 1 }] },
+        'da-a-flow',
+      ),
+    ).toBeNull();
   });
   it('requires one detailed-design owner per declared module', () => {
     const tasks = [task('resources'), task('market')];

@@ -441,3 +441,49 @@ export function stageTaskTechnicalBlockerReason(
     ? String(blocker.actual).trim().replace(/\s+/g, ' ').slice(0, 240)
     : null;
 }
+
+/** A negative independent design verdict is finished evidence for returning to development. */
+export function stageTaskImplementationDeviationReason(
+  value: unknown,
+  expectedTaskId: string,
+): string | null {
+  if (
+    !isRecord(value) ||
+    value.taskId !== expectedTaskId ||
+    value.status !== 'blocked' ||
+    value.completed !== false ||
+    typeof value.summary !== 'string' ||
+    !value.summary.trim() ||
+    !isStrings(value.evidence) ||
+    value.evidence.length === 0 ||
+    !Array.isArray(value.commands) ||
+    value.commands.length === 0 ||
+    value.commands.some(
+      (entry) =>
+        !isRecord(entry) ||
+        typeof entry.command !== 'string' ||
+        !entry.command.trim() ||
+        entry.exitCode !== 0,
+    ) ||
+    !isRecord(value.independence) ||
+    value.independence.participatedInDevelopment !== false ||
+    !isRecord(value.runtimeConfiguration) ||
+    !Number.isSafeInteger(value.runtimeConfiguration.playerOperations) ||
+    Number(value.runtimeConfiguration.playerOperations) < 1 ||
+    !Array.isArray(value.confirmedImplementationDeviations) ||
+    value.confirmedImplementationDeviations.length === 0
+  ) {
+    return null;
+  }
+  const deviations = value.confirmedImplementationDeviations.filter(
+    (entry) =>
+      isRecord(entry) &&
+      typeof entry.id === 'string' &&
+      entry.id.trim() &&
+      typeof entry.evidence === 'string' &&
+      entry.evidence.trim(),
+  );
+  return deviations.length === value.confirmedImplementationDeviations.length
+    ? deviations.map((entry) => String(entry.id).trim()).join('、')
+    : null;
+}

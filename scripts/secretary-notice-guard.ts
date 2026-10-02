@@ -166,6 +166,7 @@ import {
   assertStageTaskPrestartScope,
   parseStageTaskManifest,
   parseStageTaskResult,
+  stageTaskImplementationDeviationReason,
   stageTaskTechnicalBlockerReason,
   readyStageTasks,
   type VersionStageTask,
@@ -2541,7 +2542,7 @@ export function stageTaskDirection(version: FormalVersion, task: VersionStageTas
   const playerUiAccessGuidance = ['development', 'design-acceptance', 'qa', 'candidate'].includes(
     task.stage,
   )
-    ? '需要角色亲自操作游戏时，Codex CLI 中的 Agent 优先使用当前宿主已安装的 computer-use Skill：以正常方式启动或找到道衍 Electron 窗口，按 Skill 文档用 node_repl/@oai/sky 逐步观察和操作，并留可核查截图。桌面内置 Browser 不属于 CLI 能力；可用的浏览器扩展是另一正常入口，但若其工具或安全策略明确拒绝，不得换端口、原始 CDP 或绕过。窗口可见、HTTP 可达和自动化 E2E 都不等于角色本人实玩；无法正常操作就如实登记环境阻断，不重复无变化尝试。\n'
+    ? '需要角色亲自操作游戏时，Codex CLI 中的 Agent 优先使用当前宿主已安装的 computer-use Skill：以正常方式启动或找到道衍 Electron 窗口，按 Skill 文档用 node_repl/@oai/sky 逐步观察和操作，并留可核查截图。启动测试窗口时必须给 Electron 指定本任务独立且保留的 --user-data-dir，先核实进程实际使用该目录，再编辑法术书或绑定；普通道衍窗口默认会自动保存到真实用户目录，不能作为可写测试窗口。computer-use 的 Screenshot.url 是文档化 data URL；需要持久证据时可将已观察的截图字节写入本任务证据目录并核对文件，禁止仅为重新查看而解码、保存或重复截图。桌面内置 Browser 不属于 CLI 能力；可用的浏览器扩展是另一正常入口，但若其工具或安全策略明确拒绝，不得换端口、原始 CDP 或绕过。窗口可见、HTTP 可达和自动化 E2E 都不等于角色本人实玩；无法正常操作就如实登记环境阻断，不重复无变化尝试。\n'
     : '';
   const dependencies = task.dependsOn
     .map((id) =>
@@ -2756,6 +2757,44 @@ export function quarantineBlockedStageTaskRetries(
       continue;
     item.status = 'superseded';
     item.summary = `已停止重复派发：${reason}；保留原任务证据，待访问条件恢复后定向续验。`;
+  }
+  return true;
+}
+
+/** Retain the independent negative verdict and retire a retry of the same scenes. */
+export function retireDeviationStageTaskRetry(
+  secretary: SecretaryState,
+  version: FormalVersion,
+  taskId: string,
+  reason: string,
+): boolean {
+  const linked = secretary.items.filter(
+    (item) =>
+      item.orchestration?.formalVersionId === version.id &&
+      item.orchestration.formalStage === 'design-acceptance' &&
+      item.orchestration.formalScopeRevision === formalScopeRevision(version) &&
+      item.orchestration.formalTaskId === taskId,
+  );
+  const prior = [...linked]
+    .reverse()
+    .find((item) => item.status === 'delivered' && item.orchestration?.formalStageConsumedAt);
+  if (
+    !prior ||
+    linked.some(
+      (item) =>
+        item.createdAt > prior.createdAt &&
+        (['active', 'tracking', 'waiting-producer'].includes(item.status) ||
+          isOwnedProcessAlive(item.processPid, item.processIdentity)),
+    )
+  ) {
+    return false;
+  }
+  prior.summary = `独立策划验收发现实现偏差 ${reason}，已退回开发；保留原任务实玩证据。`;
+  for (const item of linked) {
+    if (item.createdAt <= prior.createdAt || !['queued', 'retry-wait'].includes(item.status))
+      continue;
+    item.status = 'superseded';
+    item.summary = `原独立策划已确认实现偏差 ${reason}；避免重复验收，开发修复后仅复验受影响场景。`;
   }
   return true;
 }
@@ -5215,12 +5254,16 @@ export function productImplementationChanges(paths: string[]): string[] {
     return !(
       /^scripts\/(?:secretary-[^/]+|project-secretary)\.ts$/.test(normalized) ||
       normalized === 'scripts/agent-dispatcher.ts' ||
+      /^scripts\/version-[^/]+\.ts$/.test(normalized) ||
       /^scripts\/(?:recover-candidate|rollback-stale-qa|version-lifecycle)\.ts$/.test(normalized) ||
       /^scripts\/(?:accept-host-candidate|candidate-evidence|verify-candidate)\.ts$/.test(
         normalized,
       ) ||
       /^(?:e2e\/candidate\.spec\.ts|playwright\.candidate\.config\.ts)$/.test(normalized) ||
-      /^test\/(?:candidate-evidence|secretary-[^/]+|version-lifecycle)\.test\.ts$/.test(normalized)
+      /^test\/(?:candidate-evidence|secretary-[^/]+|version-lifecycle)\.test\.ts$/.test(
+        normalized,
+      ) ||
+      /^test\/version-[^/]+\.test\.ts$/.test(normalized)
     );
   });
 }
@@ -6440,6 +6483,108 @@ async function driveFormalVersion(): Promise<boolean> {
     }
     ensureVersionIntegrationBranch(version);
     if (version.workflowRevision === 2 && stage === 'design-acceptance') {
+      const cleanTaskTree = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+        cwd: root,
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      if (cleanTaskTree.status === 0 && !cleanTaskTree.stdout.trim()) {
+        let returnedToDevelopment = false;
+        for (const task of stageTasksForCurrentNode(version).filter(
+          (entry) => entry.status === 'pending',
+        )) {
+          const resultPath = `${version.documentRoot}/tasks/${stage}-${task.id}.json`;
+          const result = await readJson(resolve(root, resultPath));
+          const deviation = stageTaskImplementationDeviationReason(result, task.id);
+          const testedRevision = isRecord(result?.developmentFingerprint)
+            ? result.developmentFingerprint.head
+            : '';
+          const prior = [...state.items]
+            .reverse()
+            .find(
+              (item) =>
+                item.status === 'delivered' &&
+                item.orchestration?.formalVersionId === version!.id &&
+                item.orchestration.formalStage === stage &&
+                item.orchestration.formalScopeRevision === formalScopeRevision(version!) &&
+                item.orchestration.formalTaskId === task.id &&
+                item.orchestration.formalStageConsumedAt,
+            );
+          if (
+            !deviation ||
+            typeof testedRevision !== 'string' ||
+            !testedRevision ||
+            !prior ||
+            state.items.some(
+              (item) =>
+                item.orchestration?.formalTaskId === task.id &&
+                item.createdAt > prior.createdAt &&
+                (['active', 'tracking', 'waiting-producer'].includes(item.status) ||
+                  isOwnedProcessAlive(item.processPid, item.processIdentity)),
+            )
+          )
+            continue;
+          const revision = currentGitRevision();
+          const latest = spawnSync('git', ['log', '-1', '--format=%H', '--', resultPath], {
+            cwd: root,
+            encoding: 'utf8',
+            windowsHide: true,
+          });
+          const taskCommit = latest.status === 0 ? latest.stdout.trim() : '';
+          if (!taskCommit || !gitRevisionIsAncestor(taskCommit, revision)) continue;
+          const parent = spawnSync('git', ['rev-parse', `${taskCommit}^`], {
+            cwd: root,
+            encoding: 'utf8',
+            windowsHide: true,
+          });
+          if (parent.status !== 0) continue;
+          const owned = changedFilesBetween(parent.stdout.trim(), taskCommit);
+          if (!owned.includes(resultPath)) continue;
+          try {
+            assertStageTaskDeliveryScope(task, owned);
+            if (productImplementationChanges(changedFilesBetween(testedRevision, revision)).length)
+              continue;
+          } catch {
+            continue;
+          }
+          const nextVersion = structuredClone(version);
+          const nextTask = stageTasksForCurrentNode(nextVersion).find(
+            (entry) => entry.id === task.id,
+          );
+          if (!nextTask) continue;
+          nextTask.status = 'blocked';
+          nextTask.pmItemId = prior.id;
+          nextTask.commit = taskCommit;
+          nextTask.evidence = [
+            resultPath,
+            ...(isRecord(result) && Array.isArray(result.evidence)
+              ? result.evidence.filter((entry): entry is string => typeof entry === 'string')
+              : []),
+          ];
+          setNodeEvidence(nextVersion, stage, {
+            artifact: resultPath,
+            summary: `独立策划实玩确认实现偏差 ${deviation}；证据：${resultPath}。`,
+          });
+          recordApproval(nextVersion, {
+            stage,
+            reviewer: 'lead-designer',
+            decision: 'changes-requested',
+            documentRevision: nextVersion.charterRevision,
+            comment: `独立策划实玩确认实现偏差 ${deviation}；证据：${resultPath}。其余未覆盖项仍待定向复验。`,
+          });
+          if (!(await writeDrivenFormalVersion(nextVersion))) break;
+          retireDeviationStageTaskRetry(state, version, task.id, deviation);
+          await emitNotice(
+            'version-design-acceptance-changes-requested',
+            `独立策划验收确认实现偏差 ${deviation}，原任务证据已保留；秘书退回开发，只修复并复验受影响场景。`,
+            prior,
+          );
+          changed = true;
+          returnedToDevelopment = true;
+          break;
+        }
+        if (returnedToDevelopment) break;
+      }
       let quarantined = false;
       for (const task of stageTasksForCurrentNode(version).filter(
         (entry) => entry.status === 'pending',
