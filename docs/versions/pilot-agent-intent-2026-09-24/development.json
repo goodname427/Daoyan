@@ -3,8 +3,8 @@
   "scopeRevision": 13,
   "firstBatch": "A",
   "owner": "Version PM",
-  "status": "blocked",
-  "completed": false,
+  "status": "completed",
+  "completed": true,
   "baselineHead": "3d9d0bf20ed509069178c9a3265076b73cdfbd30",
   "planningSources": [
     "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -943,17 +943,13 @@
   ],
   "versionValidation": {
     "scope": "Version",
-    "status": "blocked",
+    "status": "passed",
     "completeGate": {
       "command": "npm run verify:full",
       "status": "passed",
       "exitCode": 0,
-      "evidence": [
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/control-plane-gate-audit.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-gate-evidence.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-verify-1.log"
-      ],
-      "reason": "控制面实时审计确认原始完整门禁收据的工作树与配置指纹匹配，npm run verify:full 退出码为0。日志记录26 passed、1 flaky；该运行证据不自动推进正式开发节点，历史 blocker 保留待正式接纳。",
+      "evidence": [".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"],
+      "reason": "development-11 集成树完整门禁收据核验通过：npm run verify:full 退出码为 0，收据记录 2026-10-02T11:22:19.874Z。历史失败和先前缺证阻断保留为历史；独立策划体验、QA 与候选体验仍待完成。",
       "requiredOwner": "开发节点授权收束执行方",
       "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"
     },
@@ -970,12 +966,11 @@
       },
       {
         "id": "development-integrated-full-gate",
-        "status": "open",
+        "status": "resolved",
         "evidence": [
-          ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json",
-          ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json"
+          ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"
         ],
-        "resolution": "在最终报告、交接及日志落盘后的集成树补一次完整门禁，保存真实命令/退出码和树/配置来源；失败技术恢复，不把快门禁签成完整通过。"
+        "resolution": "development-11 已在最终集成树运行 npm run verify:full，exitCode 为 0；成功收据取代当前缺证状态，原先缺证事实仅保留为历史。"
       }
     ],
     "configFiles": [
