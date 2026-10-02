@@ -38,6 +38,7 @@ import {
   pendingValidationStages,
   preferredWindowsExecutable,
   preserveUnaffectedTaskRuns,
+  resumeProducerGuidance,
   resolveProducerDirection,
   reviewRoutesForPlan,
   routeForTask,
@@ -2726,7 +2727,7 @@ try {
     }
     activeResolvedDirection = applyProducerGuidance(
       checkpoint.resolvedDirection,
-      reviewResumption?.guidance ?? options.producerGuidance,
+      resumeProducerGuidance(options.producerGuidance, reviewResumption?.guidance),
     );
     activeReviewResumption = reviewResumption;
     activeReopenedReviewSignature = reviewResumption?.priorSignature ?? '';
@@ -2805,6 +2806,27 @@ try {
       );
     }
     resumePreflightComplete = true;
+    if (options.producerGuidance.trim() && reviewResumption) {
+      const recordedAt = new Date().toISOString();
+      await writeFile(
+        resolve(runDirectory, `producer-guidance-${recordedAt.replaceAll(':', '-')}.json`),
+        `${JSON.stringify(
+          {
+            version: 1,
+            recordedAt,
+            guidance: options.producerGuidance.trim(),
+            previousGuidance: reviewResumption.guidance,
+            taskId: reviewResumption.taskId,
+            afterRound: reviewResumption.afterRound,
+            baseline: activeBaseline,
+            reviewHistoryPreserved: true,
+          },
+          null,
+          2,
+        )}\n`,
+        { flag: 'wx' },
+      );
+    }
     const priorBlocker = await blockedFormalTaskEvidence(activeDirection);
     if (priorBlocker && !options.producerGuidance.trim()) {
       const rerun = new Set(reviewResumption?.rerunTaskIds ?? []);
