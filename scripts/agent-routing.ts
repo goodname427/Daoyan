@@ -381,6 +381,11 @@ export function preserveUnaffectedTaskRuns<T extends { task: { id: string }; com
   );
 }
 
+/** Current producer instructions take precedence without reopening review history. */
+export function resumeProducerGuidance(current: string, saved = ''): string {
+  return current.trim() || saved;
+}
+
 /** Only these disjoint control-plane commits may leave game Task evidence intact. */
 export function isWorkflowControlPlanePath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/');

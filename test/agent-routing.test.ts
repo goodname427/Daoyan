@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  resumeProducerGuidance,
   advanceReviewStall,
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
@@ -57,6 +58,19 @@ import {
   type PlannedTask,
   type TaskPlan,
 } from '../scripts/agent-routing';
+
+describe('producer guidance during review recovery', () => {
+  it('honors a new explicit exception over the saved restriction', () => {
+    expect(resumeProducerGuidance(' 本轮允许主 Agent 提供已有实玩证据 ', '主 Agent 不代验')).toBe(
+      '本轮允许主 Agent 提供已有实玩证据',
+    );
+  });
+
+  it('preserves saved guidance when no new instruction was supplied', () => {
+    expect(resumeProducerGuidance('  ', '由原 Agent 补验')).toBe('由原 Agent 补验');
+    expect(resumeProducerGuidance('')).toBe('');
+  });
+});
 import {
   fingerprintPaths,
   isValidationTreePath as isPrePushValidationTreePath,
