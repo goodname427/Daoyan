@@ -49,6 +49,8 @@ import {
   validatePlan,
   formalTaskPredecessorIds,
   formalStageWritePaths,
+  taskWritePaths,
+  reviewPathsOutsideScope,
   internalizeFormalPlanDependencies,
   validatePolicy,
   validateReview,
@@ -251,6 +253,36 @@ ${JSON.stringify({
       'docs/versions/v/theory.md',
     ]);
     expect(formalStageWritePaths('[formal-stage-deliverable:module-design:broken]')).toEqual([]);
+  });
+
+  it('keeps the legacy development gate handoff on its three owned files', () => {
+    const base = 'docs/versions/pilot-agent-intent-2026-09-24/';
+    const direction = `[formal-development-gate-handoff-reconciliation] 修正你归属的 ${base}development.json、development.md、roadmap-handoff.md 中过时的状态。`;
+    expect(taskWritePaths(direction)).toEqual([
+      `${base}development.json`,
+      `${base}development.md`,
+      `${base}roadmap-handoff.md`,
+    ]);
+    expect(taskWritePaths('[formal-development-gate-handoff-reconciliation] 未列出文件')).toEqual(
+      [],
+    );
+    expect(
+      reviewPathsOutsideScope(
+        {
+          verdict: 'fix',
+          summary: 'cross-owner finding',
+          findings: [
+            {
+              severity: 'high',
+              title: 'report mismatch',
+              detail: 'the independent report disagrees',
+              paths: [`${base}tasks/design-acceptance-da-a-flow.json`, `${base}development.json`],
+            },
+          ],
+        },
+        taskWritePaths(direction),
+      ),
+    ).toEqual([`${base}tasks/design-acceptance-da-a-flow.json`]);
   });
 
   it('validates policy and task limits', () => {
@@ -660,6 +692,10 @@ ${JSON.stringify({
       ['docs/versions/release/development.md', false],
       ['docs/versions/release/roadmap-handoff.md', false],
       ['docs/versions/release/qa.json', false],
+      ['docs/versions/release/tasks/design-acceptance-da-a-flow.json', false],
+      ['docs/versions/release/tasks/design-acceptance-da-a-flow/experience.md', false],
+      ['docs/versions/release/tasks/qa-regression/browser-evidence.json', false],
+      ['docs/versions/release/tasks/development-dev-world-a3.json', true],
       ['docs/versions/release/bugfix-reverification.md', false],
       ['docs/status.md', true],
       ['scripts/version-lifecycle.ts', true],

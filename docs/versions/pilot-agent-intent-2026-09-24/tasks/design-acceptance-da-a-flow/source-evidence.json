@@ -104,9 +104,7 @@
       "command": "npm run verify:full",
       "status": "passed",
       "exitCode": 0,
-      "evidence": [
-        ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"
-      ],
+      "evidence": [".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"],
       "reason": "development-11 集成树完整门禁收据核验通过：npm run verify:full 退出码为 0，收据记录 2026-10-02T11:22:19.874Z。历史失败和先前缺证阻断保留为历史；独立策划体验、QA 与候选体验仍待完成。",
       "requiredOwner": "开发节点授权收束执行方",
       "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"

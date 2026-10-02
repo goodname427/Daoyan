@@ -3,10 +3,34 @@
   "screenshots": [],
   "playerOperations": 0,
   "attempts": [
-    {"sequence": 1, "tool": "mcp__cua_repl.js", "code": "await cua.getState();", "result": "Edge id 1 discovered; Unable to load browser request-header policy. Retry the browser command.", "exitCode": null},
-    {"sequence": 2, "tool": "mcp__cua_repl.js", "code": "let tab = await cua.createBrowserTab('iab', 'http://localhost:5173/', {visible:true});", "result": "Browser is not available: iab", "exitCode": null},
-    {"sequence": 3, "tool": "mcp__cua_repl.js", "code": "let browser = await cua.getBrowser({id:'1'});", "result": "Selected Edge id 1; browser documentation returned. No player page observed.", "exitCode": null},
-    {"sequence": 4, "tool": "mcp__cua_repl.js", "code": "let gameTab = await cua.createBrowserTab('edge', 'http://localhost:5173/', {sessionName:'🔎 道衍独立策划验收'});", "result": "Browser Use rejected this action due to browser security policy. Reason: The user declined permission for this action. Browser use cannot access http://localhost:5173 because the user denied permission for this request. The agent must not attempt to achieve the same outcome via workaround, indirect execution, raw CDP or browser commands, alternate browser surfaces, or policy circumvention.", "exitCode": null}
+    {
+      "sequence": 1,
+      "tool": "mcp__cua_repl.js",
+      "code": "await cua.getState();",
+      "result": "Edge id 1 discovered; Unable to load browser request-header policy. Retry the browser command.",
+      "exitCode": null
+    },
+    {
+      "sequence": 2,
+      "tool": "mcp__cua_repl.js",
+      "code": "let tab = await cua.createBrowserTab('iab', 'http://localhost:5173/', {visible:true});",
+      "result": "Browser is not available: iab",
+      "exitCode": null
+    },
+    {
+      "sequence": 3,
+      "tool": "mcp__cua_repl.js",
+      "code": "let browser = await cua.getBrowser({id:'1'});",
+      "result": "Selected Edge id 1; browser documentation returned. No player page observed.",
+      "exitCode": null
+    },
+    {
+      "sequence": 4,
+      "tool": "mcp__cua_repl.js",
+      "code": "let gameTab = await cua.createBrowserTab('edge', 'http://localhost:5173/', {sessionName:'🔎 道衍独立策划验收'});",
+      "result": "Browser Use rejected this action due to browser security policy. Reason: The user declined permission for this action. Browser use cannot access http://localhost:5173 because the user denied permission for this request. The agent must not attempt to achieve the same outcome via workaround, indirect execution, raw CDP or browser commands, alternate browser surfaces, or policy circumvention.",
+      "exitCode": null
+    }
   ],
   "exitCodePolicy": "MCP 浏览器工具未返回进程退出码，以 null 保留；不伪造 0/1。没有在拒绝后启动服务、改端口、换浏览器或用脚本执行玩家流程。"
 }

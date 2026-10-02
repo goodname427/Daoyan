@@ -27,22 +27,12 @@
     "role": "独立策划",
     "session": "本任务新执行会话；未续接开发或一次性补证会话",
     "participatedInDevelopment": false,
-    "developmentTasks": [
-      "dev-world-a3",
-      "dev-player-a3"
-    ],
+    "developmentTasks": ["dev-world-a3", "dev-player-a3"],
     "statement": "本人未参与 dev-world-a3 或 dev-player-a3 实现。本轮仅查看合同、来源、启动配置和定向测试入口线索，没有从实现源码推定玩法通过。"
   },
   "scope": {
     "goal": "按批准同书合同独立黑盒验收",
-    "nonGoals": [
-      "实现修复",
-      "策划改写",
-      "新增玩法",
-      "QA 全量回归",
-      "硬件接入",
-      "重新规划"
-    ],
+    "nonGoals": ["实现修复", "策划改写", "新增玩法", "QA 全量回归", "硬件接入", "重新规划"],
     "writePaths": [
       "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
       "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow"
@@ -59,18 +49,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA02",
@@ -82,18 +67,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA03",
@@ -105,18 +85,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA04",
@@ -128,18 +103,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA05",
@@ -151,18 +121,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA06",
@@ -174,18 +139,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA07",
@@ -197,18 +157,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     },
     {
       "id": "DA08",
@@ -220,18 +175,13 @@
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
       ],
-      "developmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": [
-        "TB01"
-      ]
+      "openItems": ["TB01"]
     }
   ],
   "evidence": [
@@ -258,21 +208,9 @@
       "contract": "DA01 运行配置及 DA02–DA07 实玩；DA08 通过条件",
       "reproduction": "cua.createBrowserTab('edge', 'http://localhost:5173/', {sessionName:'🔎 道衍独立策划验收'})",
       "actual": "用户访问权限拒绝，浏览器安全策略禁止继续或绕过",
-      "affectedDevelopmentTasks": [
-        "dev-world-a3",
-        "dev-player-a3"
-      ],
+      "affectedDevelopmentTasks": ["dev-world-a3", "dev-player-a3"],
       "owner": "Version PM / 环境维护主 Agent",
-      "targetedReverification": [
-        "DA01",
-        "DA02",
-        "DA03",
-        "DA04",
-        "DA05",
-        "DA06",
-        "DA07",
-        "DA08"
-      ],
+      "targetedReverification": ["DA01", "DA02", "DA03", "DA04", "DA05", "DA06", "DA07", "DA08"],
       "resolution": "正常授权恢复入口后，由独立策划在匹配树/配置及隔离测试存档上续验；不补跑完整门禁"
     }
   ],

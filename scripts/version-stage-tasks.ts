@@ -408,3 +408,36 @@ export function parseStageTaskResult(value: unknown, expectedTaskId: string): St
     evidence: [...evidence],
   };
 }
+
+/** A completed evidence report can still describe an untestable player path. */
+export function stageTaskTechnicalBlockerReason(
+  value: unknown,
+  expectedTaskId: string,
+): string | null {
+  if (
+    !isRecord(value) ||
+    value.taskId !== expectedTaskId ||
+    value.status !== 'blocked' ||
+    value.completed !== false ||
+    typeof value.summary !== 'string' ||
+    !value.summary.trim() ||
+    !isStrings(value.evidence) ||
+    value.evidence.length === 0 ||
+    !Array.isArray(value.openDeviations) ||
+    (Array.isArray(value.confirmedImplementationDeviations) &&
+      value.confirmedImplementationDeviations.length > 0)
+  ) {
+    return null;
+  }
+  const blocker = value.openDeviations.find(
+    (entry) =>
+      isRecord(entry) &&
+      entry.kind === 'technical-blocker' &&
+      entry.status === 'open' &&
+      typeof entry.actual === 'string' &&
+      entry.actual.trim(),
+  );
+  return blocker && isRecord(blocker)
+    ? String(blocker.actual).trim().replace(/\s+/g, ' ').slice(0, 240)
+    : null;
+}

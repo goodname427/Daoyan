@@ -40,7 +40,7 @@ export function isValidationTreePath(path) {
   const match = /^docs\/versions\/[^/]+\/(.+)$/.exec(normalized);
   return (
     !match ||
-    !/^(?:(?:development\.md|roadmap-handoff\.md)|(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/.test(
+    !/^(?:(?:development\.md|roadmap-handoff\.md)|(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)-[^/]+(?:\.json|\/.*))$/.test(
       match[1],
     )
   );

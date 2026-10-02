@@ -36,6 +36,7 @@ import {
   isRetryableFormalPlannerDependencyFailure,
   localQuestionResponse,
   ensureVersionStageItem,
+  quarantineBlockedStageTaskRetries,
   formalVersionBlocksDispatch,
   formalStageBlockedByEnvironment,
   isFormalVersionWriteConflict,
@@ -171,6 +172,86 @@ describe('post-gate development handoff', () => {
     const retry = ensureVersionStageItem(state, version, '2026-10-02T00:03:00.000Z');
     expect(retry?.idea).toContain('[formal-development-gate-reconciliation]');
     expect(retry?.idea).not.toContain('开发节点的最终完整门禁由此收束运行');
+  });
+
+  it('does not requeue independent acceptance after an access blocker is recorded', () => {
+    const state = createSecretaryState('2026-10-02T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'acceptance-access',
+      title: '策划验收访问阻断',
+      direction: '已批准开发',
+      documentRoot: 'docs/versions/acceptance-access',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-10-02T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'da-a-flow',
+            title: '独立实玩',
+            objective: '核对玩家路径',
+            deliverables: ['体验记录'],
+            acceptance: ['真实操作'],
+            dependsOn: [],
+            readPaths: ['src/app'],
+            writePaths: ['docs/versions/acceptance-access/tasks/da-a-flow.json'],
+          },
+        ],
+      },
+      'design-acceptance',
+      1,
+      '2026-10-02T00:00:00.000Z',
+    );
+    const prior = ensureVersionStageItem(state, version, '2026-10-02T00:01:00.000Z')!;
+    prior.status = 'failed';
+    prior.summary = '技术阻断：独立策划实玩环境阻断：用户拒绝浏览器访问';
+    expect(ensureVersionStageItem(state, version, '2026-10-02T00:02:00.000Z')).toBeNull();
+  });
+
+  it('retires a queued duplicate of a delivered blocked acceptance task', () => {
+    const state = createSecretaryState('2026-10-02T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'acceptance-duplicate',
+      title: '策划验收访问阻断',
+      direction: '已批准开发',
+      documentRoot: 'docs/versions/acceptance-duplicate',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-10-02T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'da-a-flow',
+            title: '独立实玩',
+            objective: '核对玩家路径',
+            deliverables: ['体验记录'],
+            acceptance: ['真实操作'],
+            dependsOn: [],
+            readPaths: ['src/app'],
+            writePaths: ['docs/versions/acceptance-duplicate/tasks/da-a-flow.json'],
+          },
+        ],
+      },
+      'design-acceptance',
+      1,
+      '2026-10-02T00:00:00.000Z',
+    );
+    const prior = ensureVersionStageItem(state, version, '2026-10-02T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.summary = '阶段交付未能写入正式版本，将自动安排修复：缺少实际检查或交付证据';
+    prior.orchestration!.formalStageConsumedAt = '2026-10-02T00:01:30.000Z';
+    const duplicate = ensureVersionStageItem(state, version, '2026-10-02T00:02:00.000Z')!;
+    expect(duplicate.status).toBe('queued');
+    expect(
+      quarantineBlockedStageTaskRetries(state, version, 'da-a-flow', '用户拒绝浏览器访问'),
+    ).toBe(true);
+    expect(prior.status).toBe('failed');
+    expect(duplicate.status).toBe('superseded');
+    expect(ensureVersionStageItem(state, version, '2026-10-02T00:03:00.000Z')).toBeNull();
   });
 });
 

@@ -166,6 +166,7 @@ import {
   assertStageTaskPrestartScope,
   parseStageTaskManifest,
   parseStageTaskResult,
+  stageTaskTechnicalBlockerReason,
   readyStageTasks,
   type VersionStageTask,
 } from './version-stage-tasks';
@@ -2714,6 +2715,46 @@ export function ensureVersionStageItem(
   return item;
 }
 
+/** Retire an already queued duplicate when a delivered black-box task recorded a host blocker. */
+export function quarantineBlockedStageTaskRetries(
+  secretary: SecretaryState,
+  version: FormalVersion,
+  taskId: string,
+  reason: string,
+): boolean {
+  const linked = secretary.items.filter(
+    (item) =>
+      item.orchestration?.formalVersionId === version.id &&
+      item.orchestration.formalStage === version.currentStage &&
+      item.orchestration.formalScopeRevision === formalScopeRevision(version) &&
+      item.orchestration.formalStageStep === 'task' &&
+      item.orchestration.formalTaskId === taskId,
+  );
+  const prior = [...linked]
+    .reverse()
+    .find((item) => item.status === 'delivered' && item.orchestration?.formalStageConsumedAt);
+  if (
+    !prior ||
+    linked.some(
+      (item) =>
+        item.createdAt > prior.createdAt &&
+        (['active', 'tracking', 'waiting-producer'].includes(item.status) ||
+          isOwnedProcessAlive(item.processPid, item.processIdentity)),
+    )
+  ) {
+    return false;
+  }
+  prior.status = 'failed';
+  prior.summary = `技术阻断：独立策划实玩环境阻断：${reason}`;
+  for (const item of linked) {
+    if (item.createdAt <= prior.createdAt || !['queued', 'retry-wait'].includes(item.status))
+      continue;
+    item.status = 'superseded';
+    item.summary = `已停止重复派发：${reason}；保留原任务证据，待访问条件恢复后定向续验。`;
+  }
+  return true;
+}
+
 async function routeNewDirection(request: IntakeRequest, item: SecretaryItem): Promise<string> {
   normalizeSecretaryState(state);
   const orchestration = state.orchestration!;
@@ -5008,6 +5049,7 @@ interface QaManifestBug {
 
 class QaEnvironmentBlockedError extends Error {}
 class CandidateEnvironmentBlockedError extends Error {}
+class StageTaskEnvironmentBlockedError extends Error {}
 
 export function qaEnvironmentBlockerReason(value: unknown): string | null {
   if (!isRecord(value) || !['blocked', 'failed'].includes(String(value.status))) return null;
@@ -6252,7 +6294,11 @@ async function consumeTaskOwnedVersionItem(
       /\\/g,
       '/',
     );
-  const result = parseStageTaskResult(await readJson(resolve(root, resultPath)), task.id);
+  const rawResult = await readJson(resolve(root, resultPath));
+  const technicalBlocker =
+    stage === 'design-acceptance' ? stageTaskTechnicalBlockerReason(rawResult, task.id) : null;
+  if (technicalBlocker) throw new StageTaskEnvironmentBlockedError(technicalBlocker);
+  const result = parseStageTaskResult(rawResult, task.id);
   if (result.commands.some((command) => command.exitCode !== 0)) {
     throw new Error(`节点任务 ${task.id} 仍有失败的直接检查`);
   }
@@ -6388,6 +6434,27 @@ async function driveFormalVersion(): Promise<boolean> {
       continue;
     }
     ensureVersionIntegrationBranch(version);
+    if (version.workflowRevision === 2 && stage === 'design-acceptance') {
+      let quarantined = false;
+      for (const task of stageTasksForCurrentNode(version).filter(
+        (entry) => entry.status === 'pending',
+      )) {
+        const resultPath = `${version.documentRoot}/tasks/${stage}-${task.id}.json`;
+        const blocker = stageTaskTechnicalBlockerReason(
+          await readJson(resolve(root, resultPath)),
+          task.id,
+        );
+        if (blocker && quarantineBlockedStageTaskRetries(state, version, task.id, blocker)) {
+          await emitNotice(
+            'version-stage-blocked',
+            `【版本节点·策划体验】暂停：${blocker} 已停止同任务的重复派发，保留原证据。`,
+          );
+          changed = true;
+          quarantined = true;
+        }
+      }
+      if (quarantined) break;
+    }
     const delivered = state.items
       .filter(
         (item) =>
@@ -6426,6 +6493,17 @@ async function driveFormalVersion(): Promise<boolean> {
           }
         }
         delivered.orchestration!.formalStageConsumedAt = new Date().toISOString();
+        if (error instanceof StageTaskEnvironmentBlockedError) {
+          delivered.status = 'failed';
+          delivered.summary = `技术阻断：独立策划实玩环境阻断：${reason}`;
+          await emitNotice(
+            'version-stage-blocked',
+            `【版本节点·策划体验】暂停：${reason} 原任务证据与恢复点已保留；停止自动重派，待访问条件恢复后定向续验。`,
+            delivered,
+          );
+          changed = true;
+          break;
+        }
         if (repeatedFormalAcceptanceFailureCount(state, delivered) >= 3) {
           delivered.status = 'failed';
           delivered.summary = `技术阻断：同一正式节点交付连续三次未被接纳：${reason}`;
