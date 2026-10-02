@@ -135,7 +135,7 @@ describe('Feature PM recovery checkpoint', () => {
         JSON.stringify({ type: 'module' }),
         'utf8',
       );
-      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules/\n', 'utf8');
+      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules\n', 'utf8');
       git(temporary, ['init']);
       git(temporary, ['config', 'user.email', 'test@daoyan.local']);
       git(temporary, ['config', 'user.name', 'Daoyan Test']);
@@ -197,7 +197,7 @@ describe('Feature PM recovery checkpoint', () => {
         JSON.stringify({ type: 'module' }),
         'utf8',
       );
-      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules/\n', 'utf8');
+      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules\n', 'utf8');
       git(temporary, ['init']);
       git(temporary, ['config', 'user.email', 'test@daoyan.local']);
       git(temporary, ['config', 'user.name', 'Daoyan Test']);
@@ -352,7 +352,7 @@ describe('Feature PM recovery checkpoint', () => {
         JSON.stringify({ type: 'module' }),
         'utf8',
       );
-      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules/\n', 'utf8');
+      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules\n', 'utf8');
       git(temporary, ['init']);
       git(temporary, ['config', 'user.email', 'test@daoyan.local']);
       git(temporary, ['config', 'user.name', 'Daoyan Test']);
@@ -483,7 +483,7 @@ describe('Feature PM recovery checkpoint', () => {
         JSON.stringify({ type: 'module' }),
         'utf8',
       );
-      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules/\n', 'utf8');
+      await writeFile(resolve(temporary, '.gitignore'), '.daoyan-agent/\nnode_modules\n', 'utf8');
       git(temporary, ['init']);
       git(temporary, ['config', 'user.email', 'test@daoyan.local']);
       git(temporary, ['config', 'user.name', 'Daoyan Test']);
