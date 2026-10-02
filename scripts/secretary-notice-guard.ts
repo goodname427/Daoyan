@@ -38,7 +38,6 @@ import {
   reviewFindingSignature,
   validateReview,
   validatePlan,
-  workflowPermissionArgs,
   type TaskPlan,
 } from './agent-routing';
 import { parseCandidateEvidence, verifyCandidateFiles } from './candidate-evidence';
@@ -800,11 +799,12 @@ async function modelTriage(
     .join('\n');
   const prompt = `你是道衍项目的常驻制作人秘书。你只在收到 notice guard 事件时运行，本次只理解一条自然语言消息，不修改文件、不执行代码。\n\n先结合上下文判断消息意图：question 是询问项目情况；direction 是新的产品方向；reply 是对当前等待事项的回复；continue 是要求继续现有排期。制作人不会提供类型参数，你必须自行判断。然后根据项目事实回答：已完成则说明现状；正在执行则关联当前任务；已有排期则避免重复；新方向才形成后续任务。scope 也由你内部决定：只有消息本身明确包含多个独立 Feature 的阶段目标时才选 version，否则选 feature。只有确实需要产品取舍时才 waiting-producer，不要把技术实现选择交还制作人。\n\n制作人消息：${request.idea}\n\n当前等待事项：\n${waitingText}\n\n近期对话：\n${recentConversation || '- 暂无历史对话'}\n\n项目事实：\n${factText || '- 暂无匹配事实'}\n`;
   const args = [
-    ...workflowPermissionArgs(),
     'exec',
     '--ephemeral',
     '--color',
     'never',
+    '--sandbox',
+    'read-only',
     '--model',
     config.triage.model,
     '-c',

@@ -449,11 +449,6 @@ export function canReopenStalledReview(input: {
   );
 }
 
-/** Producer-authorized local workflow access; browser site permissions remain separate. */
-export function workflowPermissionArgs(): string[] {
-  return ['-a', 'never', '-s', 'danger-full-access'];
-}
-
 /** The formal task's own result is authoritative for an explicit environment block. */
 export function formalTaskEvidencePath(direction: string): string | null {
   if (!/^\[formal-stage-deliverable:/u.test(direction)) return null;
