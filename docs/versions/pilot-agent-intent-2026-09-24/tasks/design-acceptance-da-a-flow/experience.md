@@ -7,16 +7,17 @@
 ## 现场、来源与边界
 
 - 开始时 `git status --short` 无输出：没有前任残留草稿或无关改动可接管；没有清理工作区。
-- 受验分支 `codex/version-pilot-agent-intent-2026-09-24`，HEAD `ea1fa0f88376970df22575b473f1fbe3c4db610f`，Git tree `a83314ea7b4f6f6eacffc64605d7de13a82cf960`。
-- 写入证据前代码验证树 `5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c`、配置 `aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55` 与真实完整门禁收据一致。源文件 SHA256、配置、现存 dist 文件哈希与来源限制见 [source-evidence.json](./source-evidence.json)。没有执行任何快速或完整门禁。
-- [正式开发汇总](../../development.json) 当前记 completed / completeGate passed；`development-11/report.json` 为“已交付”、extra 记录本地提交，恢复点为 delivered。其 validationProgress 只有独立审查，不能单独证明完整门禁；完整门禁依据是汇总链接的 `pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json`，命令 `npm run verify:full`、退出 0、时间 `2026-10-02T11:22:19.874Z`。历史 not-run 和失败已保留在汇总历史区，本任务没有补写成功或重跑。
+- 原验收快照位于分支 `codex/version-pilot-agent-intent-2026-09-24`、HEAD `ea1fa0f88376970df22575b473f1fbe3c4db610f`、Git tree `a83314ea7b4f6f6eacffc64605d7de13a82cf960`。原代码验证树 `5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c`、配置 `aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55` 与当时收据匹配；它们现在只作为历史来源，不再宣称匹配当前正式树。
+- [正式开发汇总](../../development.json) 记 completed / completeGate passed；`development-11/report.json` 为“已交付”、恢复点为 delivered。原验收引用的 `pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json` 仍保留为历史来源，本任务没有重跑它。
+- 当前正式 HEAD 为 `8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d`。从上一复核 HEAD `21e51d42cc0a022b776a18911ffa9d57a3f3d0a5` 到当前树，变化路径为 `agents/policy.json`、`agents/secretary.json`、`test/agent-routing.test.ts`、`docs/dev/2026-10-03.md` 及本任务两份已提交证据；其中产品源码、桌面启动、依赖和 Vite 配置未变，本次实质是 CLI 模型路由控制面配置同步及其配套记录。
+- 新收据 `.daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json` 记录 `npm run verify:full`、退出码 `0`、验证树 `70e1e1cecda6135b23910dd3f89125913f20c5139377d27f2596cc41c298fc7a`、配置 `26b02c64cf1facbdc62e6372b8cd8cf1e62790acc1bde1aa29491491c40a4b6a`；本轮只读计算与两项指纹均匹配。该收据证明当前控制面同步后的树/配置门禁，不是独立策划实玩、持久截图、六入口同键性或 QA 签字。
 - 玩家来源线索是历史 `http://localhost:5173/` Vite 页面和 `85c8cf4` 产品基线。当前与该基线在 src、electron、desktop 启动脚本、vite 配置、lockfile 无差异；完整配置以当前成功门禁为准。历史补证不是本轮实玩。现存 dist 文件与构建收据时间接近，不能据此证明其内容或当前运行服务来源；本轮没有启动服务、读取页面或核实运行态。
 - 浏览器服务枚举先报请求头策略加载失败，IAB 不可用；随后正常选择 Edge 成功，但打开玩家 URL 被安全策略拒绝，明确返回用户拒绝访问。原调用及返回保存在 [browser-attempts.json](./browser-attempts.json)。工具无进程退出码，记录 null。拒绝后没有换端口、入口或间接自动化。
 - 没有访问、清空、导入或导出真实用户存档。没有注入夹具、补来源、余额或 grant。当前浏览器视口、运行配置、控制台和存档隔离均未实测；不引用开发截图冒作新证据。
 
 ## 事故后第三方补证判定
 
-新增来源为 `.daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md`，SHA256 `9D7B4F9995738C52B6CFD72F5F47A406FFABF7BDB3B8B40F1B319C32A5FE4E0F`。记录声明由主 Agent 在制作人临时授权下通过 IAB 操作，绑定交付树 `52e771750d45974348de85c306a895262fa68095`。本轮复核 HEAD 为 `21e51d42cc0a022b776a18911ffa9d57a3f3d0a5`；两者之间 `src/`、`electron/`、`scripts/desktop.mjs`、`package.json`、`package-lock.json`、`vite.config.ts` 无差异，因此可把记录作为当前产品行为的第三方线索。它没有产生可持久引用的截图文件，也不是本验收者或 QA 的签字。
+新增来源为 `.daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md`，SHA256 `9D7B4F9995738C52B6CFD72F5F47A406FFABF7BDB3B8B40F1B319C32A5FE4E0F`。记录声明由主 Agent 在制作人临时授权下通过 IAB 操作，绑定交付树 `52e771750d45974348de85c306a895262fa68095`。本轮复核 HEAD 为 `8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d`；两者之间 `src/`、`electron/`、`scripts/desktop.mjs`、`package.json`、`package-lock.json`、`vite.config.ts` 无差异，新增变化属于 CLI 路由控制面，因此仍可把记录作为当前产品行为的第三方线索。它没有产生可持久引用的截图文件，也不是本验收者或 QA 的签字。
 
 | 场景 | 可引用的第三方补证                                                                 | 仍缺批准必验项                                                |
 | ---- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -41,7 +42,7 @@
 
 实际：范围修订 13 approved；后来的 14 rejected，未取代 13。制作人范围门禁 `199d6ab1-0ef2-40e0-aff5-80a861c9deac` 在 `2026-09-28T10:48:22.66Z` 选择 A；完整方案门禁 `0e81e99b-d3ea-49dc-8e11-45267e220c24` 在 `2026-09-28T17:08:35.522Z` 明确批准开发并保持修订 13/A。drb9 approved，只批准纸面合同；当前状态 development completed、design-acceptance active。开发成果来源分别 `0aa4d113a4e72074dd9426b0c50185658d4bc282` 和 `3d9d0bf20ed509069178c9a3265076b73cdfbd30`；当前产品与前序已测产品基线无差异。配置和完整门禁核对成功，运行入口因权限拒绝未核对。
 
-证据：[source-evidence.json](./source-evidence.json)、[browser-attempts.json](./browser-attempts.json)及上述第三方 IAB 记录。判定：**来源核对通过，场景整体技术阻断 TB01**；第三方记录可证明其操作时的本机入口和玩家可见结果，不能代替本验收者核对实际运行实例。树/配置指纹采用写证据前基线，后续证据新增不追认新产品树门禁。
+证据：[source-evidence.json](./source-evidence.json)、[browser-attempts.json](./browser-attempts.json)、上述第三方 IAB 记录及新匹配完整门禁收据。判定：**当前树/配置来源核对通过，场景整体技术阻断 TB01**；旧指纹明确降为历史快照，新收据只证明控制面同步后的门禁。第三方记录可证明其操作时的本机入口和玩家可见结果，不能代替本验收者核对实际运行实例。
 
 ## DA02 三行为主流程
 
@@ -115,7 +116,7 @@
 
 预期：只有独立实玩覆盖全部必验项且无未关闭偏差时判 passed；前序无头测量、安装峰、VM 实耗、授权私有字段及底层幂等性只能作为技术证据线索，不能让界面未观察项自动通过。
 
-实际：开发收据与初始树/配置匹配；未重复任何前序自动化命令或玩家操作。原补证 41 条调用和本次主 Agent IAB 记录均按第三方来源使用，不重新署名。新增记录补充了多项玩家可见事实，但本验收者独立操作仍为 0，持久截图仍为 0，六入口同键性仍未覆盖，整体 blocked。轻量检查结果见 [任务 JSON](../design-acceptance-da-a-flow.json) 与 [checks.txt](./checks.txt)。判定：**汇总记录已更新，整体验收仍技术阻断**。
+实际：原开发收据保留为历史来源；当前控制面同步后的新收据与当前树/配置指纹匹配，命令 `npm run verify:full`、退出码 `0`。本任务没有执行或重复该门禁，也未重复任何前序自动化命令或玩家操作。原补证 41 条调用和主 Agent IAB 记录均按第三方来源使用，不重新署名。当前门禁成功不补充独立玩家证据；本验收者独立操作仍为 0，持久截图仍为 0，六入口同键性仍未覆盖，整体 blocked。轻量检查结果见 [任务 JSON](../design-acceptance-da-a-flow.json) 与 [checks.txt](./checks.txt)。判定：**来源索引已更新，整体验收仍技术阻断**。
 
 ## 未关闭项与交接
 

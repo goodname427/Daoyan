@@ -7,6 +7,8 @@
     "branch": "codex/version-pilot-agent-intent-2026-09-24"
   },
   "validation": {
+    "status": "historical-snapshot",
+    "appliesToHead": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
     "workspaceFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
     "configFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
     "gateSource": ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json",
@@ -24,7 +26,7 @@
     "treeMatch": true,
     "configMatch": true,
     "method": "写入验收证据前，PowerShell git ls-files 管道交由现有 fingerprintPaths/isValidationTreePath 只读函数计算；初始工作区干净。没有运行 pre-push main 或任何门禁。",
-    "postEvidenceTreePolicy": "这些指纹绑定写证据前的受验树；验收目录新增文件可能被当前指纹函数纳入，不将新的原始指纹误称产品代码变化或重新签门禁。"
+    "postEvidenceTreePolicy": "这些指纹只绑定写证据前的历史受验树；控制面配置同步后不得再宣称它们与当前正式树匹配。当前匹配来源见 currentControlPlaneReconciliation。"
   },
   "approval": {
     "currentStage": "design-acceptance",
@@ -130,7 +132,7 @@
       "独立策划实玩",
       "活动 Battle 证书与硬件接入"
     ],
-    "configuration": "历史 Vite 页面配置；当前配置哈希匹配，当前运行实例未验证"
+    "configuration": "历史 Vite 页面配置；原 aa6c... 配置指纹仅匹配历史快照。当前控制面配置与新门禁匹配关系见 currentControlPlaneReconciliation；当前玩家运行实例仍未由本验收者验证。"
   },
   "build": {
     "files": [
@@ -162,6 +164,52 @@
     "screenshots": [],
     "reason": "访问权限被拒，在页面到达前停止；未读写真实用户存档。"
   },
+  "currentControlPlaneReconciliation": {
+    "previousReviewHead": "21e51d42cc0a022b776a18911ffa9d57a3f3d0a5",
+    "currentHead": "8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d",
+    "changedPathsFromPreviousReviewHead": [
+      "agents/policy.json",
+      "agents/secretary.json",
+      "docs/dev/2026-10-03.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+      "test/agent-routing.test.ts"
+    ],
+    "controlPlaneConfigurationChanges": ["agents/policy.json", "agents/secretary.json"],
+    "productAndPlayerRuntimePathsChanged": false,
+    "productAndPlayerRuntimeComparedPaths": [
+      "src",
+      "electron",
+      "scripts/desktop.mjs",
+      "package.json",
+      "package-lock.json",
+      "vite.config.ts"
+    ],
+    "receiptSource": ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json",
+    "receiptSha256": "149985838EB7E1F6A997F222BEE13C7F3C5ACBB6516E761B22F7D806CDFF47FB",
+    "receipt": {
+      "schemaVersion": 1,
+      "workspaceFingerprint": "70e1e1cecda6135b23910dd3f89125913f20c5139377d27f2596cc41c298fc7a",
+      "configFingerprint": "26b02c64cf1facbdc62e6372b8cd8cf1e62790acc1bde1aa29491491c40a4b6a",
+      "command": "npm run verify:full",
+      "commandFingerprint": "d02c65da7772a6c7b799fbf08f66e87a015274e842498a97f20f0b08cc204967",
+      "executionRound": 1,
+      "log": "",
+      "exitCode": 0,
+      "createdAt": "2026-10-02T17:46:32.640Z"
+    },
+    "computedWorkspaceFingerprint": "70e1e1cecda6135b23910dd3f89125913f20c5139377d27f2596cc41c298fc7a",
+    "computedConfigFingerprint": "26b02c64cf1facbdc62e6372b8cd8cf1e62790acc1bde1aa29491491c40a4b6a",
+    "treeMatch": true,
+    "configMatch": true,
+    "currentSourceHashes": {
+      "agents/policy.json": "C1FB290327AD2D8B160A640BB5430BBA285DF2A56F3637D3A279342FA25C4DB7",
+      "agents/secretary.json": "1B83F35AC2B0EBD28F651D39E92386A6F1D96FA014BA5836AB3C05BF6B76A569"
+    },
+    "method": "只读枚举当前 Git 跟踪路径，调用现有 fingerprintPaths/isValidationTreePath/configFingerprint 计算；未调用 pre-push main，未运行任何门禁。",
+    "acceptanceBoundary": "新收据证明当前控制面同步后的验证树与配置通过完整门禁，不是本验收者独立实玩、持久截图、六入口同键性或 QA 签字。"
+  },
+  "sourcesStatus": "以下 sources 为 2026-10-02 原验收快照哈希，不表示当前文件仍逐项相同；当前控制面配置与新收据来源见 currentControlPlaneReconciliation。",
   "sources": [
     {
       "path": "AGENTS.md",

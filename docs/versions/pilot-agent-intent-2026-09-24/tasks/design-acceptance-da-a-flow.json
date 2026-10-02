@@ -2,7 +2,7 @@
   "taskId": "da-a-flow",
   "status": "blocked",
   "completed": false,
-  "summary": "已交付来源核对及 DA01–DA08 技术阻断记录。制作人临时授权的主 Agent IAB 操作补充了多项玩家可见线索，但不是本验收者的独立操作、持久截图或 QA 签字；六入口同键性仍未覆盖。独立实玩仍为0项，结论保持 blocked。",
+  "summary": "已交付来源核对及 DA01–DA08 技术阻断记录。当前控制面同步后的验证树与配置已有匹配的完整门禁收据；该收据不替代独立实玩。制作人临时授权的主 Agent IAB 操作补充了多项玩家可见线索，但不是本验收者的独立操作、持久截图或 QA 签字；六入口同键性仍未覆盖。独立实玩仍为0项，结论保持 blocked。",
   "scopeRevision": 13,
   "firstBatch": "A",
   "developmentFingerprint": {
@@ -11,8 +11,8 @@
     "initialStatus": [],
     "branch": "codex/version-pilot-agent-intent-2026-09-24"
   },
-  "configurationFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
-  "validationTreeFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
+  "configurationFingerprint": "26b02c64cf1facbdc62e6372b8cd8cf1e62790acc1bde1aa29491491c40a4b6a",
+  "validationTreeFingerprint": "70e1e1cecda6135b23910dd3f89125913f20c5139377d27f2596cc41c298fc7a",
   "runtimeConfiguration": {
     "requestedUrl": "http://localhost:5173/",
     "currentServer": "not-verified",
@@ -43,7 +43,7 @@
       "id": "DA01",
       "verdict": "technical-blocker",
       "independentPlayCovered": false,
-      "actual": "批准、开发来源、受验树与配置核对成功。第三方 IAB 记录绑定 52e771750d45974348de85c306a895262fa68095 的本机 Vite；该树到当前 HEAD 21e51d42cc0a022b776a18911ffa9d57a3f3d0a5 的产品源码、启动脚本、依赖锁和 Vite 配置无差异，但不是本验收者对运行实例的独立核验。",
+      "actual": "批准与开发来源核对成功。原 5ccf... / aa6c... 指纹只适用于历史快照；CLI 模型路由控制面同步后，当前 HEAD 8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d 的验证树 70e1...、配置 26b0... 与新完整门禁收据匹配。第三方 IAB 记录绑定 52e771750d45974348de85c306a895262fa68095 的本机 Vite；到当前 HEAD 的产品与玩家运行路径无差异，但不是本验收者对运行实例的独立核验。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -54,7 +54,8 @@
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md",
+        ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json"
       ],
       "openItems": ["TB01"]
     },
@@ -201,7 +202,8 @@
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/collect-evidence.mjs",
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/delivery-scope.json",
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
-    ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+    ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md",
+    ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json"
   ],
   "thirdPartySupplement": {
     "source": ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md",
@@ -209,8 +211,12 @@
     "operator": "主 Agent",
     "authorization": "制作人临时授权 IAB 代操作",
     "observedHead": "52e771750d45974348de85c306a895262fa68095",
-    "reviewHead": "21e51d42cc0a022b776a18911ffa9d57a3f3d0a5",
+    "reviewHead": "8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d",
     "productAndRuntimeConfigDiffFromObservedHead": [],
+    "controlPlaneConfigurationDiffFromPriorReviewHead": [
+      "agents/policy.json",
+      "agents/secretary.json"
+    ],
     "acceptedUse": "玩家可见观察线索与定向续验范围",
     "notAcceptedAs": ["本验收者独立操作", "持久截图", "QA签字", "六入口同键性证明"],
     "independentPlayerOperationsAdded": 0,
@@ -221,7 +227,15 @@
     "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
     "usage": "仅树/配置/开发收据来源核对及操作线索，非独立实玩",
     "priorCommandsRerun": false,
-    "newGateRun": false
+    "newGateRun": false,
+    "currentMatchingGate": {
+      "source": ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json",
+      "command": "npm run verify:full",
+      "exitCode": 0,
+      "workspaceFingerprint": "70e1e1cecda6135b23910dd3f89125913f20c5139377d27f2596cc41c298fc7a",
+      "configFingerprint": "26b02c64cf1facbdc62e6372b8cd8cf1e62790acc1bde1aa29491491c40a4b6a",
+      "use": "当前控制面同步后的树/配置门禁来源，不是本任务执行的命令，也不替代独立实玩"
+    }
   },
   "openDeviations": [
     {
