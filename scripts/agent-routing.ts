@@ -147,7 +147,9 @@ export function validationStagesForPlan(plan: TaskPlan): FeatureValidationStage[
   }
   if (profile === 'light') return [];
   if (profile === 'version') return ['independent-review'];
-  return ['fast-gate', 'independent-review', 'full-gate'];
+  // verify:full already covers verify. Running a separate fast gate on the
+  // identical Feature tree repeats every type, lint and unit check.
+  return ['independent-review', 'full-gate'];
 }
 
 export function failedNpmCommandFromOutput(output: string, fallback: string[]): string[] {
@@ -354,6 +356,77 @@ export function selectReusableTaskIds(
     }
   }
   return [...reusable];
+}
+
+/** Reopen a rejected task and every task that consumes its result. */
+export function taskIdsToRerun(tasks: PlannedTask[], taskId: string): string[] {
+  if (!tasks.some((task) => task.id === taskId)) {
+    throw new Error(`恢复计划中没有任务 ${taskId}`);
+  }
+  const rerun = new Set([taskId]);
+  for (const task of sortTasks(tasks)) {
+    if (task.dependsOn.some((dependency) => rerun.has(dependency))) rerun.add(task.id);
+  }
+  return [...rerun];
+}
+
+export function preserveUnaffectedTaskRuns<T extends { task: { id: string }; completedAt: string }>(
+  runs: T[],
+  rerunTaskIds: string[],
+  reopenedAt: string,
+): T[] {
+  const rerun = new Set(rerunTaskIds);
+  return runs.filter(
+    (run) => !rerun.has(run.task.id) || Date.parse(run.completedAt) > Date.parse(reopenedAt),
+  );
+}
+
+/** Only these disjoint control-plane commits may leave game Task evidence intact. */
+export function isWorkflowControlPlanePath(path: string): boolean {
+  const normalized = path.replaceAll('\\', '/');
+  return (
+    [
+      'AGENTS.md',
+      '.prettierignore',
+      'agents/README.md',
+      'agents/policy.json',
+      'docs/workflow.md',
+      'docs/agent-workflow.md',
+      'docs/testing.md',
+      'docs/status.md',
+    ].includes(normalized) ||
+    /^docs\/dev\/\d{4}-\d{2}-\d{2}\.md$/u.test(normalized) ||
+    /^(?:scripts|test)\/(?:agent-|secretary-|version-)[^/]+\.ts$/u.test(normalized)
+  );
+}
+
+/** A package change can preserve game Task work only when it changes these gate scripts. */
+export function isSafeWorkflowPackageAdvance(beforeSource: string, afterSource: string): boolean {
+  try {
+    const before = JSON.parse(beforeSource) as Record<string, unknown>;
+    const after = JSON.parse(afterSource) as Record<string, unknown>;
+    const beforeScripts = before.scripts as Record<string, unknown> | undefined;
+    const afterScripts = after.scripts as Record<string, unknown> | undefined;
+    if (!beforeScripts || !afterScripts) return false;
+    if (
+      afterScripts['verify:static'] !==
+        'npm run typecheck && npm run lint && npm run format:check && npm run docs:check' ||
+      afterScripts['verify:full'] !==
+        'npm run verify:static && npm run coverage && npm run sandbox && npm run test:e2e && npm run build'
+    ) {
+      return false;
+    }
+    const omitGateScripts = (value: Record<string, unknown>) => {
+      const { 'verify:static': _static, 'verify:full': _full, ...other } = value;
+      return other;
+    };
+    return (
+      JSON.stringify({ ...before, scripts: omitGateScripts(beforeScripts) }) ===
+      JSON.stringify({ ...after, scripts: omitGateScripts(afterScripts) })
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function canReuseFullGateEvidence(

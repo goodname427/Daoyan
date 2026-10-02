@@ -32,6 +32,20 @@ const task = (id: string, dependsOn: string[] = [], writePaths = [`src/${id}`]) 
 });
 
 describe('stage-owned task contracts', () => {
+  it('assigns an identical acceptance check to only one task in a node', () => {
+    expect(() =>
+      parseStageTaskManifest(
+        {
+          tasks: [
+            { ...task('design'), acceptance: ['实际操作相同的玩家场景'] },
+            { ...task('qa'), acceptance: ['实际操作相同的玩家场景'] },
+          ],
+        },
+        'qa',
+        1,
+      ),
+    ).toThrow('节点验收重复分派');
+  });
   it('requires every rejected same-key consumer to have a writing owner', () => {
     const root = 'docs/versions/v2';
     const review = {
@@ -397,6 +411,7 @@ describe('stage-owned task contracts', () => {
       '[formal-stage:development]\n[formal-stage-finalizing]\n汇总结果',
     );
     expect(validationStagesForPlan(finalPlan)).toContain('full-gate');
+    expect(validationStagesForPlan(finalPlan)).not.toContain('fast-gate');
   });
 
   it('lets design review produce evidence before escalating a producer decision', () => {
