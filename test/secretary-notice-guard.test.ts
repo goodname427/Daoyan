@@ -38,6 +38,7 @@ import {
   ensureVersionStageItem,
   quarantineBlockedStageTaskRetries,
   retireDeviationStageTaskRetry,
+  refreshQueuedStagePlanDirection,
   formalVersionBlocksDispatch,
   formalStageBlockedByEnvironment,
   isFormalVersionWriteConflict,
@@ -92,6 +93,7 @@ import {
   designScopeChoiceFromMessage,
   currentVersionStagePolicy,
   recordScopeRevision,
+  recordApproval,
   recordValidationEvidence,
   recordStagePolicy,
   resolveDecisionGate,
@@ -316,6 +318,59 @@ describe('post-gate development handoff', () => {
     expect(staleHandoff.retryAt).toBe('');
     expect(staleHandoff.runDirectory).toBe('preserved-recovery-point');
     expect(state.activeItemId).toBe('');
+  });
+
+  it('refreshes an unstarted repair plan from the original independent evidence', () => {
+    const version = createFormalVersion({
+      id: 'acceptance-repair',
+      title: '策划验收修复',
+      direction: '已批准首批 A',
+      documentRoot: 'docs/versions/acceptance-repair',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-10-02T00:00:00.000Z',
+    });
+    const [acceptance] = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'da-a-flow',
+            title: '独立玩家验收',
+            objective: '核对首批 A',
+            deliverables: ['独立证据'],
+            acceptance: ['真实操作'],
+            dependsOn: [],
+            readPaths: [],
+            writePaths: ['docs/versions/acceptance-repair/tasks/design-acceptance-da-a-flow.json'],
+          },
+        ],
+      },
+      'design-acceptance',
+      1,
+      '2026-10-02T00:00:00.000Z',
+    );
+    acceptance.status = 'blocked';
+    version.stageTasks = [
+      acceptance,
+      { ...acceptance, id: 'dev-player-a3', stage: 'development', status: 'accepted' },
+    ];
+    recordApproval(version, {
+      stage: 'design-acceptance',
+      reviewer: 'lead-designer',
+      decision: 'changes-requested',
+      documentRevision: version.charterRevision,
+      comment: 'DV01',
+      now: '2026-10-02T00:01:00.000Z',
+    });
+    const state = createSecretaryState('2026-10-02T00:00:00.000Z');
+    const queued = ensureVersionStageItem(state, version, '2026-10-02T00:02:00.000Z')!;
+    queued.idea = 'old planner prompt';
+    expect(refreshQueuedStagePlanDirection(state, version)).toBe(true);
+    expect(queued.idea).toContain('tasks/design-acceptance-da-a-flow.json');
+    expect(queued.idea).toContain('dev-player-a3 保持历史交付');
+    expect(queued.idea).not.toContain('design-acceptance.json');
+    expect(queued.idea).not.toContain('这是审查停滞后的新开发规划');
+    expect(refreshQueuedStagePlanDirection(state, version)).toBe(false);
   });
 });
 

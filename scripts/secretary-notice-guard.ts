@@ -2392,6 +2392,9 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
   const latestExperienceDecision = version.approvals
     .filter((approval) => approval.stage === 'design-acceptance')
     .at(-1)?.decision;
+  const acceptanceRepairSources = (version.stageTasks ?? [])
+    .filter((task) => task.stage === 'design-acceptance' && task.status === 'blocked')
+    .map((task) => `${version.documentRoot}/tasks/design-acceptance-${task.id}.json`);
   const stageManifest = `${version.documentRoot}/${
     stage === 'bugfix' && bugfixStep === 'reverification' ? 'bugfix-reverification' : stage
   }.json`.replace(/\\/g, '/');
@@ -2405,7 +2408,7 @@ export function versionStageDirection(version: FormalVersion, stage: VersionStag
           : stage === 'task-breakdown'
             ? `先读取 ${version.documentRoot}/${PRODUCT_INTENT_ARTIFACT}；在任务拆分报告中逐项说明工作如何兑现系统原则和相邻情形，不能只列制作人举过的例子。同时写入 ${taskManifest}，格式必须为 {"workItems":[{"id":"稳定短标识","title":"任务标题","owner":"执行角色","dependsOn":["依赖任务 id"],"summary":"范围与验收","affectedPaths":["受影响路径"],"acceptanceCommands":["直接验收命令或检查"]}]}。每项必须给出非空的受影响路径与直接验收命令；依赖只能引用同一清单中的任务，不能用一个笼统占位项代替实际拆分。`
             : stage === 'development'
-              ? `${latestExperienceDecision === 'changes-requested' ? `这是策划体验退回后的开发修正轮次，先读 ${version.documentRoot}/design-acceptance.json 与报告中的失败场景，按可复现偏差定界修复；不得改写已批准策划以迁就现有实现，修正后由原策划验收 Agent 仅重验失败及受影响场景，复用同修订的已通过场景，不重做整版黑盒体验。` : ''}同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
+              ? `${latestExperienceDecision === 'changes-requested' ? `这是策划体验退回后的开发修正轮次，先读原独立策划任务证据 ${acceptanceRepairSources.join('、') || `${version.documentRoot}/tasks/`} 中的确认偏差与未覆盖项，按可复现偏差定界修复；不得改写已批准策划以迁就现有实现，修正后由原策划验收 Agent 仅重验失败及受影响场景，复用同修订的已通过场景，不重做整版黑盒体验。` : ''}同时写入 ${stageManifest}，逐一列出正式版本中的每个实际工作项，格式为 {"workItems":[{"id":"工作项 id","status":"completed|skipped","typecheck":"passed|failed|not-run","targetedTests":"passed|failed","commands":[{"command":"执行 Agent 实际运行的 Task 直接检查","exitCode":0}],"evidence":["公开证据"]}]}。typecheck=not-run 只用于纯文档工作项且需有实际通过的文档检查；执行沙盒中的定向测试失败必须保留真实命令与退出码，不能伪装通过，最终由同树 Feature 完整门禁覆盖。npm run verify、npm run verify:full、E2E 和 build 只登记在各自 Feature/Version 作用域。`
               : stage === 'design-acceptance'
                 ? `你是独立策划验收者，不读实现代码来推断是否正确，也不修改策划、产品实现或游戏测试。先从已批准的详细策划提取每项玩家可见承诺，启动当前开发构建并亲自完成从入口到结果的操作；覆盖每项实际开发工作、成功与失败/边界流程，以及至少一个制作人没有列出的相邻情形。记录入口、可复现步骤、策划预期、游戏实际表现和截图、录屏或可核查的运行证据。不能只引用单元测试、E2E 断言、开发自述或页面 HTTP 200。将结论写入 ${stageManifest}：{"decision":"approved|changes-requested","summary":"通俗结论","codeRevision":"开发提交修订","scenarios":[{"id":"稳定场景 ID","workItemId":"开发任务 ID","designPath":"已批准策划路径","kind":"main|boundary|adjacent","entry":"游戏入口","steps":["实际操作"],"expected":"策划预期","actual":"实际观察","result":"passed|failed","evidence":["可核查的体验证据路径"]}]}。不一致时列出具体偏差并 decision=changes-requested，退回开发；策划本身含未批准方向或无法判定时须升级主策/制作人，不得替策划改规则来使实现过关。任务成功不等于策划验收通过。`
                 : stage === 'qa'
@@ -2473,6 +2476,13 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
   const label = currentStageTaskLabel(version);
   const manifest = `${version.documentRoot}/${label}-tasks.json`;
   const technicalReplan = version.orchestration?.technicalReplans?.at(-1);
+  const acceptanceRepair =
+    stage === 'development' &&
+    version.approvals.filter((approval) => approval.stage === 'design-acceptance').at(-1)
+      ?.decision === 'changes-requested';
+  const blockedAcceptanceTasks = (version.stageTasks ?? []).filter(
+    (task) => task.stage === 'design-acceptance' && task.status === 'blocked',
+  );
   const technicalReviewDirection =
     stage === 'design-review' &&
     technicalReplan &&
@@ -2482,6 +2492,7 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
       : '';
   const technicalDevelopmentDirection =
     stage === 'development' &&
+    !acceptanceRepair &&
     technicalReplan &&
     (version.stageTasks ?? []).some(
       (task) =>
@@ -2503,12 +2514,14 @@ export function stageTaskPlanDirection(version: FormalVersion): string {
     priorModuleTasks.length > 0
       ? `\n这是主策退回后的新轮次。上一轮任务 ${priorModuleTasks.join('、')} 已作为历史证据，不能原样重派或把旧清单视为本轮交付。先读最新 ${version.documentRoot}/design-review.md 与 design-review-findings.md，按尚未闭合的具体合同只建立必要的新任务；本轮任务 ID 必须与历史 ID 不同。必须同时更新 ${manifest} 和 ${version.documentRoot}/${label}-tasks.md，明确每项相对上轮新增的设计判断、反例和验收。已闭合模块只作只读前驱，不为凑数重做。主策所说的新规则实际可玩证据属于后续开发和候选验收，此节点只规划纸面设计与可执行验收。最新主策结论：${version.nodes.find((node) => node.id === 'design-review')?.summary ?? '见最新主策审核文档'}。`
       : '';
-  const acceptanceReentry =
-    stage === 'development' &&
-    version.approvals.filter((approval) => approval.stage === 'design-acceptance').at(-1)
-      ?.decision === 'changes-requested'
-      ? `\n这是策划体验验收退回的修复轮次。先读取 ${version.documentRoot}/design-acceptance.json 中失败场景及实际操作证据，只规划为兑现已批准策划所需的修正成果；保留已通过场景和开发来源，修后再进策划体验验收，不得改策划以迁就代码。`
-      : '';
+  const acceptanceReentry = acceptanceRepair
+    ? `\n这是策划体验验收退回的修复轮次。先读取原独立策划任务证据 ${blockedAcceptanceTasks.map((task) => `${version.documentRoot}/tasks/design-acceptance-${task.id}.json`).join('、') || `${version.documentRoot}/tasks/`} 和其逐场景操作记录，仅围绕已确认实现偏差规划最小修复成果。已接纳的开发任务 ${
+        (version.stageTasks ?? [])
+          .filter((task) => task.stage === 'development' && task.status === 'accepted')
+          .map((task) => task.id)
+          .join('、') || '见开发任务证据'
+      } 保持历史交付，不重做或换名重派。未覆盖项只记录并在修复后由原独立策划 Agent 定向续验；不把截图或环境缺口交给开发冒充完工。不得改策划以迁就代码。`
+    : '';
   const approvedHandoff =
     stage === 'development' || stage === 'candidate'
       ? `\n${approvedDesignHandoff(version)}${roadmapHandoffDirection(version)}`
@@ -2719,6 +2732,31 @@ export function ensureVersionStageItem(
   };
   secretary.items.push(item);
   return item;
+}
+
+/** Refresh an unstarted planner after a control-plane prompt correction. */
+export function refreshQueuedStagePlanDirection(
+  secretary: SecretaryState,
+  version: FormalVersion | null,
+): boolean {
+  if (!version || version.workflowRevision !== 2) return false;
+  const item = secretary.items.find(
+    (entry) =>
+      entry.status === 'queued' &&
+      !entry.runDirectory &&
+      entry.processPid === 0 &&
+      entry.orchestration?.formalVersionId === version.id &&
+      entry.orchestration.formalStage === version.currentStage &&
+      entry.orchestration.formalScopeRevision === formalScopeRevision(version) &&
+      entry.orchestration.formalStageStep === 'planning' &&
+      !entry.idea.includes('上轮未接纳原因：'),
+  );
+  if (!item) return false;
+  const direction = stageTaskPlanDirection(version);
+  if (item.idea === direction) return false;
+  item.idea = direction;
+  item.updatedAt = new Date().toISOString();
+  return true;
 }
 
 /** Retire an already queued duplicate when a delivered black-box task recorded a host blocker. */
@@ -6805,6 +6843,7 @@ async function coordinateOnce(): Promise<void> {
     }
   }
   const supersededObsolete = supersedeObsoleteFormalItems(state, activeFormalVersion);
+  const refreshedQueuedPlan = refreshQueuedStagePlanDirection(state, activeFormalVersion);
   const quarantinedBootstrapIds = new Set<string>();
   if (activeFormalVersion) {
     for (const item of state.items) {
@@ -7472,6 +7511,7 @@ async function coordinateOnce(): Promise<void> {
   const stateChanged =
     trackedExternalResume ||
     supersededObsolete > 0 ||
+    refreshedQueuedPlan ||
     retiredQuarantinedBootstrap ||
     retiredEmptyBootstrap ||
     retiredNetworkPlanner ||
