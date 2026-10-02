@@ -10,6 +10,7 @@ import {
 } from './routing-outage-recovery';
 import {
   canRebaseEmptyRecovery,
+  canReopenStalledReview,
   advanceReviewStall,
   canReuseFullGateEvidence,
   changedPathsSinceWorkspaceBaseline,
@@ -63,6 +64,7 @@ import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
 import { taskDependencyContext } from './task-context';
+import { taskRunsFromAuditedHistory } from './task-run-audit-recovery';
 import {
   formalWorkerSessionScope,
   independentReviewSessionKey,
@@ -2188,6 +2190,7 @@ let activeActualLaunchCount: number | null = 1;
 let activeAbnormalRecoveryCount: number | null = 0;
 let activeLocalRepairRoundCount: number | null = 0;
 let currentPhase = '初始化';
+let resumePreflightComplete = false;
 const currentProcessIdentity = getProcessIdentity(process.pid);
 
 function throwIfReviewStalled(review: ReviewResult): void {
@@ -2401,6 +2404,11 @@ try {
       (await isRecoverableRoutingOutage(runDirectory));
     const currentConfigFingerprint = await verificationConfigFingerprint();
     const workspacePaths = await workspaceChangedPaths();
+    const lostIndexReviewStall =
+      checkpoint.taskRuns.length === 0 &&
+      checkpoint.phase === '初始化' &&
+      checkpoint.error === '只有已退出且连续三轮同缺口的审查停滞可定向重开' &&
+      ((await reviewStallFromRunHistory(runDirectory))?.count ?? 0) >= 3;
     const packageAdvanceSafe = committedAdvancePaths.includes('package.json')
       ? await git(['show', `${checkpoint.baseline}:package.json`]).then(async (oldPackage) =>
           oldPackage.code === 0
@@ -2423,7 +2431,7 @@ try {
       workspacePaths.every((path) =>
         taskScopes.some((scope) => pathMatchesTaskScope(path, scope)),
       ) &&
-      checkpoint.taskRuns.length > 0 &&
+      (checkpoint.taskRuns.length > 0 || lostIndexReviewStall) &&
       (checkpoint.taskRuns.every((run) => run.configFingerprint === currentConfigFingerprint) ||
         auditedControlAdvance);
     const scopeAmendment = await readFile(resolve(runDirectory, 'scope-amendment.json'), 'utf8')
@@ -2569,18 +2577,100 @@ try {
     if (reviewResumption && reviewResumption.baseline !== checkpoint.baseline) {
       throw new Error('审查恢复记录与原任务基线不一致');
     }
+    let auditedRecoveredTaskRuns: TaskRun[] = [];
     if (options.resumeReviewTask) {
       if (reviewResumption) throw new Error('该运行已重新打开一次审查，不能重复清除停滞记录');
       const stalled = (await reviewStallFromRunHistory(runDirectory)) ?? checkpoint.reviewStall;
       if (
-        checkpoint.status !== 'recoverable' ||
-        !checkpoint.phase.includes('审查') ||
         !stalled ||
-        stalled.count < 3
+        !canReopenStalledReview({
+          status: checkpoint.status,
+          phase: checkpoint.phase,
+          taskRunCount: checkpoint.taskRuns.length,
+          error: checkpoint.error,
+          consecutiveFindingCount: stalled?.count ?? 0,
+        })
       ) {
         throw new Error('只有已退出且连续三轮同缺口的审查停滞可定向重开');
       }
       const rerunTaskIds = taskIdsToRerun(checkpoint.plan.tasks, options.resumeReviewTask);
+      if (lostIndexReviewStall) {
+        const currentDirty = await captureWorkspaceChangeBaseline();
+        if (
+          JSON.stringify(currentDirty) !== JSON.stringify(checkpoint.workspaceChangeBaseline) ||
+          baselineAncestor.code !== 0
+        ) {
+          throw new Error('空恢复索引的工作区哈希或提交已变化，拒绝推断任务完成');
+        }
+        const originalHead = await git(['rev-parse', 'HEAD^1']);
+        const controlPaths = await git(['diff', '--name-only', '-z', 'HEAD^1', 'HEAD', '--']);
+        const oldPackage = await git(['show', 'HEAD^1:package.json']);
+        if ([originalHead, controlPaths, oldPackage].some((entry) => entry.code !== 0)) {
+          throw new Error('无法审计任务草稿之前的控制面合入');
+        }
+        const safePackage = isSafeWorkflowPackageAdvance(
+          oldPackage.stdout,
+          await readFile(resolve(root, 'package.json'), 'utf8'),
+        );
+        const mergedPaths = controlPaths.stdout.split('\0').filter(Boolean);
+        if (
+          mergedPaths.length === 0 ||
+          !mergedPaths.every(
+            (path) => isWorkflowControlPlanePath(path) || (path === 'package.json' && safePackage),
+          )
+        ) {
+          throw new Error('控制面合入包含未归属的产品路径，拒绝恢复旧任务证据');
+        }
+        const auditedIds = checkpoint.plan.tasks.map((task) => task.id);
+        const auditEntries = await taskRunsFromAuditedHistory(runDirectory, auditedIds);
+        auditedRecoveredTaskRuns = await Promise.all(
+          auditEntries.map(async (entry) => {
+            const task = checkpoint.plan.tasks.find((item) => item.id === entry.taskId)!;
+            const route = { ...routeForTask(policy, task.tier), model: entry.model };
+            const inputPaths = await collectTaskInputPaths(task.paths, entry.changedFiles);
+            return {
+              task,
+              route,
+              attempts: entry.attempts,
+              result: 'passed' as const,
+              outputFile: entry.outputFile,
+              changedFiles: entry.changedFiles,
+              tests: await reportedTests(entry.outputFile),
+              tokensUsed: parseTokenUsage(await readFile(entry.logFile, 'utf8')),
+              completedAt: entry.completedAt,
+              inputPaths,
+              inputFingerprint: await taskPathFingerprint(inputPaths),
+              outputFingerprint: await taskPathFingerprint(
+                taskOutputPaths(task.paths, entry.changedFiles),
+              ),
+              commandFingerprint: stringFingerprint(task.verification),
+              configFingerprint: currentConfigFingerprint,
+            };
+          }),
+        );
+        const audit = {
+          version: 1,
+          reason: 'resume preflight failure lost the task index',
+          originalHead: originalHead.stdout.trim(),
+          mergedHead: currentHead.stdout.trim(),
+          controlPaths: mergedPaths,
+          workspaceChangeBaseline: currentDirty,
+          restoredTaskIds: auditedIds,
+          sourceOutputs: auditEntries.map((entry) => entry.outputFile),
+        };
+        const auditPath = resolve(runDirectory, 'task-run-reconstruction.json');
+        if (existsSync(auditPath)) {
+          const existing = JSON.parse(await readFile(auditPath, 'utf8')) as typeof audit;
+          if (JSON.stringify(existing) !== JSON.stringify(audit)) {
+            throw new Error('既有任务索引重建审计与当前现场不一致');
+          }
+        } else {
+          await writeFile(auditPath, `${JSON.stringify(audit, null, 2)}\n`, { flag: 'wx' });
+        }
+        console.log(
+          `[任务索引审计恢复] 从原执行日志保留 ${auditedIds.filter((id) => !rerunTaskIds.includes(id)).join('、')}，其余任务只复用上下文。`,
+        );
+      }
       reviewResumption = {
         version: 1,
         taskId: options.resumeReviewTask,
@@ -2588,17 +2678,9 @@ try {
         afterRound: await lastReviewRound(runDirectory),
         guidance: options.producerGuidance.trim(),
         priorSignature: stalled.signature,
-        baseline: checkpoint.baseline,
+        baseline: activeBaseline,
         createdAt: new Date().toISOString(),
       };
-      await writeFile(
-        resolve(runDirectory, 'review-resumption.json'),
-        `${JSON.stringify(reviewResumption, null, 2)}\n`,
-        { flag: 'wx' },
-      );
-      console.log(
-        `[审查定向恢复] 原阻断与制作人指导已留痕；由原 Agent 重做 ${rerunTaskIds.join('、')}。`,
-      );
     }
     activeResolvedDirection = applyProducerGuidance(
       checkpoint.resolvedDirection,
@@ -2627,11 +2709,14 @@ try {
         `[选择性恢复] 保留 ${activeTaskRuns.length}/${checkpoint.taskRuns.length} 个输入、输出与证据仍有效的已完成任务。`,
       );
     } else {
-      activeTaskRuns = checkpoint.taskRuns;
+      activeTaskRuns =
+        checkpoint.taskRuns.length > 0 ? checkpoint.taskRuns : auditedRecoveredTaskRuns;
     }
     if (reviewResumption) {
       const rerun = new Set(reviewResumption.rerunTaskIds);
-      activeReopenedTaskRuns = checkpoint.taskRuns.filter((run) => rerun.has(run.task.id));
+      activeReopenedTaskRuns = [...checkpoint.taskRuns, ...auditedRecoveredTaskRuns].filter((run) =>
+        rerun.has(run.task.id),
+      );
       activeTaskRuns = preserveUnaffectedTaskRuns(
         activeTaskRuns,
         reviewResumption.rerunTaskIds,
@@ -2667,6 +2752,17 @@ try {
         !unrelatedCommittedAdvance &&
         !auditedScopeAdvance) ||
       checkpoint.takeover === true;
+    if (options.resumeReviewTask && reviewResumption) {
+      await writeFile(
+        resolve(runDirectory, 'review-resumption.json'),
+        `${JSON.stringify(reviewResumption, null, 2)}\n`,
+        { flag: 'wx' },
+      );
+      console.log(
+        `[审查定向恢复] 原阻断与制作人指导已留痕；由原 Agent 重做 ${reviewResumption.rerunTaskIds.join('、')}。`,
+      );
+    }
+    resumePreflightComplete = true;
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {
     if (!options.planOnly) await ensureCleanWorktree(runDirectory, options.takeover);
@@ -3176,7 +3272,7 @@ try {
   console.log(`报告：${resolve(runDirectory, 'report.md')}`);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  if (activePlan && activeBaseline) {
+  if (activePlan && activeBaseline && (!options.resumeDirectory || resumePreflightComplete)) {
     await persistCheckpoint('recoverable', message);
     const resumePath = relative(root, runDirectory);
     const recoveryMessage = `恢复点已保存，无需重新描述需求。\n\n续跑：\`npm run producer:resume -- "${resumePath}"\``;
@@ -3193,10 +3289,12 @@ try {
     );
   }
   console.error(`\n[秘书暂停] ${message}`);
-  if (activePlan && activeBaseline) {
+  if (activePlan && activeBaseline && (!options.resumeDirectory || resumePreflightComplete)) {
     console.error(
       `恢复点已保存，可续跑：npm run producer:resume -- "${relative(root, runDirectory)}"`,
     );
+  } else if (options.resumeDirectory) {
+    console.error('恢复预检失败；原恢复点保持不变。');
   }
   console.error(`运行记录保留在：${runDirectory}`);
   process.exitCode = 1;
