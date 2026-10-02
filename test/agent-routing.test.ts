@@ -198,10 +198,11 @@ ${JSON.stringify({
     expect(configured.version).toBe(1);
     expect(configured.planner.model).toBe('gpt-6-luna');
     expect(configured.tiers.economy.model).toBe('gpt-6-luna');
-    expect(configured.tiers.standard.model).toBe('gpt-6-sol');
-    expect(configured.tiers.advanced.model).toBe('gpt-6-sol');
+    expect(configured.tiers.standard.model).toBe('gpt-6.1-sol');
+    expect(configured.tiers.advanced.model).toBe('gpt-6.1-sol');
     expect(configured.tiers.critical.model).toBe('gpt-6-astra');
-    expect(configured.reviewers.advanced.model).toBe('gpt-6-sol');
+    expect(configured.reviewers.standard.model).toBe('gpt-6.1-sol');
+    expect(configured.reviewers.advanced.model).toBe('gpt-6.1-sol');
     expect(configured.reviewers.critical.model).toBe('gpt-6-astra');
     expect(JSON.parse(readFileSync(resolve('agents/secretary.json'), 'utf8')).triage.model).toBe(
       'gpt-6-luna',

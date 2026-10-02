@@ -11,11 +11,11 @@ Feature PM 模型名称集中在 `policy.json`；常驻秘书的短时语义路�
 | 层级       | 当前模型      | 典型工作                      |
 | ---------- | ------------- | ----------------------------- |
 | `economy`  | `gpt-6-luna`  | 检索、文档、机械修改          |
-| `standard` | `gpt-6-sol`   | 常规 UI、功能与测试           |
-| `advanced` | `gpt-6-sol`   | Core、DSL、VM、并发与困难调试 |
+| `standard` | `gpt-6.1-sol` | 常规 UI、功能与测试           |
+| `advanced` | `gpt-6.1-sol` | Core、DSL、VM、并发与困难调试 |
 | `critical` | `gpt-6-astra` | ADR、不可逆架构与重大迁移     |
 
-常规任务使用 Sol medium，高风险核心任务使用 Sol high；Astra 保留给不可逆决策与最高风险审查。Luna 承担高频低风险任务。审查故障时按 `recovery.reviewerFallbacks` 顺序尝试兼容路由；模型升级不改变已冻结版本的范围或验收门禁。
+常规任务使用 GPT-6.1 Sol medium，高风险核心任务使用 GPT-6.1 Sol high；Astra 保留给不可逆决策与最高风险审查。Luna 承担高频低风险任务。审查故障时按 `recovery.reviewerFallbacks` 顺序尝试兼容路由；模型升级不改变已冻结版本的范围或验收门禁。
 
 调度器不直接执行计划中生成的 shell 命令。所有任务最终使用仓库固定的 `npm run verify:full` 门禁，避免让模型输出成为命令注入入口。独立审查也按计划的最高风险选择模型，纯文档不会固定占用 Sol；审查输入由父进程生成为差异包，避免审查者重复扫描仓库和运行门禁。
 
