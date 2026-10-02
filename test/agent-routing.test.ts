@@ -37,6 +37,7 @@ import {
   taskIdsToRerun,
   isWorkflowControlPlanePath,
   isSafeWorkflowPackageAdvance,
+  canReopenStalledReview,
   preserveUnaffectedTaskRuns,
   taskInputPaths,
   taskOutputPaths,
@@ -782,9 +783,31 @@ ${JSON.stringify({
     expect(isWorkflowControlPlanePath('scripts/agent-dispatcher.ts')).toBe(true);
     expect(isWorkflowControlPlanePath('docs/status.md')).toBe(true);
     expect(isWorkflowControlPlanePath('docs/testing.md')).toBe(true);
+    expect(isWorkflowControlPlanePath('scripts/task-run-audit-recovery.ts')).toBe(true);
     expect(isWorkflowControlPlanePath('src/game/firstBatch.ts')).toBe(false);
     expect(isWorkflowControlPlanePath('package.json')).toBe(false);
     expect(isWorkflowControlPlanePath('test/render.test.tsx')).toBe(false);
+  });
+
+  it('recognizes both incremental review stalls and an audited preflight index loss', () => {
+    const input = {
+      status: 'recoverable',
+      phase: '增量复审第 3 轮',
+      taskRunCount: 4,
+      error: '审查停滞',
+      consecutiveFindingCount: 3,
+    };
+    expect(canReopenStalledReview(input)).toBe(true);
+    expect(
+      canReopenStalledReview({
+        ...input,
+        phase: '初始化',
+        taskRunCount: 0,
+        error: '只有已退出且连续三轮同缺口的审查停滞可定向重开',
+      }),
+    ).toBe(true);
+    expect(canReopenStalledReview({ ...input, consecutiveFindingCount: 2 })).toBe(false);
+    expect(canReopenStalledReview({ ...input, phase: '初始化', taskRunCount: 0 })).toBe(false);
   });
 
   it('allows only the audited package gate-script change to preserve game Task work', () => {

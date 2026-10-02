@@ -390,6 +390,8 @@ export function isWorkflowControlPlanePath(path: string): boolean {
       '.prettierignore',
       'agents/README.md',
       'agents/policy.json',
+      'scripts/task-run-audit-recovery.ts',
+      'test/task-run-audit-recovery.test.ts',
       'docs/workflow.md',
       'docs/agent-workflow.md',
       'docs/testing.md',
@@ -427,6 +429,24 @@ export function isSafeWorkflowPackageAdvance(beforeSource: string, afterSource: 
   } catch {
     return false;
   }
+}
+
+export function canReopenStalledReview(input: {
+  status: string;
+  phase: string;
+  taskRunCount: number;
+  error: string;
+  consecutiveFindingCount: number;
+}): boolean {
+  const lostIndex =
+    input.phase === '初始化' &&
+    input.taskRunCount === 0 &&
+    input.error === '只有已退出且连续三轮同缺口的审查停滞可定向重开';
+  return (
+    input.status === 'recoverable' &&
+    input.consecutiveFindingCount >= 3 &&
+    (/(?:审查|复审)/u.test(input.phase) || lostIndex)
+  );
 }
 
 export function canReuseFullGateEvidence(
