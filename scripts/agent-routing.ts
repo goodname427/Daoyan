@@ -386,6 +386,30 @@ export function resumeProducerGuidance(current: string, saved = ''): string {
   return current.trim() || saved;
 }
 
+/** Keep the reviewer on the same latest decision given to reopened workers. */
+export function reviewRecoveryInstruction(
+  priorSignature: string,
+  current: string,
+  saved: string,
+): string {
+  const guidance = resumeProducerGuidance(current, saved);
+  return `\n本轮是停滞审查的一次性定向恢复。原主要阻断签名：${priorSignature}。制作人最新指导（覆盖旧恢复指导及旧会话中相反的说法）：${guidance}。仅核查该任务和下游的新增产物是否关闭原缺口，以及直接受影响的契约；旧轮已通过且输入未变的实现与测试不得重审。若原缺口仍在，明确退回，调度器会立即停止自动循环。\n`;
+}
+
+/** An old reviewer prompt cannot settle a later, contradictory producer decision. */
+export function reviewUsedSupersededGuidance(
+  reviewLog: string,
+  current: string,
+  saved: string,
+): boolean {
+  return (
+    Boolean(current.trim()) &&
+    current.trim() !== saved.trim() &&
+    reviewLog.includes(`制作人指导：${saved}。`) &&
+    !reviewLog.includes(`制作人最新指导（覆盖旧恢复指导及旧会话中相反的说法）：${current.trim()}。`)
+  );
+}
+
 /** Forward the latest decision only to tasks reopened by the review recovery. */
 export function reviewRecoveryGuidanceForTask(
   taskId: string,

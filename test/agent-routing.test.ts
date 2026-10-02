@@ -5,7 +5,9 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   resumeProducerGuidance,
+  reviewRecoveryInstruction,
   reviewRecoveryGuidanceForTask,
+  reviewUsedSupersededGuidance,
   advanceReviewStall,
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
@@ -89,6 +91,27 @@ describe('producer guidance during review recovery', () => {
         '旧规则：原 Agent 亲自重玩',
       ),
     ).toBe('');
+  });
+
+  it('gives independent review the latest exception without repeating the saved restriction', () => {
+    const instruction = reviewRecoveryInstruction(
+      'player-evidence',
+      '本轮特例允许主 Agent 提供已有实玩记录，由原 Agent 核实',
+      '由原 Agent 亲自操作；主 Agent 不代验',
+    );
+    expect(instruction).toContain('本轮特例允许主 Agent 提供已有实玩记录');
+    expect(instruction).not.toContain('主 Agent 不代验');
+    expect(instruction).toContain('原主要阻断签名：player-evidence');
+  });
+
+  it('recognizes an auditably stale reviewer prompt without invalidating a corrected one', () => {
+    const current = '本轮特例允许主 Agent 提供已有实玩记录';
+    const saved = '主 Agent 不代验';
+    expect(reviewUsedSupersededGuidance(`制作人指导：${saved}。`, current, saved)).toBe(true);
+    expect(
+      reviewUsedSupersededGuidance(reviewRecoveryInstruction('x', current, saved), current, saved),
+    ).toBe(false);
+    expect(reviewUsedSupersededGuidance(`制作人指导：${saved}。`, '', saved)).toBe(false);
   });
 });
 import {
