@@ -1290,6 +1290,42 @@ describe('formal version stage dispatch', () => {
     expect(stageTaskDirection(version, version.stageTasks[0])).toContain('总览是否仍阻断');
   });
 
+  it('routes CLI player work to a supported native UI path without weakening independent play', () => {
+    const version = createFormalVersion({
+      id: 'native-play',
+      title: '原生窗口实玩',
+      direction: '已批准的玩家路径',
+      documentRoot: 'docs/versions/native-play',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-10-03T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'play',
+            title: '独立实玩',
+            objective: '实际操作游戏',
+            deliverables: ['体验报告'],
+            acceptance: ['玩家操作与截图'],
+            dependsOn: [],
+            readPaths: ['docs/versions/native-play/module-design.md'],
+            writePaths: ['docs/versions/native-play/tasks/design-acceptance-play.json'],
+          },
+        ],
+      },
+      'design-acceptance',
+      1,
+      '2026-10-03T00:00:00.000Z',
+    );
+    const direction = stageTaskDirection(version, version.stageTasks[0]);
+    expect(direction).toContain('node_repl/@oai/sky');
+    expect(direction).toContain('桌面内置 Browser 不属于 CLI 能力');
+    expect(direction).toContain('无法正常操作就如实登记环境阻断');
+    expect(direction).toContain('独立角色仍须亲自完成其职责');
+  });
+
   it('passes a rejected producer design choice into the next module plan', () => {
     const version = createFormalVersion({
       id: 'producer-design-feedback',
