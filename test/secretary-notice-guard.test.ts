@@ -37,6 +37,7 @@ import {
   localQuestionResponse,
   ensureVersionStageItem,
   quarantineBlockedStageTaskRetries,
+  retireDeviationStageTaskRetry,
   formalVersionBlocksDispatch,
   formalStageBlockedByEnvironment,
   isFormalVersionWriteConflict,
@@ -252,6 +253,46 @@ describe('post-gate development handoff', () => {
     expect(prior.status).toBe('failed');
     expect(duplicate.status).toBe('superseded');
     expect(ensureVersionStageItem(state, version, '2026-10-02T00:03:00.000Z')).toBeNull();
+  });
+
+  it('retires a duplicate after the original independent planner confirms a code deviation', () => {
+    const state = createSecretaryState('2026-10-02T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'acceptance-deviation',
+      title: '策划验收实现偏差',
+      direction: '已批准开发',
+      documentRoot: 'docs/versions/acceptance-deviation',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-10-02T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'da-a-flow',
+            title: '独立实玩',
+            objective: '核对玩家路径',
+            deliverables: ['体验记录'],
+            acceptance: ['真实操作'],
+            dependsOn: [],
+            readPaths: ['src/app'],
+            writePaths: ['docs/versions/acceptance-deviation/tasks/da-a-flow.json'],
+          },
+        ],
+      },
+      'design-acceptance',
+      1,
+      '2026-10-02T00:00:00.000Z',
+    );
+    const prior = ensureVersionStageItem(state, version, '2026-10-02T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.orchestration!.formalStageConsumedAt = '2026-10-02T00:01:30.000Z';
+    const duplicate = ensureVersionStageItem(state, version, '2026-10-02T00:02:00.000Z')!;
+    expect(retireDeviationStageTaskRetry(state, version, 'da-a-flow', 'DV01')).toBe(true);
+    expect(prior.status).toBe('delivered');
+    expect(prior.summary).toContain('DV01');
+    expect(duplicate.status).toBe('superseded');
   });
 });
 
@@ -1288,6 +1329,45 @@ describe('formal version stage dispatch', () => {
     );
     expect(stageTaskDirection(version, version.stageTasks[0])).toContain('不能因运行尚未产生签名');
     expect(stageTaskDirection(version, version.stageTasks[0])).toContain('总览是否仍阻断');
+  });
+
+  it('routes CLI player work to a supported native UI path without weakening independent play', () => {
+    const version = createFormalVersion({
+      id: 'native-play',
+      title: '原生窗口实玩',
+      direction: '已批准的玩家路径',
+      documentRoot: 'docs/versions/native-play',
+      currentStage: 'design-acceptance',
+      workflowRevision: 2,
+      now: '2026-10-03T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'play',
+            title: '独立实玩',
+            objective: '实际操作游戏',
+            deliverables: ['体验报告'],
+            acceptance: ['玩家操作与截图'],
+            dependsOn: [],
+            readPaths: ['docs/versions/native-play/module-design.md'],
+            writePaths: ['docs/versions/native-play/tasks/design-acceptance-play.json'],
+          },
+        ],
+      },
+      'design-acceptance',
+      1,
+      '2026-10-03T00:00:00.000Z',
+    );
+    const direction = stageTaskDirection(version, version.stageTasks[0]);
+    expect(direction).toContain('node_repl/@oai/sky');
+    expect(direction).toContain('本任务独立且保留的 --user-data-dir');
+    expect(direction).toContain('普通道衍窗口默认会自动保存到真实用户目录');
+    expect(direction).toContain('Screenshot.url 是文档化 data URL');
+    expect(direction).toContain('桌面内置 Browser 不属于 CLI 能力');
+    expect(direction).toContain('无法正常操作就如实登记环境阻断');
+    expect(direction).toContain('独立角色仍须亲自完成其职责');
   });
 
   it('passes a rejected producer design choice into the next module plan', () => {
@@ -2628,5 +2708,15 @@ describe('formal version stage dispatch', () => {
         'test/render.test.tsx',
       ]),
     ).toEqual(['src/app/App.tsx', 'test/render.test.tsx']);
+  });
+
+  it('keeps version task routing repairs outside the tested game implementation', () => {
+    expect(
+      productImplementationChanges([
+        'scripts/version-stage-tasks.ts',
+        'test/version-stage-tasks.test.ts',
+        'src/app/App.tsx',
+      ]),
+    ).toEqual(['src/app/App.tsx']);
   });
 });
