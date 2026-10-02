@@ -2796,6 +2796,28 @@ export function retireDeviationStageTaskRetry(
     item.status = 'superseded';
     item.summary = `原独立策划已确认实现偏差 ${reason}；避免重复验收，开发修复后仅复验受影响场景。`;
   }
+  // An old ad hoc gate-handoff reconciliation is tied to the pre-acceptance
+  // development tree. Once independent play returns this version to development,
+  // resuming that stale review would repeat work against the wrong tree.
+  for (const item of secretary.items) {
+    if (
+      !item.idea.startsWith('[formal-development-gate-handoff-reconciliation]') ||
+      !item.idea.includes(version.id) ||
+      item.status !== 'retry-wait' ||
+      item.orchestration?.processOccupied ||
+      isOwnedProcessAlive(item.processPid, item.processIdentity)
+    )
+      continue;
+    item.status = 'superseded';
+    item.summary = `独立策划验收发现实现偏差 ${reason}，开发树将变更；旧门禁交接审查的恢复点保留，不再重复执行。`;
+    item.processPid = 0;
+    item.processIdentity = '';
+    item.retryAt = '';
+    item.updatedAt = new Date().toISOString();
+    item.completedAt ||= item.updatedAt;
+    if (item.orchestration) item.orchestration.reconciliationOutcome = '';
+    if (secretary.activeItemId === item.id) secretary.activeItemId = '';
+  }
   return true;
 }
 
@@ -7490,6 +7512,7 @@ async function coordinateOnce(): Promise<void> {
   }
   if (process.env.DAOYAN_SECRETARY_NO_DISPATCH === '1') return;
   if (await driveFormalVersion()) await saveState();
+  if (process.env.DAOYAN_SECRETARY_NO_LAUNCH === '1') return;
   const formalVersion = await readFormalVersion(root);
   if (formalVersionBlocksDispatch(formalVersion)) return;
   if (await adoptExistingRun()) {

@@ -289,10 +289,33 @@ describe('post-gate development handoff', () => {
     prior.status = 'delivered';
     prior.orchestration!.formalStageConsumedAt = '2026-10-02T00:01:30.000Z';
     const duplicate = ensureVersionStageItem(state, version, '2026-10-02T00:02:00.000Z')!;
+    const staleHandoff = {
+      ...duplicate,
+      id: 'adopted-old-development-gate',
+      idea: `[formal-development-gate-handoff-reconciliation] ${version.id}`,
+      status: 'retry-wait' as const,
+      runDirectory: 'preserved-recovery-point',
+      processPid: 0,
+      processIdentity: '',
+      retryAt: '2026-10-02T00:03:00.000Z',
+      orchestration: {
+        ...duplicate.orchestration!,
+        formalVersionId: undefined,
+        formalStage: undefined,
+        formalTaskId: undefined,
+        processOccupied: false,
+      },
+    };
+    state.items.push(staleHandoff);
+    state.activeItemId = staleHandoff.id;
     expect(retireDeviationStageTaskRetry(state, version, 'da-a-flow', 'DV01')).toBe(true);
     expect(prior.status).toBe('delivered');
     expect(prior.summary).toContain('DV01');
     expect(duplicate.status).toBe('superseded');
+    expect(staleHandoff.status).toBe('superseded');
+    expect(staleHandoff.retryAt).toBe('');
+    expect(staleHandoff.runDirectory).toBe('preserved-recovery-point');
+    expect(state.activeItemId).toBe('');
   });
 });
 
