@@ -44,6 +44,7 @@ import {
   parseDesignAcceptanceResult,
   assertDesignAcceptanceEvidence,
   parseDevelopmentResult,
+  assertPostGateDevelopmentHandoff,
   isTaskScopeCommand,
   latestReusableFeatureGate,
   parseQaResult,
@@ -96,6 +97,82 @@ import {
   returnBlockedDevelopmentToDesignReview,
 } from '../scripts/version-lifecycle';
 import { parseStageTaskManifest } from '../scripts/version-stage-tasks';
+
+describe('post-gate development handoff', () => {
+  const log = '.daoyan-agent/runs/development-11/full-verify-1.log';
+  const completed = {
+    status: 'completed',
+    completed: true,
+    versionValidation: {
+      status: 'passed',
+      completeGate: {
+        status: 'passed',
+        command: 'npm run verify:full',
+        exitCode: 0,
+        evidence: [log],
+      },
+      blockers: [{ id: 'full-gate', status: 'resolved' }],
+    },
+  };
+
+  it('holds a stage whose PM manifest still says blocked after the gate passed', () => {
+    expect(() =>
+      assertPostGateDevelopmentHandoff(
+        { ...completed, status: 'blocked', completed: false },
+        `完整门禁来源：${log}`,
+        log,
+      ),
+    ).toThrow('Version PM 交接仍未对齐');
+  });
+
+  it('requires the roadmap handoff to cite the actual gate and remove stale blockers', () => {
+    expect(() => assertPostGateDevelopmentHandoff(completed, '开发节点不判通过', log)).toThrow();
+    expect(() =>
+      assertPostGateDevelopmentHandoff(completed, `完整门禁来源：${log}`, log),
+    ).not.toThrow();
+  });
+
+  it('routes a rejected handoff to a narrow Version PM correction', () => {
+    const state = createSecretaryState('2026-10-02T00:00:00.000Z');
+    const version = createFormalVersion({
+      id: 'handoff-retry',
+      title: '交接复核',
+      direction: '已批准开发',
+      documentRoot: 'docs/versions/handoff-retry',
+      currentStage: 'development',
+      workflowRevision: 2,
+      now: '2026-10-02T00:00:00.000Z',
+    });
+    version.stageTasks = parseStageTaskManifest(
+      {
+        tasks: [
+          {
+            id: 'feature',
+            title: '已交付',
+            objective: '已有证据',
+            deliverables: ['结果'],
+            acceptance: ['证据'],
+            dependsOn: [],
+            readPaths: ['src/core/world.ts'],
+            writePaths: ['src/core/world.ts'],
+          },
+        ],
+      },
+      'development',
+      1,
+      '2026-10-02T00:00:00.000Z',
+    );
+    version.stageTasks[0].status = 'accepted';
+    const prior = ensureVersionStageItem(state, version, '2026-10-02T00:01:00.000Z')!;
+    prior.status = 'delivered';
+    prior.summary =
+      '阶段交付未能写入正式版本，将自动安排修复：开发阶段门禁已通过，但 Version PM 交接仍未对齐最终证据';
+    prior.orchestration!.formalStageConsumedAt = '2026-10-02T00:02:00.000Z';
+    const retry = ensureVersionStageItem(state, version, '2026-10-02T00:03:00.000Z');
+    expect(retry?.idea).toContain('[formal-development-gate-reconciliation]');
+    expect(retry?.idea).not.toContain('开发节点的最终完整门禁由此收束运行');
+  });
+});
 
 describe('secretary worker process launch', () => {
   it('requeues only a clean, abandoned pre-checkpoint formal task', () => {

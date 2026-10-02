@@ -250,13 +250,12 @@ export interface TaskReuseEvidence {
 }
 
 const POST_FEATURE_GATE_REPORT =
-  /^(?:(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/;
+  /^(?:(?:development\.md|roadmap-handoff\.md)|(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/;
 
 /**
  * Formal-version reports written after the Feature gate are not implementation
- * inputs. The development manifest is written before that gate and is consumed
- * as Task evidence, so it remains bound to the validated tree together with
- * scope, planning and task-breakdown inputs.
+ * inputs. The development manifest remains bound to the tree, except its
+ * post-gate validation fields which the shared fingerprinter removes.
  */
 export function isValidationTreePath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
@@ -750,6 +749,44 @@ function buildFormalStagePlan(direction: string, stage: string): TaskPlan | null
     stage === 'development'
       ? /将公开结论写入\s+([^\s，。]+\/development\.md)/u.exec(direction)?.[1]
       : undefined;
+  if (
+    stage === 'development' &&
+    finalizing &&
+    direction.includes('[formal-development-gate-reconciliation]') &&
+    developmentManifest &&
+    developmentReport
+  ) {
+    const handoff = developmentManifest.replace(/development\.json$/, 'roadmap-handoff.md');
+    return {
+      version: 1,
+      title: '对齐开发完整门禁与版本交接',
+      summary: 'Version PM 只核对已通过的开发完整门禁，并修正过时的门禁状态和交接来源。',
+      producerDecisionRequired: false,
+      producerQuestion: '',
+      riskSignals: ['正式版本开发门禁后的文档对账'],
+      acceptanceCriteria: [
+        '完整门禁收据、日志、修订、树与配置来源可核验',
+        '开发汇总与路线图交接如实记录通过及仍待策划、QA、候选验收的范围',
+      ],
+      nonGoals: ['不重跑开发任务、完整门禁或独立审查；不修改产品实现、策划规则或正式运行状态。'],
+      tasks: [
+        {
+          id: 'formal-development-gate-reconciliation',
+          title: '核对完整门禁并修正开发交接',
+          objective: `读取上轮正式开发运行的 full-gate-evidence.json 和原日志，仅将 ${developmentManifest}、${developmentReport}、${handoff} 中过时的门禁未运行或阻断状态改为真实来源。保留历史失败与未完成产品验收；证据不匹配则报告阻断，不编造通过。只运行直接文档检查。`,
+          type: 'documentation',
+          tier: 'standard',
+          reasoning: 'Version PM 对自己原先的开发收束文档做门禁后的定向对账。',
+          dependsOn: [],
+          paths: [developmentManifest, developmentReport, handoff],
+          deliverables: ['准确的开发门禁状态与路线图交接'],
+          verification: ['检查真实门禁来源和三份文档的交叉引用'],
+          validationProfile: 'light',
+        },
+      ],
+      commitMessage: 'docs: reconcile development full-gate evidence',
+    };
+  }
   const developmentTasks: PlannedTask[] | undefined = items?.map((item) => ({
     id: item.id,
     title: item.title,

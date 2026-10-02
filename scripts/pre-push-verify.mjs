@@ -16,11 +16,20 @@ export function fingerprintPaths(paths, workspaceRoot = root) {
   for (const path of [...new Set(paths)].sort()) {
     hash.update(path);
     hash.update('\0');
-    hash.update(
-      existsSync(resolve(workspaceRoot, path))
-        ? readFileSync(resolve(workspaceRoot, path))
-        : '[deleted]',
-    );
+    const file = resolve(workspaceRoot, path);
+    if (!existsSync(file)) {
+      hash.update('[deleted]');
+    } else if (/^docs\/versions\/[^/]+\/development\.json$/.test(path.replaceAll('\\', '/'))) {
+      // The post-gate Version PM may reconcile only these machine evidence
+      // fields. Task commands and every other development input stay hashed.
+      const manifest = JSON.parse(readFileSync(file, 'utf8'));
+      delete manifest.status;
+      delete manifest.completed;
+      delete manifest.versionValidation;
+      hash.update(JSON.stringify(manifest));
+    } else {
+      hash.update(readFileSync(file));
+    }
     hash.update('\0');
   }
   return hash.digest('hex');
@@ -31,7 +40,7 @@ export function isValidationTreePath(path) {
   const match = /^docs\/versions\/[^/]+\/(.+)$/.exec(normalized);
   return (
     !match ||
-    !/^(?:(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/.test(
+    !/^(?:(?:development\.md|roadmap-handoff\.md)|(?:design-acceptance|qa|bugfix|bugfix-reverification|candidate|producer-acceptance|archived)(?:-tasks)?\.(?:json|md)|tasks\/(?:design-acceptance|qa|bugfix|candidate|archived)-[^/]+\.json)$/.test(
       match[1],
     )
   );

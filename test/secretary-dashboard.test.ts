@@ -136,10 +136,19 @@ afterEach(async () => {
   // the fixture (and its node_modules junction) open while cleanup removes it.
   if (child && child.exitCode === null) await stopSecretaryDashboard(child);
   child = null;
-  if (nestedWorker && nestedWorker.exitCode === null) {
-    await new Promise<void>((resolveExit) => {
-      nestedWorker!.once('exit', () => resolveExit());
-      nestedWorker!.kill('SIGTERM');
+  if (nestedWorker && nestedWorker.exitCode === null && nestedWorker.signalCode === null) {
+    const worker = nestedWorker;
+    await new Promise<void>((resolveExit, rejectExit) => {
+      const timeout = setTimeout(
+        () => rejectExit(new Error('测试子 Agent 未在 5 秒内退出')),
+        5_000,
+      );
+      const finish = () => {
+        clearTimeout(timeout);
+        resolveExit();
+      };
+      worker.once('exit', finish);
+      if (!worker.kill('SIGTERM')) finish();
     });
   }
   nestedWorker = null;
@@ -152,7 +161,7 @@ afterEach(async () => {
   if (temporary)
     await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   temporary = '';
-});
+}, 20_000);
 
 describe('secretary dashboard server', () => {
   it('routes rejected candidate feedback into repair instead of the next-version backlog', async () => {

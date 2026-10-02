@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { mkdtemp, rm, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -492,6 +492,20 @@ ${JSON.stringify({
     expect(validationStagesForPlan(developmentPlan)).toEqual(['independent-review']);
   });
 
+  it('reconciles a passed development gate without replaying independent review or tasks', () => {
+    const plan = buildLocalPlan(
+      '[formal-stage:development]\n[formal-stage-finalizing]\n[formal-development-gate-reconciliation]\n同时写入 docs/versions/release/development.json。将公开结论写入 docs/versions/release/development.md。',
+    );
+    expect(plan.tasks).toHaveLength(1);
+    expect(plan.tasks[0].type).toBe('documentation');
+    expect(plan.tasks[0].paths).toEqual([
+      'docs/versions/release/development.json',
+      'docs/versions/release/development.md',
+      'docs/versions/release/roadmap-handoff.md',
+    ]);
+    expect(validationStagesForPlan(plan)).toEqual([]);
+  });
+
   it('selects the failed npm child command for an in-place targeted recheck', () => {
     const output = `> daoyan@0.2.0 verify\n> npm run typecheck && npm run format:check\n\n> daoyan@0.2.0 typecheck\n> tsc --noEmit\n\n> daoyan@0.2.0 format:check\n> prettier --check .\n`;
     expect(failedNpmCommandFromOutput(output, ['npm', 'run', 'verify'])).toEqual([
@@ -636,14 +650,15 @@ ${JSON.stringify({
     expect(selectReusableTaskIds(tasks, evidence)).toEqual([]);
   });
 
-  it('excludes only formal-version stage artifacts from the validation tree', () => {
+  it('excludes post-gate report prose while retaining development task evidence', () => {
     for (const [path, expected] of [
       ['docs/versions/release/charter.md', true],
       ['docs/versions/release/version-planning.md', true],
       ['docs/versions/release/module-design.md', true],
       ['docs/versions/release/task-breakdown.json', true],
       ['docs/versions/release/development.json', true],
-      ['docs/versions/release/development.md', true],
+      ['docs/versions/release/development.md', false],
+      ['docs/versions/release/roadmap-handoff.md', false],
       ['docs/versions/release/qa.json', false],
       ['docs/versions/release/bugfix-reverification.md', false],
       ['docs/status.md', true],
@@ -652,6 +667,33 @@ ${JSON.stringify({
     ] as const) {
       expect(isValidationTreePath(path)).toBe(expected);
       expect(isPrePushValidationTreePath(path)).toBe(expected);
+    }
+  });
+
+  it('keeps the development gate stable across validation metadata reconciliation', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'daoyan-development-gate-metadata-'));
+    const path = 'docs/versions/release/development.json';
+    const file = resolve(directory, path);
+    try {
+      await mkdir(resolve(directory, 'docs/versions/release'), { recursive: true });
+      const workItems = [{ id: 'task', commands: [{ command: 'npm run typecheck', exitCode: 0 }] }];
+      await writeFile(file, JSON.stringify({ status: 'blocked', completed: false, workItems }));
+      const before = fingerprintPaths([path], directory);
+      await writeFile(
+        file,
+        JSON.stringify({
+          status: 'completed',
+          completed: true,
+          versionValidation: { status: 'passed' },
+          workItems,
+        }),
+      );
+      expect(fingerprintPaths([path], directory)).toBe(before);
+      workItems[0].commands[0].exitCode = 1;
+      await writeFile(file, JSON.stringify({ status: 'completed', completed: true, workItems }));
+      expect(fingerprintPaths([path], directory)).not.toBe(before);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 
