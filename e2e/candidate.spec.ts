@@ -78,6 +78,11 @@ test('candidate-first-batch-same-book', async ({ page }) => {
     .not.toBe(before);
   await page.locator('.tabs .tab').nth(1).click();
   await expect(page.getByLabel('有限世界收据')).toHaveCount(0);
+  await slot.selectOption('J1执行');
+  await page.getByRole('button', { name: '有源执行' }).click();
+  await expect(page.getByLabel('有限世界收据')).toContainText('原读收据 14');
+  await expect(page.getByLabel('有限世界收据')).toContainText('作用已提交；全链未证成');
+  await expect(page.getByLabel('有限世界收据')).toContainText('旧报价不继承');
   await page.setViewportSize({ width: 390, height: 780 });
   await page.locator('.tabs .tab').first().click();
   await expect(page.getByRole('button', { name: '加入B4修壳' })).toBeVisible();

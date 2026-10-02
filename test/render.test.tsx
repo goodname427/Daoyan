@@ -64,18 +64,51 @@ describe('app rendering smoke test', () => {
     expect(target.textContent).toBe('无目标');
   });
 
-  it('edits one finite spell, binds it, observes real receipts, then invalidates the old quote', async () => {
+  it('round trips J1, D1 and B4 in one book, then edits J1 and discards the old quote', async () => {
     const { App } = await import('../src/app/App');
     const view = await renderReady(<App />);
-    fireEvent.click(view.getByRole('button', { name: '加入J1执行' }));
+    for (const name of ['加入J1执行', '加入D1执行', '加入B4修壳'])
+      fireEvent.click(view.getByRole('button', { name }));
+    fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
     const identity = view.getByLabelText('首批程序身份');
     const originalHash = identity.textContent?.match(/[a-f0-9]{64}/)?.[0];
     expect(originalHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(view.container.querySelector('.cost-card')?.textContent).toMatch(/神识|法力|耗时/);
     fireEvent.click(view.getByRole('button', { name: /演武场/ }));
-    fireEvent.change(view.getByRole('combobox', { name: '1' }), { target: { value: 'J1执行' } });
+    const slot = view.getByRole('combobox', { name: '1' });
+    fireEvent.change(slot, { target: { value: 'J1执行' } });
     fireEvent.click(view.getByRole('button', { name: '有源执行' }));
     expect(view.getByLabelText('有限世界收据').textContent).toContain('原读收据 15');
     expect(view.getByLabelText('有限世界收据').textContent).toContain('本人已付 32 M');
+    fireEvent.click(view.getByRole('button', { name: '无源反例' }));
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('作用未提交');
+    fireEvent.change(slot, { target: { value: 'D1执行' } });
+    expect(view.queryByLabelText('有限世界收据')).toBeNull();
+    fireEvent.click(view.getByRole('button', { name: '有源执行' }));
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('原读收据 14');
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('本人已付 26 M');
+    fireEvent.change(slot, { target: { value: 'B4修壳' } });
+    fireEvent.click(view.getByRole('button', { name: 'B1首撞后修壳' }));
+    const b4Receipt = view.getByLabelText('B1与B4有限世界收据');
+    expect(b4Receipt.textContent).toContain('原读收据 19');
+    expect(b4Receipt.textContent).toContain('当前普通壳 3、废料 1');
+    expect(b4Receipt.textContent).not.toMatch(/Corpse-k0-01|grantId|treasury/);
+    fireEvent.click(view.getByRole('button', { name: '修壳后获准空读' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain('空结果收据已提交');
+    fireEvent.click(view.getByRole('button', { name: 'POST 失证' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain('全链未证成');
+    fireEvent.click(view.getByRole('button', { name: '修壳后再撞（未获准读容量）' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain(
+      '报价已撤销、容量 capacityUnknown',
+    );
+    fireEvent.click(view.getByRole('button', { name: '再撞容量足额' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain(
+      '报价已撤销、容量 sufficient、本人容量新读 2 笔 / 已付 4 M',
+    );
+    fireEvent.click(view.getByRole('button', { name: '再撞 FIFO 实满' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain(
+      '报价已撤销、容量 queueFull、本人容量新读 2 笔 / 已付 4 M',
+    );
     fireEvent.click(view.getByRole('button', { name: /推演台/ }));
     fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
     const editor = view.container.querySelector('.code-input') as HTMLTextAreaElement;
@@ -86,7 +119,15 @@ describe('app rendering smoke test', () => {
       expect(view.getByLabelText('首批程序身份').textContent).not.toContain(originalHash),
     );
     fireEvent.click(view.getByRole('button', { name: /演武场/ }));
-    expect(view.queryByLabelText('有限世界收据')).toBeNull();
+    expect(view.queryByLabelText('B1与B4有限世界收据')).toBeNull();
+    fireEvent.change(view.getByRole('combobox', { name: '1' }), {
+      target: { value: 'J1执行' },
+    });
+    fireEvent.click(view.getByRole('button', { name: '有源执行' }));
+    const revisedReceipt = view.getByLabelText('有限世界收据').textContent;
+    expect(revisedReceipt).toContain('作用已提交；全链未证成');
+    expect(revisedReceipt).toContain('原读收据 14');
+    expect(revisedReceipt).toContain('旧报价不继承');
   });
 
   it('updates the finite entry budget and hash when a same-book helper is edited', async () => {
