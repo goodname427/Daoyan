@@ -498,6 +498,16 @@ export function formalTaskEvidencePath(direction: string): string | null {
   );
 }
 
+/** Ordinary checkpoint resumes must pass explicit producer guidance to the worker too. */
+export function workerGuidanceForRun(
+  resumeDirectory: string | null,
+  producerGuidance: string,
+  reviewGuidance?: string,
+): string {
+  if (reviewGuidance !== undefined) return reviewGuidance;
+  return resumeDirectory ? producerGuidance.trim() : '';
+}
+
 export function canReuseFullGateEvidence(
   value: {
     schemaVersion?: number;

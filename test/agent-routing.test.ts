@@ -43,6 +43,7 @@ import {
   isSafeWorkflowPackageAdvance,
   canReopenStalledReview,
   formalTaskEvidencePath,
+  workerGuidanceForRun,
   preserveUnaffectedTaskRuns,
   taskInputPaths,
   taskOutputPaths,
@@ -955,6 +956,17 @@ ${JSON.stringify({
       ),
     ).toBe('docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json');
     expect(formalTaskEvidencePath('普通 Feature 任务')).toBeNull();
+  });
+
+  it('passes checkpoint resume guidance to its worker without changing review routing', () => {
+    expect(workerGuidanceForRun('.daoyan-agent/runs/existing', '  使用获准的 Edge  ')).toBe(
+      '使用获准的 Edge',
+    );
+    expect(workerGuidanceForRun(null, '使用获准的 Edge')).toBe('');
+    expect(workerGuidanceForRun('.daoyan-agent/runs/existing', '普通指导', '')).toBe('');
+    expect(workerGuidanceForRun('.daoyan-agent/runs/existing', '普通指导', '审查指导')).toBe(
+      '审查指导',
+    );
   });
 
   it('allows only the audited package gate-script change to preserve game Task work', () => {

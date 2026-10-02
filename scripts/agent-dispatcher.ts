@@ -26,6 +26,7 @@ import {
   failedNpmCommandFromOutput,
   highestTier,
   formalTaskPredecessorIds,
+  workerGuidanceForRun,
   formalTaskEvidencePath,
   formalStageWritePaths,
   taskWritePaths,
@@ -1223,7 +1224,7 @@ async function runTask(
         previousSession?.sessionId ?? null,
       );
       const result = await runProcess('codex', workerArgs, {
-        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext, activeReviewResumption ? reviewRecoveryGuidanceForTask(task.id, activeReviewResumption.rerunTaskIds, options.producerGuidance, activeReviewResumption.guidance) : '')}`,
+        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext, workerGuidanceForRun(options.resumeDirectory, options.producerGuidance, activeReviewResumption ? reviewRecoveryGuidanceForTask(task.id, activeReviewResumption.rerunTaskIds, options.producerGuidance, activeReviewResumption.guidance) : undefined))}`,
         logFile,
         stream: true,
         heartbeatLabel: `执行 ${task.id} / ${route.model}`,
@@ -2859,7 +2860,7 @@ try {
       );
     }
     resumePreflightComplete = true;
-    if (options.producerGuidance.trim() && reviewResumption) {
+    if (options.producerGuidance.trim()) {
       const recordedAt = new Date().toISOString();
       await writeFile(
         resolve(runDirectory, `producer-guidance-${recordedAt.replaceAll(':', '-')}.json`),
@@ -2868,11 +2869,11 @@ try {
             version: 1,
             recordedAt,
             guidance: options.producerGuidance.trim(),
-            previousGuidance: reviewResumption.guidance,
-            taskId: reviewResumption.taskId,
-            afterRound: reviewResumption.afterRound,
+            previousGuidance: reviewResumption?.guidance ?? '',
+            taskId: reviewResumption?.taskId ?? '',
+            afterRound: reviewResumption?.afterRound ?? null,
             baseline: activeBaseline,
-            reviewHistoryPreserved: true,
+            reviewHistoryPreserved: Boolean(reviewResumption),
           },
           null,
           2,
