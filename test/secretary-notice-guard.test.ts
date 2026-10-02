@@ -622,8 +622,8 @@ describe('secretary worker process launch', () => {
 
 describe('secretary retry scheduling', () => {
   it('uses a short retry when a clock-only provider hint is already stale', () => {
-    const now = new Date('2026-09-20T09:00:00+08:00').getTime();
-    expect(retryTimeFromOutput(['try again at 4:31 AM'], now, 5)).toBe(
+    const now = new Date(2026, 8, 20, 12, 0).getTime();
+    expect(retryTimeFromOutput(['try again at 11:31 AM'], now, 5)).toBe(
       new Date(now + 5 * 60_000).toISOString(),
     );
   });

@@ -39,7 +39,9 @@ import {
   preferredWindowsExecutable,
   preserveUnaffectedTaskRuns,
   resumeProducerGuidance,
+  reviewRecoveryInstruction,
   reviewRecoveryGuidanceForTask,
+  reviewUsedSupersededGuidance,
   resolveProducerDirection,
   reviewRoutesForPlan,
   routeForTask,
@@ -968,6 +970,39 @@ async function lastReviewRound(directory: string): Promise<number> {
   );
 }
 
+async function supersededReviewRound(
+  directory: string,
+  recovery: ReviewResumptionAudit,
+  currentGuidance: string,
+): Promise<number | null> {
+  const round = await lastReviewRound(directory);
+  if (round <= recovery.afterRound) return null;
+  const logNames = (await readdir(directory)).filter((name) =>
+    new RegExp(`^review-${round}-.*-attempt-\\d+\\.log$`).test(name),
+  );
+  if (logNames.length !== 1) return null;
+  const log = await readFile(resolve(directory, logNames[0]), 'utf8');
+  if (!reviewUsedSupersededGuidance(log, currentGuidance, recovery.guidance)) return null;
+  const auditPath = resolve(directory, `review-guidance-correction-${round}.json`);
+  const audit = {
+    version: 1,
+    round,
+    logFile: logNames[0],
+    logHash: createHash('sha256').update(log).digest('hex'),
+    latestGuidanceHash: createHash('sha256').update(currentGuidance.trim()).digest('hex'),
+    reason: 'independent reviewer received superseded producer guidance',
+  };
+  if (existsSync(auditPath)) {
+    const previous = JSON.parse(await readFile(auditPath, 'utf8')) as typeof audit;
+    if (JSON.stringify(previous) !== JSON.stringify(audit)) {
+      throw new Error('审查指导纠偏记录与原审查日志或本轮决定不符');
+    }
+  } else {
+    await writeFile(auditPath, `${JSON.stringify(audit, null, 2)}\n`, { flag: 'wx' });
+  }
+  return round;
+}
+
 async function readReviewResumption(directory: string): Promise<ReviewResumptionAudit | null> {
   const path = resolve(directory, 'review-resumption.json');
   if (!existsSync(path)) return null;
@@ -1524,7 +1559,11 @@ async function askReviewerAttempt(
   const logFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.log`);
   const resumptionGuidance =
     activeReviewResumption && round > activeReviewResumption.afterRound
-      ? `\n本轮是停滞审查的一次性定向恢复。原主要阻断签名：${activeReviewResumption.priorSignature}。制作人指导：${activeReviewResumption.guidance}。仅核查该任务和下游的新增产物是否关闭原缺口，以及直接受影响的契约；旧轮已通过且输入未变的实现与测试不得重审。若原缺口仍在，明确退回，调度器会立即停止自动循环。\n`
+      ? reviewRecoveryInstruction(
+          activeReviewResumption.priorSignature,
+          options.producerGuidance,
+          activeReviewResumption.guidance,
+        )
       : '';
   const evidenceOnly = validationProfileForPlan(plan) === 'version';
   const prompt = `你是道衍项目的独立审查 Agent。不要修改文件。
@@ -2735,6 +2774,9 @@ try {
     const reviewRestartPending =
       reviewResumption !== null &&
       Date.parse(checkpoint.updatedAt) <= Date.parse(reviewResumption.createdAt);
+    const outdatedReviewRound = reviewResumption
+      ? await supersededReviewRound(runDirectory, reviewResumption, options.producerGuidance)
+      : null;
     const resetCompletedWork =
       (fingerprintMismatch &&
         !completedCommitCanResume &&
@@ -2768,19 +2810,26 @@ try {
       );
     }
     activeReview =
-      resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance || reviewRestartPending
+      resetCompletedWork ||
+      unrelatedCommittedAdvance ||
+      auditedScopeAdvance ||
+      reviewRestartPending ||
+      outdatedReviewRound !== null
         ? null
         : checkpoint.review;
     // A disjoint control-plane commit invalidates a review pass, but it cannot
     // close an existing product-code blocker recorded in this run's reviews.
     activeReviewStall = reviewResumption
-      ? await reviewStallFromRunHistory(runDirectory, reviewResumption.afterRound)
+      ? await reviewStallFromRunHistory(
+          runDirectory,
+          outdatedReviewRound ?? reviewResumption.afterRound,
+        )
       : ((await reviewStallFromRunHistory(runDirectory)) ??
         (unrelatedCommittedAdvance || auditedScopeAdvance ? undefined : checkpoint.reviewStall));
     activeValidationProgress =
       resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance
         ? { fastGate: null, independentReview: null }
-        : reviewRestartPending
+        : reviewRestartPending || outdatedReviewRound !== null
           ? { fastGate: checkpoint.validationProgress?.fastGate ?? null, independentReview: null }
           : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
     activePlannerTokens = checkpoint.plannerTokens;
