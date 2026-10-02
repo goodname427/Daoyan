@@ -2,7 +2,7 @@
 
 版本：`pilot-agent-intent-2026-09-24`；范围修订 **13**；首批 **A**；收束责任人：Version PM。
 
-**两项正式工作项已交付，开发节点仍待最终集成树完整门禁。** 本报告仅整合下表已接纳 Feature 的实际产物、直接检查、快速门禁和独立审查，不重新实现或重跑已通过命令。当前收束基线为 `3d9d0bf20ed509069178c9a3265076b73cdfbd30`。本次最新执行限制禁止运行统一门禁和 Git 写操作，故没有新增完整门禁成功事实、提交、推送、tag 或节点推进。节点不能凭快速门禁或这份报告判定通过。
+**两项正式工作项已交付；玩家检查接纳缺口已修复，开发节点仍待最终集成完整门禁。** 本报告仅整合下表已接纳 Feature 的实际产物、直接检查、快速门禁和独立审查，不重新实现或重跑已通过命令。当前收束基线为 `3d9d0bf20ed509069178c9a3265076b73cdfbd30`。本次最新执行限制禁止运行统一门禁和 Git 写操作，故没有新增完整门禁成功事实、提交、推送、tag 或节点推进。节点不能凭快速门禁或这份报告判定通过。
 
 ## 范围、来源与依赖
 
@@ -15,7 +15,7 @@
 | `dev-world-a3`  | 无             | `0aa4d113a4e72074dd9426b0c50185658d4bc282` | [精确任务证据](./tasks/development-dev-world-a3.json)、[核心说明](./core-implementation.md)、[Feature 报告](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json)    | completed；类型检查和定向断言通过；快速门禁通过；独立审查 pass                       |
 | `dev-player-a3` | `dev-world-a3` | `3d9d0bf20ed509069178c9a3265076b73cdfbd30` | [精确任务证据](./tasks/development-dev-player-a3.json)、[玩家说明](./player-implementation.md)、[Feature 报告](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json) | completed；复用匹配类型检查和 94 项断言；实玩补证已审查；快速门禁通过；独立审查 pass |
 
-本次只读核对确认：两个提交均是当前 HEAD 的祖先，两份任务 JSON 与相应提交内容一致；玩家证据内五份测试文件 SHA-256 仍匹配。任务文件中旧执行会话的 `committed=false`、Git 权限阻断及历史 blocked 记录保留；后续正式提交事实来自上表 Feature 报告和 Git，不篡改旧记录。旧 `dev-world-a2` 等被替代任务不是本轮实际工作项，不冒记 skipped 或 completed。
+本次只读核对确认：两个提交均是当前 HEAD 的祖先，原核对时两份任务 JSON 与相应提交内容一致；本轮玩家任务 JSON 按审核要求归并已有检查，原提交不变，归并前 SHA-256 和原命令保留在 `evidenceReconciliation`；玩家证据内五份测试文件 SHA-256 仍匹配。任务文件中旧执行会话的 `committed=false`、Git 权限阻断及历史 blocked 记录保留；后续正式提交事实来自上表 Feature 报告和 Git，不篡改旧记录。旧 `dev-world-a2` 等被替代任务不是本轮实际工作项，不冒记 skipped 或 completed。
 
 ## 实际结果与公开证据
 
@@ -35,9 +35,13 @@
 
 ## 命令、审查与门禁
 
-逐正式工作项的直接通过命令和真实失败尝试见 [development.json](./development.json)。类型检查直接记录 `npm run typecheck` 退出 0；核心仓库外 Node loader 执行 14 个相关测试体，玩家进程内转换入口运行四文件 94 项断言。标准 Vitest 的 `spawn EPERM` 退出 1 仍保留，不能改写为标准命令通过；临时入口不是产品依赖。E2E、build、统一门禁及其历史失败只在 Feature/Version 作用域登记，旧 91 项与旧 Chromium/trace 不作为最终树成功证据。
+逐正式工作项的直接通过命令和真实失败尝试见 [development.json](./development.json)。`workItems[].commands` 原样保留任务顶层数组，结果、退出码和顺序不改；来源指针单列 `commandSource`。玩家仍匹配的类型检查、World/VM 冒烟、94 项定向断言及测试 lint 已从 `previousPassedCommands` 原样归并到任务及汇总顶层，历史数组和 `reusedChecks` 保留原证据，来源索引见 `evidenceReconciliation`；E2E 发现和失败仍仅在 Feature 作用域。核心顶层及玩家复用来源均记录 `npm run typecheck` 退出 0；核心仓库外 Node loader 执行 14 个相关测试体，玩家进程内转换入口运行四文件 94 项断言。标准 Vitest 的 `spawn EPERM` 退出 1 仍保留，不能改写为标准命令通过；临时入口不是产品依赖。E2E、build、统一门禁及其历史失败只在 Feature/Version 作用域登记，旧 91 项与旧 Chromium/trace 不作为最终树成功证据。
 
 Feature 快速门禁和审查的状态、指纹、已完成命令来自各自[核心恢复证据](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/recovery.json)与[玩家恢复证据](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/recovery.json)。两者完成 typecheck、lint、format:check、docs:check、test，待执行列表为空，独立审查均 pass。快速检查是各 Feature 当时树的事实，不等于最终集成完整门禁；本次没有重跑。
+
+**本轮独立审查修复。** 上轮仅恢复玩家三条交付检查并登记 blocked，仍未满足当前接纳要求。本轮按审查要求修订来源任务：保留原三条，在末尾原样归并 `previousPassedCommands[0/1/2/4]` 四条有效直接检查，随后同步汇总的完整七条数组。归并前来源 SHA-256、原命令、原策略及每条复用索引均保留；原失败与实玩服务器退出 1 不变。
+
+产品树对已测 `85c8cf4` 基线无差异，五份测试指纹仍匹配，既有类型检查和 94 项断言可复用。现行 `parseDevelopmentResult` 与 `parseStageTaskResult` 的类型检查要求、命令逐字同序相等及来源路径要求由同一直接校验验证；不修改接纳器，不把复用记录称为本轮重新执行。该修复只关闭检查归并 finding，不替代最终完整门禁或后续独立验收。
 
 **当前阻断：最终开发集成树尚无本节点可用的 `npm run verify:full` 通过来源。** 两份所供 Feature 报告只有 Task Profile 的 fast-gate/independent-review，各自目录也没有 full-gate-evidence.json。本次遵守最后的统一门禁禁令，Version scope 记 not-run，不伪造退出码。授权的收束执行方须在最终报告、交接和日志落盘后的集成树完成一次完整门禁并补齐树/配置/命令/退出码来源；如果失败，保留失败并技术恢复。QA 只消费匹配的最终证据，再补交叉场景，不能重复该完整门禁。本报告不会手工登记或推进 notice guard 状态。
 
@@ -49,4 +53,4 @@ Feature 快速门禁和审查的状态、指纹、已完成命令来自各自[�
 
 候选节点须追加真实 candidate.json，并在候选体验前同步 docs/roadmap.md 的本版交接链接；当前尚无该来源，不建立占位成功文件。后续法球付费事件、更多预设、敌方修士只作路线图候选，不成为本版实现或自动下一版本。下一轮策划必须先读交接和本版后续真实验收结论。
 
-本次收束直接检查：`node scripts/check-docs.mjs` 退出 0（165 个 Markdown 文件），逐项来源/依赖/命令作用域/六份来源指纹及交接合同校验退出 0，`git diff --check` 退出 0。这些是报告检查，不补造最终代码门禁。
+本轮只运行汇总来源、接纳合同和文档格式/链接/差异的直接检查；实际命令、退出码及接纳校验结果登记在 development.json 的 finalization；旧阻断校验转入 priorContractValidation，保留历史。未重跑游戏测试、实玩或统一门禁。

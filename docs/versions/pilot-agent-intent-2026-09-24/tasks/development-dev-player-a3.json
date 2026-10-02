@@ -99,6 +99,26 @@
       "command": "git diff --check",
       "exitCode": 0,
       "result": "通过，无输出。"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "result": "当前工作树 TypeScript 检查通过。"
+    },
+    {
+      "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
+      "exitCode": 0,
+      "result": "当前提交树真实 World/VM 冒烟通过；J1、D1、B4 分别为 15/32 M、14/26 M、19/44 M；两层同书辅助术改写后仍能执行。"
+    },
+    {
+      "command": "node (Join-Path $env:TEMP 'daoyan-a3-inprocess-test.mjs') test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
+      "exitCode": 0,
+      "result": "当前工作树 4 个测试文件、94 项断言通过，含扩充后的同书 DOM 往返。临时入口位于仓库外，使用 Vitest startVitest 和进程内 TypeScript 转换；不是标准 npm test 门禁。"
+    },
+    {
+      "command": "npx eslint test/render.test.tsx e2e/candidate.spec.ts --max-warnings 0",
+      "exitCode": 0,
+      "result": "本轮改动的界面与浏览器测试定向 ESLint 通过。"
     }
   ],
   "priorValidation": [
@@ -487,7 +507,7 @@
       "result": "本轮文档与证据改动无空白错误。"
     }
   ],
-  "previousPassedCommandsPolicy": "前轮实际执行的通过命令原样保留。类型检查、World/VM冒烟、94项定向Vitest及测试lint输入仍匹配并复用；旧文档/格式检查只属于当时文件。顶层commands仅列本轮新检查，不声称本轮重跑。 本次交付前已通过的补证检查移入adoptionPassedCommands，保留原命令和当时结果；其中status=passed断言只属于前轮文件状态。本轮commands仅列实际执行的交付检查。",
+  "previousPassedCommandsPolicy": "历史数组保留当时完整命令及结果。本轮审核修复将输入仍匹配的类型检查、真实World/VM冒烟、94项定向断言及测试lint原样归并到顶层commands；来源索引见evidenceReconciliation。它们是已有实跑证据的复用，不是本轮重跑。旧格式/文档检查只属于当时文件，E2E发现仅由Feature作用域消费。",
   "priorBrowserAttempt": {
     "sourceBuildCommand": "node (Join-Path $env:TEMP 'daoyan-a3-inprocess-build.mjs')",
     "sourceBuildExitCode": 0,
@@ -948,5 +968,60 @@
       "exitCode": 0,
       "result": "通过。"
     }
-  ]
+  ],
+  "evidenceReconciliation": {
+    "authority": "本轮同一交付范围的独立审查修复要求：准确归并已有有效来源并同步阶段汇总。",
+    "scope": "仅归并仍有效的直接检查，不新增执行、效果、实玩或门禁结论。",
+    "originalSourceSha256": "bd2acc63c46d343d15517faf0002c455d2cf9c5d044b39e7d1e2cafb5f9f6d30",
+    "originalCommands": [
+      {
+        "command": "$ErrorActionPreference='Stop'; $path='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json'; $e=Get-Content $path -Raw|ConvertFrom-Json; $v=Get-Content .daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json -Raw|ConvertFrom-Json; $t=@($v.stageTasks|Where-Object id -eq 'dev-player-a3')[-1]; if($e.taskId -ne 'dev-player-a3' -or $e.status -ne 'completed' -or $e.completed -ne $true){throw 'Incorrect task completion record'}; $changed=@(git status --porcelain=v1 --untracked-files=all); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; $paths=@($changed|ForEach-Object {$_.Substring(3).Replace('\\','/')}); foreach($p in $paths){if(-not @($t.writePaths|Where-Object {$p -eq $_ -or $p.StartsWith($_+'/')}).Count){throw \"Outside writePaths: $p\"}}; if(@(Compare-Object ($paths|Sort-Object) ($e.delivery.changedPaths|Sort-Object)).Count){throw 'Delivery paths differ'}; $staged=@(git diff --cached --name-only); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if($staged.Count){throw 'Unexpected staged changes'}; foreach($p in $e.evidence){if(-not (Test-Path -LiteralPath $p -PathType Leaf)){throw \"Missing evidence: $p\"}}; if($e.oneTimePlayAdoption.remainingRequiredEvidence.Count){throw 'Unclosed required evidence'}; if($e.committed -or $e.pushed){throw 'Unverified Git delivery claim'}; Write-Output 'PASS dev-player-a3 completed evidence, exact four contract paths, evidence files, no staged changes or Git delivery claims'",
+        "exitCode": 0,
+        "result": "PASS dev-player-a3 completed evidence, exact four contract paths, evidence files, no staged changes or Git delivery claims"
+      },
+      {
+        "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
+        "exitCode": 0,
+        "result": "Checking formatting...\nAll matched files use Prettier code style!"
+      },
+      {
+        "command": "git diff --check",
+        "exitCode": 0,
+        "result": "通过，无输出。"
+      }
+    ],
+    "originalPreviousPassedCommandsPolicy": "前轮实际执行的通过命令原样保留。类型检查、World/VM冒烟、94项定向Vitest及测试lint输入仍匹配并复用；旧文档/格式检查只属于当时文件。顶层commands仅列本轮新检查，不声称本轮重跑。 本次交付前已通过的补证检查移入adoptionPassedCommands，保留原命令和当时结果；其中status=passed断言只属于前轮文件状态。本轮commands仅列实际执行的交付检查。",
+    "reusedEntries": [
+      {
+        "targetIndex": 3,
+        "sourceField": "previousPassedCommands",
+        "sourceIndex": 0
+      },
+      {
+        "targetIndex": 4,
+        "sourceField": "previousPassedCommands",
+        "sourceIndex": 1
+      },
+      {
+        "targetIndex": 5,
+        "sourceField": "previousPassedCommands",
+        "sourceIndex": 2
+      },
+      {
+        "targetIndex": 6,
+        "sourceField": "previousPassedCommands",
+        "sourceIndex": 4
+      }
+    ],
+    "validationBasis": {
+      "productBase": "85c8cf4f2dafe423d5d6a3230c610f6498c7bc90",
+      "productComparisonCommand": "git diff --exit-code 85c8cf4 -- src electron scripts/desktop.mjs vite.config.ts package-lock.json",
+      "productComparisonExitCode": 0,
+      "testFingerprintsSource": "resumedValidation.reuse.fingerprints",
+      "taskScriptsSource": "continuationValidation.reuse"
+    },
+    "repeatedTypecheck": false,
+    "repeatedTests": false,
+    "productCodeChanged": false
+  }
 }
