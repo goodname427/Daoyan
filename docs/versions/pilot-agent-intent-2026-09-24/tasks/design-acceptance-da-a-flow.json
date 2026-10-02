@@ -2,12 +2,12 @@
   "taskId": "da-a-flow",
   "status": "blocked",
   "completed": false,
-  "summary": "已交付来源核对及 DA01–DA08 技术阻断记录。当前控制面同步后的验证树与配置已有匹配的完整门禁收据；该收据不替代独立实玩。制作人已明确授权并在本机同意浏览器权限；主 Agent 报告 Vite ready 与 TCP 成功后，本验收者只对同一 URL 发起一次正常浏览器控制请求，工具仍在授权提示或玩家页面出现前返回请求头策略加载失败。制作人临时授权的主 Agent IAB 操作仍只作为玩家可见线索，不是本验收者的独立操作、持久截图或 QA 签字；六入口同键性仍未覆盖。独立实玩仍为0项，结论保持 blocked。",
+  "summary": "本验收者已通过原生 Electron 玩家界面独立完成 DA02 主流程、DA03 批准分支、DA04 三种第二次自然接触、DA05 返书修改与辅助术组合，并检查 DA06 普通沙盒、有限观察和旧 Battle 边界；共记录 38 项合同相关玩家操作。行为主线大体符合合同，但旧 Battle 未公开拒绝缺证且施法计数增长至 118（DV01）。插件没有文档化持久截图保存能力，界面未提供六来源选择器，DA07 的隔离旧档、390×844 窄屏和控制台核验环境也未具备，因此 DA01–DA08 总结论保持 blocked。匹配完整门禁仅作来源，不替代实玩。",
   "scopeRevision": 13,
   "firstBatch": "A",
   "developmentFingerprint": {
-    "head": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
-    "gitTree": "a83314ea7b4f6f6eacffc64605d7de13a82cf960",
+    "head": "4e7ba15d8d132017f09808ffabdf9152d74ba712",
+    "gitTree": "5b9dfc22f527af4127a74d547e69bbf65313772a",
     "initialStatus": [],
     "branch": "codex/version-pilot-agent-intent-2026-09-24"
   },
@@ -15,20 +15,21 @@
   "validationTreeFingerprint": "70e1e1cecda6135b23910dd3f89125913f20c5139377d27f2596cc41c298fc7a",
   "runtimeConfiguration": {
     "requestedUrl": "http://localhost:5173/",
-    "currentServer": "not-verified",
-    "viewport": null,
-    "consoleQuery": "not-run",
-    "isolatedSave": "not-created",
-    "playerOperations": 0,
+    "currentServer": "running-observed-through-electron",
+    "viewport": "1429x975 desktop window observation",
+    "consoleQuery": "not-available-in-native-player-ui",
+    "isolatedSave": "prior-independent-play-used-default-electron-user-data-dir",
+    "playerOperations": 38,
     "screenshots": [],
-    "reason": "制作人已明确授权并在本机同意浏览器权限；主 Agent 报告 Vite ready 与 TCP 成功后，本验收者只对同一 URL 发起一次正常控制请求，工具在授权提示或页面出现前返回“Unable to load browser request-header policy. Retry the browser command.”，随后停止；未读写真实用户存档。"
+    "reason": "本验收者使用已安装 computer-use 插件的 node_repl / @oai/sky 正常控制原生 Electron 窗口完成玩家操作。get_window_state 可显示当前截图，但文档化 API 没有保存文件能力，截图 ID 为临时缓存标识。首次实玩使用默认用户目录，可能因法术书与绑定变化写入 localStorage，无法断定先前存档状态或具体影响。",
+    "persistenceImpact": "首次独立实玩窗口使用 Electron 默认用户目录；法术书新增/修改和绑定变化可能由应用自动保存到 localStorage。现有证据无法断定操作前的存档状态或具体持久化影响，不清理、不覆盖、不回滚该目录。主 Agent 后续核实并启动的独立 --user-data-dir 窗口不是本轮先前玩家操作环境。"
   },
   "independence": {
     "role": "独立策划",
-    "session": "本任务新执行会话；未续接开发或一次性补证会话",
+    "session": "正式 design-acceptance-2 原独立策划会话",
     "participatedInDevelopment": false,
     "developmentTasks": ["dev-world-a3", "dev-player-a3"],
-    "statement": "本人未参与 dev-world-a3 或 dev-player-a3 实现。本轮仅查看合同、来源、启动配置和定向测试入口线索，没有从实现源码推定玩法通过。"
+    "statement": "本人未参与 dev-world-a3 或 dev-player-a3 实现。本轮通过原生 Electron 玩家界面亲自完成 38 项合同相关操作；主 Agent 的旧 IAB 记录没有作为本人签字，匹配自动化门禁也没有作为玩家操作。"
   },
   "scope": {
     "goal": "按批准同书合同独立黑盒验收",
@@ -41,9 +42,9 @@
   "scenarios": [
     {
       "id": "DA01",
-      "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "批准与开发来源核对成功。原 5ccf... / aa6c... 指纹只适用于历史快照；CLI 模型路由控制面同步后，当前 HEAD 8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d 的验证树 70e1...、配置 26b0... 与新完整门禁收据匹配。第三方 IAB 记录绑定 52e771750d45974348de85c306a895262fa68095 的本机 Vite；到当前 HEAD 的产品与玩家运行路径无差异，但不是本验收者对运行实例的独立核验。制作人已明确授权并在本机同意浏览器权限；Vite ready 后的唯一正常控制请求仍因工具无法加载请求头策略而在页面出现前失败，运行实例继续未核验。",
+      "verdict": "passed",
+      "independentPlayCovered": true,
+      "actual": "验收者独立性、范围修订 13、首批 A、drb9、开发来源与匹配门禁来源均已核对；当前原生 Electron 窗口可由本验收者控制，当前产品/玩家运行路径相对匹配来源无差异。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -52,18 +53,17 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md",
         ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": []
     },
     {
       "id": "DA02",
       "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "本验收者未进入玩家页面。第三方 IAB 记录观察到 J1、D1、B1→B4 的同书绑定、规范 hash、原读、本人付款、作用及余态，数值与批准前提相符；无持久截图，不能替代独立策划操作。",
+      "independentPlayCovered": true,
+      "actual": "同书加入并绑定 J1、D1、B4；J1 有源为 15 读/32 M/187 tick，D1 有源为 14 读/26 M/174 tick，B1→B4 为 19 读/44 M/302 tick、余 6 M，作用与余态符合合同。缺可持久截图。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -72,17 +72,16 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["TB02"]
     },
     {
       "id": "DA03",
       "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "本验收者未执行失败分支。第三方 IAB 记录覆盖 J1/D1 无源与撤读权、B4 空读、无源、同 lot 竞争、撤读权、POST 失证、容量未知、FIFO 实满和域外拒绝；未形成持久截图，也未独立证明所有页面/日志无私有字段泄露。",
+      "independentPlayCovered": true,
+      "actual": "独立执行 J1/D1 无源与撤权，以及 B4 修后空读、无源、同 lot、POST 失证、撤权、容量未知、FIFO 满、域外分支；拒因、付款、读数和已提交事实保留符合合同。可见卡片未见私有字段，但全页面/运行日志遍历与持久截图未完成。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -91,17 +90,16 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["TB02", "TB04"]
     },
     {
       "id": "DA04",
       "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "本验收者未执行再撞。第三方 IAB 记录覆盖未获准新容量读、容量足额与 FIFO 实满三支，保留首次事实/付款并未执行第二次修壳；无持久截图，不能替代独立策划操作。",
+      "independentPlayCovered": true,
+      "actual": "独立执行第二次自然接触的未获准读容量、容量足额、FIFO 实满三支；首次事实和付款保留，旧报价/覆盖撤销，分别呈现 unknown/sufficient/queueFull，均无第二次 B4 VM。缺可持久截图。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -110,17 +108,16 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["TB02"]
     },
     {
       "id": "DA05",
       "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "本验收者未返书或编辑。第三方 IAB 记录覆盖 J1 原读修改后重执行、恢复原 hash、玩家自建可达辅助术、修改辅助术和无关术不改变入口 hash 的对照；无持久截图，不能替代独立策划操作。",
+      "independentPlayCovered": true,
+      "actual": "独立返书删除 J1 原读、接入并修改可达辅助术，再建立无关术作对照；直接修改和可达辅助修改均改变 J1 hash/预算，无关术不改变入口身份，重跑结果已记录。缺可持久截图。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -129,17 +126,16 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["TB02"]
     },
     {
       "id": "DA06",
-      "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "本验收者未操作意图入口。第三方 IAB 记录观察到普通沙盒缺证提示、旧活动 Battle 未结有限世界账和有限观察独立边界；界面未见六来源选择控件，六入口同键性仍未覆盖。",
+      "verdict": "deviation",
+      "independentPlayCovered": true,
+      "actual": "普通沙盒公开提示缺同版来源、授权和容量；有限观察与旧波次边界可见。旧 Battle 左键绑定 J1 后施法计数由 0 增至 118，法力 300/300、有限世界付款 0.0，未出现公开缺证拒因，构成 DV01。可见/可达界面未发现六来源选择器，无法完成同键性。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -148,17 +144,16 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["DV01", "TB02", "TB03"]
     },
     {
       "id": "DA07",
       "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "本验收者未操作旧档或页面。第三方 IAB 记录覆盖桌面与 390×844 窄屏可达、等价旧档迁移、不可等价定位拒绝与原件保留、隔离存储及控制台 error/warn 空结果；没有持久截图，且不是独立策划操作。",
+      "independentPlayCovered": true,
+      "actual": "独立往返桌面推演台/演武场，操作长书与侧栏滚动并观察空态和拒绝态。没有可证明隔离的测试存档环境，窗口 API 无文档化 resize 或控制台查询能力，故旧档迁移、390×844 和 error/warn 核验未完成。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -167,17 +162,16 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["TB02", "TB04"]
     },
     {
       "id": "DA08",
-      "verdict": "technical-blocker",
-      "independentPlayCovered": false,
-      "actual": "第三方 IAB 补证已按 DA01–DA07 建索引并限定为玩家可见线索；本验收者独立操作仍为0，六入口同键性和持久截图仍缺，整体保持 blocked。",
+      "verdict": "blocked",
+      "independentPlayCovered": true,
+      "actual": "本验收者已完成主要合同分支的独立玩家操作，但 DV01 未关闭，持久截图、六入口同键性与 DA07 环境项目仍缺。根据只有全部必验项有独立证据且无未关闭偏差才通过的合同，整体保持 blocked。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -186,11 +180,11 @@
       "developmentTasks": ["dev-world-a3", "dev-player-a3"],
       "evidence": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-        ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md"
+        ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json"
       ],
-      "openItems": ["TB01"]
+      "openItems": ["DV01", "TB02", "TB03", "TB04"]
     }
   ],
   "evidence": [
@@ -203,7 +197,8 @@
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/delivery-scope.json",
     "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
     ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md",
-    ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json"
+    ".daoyan-agent/runs/pre-push-2026-10-02T17-46-32-639Z/full-gate-evidence.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json"
   ],
   "thirdPartySupplement": {
     "source": ".daoyan-agent/runs/main-iab-acceptance-2026-10-03/observations.md",
@@ -217,15 +212,15 @@
       "agents/policy.json",
       "agents/secretary.json"
     ],
-    "acceptedUse": "玩家可见观察线索与定向续验范围",
+    "acceptedUse": "仅作为第三方玩家可见线索；本轮结论来自本验收者原生 Electron 独立操作",
     "notAcceptedAs": ["本验收者独立操作", "持久截图", "QA签字", "六入口同键性证明"],
-    "independentPlayerOperationsAdded": 0,
+    "independentPlayerOperationsAdded": 38,
     "persistentScreenshotsAdded": 0,
     "conclusionChanged": false
   },
   "reusedEvidence": {
     "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
-    "usage": "仅树/配置/开发收据来源核对及操作线索，非独立实玩",
+    "usage": "仅树/配置/开发收据来源核对，非独立实玩",
     "priorCommandsRerun": false,
     "newGateRun": false,
     "currentMatchingGate": {
@@ -239,36 +234,81 @@
   },
   "openDeviations": [
     {
-      "id": "TB01",
+      "id": "DV01",
+      "kind": "implementation-deviation",
+      "status": "open",
+      "contract": "DA06 旧活动 Battle 的缺证拒绝与公开边界",
+      "reproduction": "将 J1 绑定左键，开始旧 Battle，在战场左键触发",
+      "actual": "施法计数从 0 持续增至 118，法力保持 300/300、有限世界累计付款保持 0.0，未显示公开缺证拒因",
+      "affectedDevelopmentTasks": ["dev-world-a3", "dev-player-a3"],
+      "owner": "对应开发成果",
+      "targetedReverification": ["DA06"],
+      "resolution": "修复旧 Battle 缺证边界后，仅定向复验 DA06 旧 Battle"
+    },
+    {
+      "id": "TB02",
       "kind": "technical-blocker",
       "status": "open",
-      "contract": "DA01 独立运行实例核对、DA02–DA07 独立实玩及 DA08 通过条件",
-      "reproduction": "制作人已授权且主 Agent 报告 Vite ready/TCP 成功后，执行一次 cua.createBrowserTab(\"1\", \"http://localhost:5173/\", { sessionName: \"🎮 道衍独立策划验收\" })",
-      "actual": "制作人授权已具备；浏览器工具仍返回“Unable to load browser request-header policy. Retry the browser command.”，未出现授权提示或玩家页面。这是工具/策略阻断，不是未获制作人同意。本验收者独立操作仍为0；主 Agent 的第三方 IAB 观察不能转移独立策划签字",
+      "contract": "DA02–DA08 持久玩家截图",
+      "reproduction": "使用文档化 @oai/sky get_window_state 观察原生 Electron 状态",
+      "actual": "工具可显示截图，但文档化 API 无保存文件能力且截图 ID 为临时缓存标识",
       "affectedDevelopmentTasks": ["dev-world-a3", "dev-player-a3"],
-      "owner": "Version PM / 环境维护主 Agent",
-      "targetedReverification": ["DA01", "DA02", "DA03", "DA04", "DA05", "DA06", "DA07", "DA08"],
-      "resolution": "浏览器请求头策略恢复正常、本验收者获得可控制且绑定匹配产品树/配置的玩家入口并能保存持久截图后，只续验独立性、隐私、六入口同键性与截图等未关闭缺口；不改端口、主机名或工具绕过，不补跑完整门禁"
+      "owner": "工具/环境",
+      "targetedReverification": ["DA02", "DA03", "DA04", "DA05", "DA06", "DA07", "DA08"],
+      "resolution": "提供同一原生窗口的文档化持久截图保存能力后只补证据"
+    },
+    {
+      "id": "TB03",
+      "kind": "technical-blocker",
+      "status": "open",
+      "contract": "DA06 六入口同状态、能力、授权、payer、程序和版本下的同键性",
+      "reproduction": "检查推演台、演武场及可达玩家控件",
+      "actual": "未发现六种意图来源选择入口，无法执行同键性比较",
+      "affectedDevelopmentTasks": ["dev-world-a3", "dev-player-a3"],
+      "owner": "对应开发成果 / Version PM",
+      "targetedReverification": ["DA06"],
+      "resolution": "提供批准的六来源玩家入口后只复验 DA06"
+    },
+    {
+      "id": "TB04",
+      "kind": "technical-blocker",
+      "status": "open",
+      "contract": "DA03 隐私系统遍历与 DA07 隔离旧档、390×844、控制台 error/warn",
+      "reproduction": "在当前原生玩家窗口检查可达入口和文档化控制能力",
+      "actual": "首次实玩使用默认 Electron 用户目录，法术书/绑定变化可能写入 localStorage，无法断定先前存档状态或具体影响；另无可证明隔离的旧档测试入口，窗口 API 无文档化 resize/控制台查询。后续独立 --user-data-dir 窗口不是先前操作环境。",
+      "affectedDevelopmentTasks": ["dev-player-a3"],
+      "owner": "Version PM / 环境维护",
+      "targetedReverification": ["DA03", "DA07"],
+      "resolution": "保持默认用户目录原状；提供明确隔离测试档及文档化窄屏/控制台观察能力后定向复验"
     }
   ],
-  "confirmedImplementationDeviations": [],
+  "confirmedImplementationDeviations": [
+    {
+      "id": "DV01",
+      "scenario": "DA06",
+      "affectedDevelopmentTasks": ["dev-world-a3", "dev-player-a3"],
+      "evidence": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json"
+    }
+  ],
   "uncovered": [
-    "本验收者对 DA02–DA07 的独立玩家操作",
     "DA06 六入口在同状态、能力、授权、payer、程序和版本下的同键性",
-    "DA03 全页面与运行日志的私有账户/目标字段不泄露独立核验",
     "DA02–DA07 可持久引用截图",
-    "当前可由本验收者控制且绑定匹配产品树/配置的玩家入口"
+    "DA03 全页面与运行日志的私有账户/目标字段系统性遍历",
+    "DA07 隔离测试存档下的旧档迁移/拒绝",
+    "DA07 390×844 窄屏与运行期控制台 error/warn"
   ],
   "commands": [
     {
       "command": "node docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/collect-evidence.mjs",
       "exitCode": 0,
-      "result": "29项来源哈希、3项现存dist文件、真实门禁收据退出0；本轮玩家操作0"
+      "result": "29项来源哈希、3项现存dist文件、真实门禁收据退出0；本轮玩家操作0",
+      "phase": "historical-before-independent-play"
     },
     {
       "command": "git -c core.quotePath=false status --porcelain=v1 --untracked-files=all | node docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/validate.mjs",
       "exitCode": 0,
-      "result": "实际退出0：8场景 JSON、证据链接、writePaths、独立覆盖0与blocked结论检查通过"
+      "result": "实际退出0：8场景 JSON、证据链接、writePaths、独立覆盖0与blocked结论检查通过",
+      "phase": "historical-before-independent-play"
     },
     {
       "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow",
@@ -278,7 +318,8 @@
     {
       "command": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
       "exitCode": 0,
-      "result": "修复后直接检查：前序提交差异与任务工作区产物分开核对，授权路径外的本任务改动为0；验收仍blocked，玩家操作0"
+      "result": "修复后直接检查：前序提交差异与任务工作区产物分开核对，授权路径外的本任务改动为0；验收仍blocked，玩家操作0",
+      "phase": "historical-before-independent-play"
     },
     {
       "command": "node -e \"for (const p of process.argv.slice(1)) JSON.parse(require('fs').readFileSync(p,'utf8')); console.log('json-ok')\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json\"",
@@ -294,6 +335,22 @@
       "command": "git diff --check -- \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md\"",
       "exitCode": 0,
       "result": "本轮三份证据文件无空白错误"
+    },
+    {
+      "command": "npx prettier --check \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json\"",
+      "exitCode": 0,
+      "result": "本轮三份任务证据文件符合 Prettier 格式"
+    },
+    {
+      "command": "git diff --check -- \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow\"",
+      "exitCode": 0,
+      "result": "任务 writePaths 内差异无空白错误"
+    },
+    {
+      "command": "git -c core.quotePath=false status --porcelain=v1 --untracked-files=all | node docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/validate.mjs",
+      "exitCode": 0,
+      "phase": "final-after-independent-play-evidence-correction",
+      "result": "实际退出0：8场景、证据链接、writePaths、独立操作38、截图0、DV01/TB02/TB03/TB04 open 与总体 blocked 一致"
     }
   ],
   "failedAttempts": [
@@ -311,6 +368,11 @@
       "command": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
       "exitCode": 1,
       "reason": "首轮 Windows PowerShell 5 默认文本编码导致中文 JSON 读取失败；显式 Get-Content -Encoding utf8 后同命令退出0，未改动原始事实。"
+    },
+    {
+      "command": "git -c core.quotePath=false status --porcelain=v1 --untracked-files=all | node docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/validate.mjs",
+      "exitCode": 1,
+      "reason": "更新后的校验首次仍把 source-evidence.json 的历史来源哈希当作当前文件哈希；development.json 已在后续流程变化，触发断言。改为验证历史索引路径存在和 SHA-256 格式后，同一命令退出0；未运行门禁。"
     }
   ],
   "toolFailures": {
@@ -321,13 +383,14 @@
     "committed": false,
     "pushed": false,
     "tagged": false,
-    "reason": "用户开头明确禁止执行 Agent commit/push/tag；交秘书统一处理。后文要求本地提交与之冲突，未自行提交。",
-    "handoff": "Version PM 定向恢复 TB01；不手工改变版本节点",
+    "reason": "按主 Agent 本轮安全归属指导，直接检查后先保留工作区草稿，等待归属复核；未提交或推送。",
+    "handoff": "保留 blocked；按 DV01、TB02、TB03、TB04 定向恢复，不改变正式运行状态。",
     "patchBoundary": {
       "base": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
       "policy": "仅交付 writePaths 内的工作区产物；0f6b1f0 至受验 HEAD 的前序提交不属于 da-a-flow 补丁，不回退、不重新归属。",
       "evidence": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/delivery-scope.json",
       "checkCommand": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1"
     }
-  }
+  },
+  "sourceEvidenceSemantics": "source-evidence.json 保留采集时的历史来源哈希；定向校验不把这些哈希宣称为当前文件哈希。当前任务结论使用独立操作记录与任务结果的一致性检查。"
 }
