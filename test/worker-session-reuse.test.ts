@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { workflowPermissionArgs } from '../scripts/agent-routing';
 import {
   formalDocumentSessionKey,
   formalDocumentContextPolicy,
@@ -178,6 +179,17 @@ ${JSON.stringify({ id: taskId, stage, stageStep: 'primary', scopeRevision: revis
     } finally {
       await rm(temporary, { recursive: true, force: true });
     }
+  });
+
+  it('applies producer-authorized full access to fresh and resumed workflow sessions', () => {
+    const base = [...workflowPermissionArgs(), 'exec', '--ephemeral'];
+    const fresh = workerInvocationArgs(base, 'gpt-6.1-sol', 'high', 'output.md', true, null);
+    expect(fresh.slice(0, 4)).toEqual(['-a', 'never', '-s', 'danger-full-access']);
+    expect(fresh).not.toContain('--ephemeral');
+    const resumed = workerInvocationArgs(base, 'gpt-6.1-sol', 'high', 'output.md', true, sessionId);
+    expect(resumed).toContain('sandbox_mode="danger-full-access"');
+    expect(resumed).toContain('approval_policy="never"');
+    expect(resumed).toContain(sessionId);
   });
 
   it('uses an explicit saved id for resume and persists only eligible fresh work', () => {

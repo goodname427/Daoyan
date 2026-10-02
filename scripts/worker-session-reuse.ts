@@ -197,7 +197,9 @@ export function workerInvocationArgs(
       model,
       '-c',
       `model_reasoning_effort="${reasoning}"`,
-      ...(sandbox === 'read-only' || sandbox === 'workspace-write'
+      ...(sandbox === 'read-only' ||
+      sandbox === 'workspace-write' ||
+      sandbox === 'danger-full-access'
         ? ['-c', `sandbox_mode="${sandbox}"`]
         : []),
       ...(approval === 'never' ? ['-c', 'approval_policy="never"'] : []),

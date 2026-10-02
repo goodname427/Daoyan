@@ -53,6 +53,7 @@ import {
   validatePlan,
   validatePolicy,
   validateReview,
+  workflowPermissionArgs,
   type ModelRoute,
   type PlannedTask,
   type ReviewResult,
@@ -991,18 +992,15 @@ async function compactProjectContext(): Promise<string> {
   return `模块边界：src/core 是无头 DSL/AST/编译器/VM；src/game 是战斗运行时；src/app 是推演台和演武场；test 与 e2e 是验证；docs 保存长期事实。\n\n当前状态摘要：\n${status}`;
 }
 
-function codexArgs(route: ModelRoute, sandbox: 'read-only' | 'workspace-write'): string[] {
+function codexArgs(route: ModelRoute): string[] {
   return [
-    '-a',
-    'never',
+    ...workflowPermissionArgs(),
     'exec',
     '-C',
     root,
     '--ephemeral',
     '--color',
     'never',
-    '-s',
-    sandbox,
     '-m',
     route.model,
     '-c',
@@ -1053,7 +1051,7 @@ ${direction}
 </producer-direction>`;
   const result = await runProcess(
     'codex',
-    [...codexArgs(route, 'read-only'), '--output-schema', planSchemaPath, '-o', outputFile, '-'],
+    [...codexArgs(route), '--output-schema', planSchemaPath, '-o', outputFile, '-'],
     {
       input: prompt,
       logFile,
@@ -1176,7 +1174,7 @@ async function runTask(
           )
         : null;
       const workerArgs = workerInvocationArgs(
-        codexArgs(route, 'workspace-write'),
+        codexArgs(route),
         route.model,
         route.reasoning,
         outputFile,
@@ -1556,7 +1554,7 @@ ${plan.acceptanceCriteria.map((item) => `- ${item}`).join('\n')}
     runProcess(
       'codex',
       workerInvocationArgs(
-        [...codexArgs(route, 'read-only'), '--output-schema', reviewSchemaPath],
+        [...codexArgs(route), '--output-schema', reviewSchemaPath],
         route.model,
         route.reasoning,
         outputFile,
@@ -1710,7 +1708,7 @@ ${review.findings
     runProcess(
       'codex',
       workerInvocationArgs(
-        codexArgs(route, 'workspace-write'),
+        codexArgs(route),
         route.model,
         route.reasoning,
         outputFile,
