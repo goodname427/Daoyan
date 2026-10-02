@@ -26,6 +26,7 @@ import {
   failedNpmCommandFromOutput,
   highestTier,
   formalTaskPredecessorIds,
+  formalTaskEvidencePath,
   formalStageWritePaths,
   internalizeFormalPlanDependencies,
   isWorkflowControlPlanePath,
@@ -703,6 +704,15 @@ async function reportedTests(outputFile: string): Promise<string[]> {
         .map((line) => line.slice(0, 240)),
     ),
   ].slice(0, 8);
+}
+
+async function blockedFormalTaskEvidence(direction: string): Promise<string | null> {
+  const path = formalTaskEvidencePath(direction);
+  if (!path) return null;
+  const source = await readFile(resolve(root, path), 'utf8').catch(() => null);
+  if (!source) return null;
+  const evidence = JSON.parse(source) as { status?: string };
+  return evidence.status === 'blocked' ? path : null;
 }
 
 function parseJsonFile(source: string): unknown {
@@ -2575,7 +2585,39 @@ try {
     activeDirection = checkpoint.direction;
     let reviewResumption = await readReviewResumption(runDirectory);
     if (reviewResumption && reviewResumption.baseline !== checkpoint.baseline) {
-      throw new Error('审查恢复记录与原任务基线不一致');
+      const ancestor = await git([
+        'merge-base',
+        '--is-ancestor',
+        reviewResumption.baseline,
+        checkpoint.baseline,
+      ]);
+      const advance = await git([
+        'diff',
+        '--name-only',
+        '-z',
+        reviewResumption.baseline,
+        checkpoint.baseline,
+        '--',
+      ]);
+      const advancePaths = advance.stdout.split('\0').filter(Boolean);
+      const priorPackage = advancePaths.includes('package.json')
+        ? await git(['show', `${reviewResumption.baseline}:package.json`])
+        : null;
+      const packageSafe =
+        priorPackage?.code === 0 &&
+        isSafeWorkflowPackageAdvance(
+          priorPackage.stdout,
+          await readFile(resolve(root, 'package.json'), 'utf8'),
+        );
+      if (
+        ancestor.code !== 0 ||
+        advance.code !== 0 ||
+        !advancePaths.every(
+          (path) => isWorkflowControlPlanePath(path) || (path === 'package.json' && packageSafe),
+        )
+      ) {
+        throw new Error('审查恢复记录与原任务基线不一致');
+      }
     }
     let auditedRecoveredTaskRuns: TaskRun[] = [];
     if (options.resumeReviewTask) {
@@ -2763,6 +2805,14 @@ try {
       );
     }
     resumePreflightComplete = true;
+    const priorBlocker = await blockedFormalTaskEvidence(activeDirection);
+    if (priorBlocker && !options.producerGuidance.trim()) {
+      const rerun = new Set(reviewResumption?.rerunTaskIds ?? []);
+      activeTaskRuns = activeTaskRuns.map((run) =>
+        rerun.has(run.task.id) ? { ...run, result: 'failed' } : run,
+      );
+      throw new Error(`任务证据 ${priorBlocker} 明确 blocked；等待执行环境恢复后再续跑`);
+    }
     console.log(`[秘书接管] 从 ${checkpoint.phase} 的恢复点继续：${runDirectory}`);
   } else {
     if (!options.planOnly) await ensureCleanWorktree(runDirectory, options.takeover);
@@ -2882,8 +2932,14 @@ try {
       runDirectory,
       activeTaskRuns,
     );
-    activeTaskRuns = [...activeTaskRuns.filter((item) => item.task.id !== task.id), run];
+    const blockedEvidence =
+      run.result === 'passed' ? await blockedFormalTaskEvidence(activeDirection) : null;
+    const recordedRun = blockedEvidence ? { ...run, result: 'failed' as const } : run;
+    activeTaskRuns = [...activeTaskRuns.filter((item) => item.task.id !== task.id), recordedRun];
     await persistCheckpoint('active');
+    if (blockedEvidence) {
+      throw new Error(`任务证据 ${blockedEvidence} 明确 blocked；停止后续 Task 与重复审查`);
+    }
     if (run.result === 'failed') {
       await writeReport(
         runDirectory,

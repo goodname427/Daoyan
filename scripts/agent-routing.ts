@@ -449,6 +449,16 @@ export function canReopenStalledReview(input: {
   );
 }
 
+/** The formal task's own result is authoritative for an explicit environment block. */
+export function formalTaskEvidencePath(direction: string): string | null {
+  if (!/^\[formal-stage-deliverable:/u.test(direction)) return null;
+  return (
+    /本轮任务证据文件的精确路径是 (docs\/versions\/[^\s]+\/tasks\/[^\s]+\.json)/u.exec(
+      direction,
+    )?.[1] ?? null
+  );
+}
+
 export function canReuseFullGateEvidence(
   value: {
     schemaVersion?: number;

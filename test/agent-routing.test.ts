@@ -38,6 +38,7 @@ import {
   isWorkflowControlPlanePath,
   isSafeWorkflowPackageAdvance,
   canReopenStalledReview,
+  formalTaskEvidencePath,
   preserveUnaffectedTaskRuns,
   taskInputPaths,
   taskOutputPaths,
@@ -808,6 +809,15 @@ ${JSON.stringify({
     ).toBe(true);
     expect(canReopenStalledReview({ ...input, consecutiveFindingCount: 2 })).toBe(false);
     expect(canReopenStalledReview({ ...input, phase: '初始化', taskRunCount: 0 })).toBe(false);
+  });
+
+  it('locates only an explicit formal task result for blocked-stage stopping', () => {
+    expect(
+      formalTaskEvidencePath(
+        '[formal-stage-deliverable:development:dev-player-a3]\n本轮任务证据文件的精确路径是 docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json。',
+      ),
+    ).toBe('docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json');
+    expect(formalTaskEvidencePath('普通 Feature 任务')).toBeNull();
   });
 
   it('allows only the audited package gate-script change to preserve game Task work', () => {
