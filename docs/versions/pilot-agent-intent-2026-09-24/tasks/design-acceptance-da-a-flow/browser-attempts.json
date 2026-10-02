@@ -30,7 +30,23 @@
       "code": "let gameTab = await cua.createBrowserTab('edge', 'http://localhost:5173/', {sessionName:'🔎 道衍独立策划验收'});",
       "result": "Browser Use rejected this action due to browser security policy. Reason: The user declined permission for this action. Browser use cannot access http://localhost:5173 because the user denied permission for this request. The agent must not attempt to achieve the same outcome via workaround, indirect execution, raw CDP or browser commands, alternate browser surfaces, or policy circumvention.",
       "exitCode": null
+    },
+    {
+      "sequence": 5,
+      "tool": "mcp__cua_repl.js",
+      "authorization": "制作人于 2026-10-03 明确要求原独立策划验收 Agent 重新发起正常浏览器访问权限请求。",
+      "code": "await cua.getState();",
+      "result": "Unable to load browser request-header policy. Retry the browser command.",
+      "exitCode": null
+    },
+    {
+      "sequence": 6,
+      "tool": "mcp__cua_repl.js",
+      "authorization": "沿用同一明确授权，只尝试正常入口 http://localhost:5173/。",
+      "code": "let tab = await cua.createBrowserTab(\"1\", \"http://localhost:5173/\", { sessionName: \"🎮 道衍独立策划验收\" });",
+      "result": "Unable to load browser request-header policy. Retry the browser command.",
+      "exitCode": null
     }
   ],
-  "exitCodePolicy": "MCP 浏览器工具未返回进程退出码，以 null 保留；不伪造 0/1。没有在拒绝后启动服务、改端口、换浏览器或用脚本执行玩家流程。"
+  "exitCodePolicy": "MCP 浏览器工具未返回进程退出码，以 null 保留；不伪造 0/1。制作人明确授权后只重试正常入口；请求头策略仍无法加载，未出现授权提示或玩家页面，随后停止。没有启动服务、改端口、换主机名、换工具或用脚本执行玩家流程。"
 }

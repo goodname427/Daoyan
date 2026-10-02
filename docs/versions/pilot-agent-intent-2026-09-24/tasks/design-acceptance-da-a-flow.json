@@ -2,7 +2,7 @@
   "taskId": "da-a-flow",
   "status": "blocked",
   "completed": false,
-  "summary": "已交付来源核对及 DA01–DA08 技术阻断记录。当前控制面同步后的验证树与配置已有匹配的完整门禁收据；该收据不替代独立实玩。制作人临时授权的主 Agent IAB 操作补充了多项玩家可见线索，但不是本验收者的独立操作、持久截图或 QA 签字；六入口同键性仍未覆盖。独立实玩仍为0项，结论保持 blocked。",
+  "summary": "已交付来源核对及 DA01–DA08 技术阻断记录。当前控制面同步后的验证树与配置已有匹配的完整门禁收据；该收据不替代独立实玩。制作人明确授权本验收者重新请求正常浏览器入口，但浏览器接口在授权提示或玩家页面出现前持续返回请求头策略加载失败。制作人临时授权的主 Agent IAB 操作仍只作为玩家可见线索，不是本验收者的独立操作、持久截图或 QA 签字；六入口同键性仍未覆盖。独立实玩仍为0项，结论保持 blocked。",
   "scopeRevision": 13,
   "firstBatch": "A",
   "developmentFingerprint": {
@@ -21,7 +21,7 @@
     "isolatedSave": "not-created",
     "playerOperations": 0,
     "screenshots": [],
-    "reason": "访问权限被拒，在页面到达前停止；未读写真实用户存档。"
+    "reason": "制作人明确授权后重试正常入口；浏览器接口在授权提示或页面出现前连续返回“Unable to load browser request-header policy. Retry the browser command.”，随后停止；未读写真实用户存档。"
   },
   "independence": {
     "role": "独立策划",
@@ -43,7 +43,7 @@
       "id": "DA01",
       "verdict": "technical-blocker",
       "independentPlayCovered": false,
-      "actual": "批准与开发来源核对成功。原 5ccf... / aa6c... 指纹只适用于历史快照；CLI 模型路由控制面同步后，当前 HEAD 8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d 的验证树 70e1...、配置 26b0... 与新完整门禁收据匹配。第三方 IAB 记录绑定 52e771750d45974348de85c306a895262fa68095 的本机 Vite；到当前 HEAD 的产品与玩家运行路径无差异，但不是本验收者对运行实例的独立核验。",
+      "actual": "批准与开发来源核对成功。原 5ccf... / aa6c... 指纹只适用于历史快照；CLI 模型路由控制面同步后，当前 HEAD 8705c1b24a3adc2be1df893d0baaa6b78f9b4f9d 的验证树 70e1...、配置 26b0... 与新完整门禁收据匹配。第三方 IAB 记录绑定 52e771750d45974348de85c306a895262fa68095 的本机 Vite；到当前 HEAD 的产品与玩家运行路径无差异，但不是本验收者对运行实例的独立核验。制作人明确授权本验收者重试正常入口后，浏览器接口仍在授权提示或页面出现前返回请求头策略加载失败，运行实例继续未核验。",
       "contractSources": [
         "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
@@ -243,12 +243,12 @@
       "kind": "technical-blocker",
       "status": "open",
       "contract": "DA01 独立运行实例核对、DA02–DA07 独立实玩及 DA08 通过条件",
-      "reproduction": "cua.createBrowserTab('edge', 'http://localhost:5173/', {sessionName:'🔎 道衍独立策划验收'})",
-      "actual": "本验收者访问权限被拒；主 Agent 经制作人临时授权取得第三方 IAB 观察，但不能转移独立策划签字",
+      "reproduction": "制作人明确授权后执行 cua.getState()，再执行 cua.createBrowserTab(\"1\", \"http://localhost:5173/\", { sessionName: \"🎮 道衍独立策划验收\" })",
+      "actual": "两次调用均返回“Unable to load browser request-header policy. Retry the browser command.”；未出现授权提示或玩家页面。本验收者独立操作仍为0；主 Agent 的第三方 IAB 观察不能转移独立策划签字",
       "affectedDevelopmentTasks": ["dev-world-a3", "dev-player-a3"],
       "owner": "Version PM / 环境维护主 Agent",
       "targetedReverification": ["DA01", "DA02", "DA03", "DA04", "DA05", "DA06", "DA07", "DA08"],
-      "resolution": "本验收者获得可控制且绑定匹配产品树/配置的玩家入口，并能保存持久截图后，只续验独立性、隐私、六入口同键性与截图等未关闭缺口；不重试已拒绝入口、不改端口绕过、不补跑完整门禁"
+      "resolution": "浏览器请求头策略恢复正常、本验收者获得可控制且绑定匹配产品树/配置的玩家入口并能保存持久截图后，只续验独立性、隐私、六入口同键性与截图等未关闭缺口；不改端口、主机名或工具绕过，不补跑完整门禁"
     }
   ],
   "confirmedImplementationDeviations": [],
@@ -279,6 +279,21 @@
       "command": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
       "exitCode": 0,
       "result": "修复后直接检查：前序提交差异与任务工作区产物分开核对，授权路径外的本任务改动为0；验收仍blocked，玩家操作0"
+    },
+    {
+      "command": "node -e \"for (const p of process.argv.slice(1)) JSON.parse(require('fs').readFileSync(p,'utf8')); console.log('json-ok')\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json\"",
+      "exitCode": 0,
+      "result": "本轮授权重试记录写入后，两份 JSON 解析成功，输出 json-ok"
+    },
+    {
+      "command": "npx prettier --check \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md\"",
+      "exitCode": 0,
+      "result": "本轮改动的任务 JSON、浏览器尝试记录和体验记录均符合 Prettier 格式"
+    },
+    {
+      "command": "git diff --check -- \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json\" \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md\"",
+      "exitCode": 0,
+      "result": "本轮三份证据文件无空白错误"
     }
   ],
   "failedAttempts": [
