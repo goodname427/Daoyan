@@ -1096,6 +1096,36 @@ export function formalStageWritePaths(direction: string): string[] {
   }
 }
 
+/** A bounded legacy handoff predates formal task envelopes. Keep its three owned files explicit. */
+export function taskWritePaths(direction: string): string[] {
+  const formal = formalStageWritePaths(direction);
+  if (formal.length > 0) return formal;
+  if (!direction.startsWith('[formal-development-gate-handoff-reconciliation]')) return [];
+  const version = direction.match(/\b(pilot-agent-intent-\d{4}-\d{2}-\d{2})\b/u)?.[1];
+  if (!version) return [];
+  const base = `docs/versions/${version}/`;
+  const names = ['development.json', 'development.md', 'roadmap-handoff.md'];
+  if (
+    !names.every((name) => direction.includes(name)) ||
+    !direction.includes(`${base}development.json`)
+  )
+    return [];
+  return names.map((name) => `${base}${name}`);
+}
+
+/** A review may read other files, but must not route their edits to this task's repairer. */
+export function reviewPathsOutsideScope(review: ReviewResult, scopes: readonly string[]): string[] {
+  if (scopes.length === 0) return [];
+  return [...new Set(review.findings.flatMap((finding) => finding.paths ?? []))].filter(
+    (path) =>
+      !scopes.some((scope) => {
+        const normalized = scope.replaceAll('\\', '/').replace(/\/$/u, '');
+        const candidate = path.replaceAll('\\', '/').replace(/^\.\//u, '');
+        return candidate === normalized || candidate.startsWith(`${normalized}/`);
+      }),
+  );
+}
+
 /** Remove only accepted external predecessors mistakenly copied into an internal plan. */
 export function internalizeFormalPlanDependencies(
   plan: TaskPlan,

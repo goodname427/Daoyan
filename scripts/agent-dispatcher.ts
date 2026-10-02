@@ -28,6 +28,8 @@ import {
   formalTaskPredecessorIds,
   formalTaskEvidencePath,
   formalStageWritePaths,
+  taskWritePaths,
+  reviewPathsOutsideScope,
   internalizeFormalPlanDependencies,
   isWorkflowControlPlanePath,
   isSafeWorkflowPackageAdvance,
@@ -1724,13 +1726,13 @@ async function runReviewFix(
   const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
   const outputFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.md`);
   const logFile = resolve(runDirectory, `review-fix-${round}-${slug}-attempt-${attempt}.log`);
-  const formalWritePaths = formalStageWritePaths(activeDirection);
-  const formalBoundary = formalWritePaths.length
-    ? `本正式任务只能修改以下写入路径（含目录内文件）：\n${formalWritePaths.map((path) => `- ${path}`).join('\n')}\n临时验证文件放在仓库外，结束前清理仓库内的临时文件。只运行问题相关的直接检查；快速门禁、完整门禁由调度器在你退出后运行。任务范围外的状态、开发日志与控制面文件由原负责人维护。\n\n`
+  const writePaths = taskWritePaths(activeDirection);
+  const writeBoundary = writePaths.length
+    ? `本任务只能修改以下写入路径（含目录内文件）：\n${writePaths.map((path) => `- ${path}`).join('\n')}\n临时验证文件放在仓库外，结束前清理仓库内的临时文件。只运行问题相关的直接检查；快速门禁、完整门禁由调度器在你退出后运行。任务范围外的状态、开发日志与控制面文件由原负责人维护。\n\n`
     : '';
   const prompt = `你是道衍项目的修复 Agent。遵守 AGENTS.md，在当前工作区修复独立审查发现的问题；不要 commit、push 或 tag。
 
-${formalBoundary}原始目标：${plan.summary}
+${writeBoundary}原始目标：${plan.summary}
 审查结论：${review.summary}
 问题：
 ${review.findings
@@ -2119,25 +2121,26 @@ async function commitAndPush(
       throw new Error(`git diff --check 失败：\n${diffCheck.stdout}${diffCheck.stderr}`);
 
     const formalTask = /^\[formal-stage-(?:deliverable|verification):/.test(activeDirection);
-    const scopes = formalTask ? formalStageWritePaths(activeDirection) : [];
+    const scopes = taskWritePaths(activeDirection);
     if (formalTask && scopes.length === 0) throw new Error('正式节点任务缺少有效的独占写入合同');
-    const dirtyPaths = formalTask ? [...(await workspaceFileSnapshot()).keys()] : [];
+    const scopedTask = scopes.length > 0;
+    const dirtyPaths = scopedTask ? [...(await workspaceFileSnapshot()).keys()] : [];
     const unrelatedDirty = dirtyPaths.filter(
       (path) => !scopes.some((scope) => pathMatchesTaskScope(path, scope)),
     );
     if (unrelatedDirty.length > 0) {
       throw new Error(`正式节点任务改动超出独占写入范围：${unrelatedDirty.join('、')}`);
     }
-    if (formalTask && dirtyPaths.length === 0)
-      throw new Error('正式节点任务没有可提交的合同内改动');
-    const add = await git(formalTask ? ['add', '-A', '--', ...dirtyPaths] : ['add', '-A'], true);
+    if (scopedTask && dirtyPaths.length === 0)
+      throw new Error('限定写入任务没有可提交的合同内改动');
+    const add = await git(scopedTask ? ['add', '-A', '--', ...dirtyPaths] : ['add', '-A'], true);
     if (add.code !== 0)
       throw new Error(`git add 失败：${failureText(add) || `退出码 ${add.code}`}`);
     const message = conventionalCommitOrFallback(plan.commitMessage, plan.title);
     const staged = await git(['diff', '--cached', '--name-only', '-z']);
     if (staged.code !== 0) throw new Error('Git 暂存文件检查失败');
     const changedFiles = staged.stdout.split('\0').filter(Boolean);
-    if (formalTask) {
+    if (scopedTask) {
       if (changedFiles.length === 0) throw new Error('正式节点任务没有计划路径内的待提交改动');
       const unrelated = changedFiles.filter(
         (path) => !scopes.some((scope) => pathMatchesTaskScope(path, scope)),
@@ -3132,6 +3135,11 @@ try {
     finding: ReviewResult,
     label: string,
   ): Promise<ReviewBoundary> => {
+    const outside = reviewPathsOutsideScope(finding, taskWritePaths(activeDirection));
+    if (outside.length > 0)
+      throw new Error(
+        `审查要求修改任务写入范围外的文件；请交由原归属角色处理：${outside.join('、')}`,
+      );
     localRepairRound += 1;
     activeLocalRepairRoundCount =
       activeLocalRepairRoundCount === null ? null : activeLocalRepairRoundCount + 1;
