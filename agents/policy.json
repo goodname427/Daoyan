@@ -10,11 +10,11 @@
       "reasoning": "low"
     },
     "standard": {
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoning": "medium"
     },
     "advanced": {
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoning": "high"
     },
     "critical": {
@@ -28,11 +28,11 @@
       "reasoning": "low"
     },
     "standard": {
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoning": "low"
     },
     "advanced": {
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "reasoning": "high"
     },
     "critical": {

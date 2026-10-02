@@ -34,6 +34,10 @@ import {
   relativeModuleSpecifiers,
   recoveryCountersAfterResume,
   sortTasks,
+  taskIdsToRerun,
+  isWorkflowControlPlanePath,
+  isSafeWorkflowPackageAdvance,
+  preserveUnaffectedTaskRuns,
   taskInputPaths,
   taskOutputPaths,
   validatePlan,
@@ -198,10 +202,11 @@ ${JSON.stringify({
     expect(configured.version).toBe(1);
     expect(configured.planner.model).toBe('gpt-6-luna');
     expect(configured.tiers.economy.model).toBe('gpt-6-luna');
-    expect(configured.tiers.standard.model).toBe('gpt-6-sol');
-    expect(configured.tiers.advanced.model).toBe('gpt-6-sol');
+    expect(configured.tiers.standard.model).toBe('gpt-6.1-sol');
+    expect(configured.tiers.advanced.model).toBe('gpt-6.1-sol');
     expect(configured.tiers.critical.model).toBe('gpt-6-astra');
-    expect(configured.reviewers.advanced.model).toBe('gpt-6-sol');
+    expect(configured.reviewers.standard.model).toBe('gpt-6.1-sol');
+    expect(configured.reviewers.advanced.model).toBe('gpt-6.1-sol');
     expect(configured.reviewers.critical.model).toBe('gpt-6-astra');
     expect(JSON.parse(readFileSync(resolve('agents/secretary.json'), 'utf8')).triage.model).toBe(
       'gpt-6-luna',
@@ -391,6 +396,9 @@ ${JSON.stringify({
   });
 
   it('drives the real Feature PM validation stages from the effective plan profile', () => {
+    const scripts = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).scripts;
+    expect(scripts['verify:full']).toContain('npm run coverage');
+    expect(scripts['verify:full']).not.toContain('npm run verify &&');
     const light = buildLocalPlan('整理制作人工作流文档');
     const implementation = buildLocalPlan('修复秘书恢复竞态');
     const qa = buildLocalPlan('[formal-stage:qa]\n\n执行版本集成与候选验证。');
@@ -400,17 +408,15 @@ ${JSON.stringify({
 
     expect(validationProfileForPlan(light)).toBe('light');
     expect(validationStagesForPlan(light)).toEqual([]);
-    expect(validationStagesForPlan(implementation)).toEqual([
-      'fast-gate',
-      'independent-review',
-      'full-gate',
-    ]);
+    expect(validationStagesForPlan(implementation)).toEqual(['independent-review', 'full-gate']);
     expect(validationStagesForPlan(qa)).toEqual(['independent-review']);
     expect(validationStagesForPlan(reverification)).toEqual(['independent-review']);
 
     const dispatcher = readFileSync(resolve('scripts/agent-dispatcher.ts'), 'utf8');
     expect(dispatcher).toContain('pendingValidationStages(configuredValidationStages');
     expect(dispatcher).toContain('validationProgress: activeValidationProgress');
+    expect(dispatcher).toContain('activeReviewResumption?.rerunTaskIds.includes(task.id)');
+    expect(dispatcher).toContain('activeReopenedTaskRuns.find((run) => run.task.id === task.id)');
     expect(dispatcher).toContain(
       "import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs'",
     );
@@ -744,6 +750,63 @@ ${JSON.stringify({
     );
     expect(stalled?.count).toBe(3);
     expect(reviewFindingSignature(first)).toBe(reviewFindingSignature(third));
+  });
+
+  it('reopens only the rejected task and its dependent delivery work', () => {
+    const tasks = [
+      { id: 'analysis', dependsOn: [] },
+      { id: 'implementation', dependsOn: ['analysis'] },
+      { id: 'validation', dependsOn: ['implementation'] },
+      { id: 'delivery', dependsOn: ['validation'] },
+      { id: 'unrelated', dependsOn: [] },
+    ] as PlannedTask[];
+    expect(taskIdsToRerun(tasks, 'validation')).toEqual(['validation', 'delivery']);
+    expect(() => taskIdsToRerun(tasks, 'missing')).toThrow('恢复计划中没有任务');
+  });
+
+  it('keeps unaffected task results and does not replay completed post-reopen work', () => {
+    const runs = [
+      { task: { id: 'implementation' }, completedAt: '2026-10-01T00:00:00.000Z' },
+      { task: { id: 'validation' }, completedAt: '2026-10-01T00:00:00.000Z' },
+      { task: { id: 'delivery' }, completedAt: '2026-10-01T00:02:00.000Z' },
+    ];
+    expect(
+      preserveUnaffectedTaskRuns(runs, ['validation', 'delivery'], '2026-10-01T00:01:00.000Z').map(
+        (run) => run.task.id,
+      ),
+    ).toEqual(['implementation', 'delivery']);
+  });
+
+  it('preserves game Task evidence across only disjoint workflow commits', () => {
+    expect(isWorkflowControlPlanePath('agents/policy.json')).toBe(true);
+    expect(isWorkflowControlPlanePath('scripts/agent-dispatcher.ts')).toBe(true);
+    expect(isWorkflowControlPlanePath('docs/status.md')).toBe(true);
+    expect(isWorkflowControlPlanePath('docs/testing.md')).toBe(true);
+    expect(isWorkflowControlPlanePath('src/game/firstBatch.ts')).toBe(false);
+    expect(isWorkflowControlPlanePath('package.json')).toBe(false);
+    expect(isWorkflowControlPlanePath('test/render.test.tsx')).toBe(false);
+  });
+
+  it('allows only the audited package gate-script change to preserve game Task work', () => {
+    const before = JSON.stringify({
+      scripts: { verify: 'npm run test', 'verify:full': 'npm run verify && npm run coverage' },
+      dependencies: { react: '18.3.1' },
+    });
+    const after = JSON.stringify({
+      scripts: {
+        verify: 'npm run test',
+        'verify:static':
+          'npm run typecheck && npm run lint && npm run format:check && npm run docs:check',
+        'verify:full':
+          'npm run verify:static && npm run coverage && npm run sandbox && npm run test:e2e && npm run build',
+      },
+      dependencies: { react: '18.3.1' },
+    });
+    expect(isSafeWorkflowPackageAdvance(before, after)).toBe(true);
+    expect(isSafeWorkflowPackageAdvance(before, after.replace('18.3.1', '19.0.0'))).toBe(false);
+    expect(
+      isSafeWorkflowPackageAdvance(before, after.replace('npm run test', 'npm run lint')),
+    ).toBe(false);
   });
 
   it('routes formal version stages directly without reopening producer planning', () => {

@@ -27,17 +27,21 @@ import {
   formalTaskPredecessorIds,
   formalStageWritePaths,
   internalizeFormalPlanDependencies,
+  isWorkflowControlPlanePath,
+  isSafeWorkflowPackageAdvance,
   isSafeRunId,
   optimizePlan,
   planTaskLimit,
   npmRunCommandsFromScript,
   pendingValidationStages,
   preferredWindowsExecutable,
+  preserveUnaffectedTaskRuns,
   resolveProducerDirection,
   reviewRoutesForPlan,
   routeForTask,
   selectReusableTaskIds,
   sortTasks,
+  taskIdsToRerun,
   taskInputPaths,
   taskOutputPaths,
   relativeModuleSpecifiers,
@@ -90,6 +94,7 @@ interface CliOptions {
   takeover: boolean;
   decisionConfirmed: boolean;
   producerGuidance: string;
+  resumeReviewTask: string;
   resumeDirectory: string | null;
   runId: string | null;
 }
@@ -144,6 +149,17 @@ interface ReviewBoundary {
   fingerprint: string;
   files: Map<string, Buffer | null>;
   findings: ReviewResult;
+}
+
+interface ReviewResumptionAudit {
+  version: 1;
+  taskId: string;
+  rerunTaskIds: string[];
+  afterRound: number;
+  guidance: string;
+  priorSignature: string;
+  baseline: string;
+  createdAt: string;
 }
 
 interface VerificationRun extends ProcessResult {
@@ -229,6 +245,7 @@ function printHelp() {
   --decision-confirmed  制作人已对当前不可逆或发布边界给出明确决定
   --producer-guidance  传入制作人决定正文，供恢复后的 Agent 执行
   --resume     从失败运行的恢复点续跑，不重复已完成任务
+  --resume-review-task <任务 ID>  审查停滞后重做该任务及下游，需附制作人指导
   --run-id     为版本级调度指定稳定的运行目录名
   --help       显示帮助
 
@@ -243,6 +260,7 @@ function parseArgs(argv: string[]): CliOptions {
   let takeover = false;
   let decisionConfirmed = false;
   let producerGuidance = '';
+  let resumeReviewTask = '';
   let resumeDirectory: string | null = null;
   let runId: string | null = null;
   let resumeRequested = false;
@@ -263,6 +281,12 @@ function parseArgs(argv: string[]): CliOptions {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error('--producer-guidance 后需要决定正文');
       producerGuidance = value;
+      index += 1;
+    } else if (arg === '--resume-review-task') {
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--'))
+        throw new Error('--resume-review-task 后需要计划中的任务 ID');
+      resumeReviewTask = value;
       index += 1;
     } else if (arg === '--run-id') {
       const value = argv[index + 1];
@@ -288,6 +312,9 @@ function parseArgs(argv: string[]): CliOptions {
     throw new Error('--resume 不能与 --plan-only、--deep-plan 或 --doctor 同时使用');
   }
   if (resumeDirectory && runId) throw new Error('--resume 不能与 --run-id 同时使用');
+  if (resumeReviewTask && (!resumeDirectory || !producerGuidance.trim())) {
+    throw new Error('--resume-review-task 只能配合 --resume 和明确的 --producer-guidance 使用');
+  }
   if (runId && !isSafeRunId(runId)) {
     throw new Error('--run-id 只能包含字母、数字、点、下划线和连字符');
   }
@@ -300,6 +327,7 @@ function parseArgs(argv: string[]): CliOptions {
     takeover,
     decisionConfirmed,
     producerGuidance,
+    resumeReviewTask,
     resumeDirectory,
     runId,
   };
@@ -898,10 +926,11 @@ async function readCheckpoint(runDirectory: string): Promise<RecoveryCheckpoint>
 
 async function reviewStallFromRunHistory(
   directory: string,
+  afterRound = 0,
 ): Promise<{ signature: string; count: number } | undefined> {
   const files = (await readdir(directory))
     .map((name) => ({ name, round: Number(/^review-(\d+)-.*\.json$/.exec(name)?.[1] ?? 0) }))
-    .filter((entry) => entry.round > 0)
+    .filter((entry) => entry.round > afterRound)
     .sort((left, right) => left.round - right.round);
   let stalled: { signature: string; count: number } | undefined;
   for (const file of files) {
@@ -916,6 +945,33 @@ async function reviewStallFromRunHistory(
     }
   }
   return stalled;
+}
+
+async function lastReviewRound(directory: string): Promise<number> {
+  return (await readdir(directory)).reduce(
+    (last, name) => Math.max(last, Number(/^review-(\d+)-.*\.json$/.exec(name)?.[1] ?? 0)),
+    0,
+  );
+}
+
+async function readReviewResumption(directory: string): Promise<ReviewResumptionAudit | null> {
+  const path = resolve(directory, 'review-resumption.json');
+  if (!existsSync(path)) return null;
+  const value = JSON.parse(await readFile(path, 'utf8')) as ReviewResumptionAudit;
+  if (
+    value.version !== 1 ||
+    !value.taskId ||
+    !Array.isArray(value.rerunTaskIds) ||
+    !Number.isSafeInteger(value.afterRound) ||
+    value.afterRound < 1 ||
+    !value.guidance?.trim() ||
+    !value.priorSignature ||
+    !value.baseline ||
+    !Number.isFinite(Date.parse(value.createdAt))
+  ) {
+    throw new Error('审查恢复审计记录损坏，拒绝无证据重试');
+  }
+  return value;
 }
 
 async function compactProjectContext(): Promise<string> {
@@ -1017,6 +1073,7 @@ function workerPrompt(
   failureContext: string,
   priorTaskRuns: TaskRun[] = [],
   sharedContext = '',
+  producerGuidance = '',
 ): string {
   const takeoverInstruction = activeTakeover
     ? '\n这是秘书强制接管现场：工作区中可能已有执行 Agent 的部分改动。先区分与本目标相关的改动和无关改动，保留相关改动并审查其正确性；禁止为了恢复而清空或覆盖无关现场。\n'
@@ -1030,6 +1087,10 @@ function workerPrompt(
           )
           .join('\n')}\n`
       : '';
+  const reopenedTask = activeReopenedTaskRuns.find((run) => run.task.id === task.id);
+  const reopenedEvidence = reopenedTask
+    ? `\n本轮接续该任务的原交付脉络：上次执行输出 ${reopenedTask.outputFile}；已有直接检查 ${reopenedTask.tests.join('、') || '无'}；已改动 ${reopenedTask.changedFiles.join('、') || '无'}。只按当前缺口读取必要证据并核实当前树，不重做仍有效的实现和检查。若模型切换使会话不能续接，以此证据索引恢复上下文。\n`
+    : '';
   const formalModuleReentry =
     task.id === 'formal-module-design-plan'
       ? `\n若本节点因最新主策 changes-requested 退回重入，先读当前 design-review.md 与 design-review-findings.md。旧 module-design-tasks.json 和旧任务提交仅作历史证据；必须针对尚未闭合的合同更新任务 JSON 及说明 Markdown，使用未在历史 stageTasks 出现的新任务 ID，并明确新增设计判断、反例和验收。若只看到旧六项均已交付而不产出新任务，本轮规划无法接纳。实际可玩证据留到开发及候选阶段，策划只定义可执行的验收。\n`
@@ -1053,8 +1114,10 @@ ${task.verification.map((item) => `- ${item}`).join('\n') || '- 运行与风险�
 ${failureContext}
 ${takeoverInstruction}
 ${priorEvidence}
+${reopenedEvidence}
 ${sharedContext}
 ${formalModuleReentry}
+${producerGuidance ? `\n本轮制作人明确指导（只补当前任务未闭合的证据，已完成且仍匹配的检查不得重做）：${producerGuidance}\n` : ''}
 
 完成实现后只运行改动直接相关的类型检查、定向测试或文档校验；不要运行统一 npm run verify 或 npm run verify:full，它们由 Feature PM 在汇总后的最终代码树负责。简洁报告修改、验证与剩余风险。`;
 }
@@ -1109,7 +1172,7 @@ async function runTask(
         previousSession?.sessionId ?? null,
       );
       const result = await runProcess('codex', workerArgs, {
-        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext)}`,
+        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext, activeReviewResumption?.rerunTaskIds.includes(task.id) ? activeReviewResumption.guidance : '')}`,
         logFile,
         stream: true,
         heartbeatLabel: `执行 ${task.id} / ${route.model}`,
@@ -1445,9 +1508,16 @@ async function askReviewerAttempt(
   const slug = route.model.replace(/[^a-z0-9.-]+/gi, '-');
   const outputFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.json`);
   const logFile = resolve(runDirectory, `review-${round}-${slug}-attempt-${attempt}.log`);
+  const resumptionGuidance =
+    activeReviewResumption && round > activeReviewResumption.afterRound
+      ? `\n本轮是停滞审查的一次性定向恢复。原主要阻断签名：${activeReviewResumption.priorSignature}。制作人指导：${activeReviewResumption.guidance}。仅核查该任务和下游的新增产物是否关闭原缺口，以及直接受影响的契约；旧轮已通过且输入未变的实现与测试不得重审。若原缺口仍在，明确退回，调度器会立即停止自动循环。\n`
+      : '';
+  const evidenceOnly = validationProfileForPlan(plan) === 'version';
   const prompt = `你是道衍项目的独立审查 Agent。不要修改文件。
 
 ${incremental ? '这是修复后的增量复审。只复核未关闭 finding、修复边界之后的改动和直接受影响契约；不要重新审查整版基线差异。' : '这是首次独立审查。'} 不要再次运行测试、构建或 Git 命令，也不要把当前沙盒不能启动子进程当作缺陷。先阅读 AGENTS.md，再只审查 ${inputFile} 中${incremental ? '记录的修复增量' : `从基线 ${baseline} 开始的差异`}；仅在确认具体问题时读取差异涉及的文件或直接契约，不要扫描整个仓库、路线图或历史日志。
+${resumptionGuidance}
+${evidenceOnly ? '\n本节点已经有独立的实际执行角色。你只核对任务证据的真实性、当前树/修订匹配、范围和剩余阻断，不重新执行策划验收、QA 实玩、测试或候选体验，也不代签这些角色的结论。\n' : ''}
 
 当前处于 Git 交付之前：执行和修复 Agent 均不得提交，Feature PM 会在独立审查通过后统一执行本地提交。不要因工作区尚未提交、任务记录中的 commit 为 null，或尚无本轮提交哈希而报 finding；Git 交付失败由后续交付阶段处理。仍须指出文件中虚构的制作人指示或伪造的已执行证据。
 
@@ -2100,6 +2170,9 @@ let activeResolvedDirection = options.direction;
 let activeTaskRuns: TaskRun[] = [];
 let activeReview: ReviewResult | null = null;
 let activeReviewStall: { signature: string; count: number } | undefined;
+let activeReopenedReviewSignature = '';
+let activeReviewResumption: ReviewResumptionAudit | null = null;
+let activeReopenedTaskRuns: TaskRun[] = [];
 let activeValidationProgress: ValidationProgress = {
   fastGate: null,
   independentReview: null,
@@ -2118,16 +2191,21 @@ let currentPhase = '初始化';
 const currentProcessIdentity = getProcessIdentity(process.pid);
 
 function throwIfReviewStalled(review: ReviewResult): void {
-  if (activeReviewStall && activeReviewStall.count >= 3) {
+  if (
+    activeReviewStall &&
+    (activeReviewStall.count >= 3 ||
+      (activeReopenedReviewSignature === activeReviewStall.signature &&
+        activeReviewStall.count >= 1))
+  ) {
     throw new Error(
       `审查停滞：同一主要文件连续 ${activeReviewStall.count} 轮仍有同等级阻断，已停止自动修复与复审；请核查任务边界、架构接入及真实产物。最近结论：${review.summary}`,
     );
   }
 }
 
-function applyProducerGuidance(direction: string): string {
-  return options.producerGuidance
-    ? `${direction}\n\n制作人已确认的决定：${options.producerGuidance}`
+function applyProducerGuidance(direction: string, guidance = options.producerGuidance): string {
+  return guidance && !direction.includes(`制作人已确认的决定：${guidance}`)
+    ? `${direction}\n\n制作人已确认的决定：${guidance}`
     : direction;
 }
 
@@ -2323,6 +2401,19 @@ try {
       (await isRecoverableRoutingOutage(runDirectory));
     const currentConfigFingerprint = await verificationConfigFingerprint();
     const workspacePaths = await workspaceChangedPaths();
+    const packageAdvanceSafe = committedAdvancePaths.includes('package.json')
+      ? await git(['show', `${checkpoint.baseline}:package.json`]).then(async (oldPackage) =>
+          oldPackage.code === 0
+            ? isSafeWorkflowPackageAdvance(
+                oldPackage.stdout,
+                await readFile(resolve(root, 'package.json'), 'utf8'),
+              )
+            : false,
+        )
+      : false;
+    const auditedControlAdvance = committedAdvancePaths.every(
+      (path) => isWorkflowControlPlanePath(path) || (path === 'package.json' && packageAdvanceSafe),
+    );
     const unrelatedCommittedAdvance =
       committedAdvancePaths.length > 0 &&
       committedAdvancePaths.every(
@@ -2333,7 +2424,8 @@ try {
         taskScopes.some((scope) => pathMatchesTaskScope(path, scope)),
       ) &&
       checkpoint.taskRuns.length > 0 &&
-      checkpoint.taskRuns.every((run) => run.configFingerprint === currentConfigFingerprint);
+      (checkpoint.taskRuns.every((run) => run.configFingerprint === currentConfigFingerprint) ||
+        auditedControlAdvance);
     const scopeAmendment = await readFile(resolve(runDirectory, 'scope-amendment.json'), 'utf8')
       .then(
         (value) =>
@@ -2473,7 +2565,50 @@ try {
         ? currentHead.stdout.trim()
         : checkpoint.baseline;
     activeDirection = checkpoint.direction;
-    activeResolvedDirection = applyProducerGuidance(checkpoint.resolvedDirection);
+    let reviewResumption = await readReviewResumption(runDirectory);
+    if (reviewResumption && reviewResumption.baseline !== checkpoint.baseline) {
+      throw new Error('审查恢复记录与原任务基线不一致');
+    }
+    if (options.resumeReviewTask) {
+      if (reviewResumption) throw new Error('该运行已重新打开一次审查，不能重复清除停滞记录');
+      const stalled = (await reviewStallFromRunHistory(runDirectory)) ?? checkpoint.reviewStall;
+      if (
+        checkpoint.status !== 'recoverable' ||
+        !checkpoint.phase.includes('审查') ||
+        !stalled ||
+        stalled.count < 3
+      ) {
+        throw new Error('只有已退出且连续三轮同缺口的审查停滞可定向重开');
+      }
+      const rerunTaskIds = taskIdsToRerun(checkpoint.plan.tasks, options.resumeReviewTask);
+      reviewResumption = {
+        version: 1,
+        taskId: options.resumeReviewTask,
+        rerunTaskIds,
+        afterRound: await lastReviewRound(runDirectory),
+        guidance: options.producerGuidance.trim(),
+        priorSignature: stalled.signature,
+        baseline: checkpoint.baseline,
+        createdAt: new Date().toISOString(),
+      };
+      await writeFile(
+        resolve(runDirectory, 'review-resumption.json'),
+        `${JSON.stringify(reviewResumption, null, 2)}\n`,
+        { flag: 'wx' },
+      );
+      console.log(
+        `[审查定向恢复] 原阻断与制作人指导已留痕；由原 Agent 重做 ${rerunTaskIds.join('、')}。`,
+      );
+    }
+    activeResolvedDirection = applyProducerGuidance(
+      checkpoint.resolvedDirection,
+      reviewResumption?.guidance ?? options.producerGuidance,
+    );
+    activeReviewResumption = reviewResumption;
+    activeReopenedReviewSignature = reviewResumption?.priorSignature ?? '';
+    const reviewRestartPending =
+      reviewResumption !== null &&
+      Date.parse(checkpoint.updatedAt) <= Date.parse(reviewResumption.createdAt);
     const resetCompletedWork =
       (fingerprintMismatch &&
         !completedCommitCanResume &&
@@ -2494,19 +2629,31 @@ try {
     } else {
       activeTaskRuns = checkpoint.taskRuns;
     }
+    if (reviewResumption) {
+      const rerun = new Set(reviewResumption.rerunTaskIds);
+      activeReopenedTaskRuns = checkpoint.taskRuns.filter((run) => rerun.has(run.task.id));
+      activeTaskRuns = preserveUnaffectedTaskRuns(
+        activeTaskRuns,
+        reviewResumption.rerunTaskIds,
+        reviewResumption.createdAt,
+      );
+    }
     activeReview =
-      resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance
+      resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance || reviewRestartPending
         ? null
         : checkpoint.review;
     // A disjoint control-plane commit invalidates a review pass, but it cannot
     // close an existing product-code blocker recorded in this run's reviews.
-    activeReviewStall =
-      (await reviewStallFromRunHistory(runDirectory)) ??
-      (unrelatedCommittedAdvance || auditedScopeAdvance ? undefined : checkpoint.reviewStall);
+    activeReviewStall = reviewResumption
+      ? await reviewStallFromRunHistory(runDirectory, reviewResumption.afterRound)
+      : ((await reviewStallFromRunHistory(runDirectory)) ??
+        (unrelatedCommittedAdvance || auditedScopeAdvance ? undefined : checkpoint.reviewStall));
     activeValidationProgress =
       resetCompletedWork || unrelatedCommittedAdvance || auditedScopeAdvance
         ? { fastGate: null, independentReview: null }
-        : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
+        : reviewRestartPending
+          ? { fastGate: checkpoint.validationProgress?.fastGate ?? null, independentReview: null }
+          : (checkpoint.validationProgress ?? { fastGate: null, independentReview: null });
     activePlannerTokens = checkpoint.plannerTokens;
     activeReviewerTokens = checkpoint.reviewerTokens;
     activeRepairerTokens = checkpoint.repairerTokens;
@@ -2754,7 +2901,7 @@ try {
     `[验证策略] ${validationProfile}: ${[...validationStages].join(', ') || (reusableFullGateAtStart ? '复用匹配最终树的完整门禁证据' : 'Task 直接检查')}`,
   );
   let localRepairRound = 0;
-  let reviewRound = 0;
+  let reviewRound = await lastReviewRound(runDirectory);
   let repeatedNoProgress = 0;
   let previousFailureSignature = '';
   const repairAndCheckProgress = async (
@@ -2885,7 +3032,7 @@ try {
         )
       ) {
         let reviewBoundary: ReviewBoundary | null = null;
-        if (activeReviewStall?.count && activeReviewStall.count >= 3) {
+        if (activeReviewStall) {
           throwIfReviewStalled(
             activeReview ?? {
               verdict: 'fix',

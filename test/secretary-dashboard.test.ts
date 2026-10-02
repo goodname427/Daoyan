@@ -187,7 +187,9 @@ describe('secretary dashboard server', () => {
       await readFile(resolve(secretaryState, 'state.json'), 'utf8'),
     ) as SecretaryState;
     expect(state.orchestration?.nextVersionCandidates).toEqual([]);
-  }, 20_000);
+    // Startup and intake each have a 20s diagnostic deadline; the outer test
+    // must allow both under full-suite Windows process and filesystem load.
+  }, 50_000);
 
   it('retains ambiguous local input and punctuated replies without creating a version', async () => {
     temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-intake-'));

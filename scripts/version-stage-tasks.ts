@@ -150,6 +150,17 @@ export function parseStageTaskManifest(
     return result;
   };
   for (const task of drafts) visit(task.id);
+  const checkOwners = new Map<string, string>();
+  for (const task of drafts) {
+    for (const check of task.acceptance) {
+      const key = check.trim().replace(/\s+/gu, ' ').toLowerCase();
+      const owner = checkOwners.get(key);
+      if (owner && owner !== task.id) {
+        throw new Error(`节点验收重复分派：${owner} / ${task.id}；请指定唯一责任人`);
+      }
+      checkOwners.set(key, task.id);
+    }
+  }
   for (let index = 0; index < drafts.length; index += 1) {
     const left = drafts[index];
     for (const right of drafts.slice(index + 1)) {
