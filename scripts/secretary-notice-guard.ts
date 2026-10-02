@@ -24,6 +24,7 @@ import {
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fingerprintPaths as validationFingerprintPaths } from './pre-push-verify.mjs';
 import { isRecoverableRoutingOutage } from './routing-outage-recovery';
 export { isRecoverableRoutingOutage } from './routing-outage-recovery';
 import {
@@ -2622,12 +2623,6 @@ export function ensureVersionStageItem(
       return null;
     const attempt = allLinked.length + 1;
     const id = versionStageItemId(version.id, stage, scopeRevision, attempt);
-    const direction =
-      step === 'planning'
-        ? stageTaskPlanDirection(version)
-        : step === 'task'
-          ? stageTaskDirection(version, selectedTask!)
-          : stageFinalizingDirection(version);
     const rejected = [...linked]
       .reverse()
       .find(
@@ -2636,6 +2631,18 @@ export function ensureVersionStageItem(
           candidate.orchestration?.formalStageStep === step &&
           (step !== 'task' || candidate.orchestration.formalTaskId === selectedTask?.id),
       );
+    const gateReconciliation =
+      stage === 'development' &&
+      step === 'finalizing' &&
+      rejected?.summary.includes('开发阶段门禁已通过，但 Version PM 交接仍未对齐最终证据');
+    const direction =
+      step === 'planning'
+        ? stageTaskPlanDirection(version)
+        : step === 'task'
+          ? stageTaskDirection(version, selectedTask!)
+          : gateReconciliation
+            ? `[formal-stage:development]\n[formal-stage-finalizing]\n[formal-development-gate-reconciliation]\n你是本版 Version PM，仅核对上轮已通过的完整门禁并修正自己归属的交接。范围修订 ${scopeRevision}；同时写入 ${version.documentRoot}/development.json。将公开结论写入 ${version.documentRoot}/development.md。路线图交接为 ${version.documentRoot}/roadmap-handoff.md。读取上轮 full-gate-evidence.json 和匹配日志；保留已完成任务及失败历史。只修改上述三份文件并执行直接文档检查，不重跑开发任务、完整门禁或独立审查。`
+            : stageFinalizingDirection(version);
     const item = itemFromIntake({ id, idea: direction, createdAt: now }, [], 'feature').item;
     if (rejected)
       item.idea += `\n上轮未接纳原因：${rejected.summary}；原运行证据：${rejected.runDirectory || '不可用'}。先核对并修复这项原因，不重做已通过的无关工作。`;
@@ -4957,6 +4964,38 @@ export function parseDevelopmentResult(
   return ordered;
 }
 
+export function assertPostGateDevelopmentHandoff(
+  value: unknown,
+  handoff: string,
+  gateLog: string,
+): void {
+  const validation =
+    isRecord(value) && isRecord(value.versionValidation) ? value.versionValidation : null;
+  const completeGate =
+    validation && isRecord(validation.completeGate) ? validation.completeGate : null;
+  if (
+    !isRecord(value) ||
+    value.status !== 'completed' ||
+    value.completed !== true ||
+    validation?.status !== 'passed' ||
+    completeGate?.status !== 'passed' ||
+    completeGate.command !== 'npm run verify:full' ||
+    completeGate.exitCode !== 0 ||
+    !Array.isArray(completeGate.evidence) ||
+    !completeGate.evidence.includes(gateLog) ||
+    (Array.isArray(validation.blockers) &&
+      validation.blockers.some((blocker) => isRecord(blocker) && blocker.status === 'open')) ||
+    !handoff.includes(gateLog) ||
+    /(?:最终开发集成树完整门禁尚无来源|最终集成完整门禁仍缺来源|开发节点不判通过|开发收束方先补最终树完整门禁来源)/u.test(
+      handoff,
+    )
+  ) {
+    throw new Error(
+      `开发阶段门禁已通过，但 Version PM 交接仍未对齐最终证据 ${gateLog}；只修订 development.json、development.md 与 roadmap-handoff.md 的门禁状态和来源，不重做游戏实现或前序验收`,
+    );
+  }
+}
+
 interface QaManifestBug {
   id: string;
   title: string;
@@ -5173,18 +5212,7 @@ function fingerprintStrings(values: string[]): string {
 }
 
 export function validationTreeFingerprintForPaths(paths: string[], workspaceRoot = root): string {
-  const hash = createHash('sha256');
-  for (const path of [...new Set(paths)].filter(isValidationTreePath).sort()) {
-    hash.update(path);
-    hash.update('\0');
-    hash.update(
-      existsSync(resolve(workspaceRoot, path))
-        ? readFileSync(resolve(workspaceRoot, path))
-        : '[deleted]',
-    );
-    hash.update('\0');
-  }
-  return hash.digest('hex');
+  return validationFingerprintPaths(paths.filter(isValidationTreePath), workspaceRoot);
 }
 
 export function currentValidationTreeFingerprint(workspaceRoot = root): string {
@@ -5230,13 +5258,22 @@ async function readFeatureGateArtifact(runDirectory: string): Promise<FeatureGat
   if (featureGateMatchesCurrent(primary, currentTree, currentConfig)) {
     return primary as unknown as FeatureGateArtifact;
   }
+  const formalPrefix = basename(runDirectory).replace(/-\d+$/, '');
   const entries = await readdir(runsRoot, { withFileTypes: true }).catch(() => []);
   for (const entry of entries.sort((left, right) => right.name.localeCompare(left.name))) {
-    if (!entry.isDirectory() || !entry.name.startsWith('pre-push-')) continue;
+    if (
+      !entry.isDirectory() ||
+      (!entry.name.startsWith('pre-push-') &&
+        !(formalPrefix.includes('-development') && entry.name.startsWith(`${formalPrefix}-`)))
+    )
+      continue;
     const fallbackPath = resolve(runsRoot, entry.name, 'full-gate-evidence.json');
     const fallback = await readJson(fallbackPath);
     if (featureGateMatchesCurrent(fallback, currentTree, currentConfig)) {
-      return { ...(fallback as unknown as FeatureGateArtifact), log: fallbackPath };
+      return {
+        ...(fallback as unknown as FeatureGateArtifact),
+        log: relative(root, fallbackPath).replace(/\\/g, '/'),
+      };
     }
   }
   if (!primary) throw new Error('Feature PM 缺少可登记的完整门禁证据');
@@ -5664,11 +5701,20 @@ async function finalizeDeliveredVersionStage(
       throw new Error('开发阶段缺少经任务拆分登记的工作项');
     }
     const manifest = `${version.documentRoot}/development.json`.replace(/\\/g, '/');
-    const results = parseDevelopmentResult(
-      await readJson(resolve(root, manifest)),
-      version.workItems,
-    );
+    const manifestValue = await readJson(resolve(root, manifest));
+    const results = parseDevelopmentResult(manifestValue, version.workItems);
     const gate = await readFeatureGateArtifact(item.runDirectory!);
+    if (version.workflowRevision === 2) {
+      const handoff = await readFile(
+        resolve(root, version.documentRoot, 'roadmap-handoff.md'),
+        'utf8',
+      );
+      assertPostGateDevelopmentHandoff(
+        manifestValue,
+        handoff,
+        gate.log || relative(root, resolve(item.runDirectory!, 'full-gate-evidence.json')),
+      );
+    }
     const taskEvidenceIds: string[] = [];
     for (const result of results) {
       const workItem = version.workItems.find((candidate) => candidate.id === result.id)!;
