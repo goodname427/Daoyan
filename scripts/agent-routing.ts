@@ -402,6 +402,7 @@ export function isWorkflowControlPlanePath(path: string): boolean {
   return (
     [
       'AGENTS.md',
+      '.nvmrc',
       '.prettierignore',
       'agents/README.md',
       'agents/policy.json',

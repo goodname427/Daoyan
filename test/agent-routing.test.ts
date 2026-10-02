@@ -816,6 +816,7 @@ ${JSON.stringify({
 
   it('preserves game Task evidence across only disjoint workflow commits', () => {
     expect(isWorkflowControlPlanePath('agents/policy.json')).toBe(true);
+    expect(isWorkflowControlPlanePath('.nvmrc')).toBe(true);
     expect(isWorkflowControlPlanePath('scripts/agent-dispatcher.ts')).toBe(true);
     expect(isWorkflowControlPlanePath('docs/status.md')).toBe(true);
     expect(isWorkflowControlPlanePath('docs/testing.md')).toBe(true);
