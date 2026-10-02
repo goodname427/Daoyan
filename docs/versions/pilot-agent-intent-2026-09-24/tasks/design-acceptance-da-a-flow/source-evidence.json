@@ -1,0 +1,285 @@
+{
+  "recordedAt": "2026-10-02T11:32:30.205Z",
+  "baseline": {
+    "head": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
+    "gitTree": "a83314ea7b4f6f6eacffc64605d7de13a82cf960",
+    "initialStatus": [],
+    "branch": "codex/version-pilot-agent-intent-2026-09-24"
+  },
+  "validation": {
+    "workspaceFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
+    "configFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
+    "gateSource": ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json",
+    "receipt": {
+      "schemaVersion": 1,
+      "workspaceFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
+      "configFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
+      "command": "npm run verify:full",
+      "commandFingerprint": "d02c65da7772a6c7b799fbf08f66e87a015274e842498a97f20f0b08cc204967",
+      "executionRound": 1,
+      "log": "",
+      "exitCode": 0,
+      "createdAt": "2026-10-02T11:22:19.874Z"
+    },
+    "treeMatch": true,
+    "configMatch": true,
+    "method": "写入验收证据前，PowerShell git ls-files 管道交由现有 fingerprintPaths/isValidationTreePath 只读函数计算；初始工作区干净。没有运行 pre-push main 或任何门禁。",
+    "postEvidenceTreePolicy": "这些指纹绑定写证据前的受验树；验收目录新增文件可能被当前指纹函数纳入，不将新的原始指纹误称产品代码变化或重新签门禁。"
+  },
+  "approval": {
+    "currentStage": "design-acceptance",
+    "scopeRevisions": [
+      {
+        "revision": 13,
+        "status": "approved"
+      },
+      {
+        "revision": 14,
+        "status": "rejected"
+      }
+    ],
+    "gates": [
+      {
+        "id": "199d6ab1-0ef2-40e0-aff5-80a861c9deac",
+        "kind": "producer-escalated-design",
+        "stage": "design-review",
+        "status": "approved",
+        "summary": "mdad 独立复审确认修订 13 的 J1、D1 单步与 B4 惰性修壳在同一初态和各自来源下形成自洽的条件纸面方案；mdac 所列 D1/B4 能量分账及 B4 第二响应冲突已在唯一理论和桥接正文修正。需制作人审阅首批 A（推荐：三行为）、B（仅 J1）或 C（完整护送与救援）的玩家范围；A 的续步、攻击、关键复苏与完整救援不在首批。真实原读、逐账户实扣、规范 AST/hash、容量、VM 实耗和实玩均留获批开发后验证。本结论不批准游戏开发。",
+        "sourceRequestId": "formal-pilot-agent-intent-2026-09-24-13-design-review-64",
+        "resolvedBy": "producer",
+        "createdAt": "2026-09-28T10:34:42.929Z",
+        "resolvedAt": "2026-09-28T10:48:22.660Z",
+        "resolutionHistory": [
+          {
+            "requestId": "7fb13945-1e78-45c5-8618-cd3ce6741277",
+            "decision": "approved",
+            "resolvedAt": "2026-09-28T10:48:22.660Z",
+            "feedback": "我选择当前正式版本 pilot-agent-intent-2026-09-24 在设计审核升级待办中推荐的 A：首批验证一次有源杆推、修士一次有源起步、法球首撞后一次普通惰性壳修补。请将此作为首批玩家范围的制作人决定登记到当前版本。这个选择只批准首批范围，不等于批准游戏开发；开发前仍须按既有门禁对齐完整策划，并保证三个体验由同一套可组合的实体、事件、来源、授权和资源规则实现，不做三个专名特例。"
+          }
+        ]
+      },
+      {
+        "id": "0e81e99b-d3ea-49dc-8e11-45267e220c24",
+        "kind": "producer-escalated-design",
+        "stage": "design-review",
+        "status": "approved",
+        "summary": "制作人已选择首批 A。请审阅 docs/versions/pilot-agent-intent-2026-09-24/design-review.md 与模块详细策划，并明确决定是否批准完整方案进入后续开发流程；此前的范围选择不等于开发批准。",
+        "sourceRequestId": "formal-pilot-agent-intent-2026-09-24-13-design-review-72",
+        "resolvedBy": "producer",
+        "createdAt": "2026-09-28T15:20:16.794Z",
+        "resolvedAt": "2026-09-28T17:08:35.522Z",
+        "resolutionHistory": [
+          {
+            "requestId": "3dd1ca56-e8f8-4f08-847d-18e3e0f01bb3",
+            "decision": "approved",
+            "resolvedAt": "2026-09-28T17:08:35.522Z",
+            "feedback": "批准当前完整详细策划进入开发。保持范围修订13和首批A。请把本版结论形成可追溯的路线图交接：已确认的世界规则与模块合同、首批实际验收结果、后续候选（法球付费事件、更多预设、敌方修士）的依赖与待验证事项、返工及重新设计触发条件、ADR0017至0020和旧内容迁移回退状态；候选体验前同步 docs/roadmap.md，下一轮策划从该交接与本版验收结果出发。未来候选仅作路线图，不进入本版首批实现。"
+          }
+        ]
+      }
+    ],
+    "drb9": {
+      "decision": "approved",
+      "summary": "drb9 在已批准的范围修订 13、首批 A 和 drb8 纸面联签内，核对 ADR-0018 逐条覆盖、六项模块与唯一世界理论的 J1、D1、B1→B4 接入合同及未列举反例；未发现新增实质同键冲突或须制作人取舍的玩家规则，有限纸面策划审核继续通过。ADR-0024 已采纳为设计覆盖，旧 World/VM 尚未完成迁移。development-5 的 J1 双端、独立辅源和取得前热原读仍受审查阻断；三行为运行交付、真实收据、规范 AST/hash、逐体容量及 VM 实耗均未获验收。本结论只批准纸面审核，不宣称开发完成或可玩。"
+    }
+  },
+  "development": {
+    "scopeRevision": 13,
+    "firstBatch": "A",
+    "workItems": [
+      {
+        "id": "dev-world-a3",
+        "commit": "0aa4d113a4e72074dd9426b0c50185658d4bc282",
+        "status": "completed",
+        "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json"
+      },
+      {
+        "id": "dev-player-a3",
+        "commit": "3d9d0bf20ed509069178c9a3265076b73cdfbd30",
+        "status": "completed",
+        "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json"
+      }
+    ],
+    "completeGate": {
+      "command": "npm run verify:full",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": [
+        ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"
+      ],
+      "reason": "development-11 集成树完整门禁收据核验通过：npm run verify:full 退出码为 0，收据记录 2026-10-02T11:22:19.874Z。历史失败和先前缺证阻断保留为历史；独立策划体验、QA 与候选体验仍待完成。",
+      "requiredOwner": "开发节点授权收束执行方",
+      "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"
+    },
+    "reportExtra": "已提交 ac2734f，按参数未推送。",
+    "recoveryStatus": "delivered"
+  },
+  "reuse": {
+    "productBaseline": "85c8cf4",
+    "productDiffPaths": [],
+    "comparedPaths": [
+      "src",
+      "electron",
+      "scripts/desktop.mjs",
+      "vite.config.ts",
+      "package-lock.json"
+    ],
+    "purpose": "仅来源和操作线索，不替独立验收；未重复开发检查",
+    "priorBrowserCount": 41,
+    "priorMissing": [
+      "返书后重执行",
+      "可编辑辅助术组合",
+      "独立策划实玩",
+      "活动 Battle 证书与硬件接入"
+    ],
+    "configuration": "历史 Vite 页面配置；当前配置哈希匹配，当前运行实例未验证"
+  },
+  "build": {
+    "files": [
+      {
+        "path": "dist/assets/index-BMhSKKNa.css",
+        "sha256": "7b96bde1bb29c875e8cffdf71509c45bf404a8e3fbc4da416d86280935426453",
+        "mtime": "2026-10-02T11:22:19.569Z"
+      },
+      {
+        "path": "dist/assets/index-D_dJQ5dR.js",
+        "sha256": "1502da74da7c22076363c2520bd4e0204175334f8a540b38aaddfe2ca2e41468",
+        "mtime": "2026-10-02T11:22:19.569Z"
+      },
+      {
+        "path": "dist/index.html",
+        "sha256": "29445ff69a448846425c1af17217cb818e2e8ac9fafa5a7b52405430af0b7203",
+        "mtime": "2026-10-02T11:22:19.569Z"
+      }
+    ],
+    "source": "现存 dist 文件；时间与收据邻近只能作线索。未取得构建文件到本轮玩家服务的绑定，未启动/重建应用。"
+  },
+  "runtime": {
+    "requestedUrl": "http://localhost:5173/",
+    "currentServer": "not-verified",
+    "viewport": null,
+    "consoleQuery": "not-run",
+    "isolatedSave": "not-created",
+    "playerOperations": 0,
+    "screenshots": [],
+    "reason": "访问权限被拒，在页面到达前停止；未读写真实用户存档。"
+  },
+  "sources": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "afa4788b563695563042581fbac3a5b8cc858922fcfa0c6080551fb3729e7dfd"
+    },
+    {
+      "path": "docs/workflow.md",
+      "sha256": "375467cd350ea9fa87e41241386f3d1854d1d5dbf3dd1ee3b793eb769c78dfbb"
+    },
+    {
+      "path": "docs/adr/0023-策划黑盒体验验收.md",
+      "sha256": "8144c7c3a1adb991678b4e1c7116695cab03655dedfcf55711876370087992c7"
+    },
+    {
+      "path": "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+      "sha256": "d3ffa3a569af2af80d1462156e29a233ef2f6518f1b4c1568a35ad02cccf6e2d"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+      "sha256": "183c750a85fcec01ada402659628693e0ed8aad7a39f860f77a72dbf3a1ac71f"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+      "sha256": "b9e1c86d159019bf06169c16fafe7022eaedc8cab50666ed79a2cf1492e704c8"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/design-review.json",
+      "sha256": "4604e7eede037faab2cfed47bd428ac06ad1b7fc184b9728c0d1b4eb87a2b402"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+      "sha256": "4f5eba412dc65408dba9d70fdc717deeaee4f493e27d0ee420371387459dd60a"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+      "sha256": "05905ba567342f9ecff58185544391d409c9ed14caa13b7e92a3400d84c78098"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "sha256": "b29761bc4a965532d2e7e66ca6623af03d25f246e1407f1ff21836a2b2de670f"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/development.json",
+      "sha256": "bb41d1128a5c214532b925abb5ba00eff6e4ce607a85c433e9d87c5a8b539857"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/development.md",
+      "sha256": "f8d9402c1e34d7e307f968cf001588107a0aa296ae960230e27d29aa78a4df74"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
+      "sha256": "d9be0aa0bdf2ae83cf2fb11851a3e84cf0cbd90901c921e146d0b439952a61e2"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md",
+      "sha256": "e5777c5111aba4f157c08ae35dfbb323a09b93c62175dd8080d411b02b9198cd"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
+      "sha256": "822af10e0b4ffbf8e9b31cb01b8a28e78e7c30849cd50cb8bf3f1ab5150352d8"
+    },
+    {
+      "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
+      "sha256": "db943b59f3c2cfcb2632e524c719991471952c86df6eb8396decbe2098ac5db0"
+    },
+    {
+      "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/report.json",
+      "sha256": "85336091c3163600c34d4ad142307b3db130c3423dd484a2c333afe04e2c25eb"
+    },
+    {
+      "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/recovery.json",
+      "sha256": "600c096bc37307344ea023bacdca785b6060f297c92f08ce27859e74bffe1389"
+    },
+    {
+      "path": ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json",
+      "sha256": "eb0788fda2e92de32209202fd3f2ffd6e67748e505f9c4ddd63b8ed0393d08a0"
+    },
+    {
+      "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/README.md",
+      "sha256": "4ae90118fc2b349e0270cf1eee73befef062a945dd289ac03e3ae2020a44686c"
+    },
+    {
+      "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/provenance.json",
+      "sha256": "36c22a07c0780143a83104bbafab79a3d4782911952706f3f40761b880f22149"
+    },
+    {
+      "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/browser-calls.json",
+      "sha256": "45c91506839862a5eae873bb13ba2b6825a2447b123527d517d12ad317b48d02"
+    },
+    {
+      "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/server-and-tree-records.json",
+      "sha256": "6fb4c9be7f9860b48753e2b1dd099ef7b5535957fc86fb3faf4ff84c14617d77"
+    },
+    {
+      "path": ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+      "sha256": "b447203bd1605dcc9e3fc6c8472ae602631bf8f491a1c5ddf1d6c8dec6d6cf0a"
+    },
+    {
+      "path": "package.json",
+      "sha256": "0db27e18d9f791bd2d830366631bdd6d5c99458209013a2890e6e8098b189a5f"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "46b10a1a6a15a4038fdf519ea871297144974ccc499c0e3a604440766a4e7b6b"
+    },
+    {
+      "path": "agents/policy.json",
+      "sha256": "6571285ec1a71d925d8c8c57d72d359ec44c7022173c3ae1373d446870566e88"
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "81e67bcd141c4ebc7d8f43c4dc91f72fe3b69974c5c81dd4e73615f6c75d9839"
+    },
+    {
+      "path": "e2e/candidate.spec.ts",
+      "sha256": "3b9e63700f91be6cb8555a45d676c5b0a3a4424a73ca8db96de2d0d21bbdbe4b"
+    }
+  ]
+}

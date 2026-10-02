@@ -1,0 +1,9 @@
+collect-evidence.mjs: exitCode=0; sources=29, distFiles=3, receiptExitCode=0, playerOperations=0
+validate.mjs via PowerShell git status pipeline: exitCode=0; taskId=da-a-flow, scenarios=8, json/links/writePaths=valid, independentPlayCovered=0, overall=blocked
+git diff --check (exact task paths): exitCode=0, output empty; new untracked content is checked by validate.mjs
+Browser calls: no process exit code; unavailable IAB / access denied Edge, details in browser-attempts.json
+Failed read-only fingerprint helper: Node subprocess spawnSync git EPERM, Node exitCode=1; later PowerShell path pipeline fingerprint matched receipt
+Failed unquoted Git tree query: exitCode=1; quoted query exitCode=0, tree=a83314ea7b4f6f6eacffc64605d7de13a82cf960
+Repair scope check: check-delivery-scope.ps1 exitCode=0; task-only workspace paths=9; committed task delta=0; historical commits/paths explicitly excluded.
+First repair check attempt: exitCode=1; Windows PowerShell default JSON decoding failed; explicit UTF-8 read fixed the check.
+No fast/full gates, commits, pushes, tags, or repository temporary files created.

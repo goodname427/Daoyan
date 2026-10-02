@@ -1,0 +1,346 @@
+{
+  "taskId": "da-a-flow",
+  "status": "blocked",
+  "completed": false,
+  "summary": "已交付来源核对及 DA01–DA08 未覆盖/技术阻断记录。受验树与真实完整门禁收据匹配；玩家入口被浏览器权限策略拒绝，独立实玩0项，不判通过，不修实现、不扩范围。",
+  "scopeRevision": 13,
+  "firstBatch": "A",
+  "developmentFingerprint": {
+    "head": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
+    "gitTree": "a83314ea7b4f6f6eacffc64605d7de13a82cf960",
+    "initialStatus": [],
+    "branch": "codex/version-pilot-agent-intent-2026-09-24"
+  },
+  "configurationFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
+  "validationTreeFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
+  "runtimeConfiguration": {
+    "requestedUrl": "http://localhost:5173/",
+    "currentServer": "not-verified",
+    "viewport": null,
+    "consoleQuery": "not-run",
+    "isolatedSave": "not-created",
+    "playerOperations": 0,
+    "screenshots": [],
+    "reason": "访问权限被拒，在页面到达前停止；未读写真实用户存档。"
+  },
+  "independence": {
+    "role": "独立策划",
+    "session": "本任务新执行会话；未续接开发或一次性补证会话",
+    "participatedInDevelopment": false,
+    "developmentTasks": [
+      "dev-world-a3",
+      "dev-player-a3"
+    ],
+    "statement": "本人未参与 dev-world-a3 或 dev-player-a3 实现。本轮仅查看合同、来源、启动配置和定向测试入口线索，没有从实现源码推定玩法通过。"
+  },
+  "scope": {
+    "goal": "按批准同书合同独立黑盒验收",
+    "nonGoals": [
+      "实现修复",
+      "策划改写",
+      "新增玩法",
+      "QA 全量回归",
+      "硬件接入",
+      "重新规划"
+    ],
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "DA01",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "批准、开发来源、受验树与配置核对成功；当前运行配置未核对",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA02",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "未进入玩家页面，未执行场景，实际未知",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA03",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "未进入玩家页面，未执行场景，实际未知",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA04",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "未进入玩家页面，未执行场景，实际未知",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA05",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "未进入玩家页面，未执行场景，实际未知",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA06",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "未进入玩家页面，未执行场景，实际未知",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA07",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "未进入玩家页面，未执行场景，实际未知",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    },
+    {
+      "id": "DA08",
+      "verdict": "technical-blocker",
+      "independentPlayCovered": false,
+      "actual": "逐场景未覆盖及来源复用边界已记录；整体 blocked",
+      "contractSources": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-acceptance-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "developmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json"
+      ],
+      "openItems": [
+        "TB01"
+      ]
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/checks.txt",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/validate.mjs",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/collect-evidence.mjs",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/delivery-scope.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1"
+  ],
+  "reusedEvidence": {
+    "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
+    "usage": "仅树/配置/开发收据来源核对及操作线索，非独立实玩",
+    "priorCommandsRerun": false,
+    "newGateRun": false
+  },
+  "openDeviations": [
+    {
+      "id": "TB01",
+      "kind": "technical-blocker",
+      "status": "open",
+      "contract": "DA01 运行配置及 DA02–DA07 实玩；DA08 通过条件",
+      "reproduction": "cua.createBrowserTab('edge', 'http://localhost:5173/', {sessionName:'🔎 道衍独立策划验收'})",
+      "actual": "用户访问权限拒绝，浏览器安全策略禁止继续或绕过",
+      "affectedDevelopmentTasks": [
+        "dev-world-a3",
+        "dev-player-a3"
+      ],
+      "owner": "Version PM / 环境维护主 Agent",
+      "targetedReverification": [
+        "DA01",
+        "DA02",
+        "DA03",
+        "DA04",
+        "DA05",
+        "DA06",
+        "DA07",
+        "DA08"
+      ],
+      "resolution": "正常授权恢复入口后，由独立策划在匹配树/配置及隔离测试存档上续验；不补跑完整门禁"
+    }
+  ],
+  "confirmedImplementationDeviations": [],
+  "uncovered": [
+    "当前运行实例/构建来源",
+    "三行为主流程",
+    "全部失败、空、隐私分支",
+    "第二自然接触三分判",
+    "返书后重执行及自编辑辅助组合",
+    "意图来源等价、沙盒和旧 Battle 缺证",
+    "旧资产导入迁移与原件保留",
+    "桌面/窄屏/滚动/控制台"
+  ],
+  "commands": [
+    {
+      "command": "node docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/collect-evidence.mjs",
+      "exitCode": 0,
+      "result": "29项来源哈希、3项现存dist文件、真实门禁收据退出0；本轮玩家操作0"
+    },
+    {
+      "command": "git -c core.quotePath=false status --porcelain=v1 --untracked-files=all | node docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/validate.mjs",
+      "exitCode": 0,
+      "result": "实际退出0：8场景 JSON、证据链接、writePaths、独立覆盖0与blocked结论检查通过"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow",
+      "exitCode": 0,
+      "result": "实际退出0，无输出；未跟踪新文件的空白另由定向文档检查核对"
+    },
+    {
+      "command": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
+      "exitCode": 0,
+      "result": "修复后直接检查：前序提交差异与任务工作区产物分开核对，授权路径外的本任务改动为0；验收仍blocked，玩家操作0"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node --input-type=module -e \"import {treeFingerprint,configFingerprint} from './scripts/pre-push-verify.mjs'; console.log(JSON.stringify({tree:treeFingerprint(),config:configFingerprint()}));\"",
+      "exitCode": 1,
+      "reason": "Node 内 spawnSync git EPERM；未运行门禁，改用 PowerShell 提供路径并调用只读 fingerprintPaths 核对成功"
+    },
+    {
+      "command": "git rev-parse HEAD^{tree}",
+      "exitCode": 1,
+      "reason": "PowerShell 将未引号花括号当脚本块，Git 输出 ambiguous argument；改用引号命令退出0"
+    },
+    {
+      "command": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
+      "exitCode": 1,
+      "reason": "首轮 Windows PowerShell 5 默认文本编码导致中文 JSON 读取失败；显式 Get-Content -Encoding utf8 后同命令退出0，未改动原始事实。"
+    }
+  ],
+  "toolFailures": {
+    "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+    "exitCodePolicy": "MCP无进程退出码，保留null，非成功命令"
+  },
+  "delivery": {
+    "committed": false,
+    "pushed": false,
+    "tagged": false,
+    "reason": "用户开头明确禁止执行 Agent commit/push/tag；交秘书统一处理。后文要求本地提交与之冲突，未自行提交。",
+    "handoff": "Version PM 定向恢复 TB01；不手工改变版本节点",
+    "patchBoundary": {
+      "base": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
+      "policy": "仅交付 writePaths 内的工作区产物；0f6b1f0 至受验 HEAD 的前序提交不属于 da-a-flow 补丁，不回退、不重新归属。",
+      "evidence": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/delivery-scope.json",
+      "checkCommand": "powershell -NoProfile -File docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1"
+    }
+  }
+}
