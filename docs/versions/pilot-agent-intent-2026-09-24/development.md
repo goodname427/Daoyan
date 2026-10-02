@@ -2,7 +2,7 @@
 
 版本：`pilot-agent-intent-2026-09-24`；范围修订 **13**；首批 **A**；收束责任人：Version PM。
 
-**两项正式工作项已交付；development-11 集成完整门禁通过，开发版本开发收束状态为 completed。** `npm run verify:full` 的成功收据为 [.daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json](../../../.daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json)，退出码为 0。先前缺证阻断已解决，历史失败与有限实玩边界保留；独立策划体验、QA 交叉场景和候选构建/体验仍待完成。
+**两项正式工作项已交付；当前正式验证树的完整门禁通过，开发汇总 status=completed、completed=true。** 原[development-11 收据](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-gate-evidence.json)记录 `npm run verify:full` 退出码 0，但其验证树指纹 `13b78ead…` 已过期，只保留为历史成功。当前[pre-push 收据](../../../.daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json)记录同一命令退出码 0；按已推送 `master` 的现行算法只读重算，验证树 `5ccf6bdc…`、配置 `aa6cbb18…`、命令及命令指纹均与收据一致。空 `log` 是该钩子的收据格式。正式运行状态仍记录开发 completed、策划体验 active、QA/candidate pending；独立策划体验、QA 和候选验收仍未完成。
 
 ## 范围、来源与依赖
 
@@ -43,7 +43,7 @@ Feature 快速门禁和审查的状态、指纹、已完成命令来自各自[�
 
 产品树对已测 `85c8cf4` 基线无差异，五份测试指纹仍匹配，既有类型检查和 94 项断言可复用。现行 `parseDevelopmentResult` 与 `parseStageTaskResult` 的类型检查要求、命令逐字同序相等及来源路径要求由同一直接校验验证；不修改接纳器，不把复用记录称为本轮重新执行。该修复只关闭检查归并 finding，不替代最终完整门禁或后续独立验收。
 
-**已解决的历史阻断：开发集成完整门禁证据缺失。** development-11 的最终集成树完整门禁收据记录 `npm run verify:full` 退出码为 0；原先缺少成功收据的状态仅作为历史失败保留，不再是当前开放阻断。门禁通过只完成开发收束，不代替后续独立策划体验、QA 交叉场景或候选体验。
+**门禁证据换代已核对。** development-11 原日志保留 602 项单元测试、26 项 E2E 通过、一次重试后通过的 flaky E2E 和构建完成记录；原收据退出码为 0，但受验树 `13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d` 已不再匹配当前正式验证树。当前 pre-push 收据创建于 `2026-10-02T11:22:19.874Z`，绑定验证树 `5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c`、配置 `aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55`、命令 `npm run verify:full`、命令指纹 `d02c65da7772a6c7b799fbf08f66e87a015274e842498a97f20f0b08cc204967` 和退出码 0。现行 pre-push 合同以这些字段判定复用；钩子只在完整门禁成功且验证前后树/配置不变后生成收据，因此空 `log` 不构成缺证。历史失败继续保留；该通过只收束开发完整门禁，不代替策划体验、QA 交叉场景或候选体验。
 
 ## 交接与剩余验证
 
@@ -53,4 +53,4 @@ Feature 快速门禁和审查的状态、指纹、已完成命令来自各自[�
 
 候选节点须追加真实 candidate.json，并在候选体验前同步 docs/roadmap.md 的本版交接链接；当前尚无该来源，不建立占位成功文件。后续法球付费事件、更多预设、敌方修士只作路线图候选，不成为本版实现或自动下一版本。下一轮策划必须先读交接和本版后续真实验收结论。
 
-本轮只运行汇总来源、接纳合同和文档格式/链接/差异的直接检查；实际命令、退出码及接纳校验结果登记在 development.json 的 finalization；旧阻断校验转入 priorContractValidation，保留历史。本轮未重跑游戏测试、实玩或统一门禁；上述完整门禁是既有收据，经控制面审计核验。
+本轮只运行门禁来源、现行指纹合同、JSON、文档格式/链接和差异的直接检查；原接纳命令与历史失败仍保存在 development.json。本轮未重跑游戏测试、实玩、统一门禁、开发检查或独立审查；门禁换代核对见 versionValidation.provenanceReconciliation。

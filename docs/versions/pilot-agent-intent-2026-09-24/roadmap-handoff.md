@@ -2,7 +2,11 @@
 
 版本 ID：`pilot-agent-intent-2026-09-24`；范围修订 **13**；首批 **A**；唯一责任人：**Version PM**。
 
-来源：[已批准 design-review.md](./design-review.md)、[审核结构化结论](./design-review.json)、[实际 development.json](./development.json)、[开发公开报告](./development.md)。当前代码基线 `3d9d0bf20ed509069178c9a3265076b73cdfbd30`；本交接对应 development-11 开发收束，顶层开发状态已完成。完整门禁成功收据：[.daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json](../../../.daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json)，记录 `npm run verify:full` 退出码 0。先前开发集成门禁缺证阻断已解决；历史失败和有限实玩边界继续保留。本交接尚非独立策划体验、QA、候选或制作人验收。
+来源：[已批准 design-review.md](./design-review.md)、[审核结构化结论](./design-review.json)、[实际 development.json](./development.json)、[开发公开报告](./development.md)。
+
+**两项正式工作项已交付；当前正式验证树的完整门禁通过，开发汇总 status=completed、completed=true。** 原[development-11 收据](../../../.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-gate-evidence.json)记录 `npm run verify:full` 退出码 0，但其验证树指纹 `13b78ead…` 已过期，只保留为历史成功。当前[pre-push 收据](../../../.daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json)记录同一命令退出码 0；按已推送 `master` 的现行算法只读重算，验证树 `5ccf6bdc…`、配置 `aa6cbb18…`、命令及命令指纹均与收据一致。空 `log` 是该钩子的收据格式。正式运行状态仍记录开发 completed、策划体验 active、QA/candidate pending；独立策划体验、QA 和候选验收仍未完成。
+
+**门禁证据换代已核对。** development-11 原日志保留 602 项单元测试、26 项 E2E 通过、一次重试后通过的 flaky E2E 和构建完成记录；原收据树 `13b78ead…` 已过期。当前 pre-push 收据绑定验证树 `5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c`、配置 `aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55`、完整门禁命令及退出码 0，满足现行复用合同。历史失败继续保留；完整门禁通过只收束开发，不代替策划体验、QA 或候选验收。
 
 ## 责任与规划核对
 
@@ -37,7 +41,7 @@
 ## 仍待验证和已知限制
 
 - 玩家检查接纳缺口已修复：来源任务顶层保留三条交付检查并归并四条已有有效直接检查，汇总同步为七条。归并前来源指纹与原命令保留，不改变实测行为或独立验收边界。
-- 最终开发集成完整门禁已有 development-11 通过收据（退出码 0）；先前缺证 blocker 已解决，旧失败记录保留为历史。QA 消费匹配收据并补交叉场景，不重复完整门禁。
+- 原 development-11 完整门禁记录退出码 0，但树指纹已过期；当前 pre-push 收据与正式验证树、配置和命令一致，开发完整门禁通过。QA 复用该匹配收据并补交叉场景，不重复完整门禁。
 - 独立策划验收与体验、QA 交叉场景，以及候选实际构建/体验仍待完成；不能借 Feature 自测或一次性实玩代签。
 - 活动 Battle 尚缺实体、来源、授权、价格、容量证书，旧按键触发有限术安全拒绝；不得把有限观察宣传为活动波次已经迁入新规则。
 - 再撞只有自然新事实、撤旧覆盖和容量三分判；核心尚无动态本体 FIFO 原读接口，有限桥接的一位队列占用证不能用于活动战斗。第二 VM/新B4读集/新报价未执行。
