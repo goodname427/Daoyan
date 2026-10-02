@@ -1,42 +1,42 @@
 {
   "version": 1,
   "planner": {
-    "model": "gpt-6-luna",
+    "model": "gpt-5.6-luna",
     "reasoning": "low"
   },
   "tiers": {
     "economy": {
-      "model": "gpt-6-luna",
+      "model": "gpt-5.6-luna",
       "reasoning": "low"
     },
     "standard": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-5.6-sol",
       "reasoning": "medium"
     },
     "advanced": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-5.6-sol",
       "reasoning": "high"
     },
     "critical": {
-      "model": "gpt-6-astra",
+      "model": "gpt-5.6-sol",
       "reasoning": "high"
     }
   },
   "reviewers": {
     "economy": {
-      "model": "gpt-6-luna",
+      "model": "gpt-5.6-luna",
       "reasoning": "low"
     },
     "standard": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-5.6-sol",
       "reasoning": "low"
     },
     "advanced": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-5.6-sol",
       "reasoning": "high"
     },
     "critical": {
-      "model": "gpt-6-astra",
+      "model": "gpt-5.6-sol",
       "reasoning": "high"
     }
   },
@@ -46,13 +46,13 @@
     "reviewerFallbacks": {
       "economy": [
         {
-          "model": "gpt-5.6-terra",
+          "model": "gpt-5.6-sol",
           "reasoning": "low"
         }
       ],
       "standard": [
         {
-          "model": "gpt-6-luna",
+          "model": "gpt-5.6-luna",
           "reasoning": "medium"
         }
       ],
@@ -62,17 +62,17 @@
           "reasoning": "medium"
         },
         {
-          "model": "gpt-6-astra",
+          "model": "gpt-5.6-luna",
           "reasoning": "medium"
         }
       ],
       "critical": [
         {
           "model": "gpt-5.6-sol",
-          "reasoning": "high"
+          "reasoning": "medium"
         },
         {
-          "model": "gpt-5.6-terra",
+          "model": "gpt-5.6-luna",
           "reasoning": "medium"
         }
       ]
