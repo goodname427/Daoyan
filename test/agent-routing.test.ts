@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   resumeProducerGuidance,
+  reviewRecoveryGuidanceForTask,
   advanceReviewStall,
   canRebaseEmptyRecovery,
   canReuseFullGateEvidence,
@@ -69,6 +70,25 @@ describe('producer guidance during review recovery', () => {
   it('preserves saved guidance when no new instruction was supplied', () => {
     expect(resumeProducerGuidance('  ', '由原 Agent 补验')).toBe('由原 Agent 补验');
     expect(resumeProducerGuidance('')).toBe('');
+  });
+
+  it('forwards the current decision to reopened workers and excludes completed tasks', () => {
+    expect(
+      reviewRecoveryGuidanceForTask(
+        'validation',
+        ['validation', 'delivery'],
+        '核查本次实玩补证',
+        '旧规则：原 Agent 亲自重玩',
+      ),
+    ).toBe('核查本次实玩补证');
+    expect(
+      reviewRecoveryGuidanceForTask(
+        'implementation',
+        ['validation', 'delivery'],
+        '核查本次实玩补证',
+        '旧规则：原 Agent 亲自重玩',
+      ),
+    ).toBe('');
   });
 });
 import {
@@ -431,7 +451,8 @@ ${JSON.stringify({
     const dispatcher = readFileSync(resolve('scripts/agent-dispatcher.ts'), 'utf8');
     expect(dispatcher).toContain('pendingValidationStages(configuredValidationStages');
     expect(dispatcher).toContain('validationProgress: activeValidationProgress');
-    expect(dispatcher).toContain('activeReviewResumption?.rerunTaskIds.includes(task.id)');
+    expect(dispatcher).toContain('reviewRecoveryGuidanceForTask(');
+    expect(dispatcher).toContain('activeReviewResumption.rerunTaskIds');
     expect(dispatcher).toContain('activeReopenedTaskRuns.find((run) => run.task.id === task.id)');
     expect(dispatcher).toContain(
       "import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs'",

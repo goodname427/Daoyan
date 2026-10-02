@@ -23,6 +23,7 @@ import {
   taskCompletionKey,
   unrecordedTaskCompletions,
   reconciliationTargets,
+  trackExternallyResumedRun,
   reopenVerifiedDevelopmentDelivery,
   reopenVerifiedQaDelivery,
   reopenVerifiedBugfixDelivery,
@@ -1212,5 +1213,40 @@ describe('persistent secretary state', () => {
       'retry',
       'pointer',
     ]);
+  });
+
+  it('tracks a failed item only when its own PM has been externally resumed', () => {
+    const state = createSecretaryState('2026-09-21T00:00:00.000Z');
+    const item = itemFromIntake(
+      { id: 'original', idea: '继续原任务', createdAt: '2026-09-21T00:00:00.000Z' },
+      [],
+    ).item;
+    item.status = 'failed';
+    item.runDirectory = 'C:/runs/original';
+    state.items.push(item);
+    expect(
+      trackExternallyResumedRun(
+        state,
+        'original',
+        'C:/runs/other',
+        123,
+        'identity',
+        '2026-09-21T01:00:00.000Z',
+      ),
+    ).toBe(false);
+    expect(
+      trackExternallyResumedRun(
+        state,
+        'original',
+        'C:/runs/original',
+        123,
+        'identity',
+        '2026-09-21T01:00:00.000Z',
+      ),
+    ).toBe(true);
+    expect(item.status).toBe('tracking');
+    expect(item.processPid).toBe(123);
+    expect(state.activeItemId).toBe('original');
+    expect(reconciliationTargets(state).map((candidate) => candidate.id)).toEqual(['original']);
   });
 });

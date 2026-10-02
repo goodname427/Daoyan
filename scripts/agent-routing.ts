@@ -386,6 +386,16 @@ export function resumeProducerGuidance(current: string, saved = ''): string {
   return current.trim() || saved;
 }
 
+/** Forward the latest decision only to tasks reopened by the review recovery. */
+export function reviewRecoveryGuidanceForTask(
+  taskId: string,
+  reopenedTaskIds: string[],
+  current: string,
+  saved: string,
+): string {
+  return reopenedTaskIds.includes(taskId) ? resumeProducerGuidance(current, saved) : '';
+}
+
 /** Only these disjoint control-plane commits may leave game Task evidence intact. */
 export function isWorkflowControlPlanePath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/');
