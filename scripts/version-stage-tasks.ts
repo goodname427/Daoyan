@@ -442,6 +442,25 @@ export function stageTaskTechnicalBlockerReason(
     : null;
 }
 
+/** A development task with an explicit host block must wait for changed host evidence. */
+export function developmentTaskEnvironmentBlockerReason(
+  value: unknown,
+  expectedTaskId: string,
+): string | null {
+  if (
+    !isRecord(value) ||
+    value.taskId !== expectedTaskId ||
+    value.status !== 'blocked' ||
+    value.completed !== false ||
+    !isRecord(value.actualApplication) ||
+    !isRecord(value.actualApplication.observations)
+  )
+    return null;
+  const blocker = value.actualApplication.observations.blocker;
+  if (typeof blocker !== 'string' || !blocker.trim()) return null;
+  return blocker.trim().replace(/\s+/g, ' ').slice(0, 240);
+}
+
 /** A negative independent design verdict is finished evidence for returning to development. */
 export function stageTaskImplementationDeviationReason(
   value: unknown,

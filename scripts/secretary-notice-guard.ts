@@ -31,6 +31,7 @@ import {
   buildLocalPlan,
   classifyAgentFailure,
   conventionalCommitOrFallback,
+  formalTaskEvidencePath,
   formalTaskPredecessorIds,
   internalizeFormalPlanDependencies,
   isHypotheticalProducerQuestion,
@@ -166,6 +167,7 @@ import {
   assertStageTaskPrestartScope,
   parseStageTaskManifest,
   parseStageTaskResult,
+  developmentTaskEnvironmentBlockerReason,
   stageTaskImplementationDeviationReason,
   stageTaskTechnicalBlockerReason,
   readyStageTasks,
@@ -4161,6 +4163,23 @@ async function reconcileItem(
     clearOrphanRecovery(item.id);
     item.processPid = 0;
     item.processIdentity = '';
+    const taskEvidencePath = formalTaskEvidencePath(item.idea);
+    if (
+      itemOrchestration.formalStage === 'development' &&
+      itemOrchestration.formalTaskId &&
+      taskEvidencePath?.startsWith(
+        `docs/versions/${itemOrchestration.formalVersionId}/tasks/development-`,
+      )
+    ) {
+      const blocker = developmentTaskEnvironmentBlockerReason(
+        await readJson(resolve(root, taskEvidencePath)),
+        itemOrchestration.formalTaskId,
+      );
+      if (blocker) {
+        await blockTechnicalStall(`开发实玩环境阻断：${blocker}`);
+        return true;
+      }
+    }
     if (acknowledgedWaiting) {
       item.status = 'retry-wait';
       recordReconciliation('retry-wait', '该阻塞快照已由制作人处理，保留恢复派发。', [

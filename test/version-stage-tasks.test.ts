@@ -17,6 +17,7 @@ import {
   assertTaskWriteScope,
   parseStageTaskManifest,
   parseStageTaskResult,
+  developmentTaskEnvironmentBlockerReason,
   stageTaskImplementationDeviationReason,
   stageTaskTechnicalBlockerReason,
   readyStageTasks,
@@ -168,6 +169,29 @@ describe('stage-owned task contracts', () => {
       stageTaskTechnicalBlockerReason({ ...blocked, status: 'completed' }, 'da-a-flow'),
     ).toBeNull();
     expect(stageTaskTechnicalBlockerReason(blocked, 'other-task')).toBeNull();
+  });
+  it('recognizes a development playtest denied before any player action', () => {
+    const blocked = {
+      taskId: 'dev-battle-boundary-a1',
+      status: 'blocked',
+      completed: false,
+      actualApplication: {
+        observations: { blocker: 'Computer Use was not approved to use electron' },
+      },
+    };
+    expect(developmentTaskEnvironmentBlockerReason(blocked, blocked.taskId)).toBe(
+      'Computer Use was not approved to use electron',
+    );
+    expect(
+      developmentTaskEnvironmentBlockerReason({ ...blocked, status: 'completed' }, blocked.taskId),
+    ).toBeNull();
+    expect(developmentTaskEnvironmentBlockerReason(blocked, 'other-task')).toBeNull();
+    expect(
+      developmentTaskEnvironmentBlockerReason(
+        { ...blocked, actualApplication: {} },
+        blocked.taskId,
+      ),
+    ).toBeNull();
   });
   it('returns a signed negative design verdict to development without treating an environment gap as pass', () => {
     const blocked = {
