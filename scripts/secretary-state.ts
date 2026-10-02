@@ -931,6 +931,38 @@ export function reconciliationTargets(state: SecretaryState): SecretaryItem[] {
   return targets;
 }
 
+/** Reattach a failed queue item only to its own externally resumed, live PM. */
+export function trackExternallyResumedRun(
+  state: SecretaryState,
+  itemId: string,
+  runDirectory: string,
+  processPid: number,
+  processIdentity: string,
+  now: string,
+): boolean {
+  const item = state.items.find((candidate) => candidate.id === itemId);
+  if (
+    !item ||
+    item.status !== 'failed' ||
+    item.runDirectory !== runDirectory ||
+    processPid <= 0 ||
+    !processIdentity ||
+    state.items.some(
+      (candidate) => candidate.id !== itemId && ['active', 'tracking'].includes(candidate.status),
+    )
+  )
+    return false;
+  item.status = 'tracking';
+  item.summary = '原 PM 已从保留的恢复点继续，正在跟踪原任务。';
+  item.processPid = processPid;
+  item.processIdentity = processIdentity;
+  item.updatedAt = now;
+  item.retryAt = '';
+  if (item.orchestration) item.orchestration.processOccupied = true;
+  state.activeItemId = item.id;
+  return true;
+}
+
 /** Close stale PM items after a control-plane formal version is retired or archived. */
 export function closeArchivedVersionItems(
   state: SecretaryState,

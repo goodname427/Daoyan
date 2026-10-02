@@ -108,6 +108,7 @@ import {
   supersedeRedundantDevelopmentItems,
   unrecordedTaskCompletions,
   reconciliationTargets,
+  trackExternallyResumedRun,
   type DirectionDestination,
   type IntakeRequest,
   type IntakeDisposition,
@@ -7037,6 +7038,26 @@ async function coordinateOnce(): Promise<void> {
     },
     saveState,
   );
+  let trackedExternalResume = false;
+  for (const item of state.items) {
+    if (item.status !== 'failed' || !item.runDirectory) continue;
+    const run = await snapshotForItem(item);
+    if (
+      !run ||
+      !['active', 'running'].includes(run.status) ||
+      !isOwnedProcessAlive(run.processPid, run.processIdentity)
+    )
+      continue;
+    trackedExternalResume =
+      trackExternallyResumedRun(
+        state,
+        item.id,
+        run.directory,
+        run.processPid,
+        run.processIdentity,
+        new Date().toISOString(),
+      ) || trackedExternalResume;
+  }
   const stateBeforeReconciliation = JSON.stringify(state);
   const targets = reconciliationTargets(state);
   let reconciliationFailed = false;
@@ -7153,6 +7174,7 @@ async function coordinateOnce(): Promise<void> {
   // event.  Do not turn that no-op observation into a fresh state write (and
   // therefore a fresh event) merely by refreshing bookkeeping timestamps.
   const stateChanged =
+    trackedExternalResume ||
     supersededObsolete > 0 ||
     retiredQuarantinedBootstrap ||
     retiredEmptyBootstrap ||

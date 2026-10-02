@@ -39,6 +39,7 @@ import {
   preferredWindowsExecutable,
   preserveUnaffectedTaskRuns,
   resumeProducerGuidance,
+  reviewRecoveryGuidanceForTask,
   resolveProducerDirection,
   reviewRoutesForPlan,
   routeForTask,
@@ -1185,7 +1186,7 @@ async function runTask(
         previousSession?.sessionId ?? null,
       );
       const result = await runProcess('codex', workerArgs, {
-        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext, activeReviewResumption?.rerunTaskIds.includes(task.id) ? activeReviewResumption.guidance : '')}`,
+        input: `${previousSession ? '这是同一交付范围的后续执行。保留已核实的工作脉络；本轮合同、当前文件和最新审核结论优先，旧结论有冲突时重新核对。\n\n' : ''}${workerPrompt(plan, task, failureContext, priorTaskRuns, sharedContext, activeReviewResumption ? reviewRecoveryGuidanceForTask(task.id, activeReviewResumption.rerunTaskIds, options.producerGuidance, activeReviewResumption.guidance) : '')}`,
         logFile,
         stream: true,
         heartbeatLabel: `执行 ${task.id} / ${route.model}`,
