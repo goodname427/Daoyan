@@ -946,10 +946,14 @@
     "status": "blocked",
     "completeGate": {
       "command": "npm run verify:full",
-      "status": "not-run",
-      "exitCode": null,
-      "evidence": [],
-      "reason": "提供的两个Feature来源仅含快速门禁/审查，无本节点最终集成树完整门禁。最后执行限制禁止本次运行统一门禁；不填写成功退出码。",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": [
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/control-plane-gate-audit.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-gate-evidence.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-verify-1.log"
+      ],
+      "reason": "控制面实时审计确认原始完整门禁收据的工作树与配置指纹匹配，npm run verify:full 退出码为0。日志记录26 passed、1 flaky；该运行证据不自动推进正式开发节点，历史 blocker 保留待正式接纳。",
       "requiredOwner": "开发节点授权收束执行方",
       "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"
     },
