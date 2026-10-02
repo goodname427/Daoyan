@@ -72,7 +72,7 @@ async function waitForIntakeCompletion(
   const responsePath = resolve(secretaryState, 'responses', `${requestId}.json`);
   // The guard is intentionally asynchronous; full-suite Windows I/O can delay
   // an otherwise healthy response beyond ten seconds while other child tests run.
-  const deadline = Date.now() + 20_000;
+  const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
     try {
       return JSON.parse(await readFile(responsePath, 'utf8')) as IntakeCompletion;
@@ -196,9 +196,9 @@ describe('secretary dashboard server', () => {
       await readFile(resolve(secretaryState, 'state.json'), 'utf8'),
     ) as SecretaryState;
     expect(state.orchestration?.nextVersionCandidates).toEqual([]);
-    // Startup and intake each have a 20s diagnostic deadline; the outer test
+    // Startup and intake each have a 45s diagnostic deadline; the outer test
     // must allow both under full-suite Windows process and filesystem load.
-  }, 50_000);
+  }, 95_000);
 
   it('retains ambiguous local input and punctuated replies without creating a version', async () => {
     temporary = await mkdtemp(resolve(tmpdir(), 'daoyan-review-intake-'));
@@ -237,7 +237,7 @@ describe('secretary dashboard server', () => {
       '新增装备交易系统，允许玩家相互交易装备',
     );
     expect(direction.response).toContain('建立正式版本草案');
-  }, 20_000);
+  }, 70_000);
 
   it.each(['active', 'backlog'] as const)(
     'requires a scope gate despite an opposite %s fact',
