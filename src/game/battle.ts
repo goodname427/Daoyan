@@ -60,6 +60,28 @@ export interface BattleStats {
   kills: number;
 }
 
+export const FIRST_BATCH_LEGACY_SPELLS = ['J1执行', 'D1执行', 'B4修壳'] as const;
+export type FirstBatchLegacySpell = (typeof FIRST_BATCH_LEGACY_SPELLS)[number];
+
+export const FIRST_BATCH_LEGACY_REJECTION =
+  '旧活动 Battle 缺少同版来源、授权和容量证书；未创建 VM 或控制会话，未付款，也未登记为成功施法。';
+
+function isFirstBatchLegacySpell(spell: string): spell is FirstBatchLegacySpell {
+  return (FIRST_BATCH_LEGACY_SPELLS as readonly string[]).includes(spell);
+}
+
+export interface FirstBatchLegacyRejection {
+  sequence: number;
+  actorId: number;
+  spell: FirstBatchLegacySpell;
+  source: `slot:${string}` | `event:${WorldEventType}:${string}`;
+  reason: typeof FIRST_BATCH_LEGACY_REJECTION;
+  vmCreated: false;
+  controlSessionCreated: false;
+  manaPaid: 0;
+  successRecorded: false;
+}
+
 /** 一次施放的运行时状态 */
 export interface CastInstance {
   spell: string;
@@ -146,6 +168,8 @@ export class Battle {
   private eventCasts = new Map<number, EventCast>();
   readonly eventResponses: EventResponseSummary[] = [];
   private nextEventCastId = 1;
+  readonly firstBatchLegacyRejections: FirstBatchLegacyRejection[] = [];
+  private nextFirstBatchLegacyRejectionSequence = 1;
   readonly chargeSessions = new Map<string, ChargeSession>();
   readonly finishedCharges: ChargeSession[] = [];
   private slotIntents: SlotIntent[] = [];
@@ -689,7 +713,7 @@ export class Battle {
       actorId,
       bindingId,
       type,
-      (event) => this.startEventCast(actorId, spell, event),
+      (event) => this.startEventCast(actorId, spell, event, bindingId),
       options,
     );
   }
@@ -698,7 +722,12 @@ export class Battle {
     this.world.unsubscribeEvent(sequence);
   }
 
-  private startEventCast(actorId: number, spell: string, event: WorldEvent): void {
+  private startEventCast(
+    actorId: number,
+    spell: string,
+    event: WorldEvent,
+    bindingId: string,
+  ): void {
     const actor = this.world.byId(actorId);
     if (!actor?.alive) return;
     const response: EventResponseSummary = {
@@ -712,6 +741,11 @@ export class Battle {
     };
     this.eventResponses.unshift(response);
     if (this.eventResponses.length > 32) this.eventResponses.pop();
+    if (this.rejectFirstBatchLegacySpell(actorId, spell, `event:${event.type}:${bindingId}`)) {
+      response.state = 'failed';
+      response.error = FIRST_BATCH_LEGACY_REJECTION;
+      return;
+    }
     const active = [...this.eventCasts.values()].filter((cast) => cast.ownerId === actorId);
     if (active.length >= 32 || active.filter((cast) => cast.spell === spell).length >= 8) {
       this.world.eventDrops.capacity++;
@@ -788,10 +822,7 @@ export class Battle {
     const spell = spellOverride ?? a.bindings[slot];
     if (!spell) return false;
     if (!this.program.index.has(spell)) return false;
-    if (spell === 'J1执行' || spell === 'D1执行' || spell === 'B4修壳') {
-      this.pushLog(`「${spell}」需在首批有限世界观察中登记来源、授权和容量后执行。`);
-      return false;
-    }
+    if (this.rejectFirstBatchLegacySpell(actorId, spell, `slot:${slot}`)) return false;
 
     const cost = this.costs[spell];
     if (cost && cost.errors.length > 0) {
@@ -1178,6 +1209,8 @@ export class Battle {
     this.inputOverflow = false;
     this.finishedCharges.length = 0;
     this.eventResponses.length = 0;
+    this.firstBatchLegacyRejections.length = 0;
+    this.nextFirstBatchLegacyRejectionSequence = 1;
     this.clearPlayerInput();
     this.log = [];
     this.time = 0;
@@ -1248,6 +1281,29 @@ export class Battle {
       }
     }
     return best;
+  }
+
+  private rejectFirstBatchLegacySpell(
+    actorId: number,
+    spell: string,
+    source: FirstBatchLegacyRejection['source'],
+  ): spell is FirstBatchLegacySpell {
+    if (!isFirstBatchLegacySpell(spell)) return false;
+    const rejection: FirstBatchLegacyRejection = {
+      sequence: this.nextFirstBatchLegacyRejectionSequence++,
+      actorId,
+      spell,
+      source,
+      reason: FIRST_BATCH_LEGACY_REJECTION,
+      vmCreated: false,
+      controlSessionCreated: false,
+      manaPaid: 0,
+      successRecorded: false,
+    };
+    this.firstBatchLegacyRejections.unshift(rejection);
+    if (this.firstBatchLegacyRejections.length > 8) this.firstBatchLegacyRejections.pop();
+    this.pushLog(`「${spell}」拒绝：${FIRST_BATCH_LEGACY_REJECTION}`);
+    return true;
   }
 
   private pushLog(line: string): void {

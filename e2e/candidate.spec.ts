@@ -90,6 +90,47 @@ test('candidate-first-batch-same-book', async ({ page }) => {
   sink.assert();
 });
 
+test('candidate-old-Battle-rejects-first-batch-spells', async ({ page }, testInfo) => {
+  const sink = captureErrors(page);
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  for (const label of ['加入J1执行', '加入D1执行', '加入B4修壳'])
+    await page.getByRole('button', { name: label }).click();
+  await page.locator('.tabs .tab').nth(1).click();
+  const bindings = page.locator('.bindings select');
+  await bindings.nth(0).selectOption('J1执行');
+  await bindings.nth(1).selectOption('D1执行');
+  await bindings.nth(2).selectOption('B4修壳');
+  await page
+    .getByRole('button', { name: /开始演武/ })
+    .first()
+    .click();
+
+  await page.locator('canvas.arena').click({ position: { x: 320, y: 220 } });
+  const rejection = page.getByLabel('旧 Battle 首批拒绝');
+  await expect(rejection).toContainText('J1执行');
+  await page.keyboard.press('Digit1');
+  await expect(rejection).toContainText('D1执行');
+  await page.keyboard.press('Digit2');
+  await expect(rejection).toContainText('B4修壳');
+  await expect(rejection).toContainText('缺少同版来源、授权和容量证书');
+  await expect(rejection).toContainText('VM 0、控制会话 0');
+  await expect(rejection).toContainText('玩家法力扣除 0、有限世界付款 0、成功施法记录 0');
+  await expect(rejection).toContainText('不代表本次拒绝成功');
+  await expect(page.getByLabel('账户与会话摘要')).toContainText('本人法力 300.0');
+  await expect(page.getByLabel('账户与会话摘要')).toContainText('累计付款 0.0');
+  await expect(page.getByLabel('有限世界收据')).toHaveCount(0);
+  await expect(page.getByLabel('B1与B4有限世界收据')).toHaveCount(0);
+  await expect(page.getByTestId('active-casts')).toHaveCount(0);
+  await expect(page.locator('.meta-info')).toContainText('全场施法起手（含妖兽）');
+  await testInfo.attach('da06-old-battle-rejections', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  sink.assert();
+});
+
 test('candidate-first-batch-helper-edit', async ({ page }) => {
   const sink = captureErrors(page);
   await page.goto('/');

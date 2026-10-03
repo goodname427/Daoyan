@@ -130,6 +130,55 @@ describe('app rendering smoke test', () => {
     expect(revisedReceipt).toContain('旧报价不继承');
   });
 
+  it('shows all three old Battle rejections without finite payment or player success records', async () => {
+    const { App } = await import('../src/app/App');
+    const view = await renderReady(<App />);
+    for (const name of ['加入J1执行', '加入D1执行', '加入B4修壳'])
+      fireEvent.click(view.getByRole('button', { name }));
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    fireEvent.change(view.getByRole('combobox', { name: '左键' }), {
+      target: { value: 'J1执行' },
+    });
+    fireEvent.change(view.getByRole('combobox', { name: '1' }), {
+      target: { value: 'D1执行' },
+    });
+    fireEvent.change(view.getByRole('combobox', { name: '2' }), {
+      target: { value: 'B4修壳' },
+    });
+    fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
+
+    const canvas = view.container.querySelector('canvas.arena')!;
+    fireEvent.mouseDown(canvas);
+    fireEvent.mouseUp(canvas);
+    await waitFor(() =>
+      expect(view.getByLabelText('旧 Battle 首批拒绝').textContent).toContain('J1执行'),
+    );
+    fireEvent.keyDown(window, { code: 'Digit1' });
+    fireEvent.keyUp(window, { code: 'Digit1' });
+    await waitFor(() =>
+      expect(view.getByLabelText('旧 Battle 首批拒绝').textContent).toContain('D1执行'),
+    );
+    fireEvent.keyDown(window, { code: 'Digit2' });
+    fireEvent.keyUp(window, { code: 'Digit2' });
+    await waitFor(() =>
+      expect(view.getByLabelText('旧 Battle 首批拒绝').textContent).toContain('B4修壳'),
+    );
+
+    const rejection = view.getByLabelText('旧 Battle 首批拒绝').textContent ?? '';
+    expect(rejection).toContain('缺少同版来源、授权和容量证书');
+    expect(rejection).toContain('VM 0、控制会话 0');
+    expect(rejection).toContain('玩家法力扣除 0、有限世界付款 0、成功施法记录 0');
+    expect(view.getByLabelText('账户与会话摘要').textContent).toContain('本人法力 300.0');
+    expect(view.getByLabelText('账户与会话摘要').textContent).toContain('累计付款 0.0');
+    expect(view.queryByLabelText('有限世界收据')).toBeNull();
+    expect(view.queryByLabelText('B1与B4有限世界收据')).toBeNull();
+    expect(view.queryByTestId('active-casts')).toBeNull();
+    expect(view.container.querySelector('.meta-info')?.textContent).toContain(
+      '全场施法起手（含妖兽）',
+    );
+    expect(rejection).toContain('不代表本次拒绝成功');
+  });
+
   it('updates the finite entry budget and hash when a same-book helper is edited', async () => {
     const { LabView } = await import('../src/app/LabView');
     const source = appendFirstBatchSpell(

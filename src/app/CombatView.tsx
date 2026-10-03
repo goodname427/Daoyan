@@ -451,9 +451,31 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange, childre
             <b>{battle.started ? (battle.paused ? '暂停' : '演武中') : '整备'}</b>
           </div>
           <div className="muted small">
-            施法 {battle.stats.casts} · 打断 {battle.stats.interrupts} · 反噬{' '}
+            全场施法起手（含妖兽） {battle.stats.casts} · 打断 {battle.stats.interrupts} · 反噬{' '}
             {battle.stats.backfires}
           </div>
+          {battle.firstBatchLegacyRejections.length > 0 && (
+            <div
+              className="casting-note"
+              role="status"
+              aria-live="polite"
+              aria-label="旧 Battle 首批拒绝"
+            >
+              <b>旧活动 Battle 已拒绝首批有限世界法术</b>
+              <div className="active-cast-list">
+                {battle.firstBatchLegacyRejections.map((rejection) => (
+                  <div className="active-cast" key={rejection.sequence}>
+                    <strong>{rejection.spell}</strong> · 来源 {rejection.source} ·{' '}
+                    {rejection.reason}
+                    <div className="muted small">
+                      本次：VM 0、控制会话 0、玩家法力扣除 0、有限世界付款 0、成功施法记录
+                      0。上方全场施法起手可能因妖兽或其他旧法术变化，不代表本次拒绝成功。
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {activeCasts.length > 0 && (
             <div className="casting-note" data-testid="active-casts">
               <div className="row-between">
