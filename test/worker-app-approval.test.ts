@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applicationApprovalRequest,
+  applicationApprovalPersistence,
   startApplicationApprovalServer,
   taskNeedsApplicationApproval,
 } from '../scripts/worker-app-approval';
@@ -87,6 +88,7 @@ describe('workflow application approvals', () => {
         });
       expect((await post('action=accept', 'https://evil.invalid')).status).toBe(403);
       expect((await post('action=always')).status).toBe(400);
+      expect((await post('action=accept-always')).status).toBe(400);
       expect(resolved).toBe(false);
       expect((await post('action=accept')).status).toBe(200);
       expect(await decision).toEqual({ action: 'accept', content: {} });
@@ -94,6 +96,71 @@ describe('workflow application approvals', () => {
     } finally {
       await host.close();
     }
+  });
+
+  it.each(['always', 'session'] as const)(
+    'returns native %s persistence only after the human chooses it',
+    async (persist) => {
+      let announce!: (url: string) => void;
+      const announced = new Promise<string>((resolve) => {
+        announce = resolve;
+      });
+      const resolutions: unknown[] = [];
+      const host = await startApplicationApprovalServer({
+        onPending: announce,
+        onResolved: (_request, action, scope) => {
+          resolutions.push({ action, scope });
+        },
+      });
+      try {
+        const pending = host.request({
+          ...request,
+          _meta: { ...request._meta, persist: [persist] },
+        });
+        const url = await announced;
+        const page = await (await fetch(url)).text();
+        expect(page).toContain(`value="accept-${persist}"`);
+        const other = persist === 'always' ? 'session' : 'always';
+        expect(page).not.toContain(`value="accept-${other}"`);
+        expect(resolutions).toEqual([]);
+        const post = (selection: string) =>
+          fetch(url, {
+            method: 'POST',
+            headers: {
+              Origin: new URL(url).origin,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=${selection}`,
+          });
+        expect((await post(`accept-${other}`)).status).toBe(400);
+        expect((await post(`accept-${persist}`)).status).toBe(200);
+        expect(await pending).toEqual({ action: 'accept', content: {}, _meta: { persist } });
+        expect(resolutions).toEqual([{ action: 'accept', scope: persist }]);
+        expect((await post(`accept-${persist}`)).status).toBe(410);
+      } finally {
+        await host.close();
+      }
+    },
+  );
+
+  it('does not invent native persistence support from malformed or missing metadata', () => {
+    for (const persist of [
+      undefined,
+      true,
+      'all',
+      [],
+      ['always', 'all'],
+      ['always', 'session', 'always'],
+    ])
+      expect(
+        applicationApprovalPersistence({ ...request, _meta: { ...request._meta, persist } }),
+      ).toEqual([]);
+    expect(
+      applicationApprovalPersistence({
+        ...request,
+        _meta: { ...request._meta, persist: 'always' },
+      }),
+    ).toEqual(['always']);
   });
 
   it.each(['decline', 'cancel'] as const)('preserves a real %s decision', async (action) => {

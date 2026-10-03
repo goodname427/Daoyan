@@ -24,6 +24,23 @@ export interface AppApprovalRequest {
 export interface AppApprovalDecision {
   action: 'accept' | 'decline' | 'cancel';
   content: Record<string, unknown> | null;
+  _meta?: { persist: 'session' | 'always' };
+}
+
+/** Native elicitation advertises the persistence choices it actually supports. */
+export function applicationApprovalPersistence(
+  request: AppApprovalRequest,
+): ('session' | 'always')[] {
+  const value = request._meta.persist;
+  const choices = typeof value === 'string' ? [value] : value;
+  if (
+    !Array.isArray(choices) ||
+    !choices.length ||
+    choices.length > 2 ||
+    !choices.every((choice) => choice === 'session' || choice === 'always')
+  )
+    return [];
+  return [...new Set(choices)] as ('session' | 'always')[];
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -76,13 +93,14 @@ export async function startApplicationApprovalServer(options: {
   onResolved?: (
     request: AppApprovalRequest,
     action: AppApprovalDecision['action'],
+    persist?: 'session' | 'always',
   ) => void | Promise<void>;
 }) {
   const token = randomBytes(32).toString('hex');
   let origin = '';
   let pending: {
     request: AppApprovalRequest;
-    finish: (action: AppApprovalDecision['action']) => void;
+    finish: (action: AppApprovalDecision['action'], persist?: 'session' | 'always') => void;
   } | null = null;
   let sequence = 0;
   const server = createServer(async (req, res) => {
@@ -106,9 +124,19 @@ export async function startApplicationApprovalServer(options: {
     const current = pending;
     if (req.method === 'GET') {
       const request = pending.request;
+      const choices = applicationApprovalPersistence(request);
+      const persistenceButtons = choices
+        .map(
+          (choice) =>
+            `<button name="action" value="accept-${choice}">${choice === 'always' ? '始终允许此应用' : '本会话允许'}</button>`,
+        )
+        .join('');
+      const explanation = choices.includes('always')
+        ? '选择“始终允许此应用”会向原生 Computer Use 请求保存应用许可；是否在后续任务生效须由对应入口实际验证。许可按工具返回的应用标识生效；electron.exe 标识适用于 Electron 应用，不区分游戏目录。官方提供设置 → Computer Use 的撤销入口，具体显示以当前安装版本为准。'
+        : '只显示工具实际支持的许可范围；本次允许不会保存未来应用许可。';
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.end(
-        `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>道衍工作流 · 应用许可</title><style>body{font:16px system-ui;background:#171a20;color:#eee;max-width:760px;margin:48px auto;padding:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#242933;padding:20px}button{font:inherit;margin:8px;padding:12px 20px;cursor:pointer}</style><h1>后台 Agent 请求应用许可</h1><p>${escapeHtml(request.message)}</p><p>这是工具实际发出的应用许可请求。只允许本次请求，不修改全局许可，也不批准其他操作。</p><pre>${escapeHtml(JSON.stringify({ app: request._meta.tool_params, agent: request.threadId, turn: request.turnId, server: request.serverName, details: request._meta }, null, 2))}</pre><form method="post"><button name="action" value="accept">允许本次请求</button><button name="action" value="decline">拒绝</button><button name="action" value="cancel">取消</button></form></html>`,
+        `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>道衍工作流 · 应用许可</title><style>body{font:16px system-ui;background:#171a20;color:#eee;max-width:760px;margin:48px auto;padding:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#242933;padding:20px}button{font:inherit;margin:8px;padding:12px 20px;cursor:pointer}</style><h1>后台 Agent 请求应用许可</h1><p>${escapeHtml(request.message)}</p><p>${explanation}</p><pre>${escapeHtml(JSON.stringify({ app: request._meta.tool_params, agent: request.threadId, turn: request.turnId, server: request.serverName, details: request._meta }, null, 2))}</pre><form method="post">${persistenceButtons}<button name="action" value="accept">允许本次请求</button><button name="action" value="decline">拒绝</button><button name="action" value="cancel">取消</button></form></html>`,
       );
       return;
     }
@@ -128,7 +156,18 @@ export async function startApplicationApprovalServer(options: {
         return;
       }
     }
-    const action = new URLSearchParams(body).get('action');
+    const selection = new URLSearchParams(body).get('action');
+    const persist =
+      selection === 'accept-always'
+        ? 'always'
+        : selection === 'accept-session'
+          ? 'session'
+          : undefined;
+    const action = persist ? 'accept' : selection;
+    if (persist && !applicationApprovalPersistence(current.request).includes(persist)) {
+      res.writeHead(400).end('Unsupported persistence');
+      return;
+    }
     if (!['accept', 'decline', 'cancel'].includes(action ?? '')) {
       res.writeHead(400).end('Invalid decision');
       return;
@@ -137,7 +176,7 @@ export async function startApplicationApprovalServer(options: {
       res.writeHead(410).end('请求已结束；此选择没有应用到其他请求。');
       return;
     }
-    current.finish(action as AppApprovalDecision['action']);
+    current.finish(action as AppApprovalDecision['action'], persist);
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.end('已记录你的选择，可以返回道衍聊天。');
   });
@@ -158,14 +197,22 @@ export async function startApplicationApprovalServer(options: {
         const timer = setTimeout(() => entry.finish('cancel'), options.timeoutMs ?? 240_000);
         const entry = {
           request,
-          finish: (action: AppApprovalDecision['action']) => {
+          finish: (action: AppApprovalDecision['action'], persist?: 'session' | 'always') => {
             if (pending !== entry) return;
             pending = null;
             clearTimeout(timer);
             announcement
               .catch(() => undefined)
-              .then(() => options.onResolved?.(request, action))
-              .then(() => resolve({ action, content: action === 'accept' ? {} : null }), reject);
+              .then(() => options.onResolved?.(request, action, persist))
+              .then(
+                () =>
+                  resolve({
+                    action,
+                    content: action === 'accept' ? {} : null,
+                    ...(persist ? { _meta: { persist } } : {}),
+                  }),
+                reject,
+              );
           },
         };
         pending = entry;

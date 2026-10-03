@@ -2,7 +2,10 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { appWorkerInvocation, runAppServerWorker } from './codex-app-worker';
-import { startApplicationApprovalServer } from './worker-app-approval';
+import {
+  applicationApprovalPersistence,
+  startApplicationApprovalServer,
+} from './worker-app-approval';
 import { publishApprovalRelay } from './worker-approval-relay';
 
 async function main() {
@@ -24,15 +27,18 @@ async function main() {
   let approvalId = '';
   const approvals = await startApplicationApprovalServer({
     onPending: async (url, request) => {
+      approvalId = randomUUID();
       await writeFile(
         approvalFile,
         JSON.stringify(
           {
             status: 'pending',
+            approvalId,
             threadId: request.threadId,
             turnId: request.turnId,
             message: request.message,
             app: request._meta.tool_params,
+            persistenceChoices: applicationApprovalPersistence(request),
           },
           null,
           2,
@@ -40,12 +46,13 @@ async function main() {
       );
       await audit({
         status: 'requested',
+        approvalId,
         threadId: request.threadId,
         turnId: request.turnId,
         message: request.message,
         app: request._meta.tool_params,
+        persistenceChoices: applicationApprovalPersistence(request),
       });
-      approvalId = randomUUID();
       const relayed = await publishApprovalRelay({
         id: approvalId,
         status: 'pending',
@@ -56,23 +63,36 @@ async function main() {
         `[审批待处理] ${request.message}${relayed ? '；已通知制作人，等待本机页面选择。' : `\n${url}`}\n`,
       );
     },
-    onResolved: async (request, action) => {
+    onResolved: async (request, action, persist) => {
       await publishApprovalRelay({ id: approvalId, status: 'resolved', request, action });
       await writeFile(
         approvalFile,
         JSON.stringify(
-          { status: 'resolved', action, threadId: request.threadId, turnId: request.turnId },
+          {
+            status: 'resolved',
+            approvalId,
+            action,
+            persist,
+            threadId: request.threadId,
+            turnId: request.turnId,
+            app: request._meta.tool_params,
+            persistenceChoices: applicationApprovalPersistence(request),
+          },
           null,
           2,
         ),
       );
       await audit({
         status: 'resolved',
+        approvalId,
         action,
+        persist,
         threadId: request.threadId,
         turnId: request.turnId,
+        app: request._meta.tool_params,
+        persistenceChoices: applicationApprovalPersistence(request),
       });
-      process.stdout.write(`[审批已处理] ${action}\n`);
+      process.stdout.write(`[审批已处理] ${action}${persist ? ` (${persist})` : ''}\n`);
     },
   });
   try {

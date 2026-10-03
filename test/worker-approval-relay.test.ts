@@ -273,6 +273,18 @@ if(m.id===99)send({method:'turn/completed',params:{threadId:${JSON.stringify(thr
       expect(await completed).toBe(1);
       expect(log).toContain('[工作流工具审批阻断]');
       expect(log).not.toContain(formUrl);
+      const audit = (await readFile(resolve(dir, 'application-approval-audit.jsonl'), 'utf8'))
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line));
+      expect(audit).toHaveLength(2);
+      expect(audit[0].approvalId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(audit[1].approvalId).toBe(audit[0].approvalId);
+      for (const event of audit) {
+        expect(event.app).toEqual(request._meta.tool_params);
+        expect(event.persistenceChoices).toEqual([]);
+        expect(JSON.stringify(event)).not.toContain(formUrl);
+      }
       await expect(fetch(formUrl)).rejects.toThrow();
     } finally {
       if (child.exitCode === null && child.pid) {

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { appWorkerInvocation, runAppServerWorker } from '../scripts/codex-app-worker';
+import type { AppApprovalDecision } from '../scripts/worker-app-approval';
 
 const sessionId = '01a0fe61-f920-7df3-ab89-ef6707da36d6';
 
@@ -38,7 +39,7 @@ describe('interactive worker app-server transport', () => {
     ).toThrow();
   });
 
-  it.each(['accept', 'decline', 'cancel', 'foreign'] as const)(
+  it.each(['accept', 'always', 'decline', 'cancel', 'foreign'] as const)(
     'waits for the real %s response and never treats a refusal as successful delivery',
     async (action) => {
       const dir = await mkdtemp(resolve(tmpdir(), 'daoyan-app-worker-'));
@@ -48,14 +49,8 @@ describe('interactive worker app-server transport', () => {
       const readyPromise = new Promise<void>((resolve) => {
         ready = resolve;
       });
-      let respond!: (value: {
-        action: 'accept' | 'decline' | 'cancel';
-        content: Record<string, unknown> | null;
-      }) => void;
-      const response = new Promise<{
-        action: 'accept' | 'decline' | 'cancel';
-        content: Record<string, unknown> | null;
-      }>((resolve) => {
+      let respond!: (value: AppApprovalDecision) => void;
+      const response = new Promise<AppApprovalDecision>((resolve) => {
         respond = resolve;
       });
       const lines: string[] = [];
@@ -95,16 +90,27 @@ if(m.id===99){fs.writeFileSync(${JSON.stringify(resolve(dir, 'decision.json'))},
           expect(
             await readFile(resolve(dir, 'decision.json'), 'utf8').catch(() => null),
           ).toBeNull();
-          respond({ action, content: action === 'accept' ? {} : null });
+          respond(
+            action === 'always'
+              ? { action: 'accept', content: {}, _meta: { persist: 'always' } }
+              : { action, content: action === 'accept' ? {} : null },
+          );
         }
-        expect(await running).toBe(action === 'accept' ? 0 : 1);
+        expect(await running).toBe(action === 'accept' || action === 'always' ? 0 : 1);
         expect(await readFile(outputFile, 'utf8')).toBe('Role report\n');
         const decision = JSON.parse(await readFile(resolve(dir, 'decision.json'), 'utf8'));
         if (action === 'foreign') expect(decision.error).toBeTruthy();
+        else if (action === 'always')
+          expect(decision.result).toEqual({
+            action: 'accept',
+            content: {},
+            _meta: { persist: 'always' },
+          });
         else expect(decision.result.action).toBe(action);
         expect(lines.join('')).toContain(`session id: ${sessionId}`);
         expect(lines.join('')).toContain('tokens used\n19');
-        if (action !== 'accept') expect(lines.join('')).toContain('[工作流工具审批阻断]');
+        if (action !== 'accept' && action !== 'always')
+          expect(lines.join('')).toContain('[工作流工具审批阻断]');
       } finally {
         await rm(dir, { recursive: true, force: true });
       }
