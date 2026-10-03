@@ -23,7 +23,9 @@ DA06 的独立策划实玩发现 DV01：旧活动 Battle 将 `J1执行` 绑定�
 - `test/render.test.tsx`：从真实 `App` 加入三术，绑定左键/数字 1/数字 2，触发后核对统一拒因、0 副作用、无活动 cast、无有限世界收据，并核对含妖兽的全局统计说明。
 - `e2e/candidate.spec.ts`：增加同一候选路径，包含鼠标 J1 复现、D1/B4 键位触发、账户/收据/活动 cast 断言和页面截图附件。
 
-标准 Vitest 与 Playwright 命令均在加载 Vite 或启动进程时被宿主以 `spawn EPERM` 拒绝，未进入断言；失败退出码完整保存在[任务证据](./tasks/development-dev-battle-boundary-a1.json)。作为不放宽断言的直接补证，一次性 Node bundle 对当前源码实际执行同组 Battle 断言并通过：三术和五类来源均被拒绝，VM/控制会话创建数为 0，玩家法力 `300→300`，payer 已付 `0→0`，成功施法起手 0，三条事件响应均为 `failed`。临时脚本和 bundle 已删除。
+标准 Vitest 与 Playwright 命令最初在加载 Vite 或启动进程时被宿主以 `spawn EPERM` 拒绝，未进入断言；历史失败退出码完整保存在[任务证据](./tasks/development-dev-battle-boundary-a1.json)。当时作为不放宽断言的直接补证，一次性 Node bundle 对当前源码实际执行同组 Battle 断言并通过：三术和五类来源均被拒绝，VM/控制会话创建数为 0，玩家法力 `300→300`，payer 已付 `0→0`，成功施法起手 0，三条事件响应均为 `failed`。临时脚本和 bundle 已删除。
+
+2026-10-04 在集成修订 `da0ad4709155c1f697c35e952e3e1ecf39ad530b` 复核五份受验实现/测试文件仍与原修复提交 `c80f240` 一致后，只补跑此前未进入断言的标准定向自动化：`npm test -- test/combat.test.ts test/render.test.tsx` 退出 0，2 个文件共 70 项通过；`node scripts/run-playwright.mjs test e2e/candidate.spec.ts --grep "candidate-old-Battle-rejects-first-batch-spells"` 退出 0，Chromium 场景 1 项通过。Playwright 的本地报告、通过状态和截图附件路径一并写入任务证据；未重跑已匹配的类型、Lint、既有实玩或完整门禁。
 
 ## DA06 实际应用复走
 
@@ -41,6 +43,6 @@ Computer Use 已显示最终页面截图；当前工具未提供把该截图保�
 
 ## 直接检查与交回
 
-通过的直接检查包括 `npm run typecheck`、五个受影响文件的定向 ESLint、Prettier 检查、`git diff --check`、一次性 Battle 断言及当前源码实际页面复走。未运行 `npm run verify`、`npm run verify:full`，也未提交、推送、打 tag 或发布。
+通过的直接检查包括 `npm run typecheck`、五个受影响文件的定向 ESLint、Prettier 检查、`git diff --check`、一次性 Battle 断言、当前源码实际页面复走，以及后续补齐的两份定向 Vitest（70 项）与单条候选 E2E（1 项）。未运行 `npm run verify`、`npm run verify:full`，也未提交、推送、打 tag 或发布。
 
 修复仅关闭 DV01 的开发偏差；下一步只交回原 `design-acceptance-da-a-flow` 独立策划 Agent 定向续验 DA06，由该 Agent 决定 DV01 是否关闭。TB02、TB03、TB04 保持原状态，不借本修复宣称通过。
