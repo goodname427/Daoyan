@@ -8,6 +8,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Runtime evidence and isolated Electron profiles contain locked cache files.
+    // They are not source inputs; watching them can terminate Vite on Windows.
+    watch: { ignored: ['**/.daoyan-agent/**'] },
   },
   build: {
     outDir: 'dist',
