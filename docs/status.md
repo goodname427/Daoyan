@@ -1,5 +1,7 @@
 # 当前状态
 
+2026-10-03 晚，延长至两分钟的隔离启动仍未复现 Electron 崩溃；新增可选本地退出诊断，以区分渲染进程/子进程异常、加载失败和普通窗口关闭。默认关闭，显式设置 `DAOYAN_ELECTRON_DIAGNOSTICS_FILE` 为绝对路径后开启；不改变游戏、异常退出和恢复策略。Computer Use 未提供 Electron 窗口目标，先前工具审批及 Edge 策略问题仍未解决。正式工作流继续暂停，七份草稿保持原归属；主干运行环境修复仍待安全同步到正式分支，启动观察不能代替实玩。
+
 2026-10-03 晚，制作人要求暂停全部工作后，仅重新授权排查 Electron 崩溃。监督自动化、notice guard 与正式 PM 继续暂停，development-13 的七份合同内草稿和 recoverable 恢复点保留。查到独立的 Vite 崩溃证据：监听 `.daoyan-agent/runs/isolated-native-play-2026-10-03/profile/Code Cache/js/index-dir/temp-index` 时发生 Windows `EBUSY`，未处理的 watcher 错误使服务退出。主干配置现排除 `.daoyan-agent/**`；回归检查确认源码仍可监听，运行目录不被监听。用该配置服务正式源码、以隔离目录启动 Electron 的 20 秒诊断中，两进程保持存活，前后 HTTP 200，结束后主动停止；这不是玩家验收，也不足以排除间歇性 Electron 崩溃。工具的 request-header policy / not approved 拒绝是另一个尚未解决的问题，不能再把所有故障统称为权限不足。正式脏树未合并主干，后续正常启动需同步配置或显式使用已验证主干配置。
 
 以下为此前节点记录，不代表当前运行状态。

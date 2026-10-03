@@ -8,6 +8,9 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const { installRuntimeDiagnostics } = require('./runtime-diagnostics.cjs');
+
+installRuntimeDiagnostics({ app });
 
 /** 外部元法术目录：打包后在 exe 旁的 metas/，开发期在项目根 metas/ */
 function metaDir() {
