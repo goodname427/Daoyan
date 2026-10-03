@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { canRebaseFailedRoutingRecovery } from '../scripts/routing-outage-recovery';
+import { formalStageWritePaths } from '../scripts/agent-routing';
 import {
   continueDispatchResponse,
   currentValidationConfigFingerprint,
@@ -1446,6 +1447,12 @@ describe('formal version stage dispatch', () => {
     expect(direction).toContain('桌面内置 Browser 不属于 CLI 能力');
     expect(direction).toContain('无法正常操作就如实登记环境阻断');
     expect(direction).toContain('独立角色仍须亲自完成其职责');
+    expect(formalStageWritePaths(direction)).toEqual(
+      version.stageTasks[0].writePaths.slice().sort(),
+    );
+    const first = direction.indexOf('只完成本合同：\n') + '只完成本合同：\n'.length;
+    const last = direction.indexOf('\n直接前驱的有限证据索引：', first);
+    expect(JSON.parse(direction.slice(first, last)).id).toBe('play');
   });
 
   it('passes a rejected producer design choice into the next module plan', () => {

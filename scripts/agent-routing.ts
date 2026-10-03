@@ -1,3 +1,5 @@
+import { formalTaskContract } from './formal-task-contract';
+
 export const MODEL_TIERS = ['economy', 'standard', 'advanced', 'critical'] as const;
 
 export type ModelTier = (typeof MODEL_TIERS)[number];
@@ -1092,13 +1094,8 @@ export function formalTaskPredecessorIds(direction: string): string[] {
 export function formalStageWritePaths(direction: string): string[] {
   if (!/^\[formal-stage-(?:deliverable|verification):[a-z-]+:[a-zA-Z0-9_-]+\]/u.test(direction))
     return [];
-  const prefix = '只完成本合同：\n';
-  const suffix = '\n直接前驱的有限证据索引：';
-  const start = direction.indexOf(prefix);
-  const end = start < 0 ? -1 : direction.indexOf(suffix, start + prefix.length);
-  if (end < 0) return [];
   try {
-    const task = JSON.parse(direction.slice(start + prefix.length, end)) as unknown;
+    const task = formalTaskContract(direction)?.value;
     if (typeof task !== 'object' || task === null || !('writePaths' in task)) return [];
     const paths = task.writePaths;
     if (

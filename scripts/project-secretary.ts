@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { formalTaskContract } from './formal-task-contract';
 import { closeSync, existsSync, openSync } from 'node:fs';
 import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
@@ -329,14 +330,11 @@ async function amendTaskScope(taskId: string, reason: string, additions: string[
     }
   }
   const replaceContract = (direction: string): string => {
-    const prefix = '只完成本合同：\n';
-    const suffix = '\n直接前驱的有限证据索引：';
-    const start = direction.indexOf(prefix);
-    const end = start < 0 ? -1 : direction.indexOf(suffix, start + prefix.length);
-    if (end < 0 || !direction.startsWith(`[formal-stage-deliverable:development:${taskId}]`)) {
+    const parsed = formalTaskContract(direction);
+    if (!parsed || !direction.startsWith(`[formal-stage-deliverable:development:${taskId}]`)) {
       throw new Error('恢复方向与开发任务不一致');
     }
-    const embedded = JSON.parse(direction.slice(start + prefix.length, end)) as {
+    const embedded = parsed.value as unknown as {
       id: string;
       writePaths: string[];
     };
@@ -348,9 +346,9 @@ async function amendTaskScope(taskId: string, reason: string, additions: string[
     }
     embedded.writePaths = [...new Set([...embedded.writePaths, ...normalized])];
     return (
-      direction.slice(0, start + prefix.length) +
+      direction.slice(0, parsed.start) +
       JSON.stringify(embedded, null, 2) +
-      direction.slice(end)
+      direction.slice(parsed.end)
     );
   };
   const direction = replaceContract(checkpoint.direction ?? '');
