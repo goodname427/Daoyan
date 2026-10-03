@@ -1237,6 +1237,10 @@ export function reviewRoutesForPlan(policy: AgentPolicy, plan: TaskPlan): ModelR
   );
 }
 
+export function workerAccessBlocker(output: string): string | null {
+  return /\[工作流(?:工具审批|执行权限)阻断\]/u.exec(output)?.[0] ?? null;
+}
+
 export function classifyAgentFailure(output: string, code: number): AgentFailureKind {
   const normalized = output.toLowerCase();
   if (
@@ -1252,6 +1256,7 @@ export function classifyAgentFailure(output: string, code: number): AgentFailure
       '额度已用尽',
       '用量上限',
       '[工作流工具审批阻断]',
+      '[工作流执行权限阻断]',
     ])
   ) {
     return 'external-blocker';

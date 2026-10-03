@@ -206,7 +206,8 @@ if(process.env.DAOYAN_APPROVAL_RELAY_SECRET||process.env.DAOYAN_APPROVAL_RELAY_P
 const rl=require('node:readline').createInterface({input:process.stdin});const send=x=>console.log(JSON.stringify(x));
 rl.on('line',line=>{const m=JSON.parse(line);
 if(m.method==='initialize')send({id:m.id,result:{}});
-if(m.method==='thread/resume')send({id:m.id,result:{thread:{id:${JSON.stringify(threadId)}}}});
+if(m.method==='config/read')send({id:m.id,result:{config:{approval_policy:'never',sandbox_mode:'workspace-write'}}});
+if(m.method==='thread/resume')send({id:m.id,result:{thread:{id:${JSON.stringify(threadId)}},approvalPolicy:'never',sandbox:{type:'workspaceWrite'}}});
 if(m.method==='turn/start'){send({method:'turn/started',params:{threadId:${JSON.stringify(threadId)},turn:{id:'turn-1'}}});send({id:m.id,result:{turn:{id:'turn-1'}}});send({id:99,method:'mcpServer/elicitation/request',params:${JSON.stringify(request)}});}
 if(m.id===99)send({method:'turn/completed',params:{threadId:${JSON.stringify(threadId)},turn:{id:'turn-1',status:'interrupted'}}});
 });`,

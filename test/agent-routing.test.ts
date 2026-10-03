@@ -18,6 +18,7 @@ import {
   canRefreshVersionRecoveryFingerprint,
   buildLocalPlan,
   classifyAgentFailure,
+  workerAccessBlocker,
   escalateTier,
   fastGateAfterRepair,
   fastGateCommandProgress,
@@ -1035,6 +1036,9 @@ ${JSON.stringify({
     );
     expect(classifyAgentFailure('执行 delivery 遇到账号或鉴权阻塞', 1)).toBe('external-blocker');
     expect(classifyAgentFailure('[工作流工具审批阻断] 当前请求已取消', 1)).toBe('external-blocker');
+    expect(classifyAgentFailure('[工作流执行权限阻断] 权限不匹配', 1)).toBe('external-blocker');
+    expect(workerAccessBlocker('[工作流执行权限阻断] 权限不匹配')).toBe('[工作流执行权限阻断]');
+    expect(workerAccessBlocker('tests failed')).toBeNull();
     expect(classifyAgentFailure('tests failed', 1)).toBe('execution');
   });
 

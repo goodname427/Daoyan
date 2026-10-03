@@ -13,6 +13,8 @@ export interface WorkerInvocation {
   model: string;
   reasoning: string;
   outputFile: string;
+  approvalPolicy?: 'never' | 'on-request' | 'on-failure' | 'untrusted';
+  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
 }
 
 export function appWorkerInvocation(args: string[]): WorkerInvocation {
@@ -20,6 +22,19 @@ export function appWorkerInvocation(args: string[]): WorkerInvocation {
   const sessionId = args[0] === 'exec' && args[1] === 'resume' ? args.at(-2)! : null;
   const model = value('-m');
   const outputFile = value('-o');
+  const setting = (key: string) =>
+    args
+      .find((arg) => arg.startsWith(`${key}=`))
+      ?.slice(key.length + 1)
+      .replace(/^"|"$/g, '');
+  const approvalPolicy = value('-a') ?? value('--ask-for-approval') ?? setting('approval_policy');
+  const sandbox = value('-s') ?? value('--sandbox') ?? setting('sandbox_mode');
+  if (
+    (approvalPolicy &&
+      !['never', 'on-request', 'on-failure', 'untrusted'].includes(approvalPolicy)) ||
+    (sandbox && !['read-only', 'workspace-write', 'danger-full-access'].includes(sandbox))
+  )
+    throw new Error('[工作流执行权限阻断] Unsupported worker execution policy');
   const reasoning = args
     .find((arg) => /^model_reasoning_effort="(low|medium|high)"$/.test(arg))
     ?.split('"')[1];
@@ -38,7 +53,16 @@ export function appWorkerInvocation(args: string[]): WorkerInvocation {
   ) {
     throw new Error('Unsupported interactive worker invocation');
   }
-  return { sessionId, model, reasoning, outputFile };
+  return {
+    sessionId,
+    model,
+    reasoning,
+    outputFile,
+    ...(approvalPolicy
+      ? { approvalPolicy: approvalPolicy as WorkerInvocation['approvalPolicy'] }
+      : {}),
+    ...(sandbox ? { sandbox: sandbox as WorkerInvocation['sandbox'] } : {}),
+  };
 }
 
 /** Supported Codex app-server protocol; no native helper or browser protocol calls. */
@@ -191,11 +215,22 @@ export async function runAppServerWorker(options: {
       capabilities: { experimentalApi: true, mcpServerOpenaiFormElicitation: true },
     });
     send({ method: 'initialized', params: {} });
+    const effective = await request('config/read', { cwd: options.cwd, includeLayers: false });
+    const config = effective.config as
+      { approval_policy?: unknown; sandbox_mode?: unknown } | undefined;
+    const approvalPolicy = options.invocation.approvalPolicy ?? config?.approval_policy ?? 'never';
+    const sandbox = options.invocation.sandbox ?? config?.sandbox_mode ?? 'read-only';
+    if (
+      !['never', 'on-request', 'on-failure', 'untrusted'].includes(String(approvalPolicy)) ||
+      !['read-only', 'workspace-write', 'danger-full-access'].includes(String(sandbox))
+    )
+      throw new Error('[工作流执行权限阻断] Unsupported effective worker execution policy');
+    options.onOutput?.(`[执行权限] approval=${approvalPolicy}; sandbox=${sandbox}\n`);
     const common = {
       cwd: options.cwd,
       model: options.invocation.model,
-      approvalPolicy: 'on-request',
-      sandbox: 'workspace-write',
+      approvalPolicy,
+      sandbox,
       config: { model_reasoning_effort: options.invocation.reasoning, approvals_reviewer: 'user' },
     };
     const loaded = await request(options.invocation.sessionId ? 'thread/resume' : 'thread/start', {
@@ -206,15 +241,27 @@ export async function runAppServerWorker(options: {
     });
     threadId = String((loaded.thread as { id?: string })?.id ?? '');
     if (!threadId || (options.invocation.sessionId && threadId !== options.invocation.sessionId))
-      throw new Error('app-server did not resume the requested worker session');
+      throw new Error(
+        '[工作流执行权限阻断] app-server did not resume the requested worker session',
+      );
     options.onOutput?.(`session id: ${threadId}\n`);
+    const sandboxType = {
+      'read-only': 'readOnly',
+      'workspace-write': 'workspaceWrite',
+      'danger-full-access': 'dangerFullAccess',
+    }[sandbox as NonNullable<WorkerInvocation['sandbox']>];
+    if (
+      loaded.approvalPolicy !== approvalPolicy ||
+      (loaded.sandbox as { type?: string } | undefined)?.type !== sandboxType
+    )
+      throw new Error(
+        '[工作流执行权限阻断] app-server execution policy does not match the authorized worker policy',
+      );
     const started = await request('turn/start', {
       threadId,
       cwd: options.cwd,
       model: options.invocation.model,
       effort: options.invocation.reasoning,
-      approvalPolicy: 'on-request',
-      sandboxPolicy: { type: 'workspaceWrite', writableRoots: [options.cwd], networkAccess: false },
       input: [{ type: 'text', text: options.input }],
     });
     turnId = String((started.turn as { id?: string })?.id ?? turnId);

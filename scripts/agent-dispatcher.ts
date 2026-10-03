@@ -20,6 +20,7 @@ import {
   applyFormalStageValidationProfile,
   buildLocalPlan,
   classifyAgentFailure,
+  workerAccessBlocker,
   escalateTier,
   fastGateAfterRepair,
   fastGateCommandProgress,
@@ -1080,8 +1081,9 @@ function codexArgs(route: ModelRoute, sandbox: 'read-only' | 'workspace-write'):
     '--ephemeral',
     '--color',
     'never',
-    '-s',
-    sandbox,
+    // Read-only roles retain that boundary. Writable roles inherit the user's
+    // configured sandbox; the transport must not silently replace full access.
+    ...(sandbox === 'read-only' ? ['-s', sandbox] : []),
     '-m',
     route.model,
     '-c',
@@ -1276,7 +1278,7 @@ async function runTask(
       const output = failureText(result);
       const invocationTokens = parseTokenUsage(output);
       tokensUsed = addTokenUsage(tokensUsed, invocationTokens);
-      if (result.code === 0 || output.includes('[工作流工具审批阻断]')) {
+      if (result.code === 0 || workerAccessBlocker(output)) {
         const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
         if (sessionId) {
           await saveWorkerSession(root, {
@@ -1294,9 +1296,9 @@ async function runTask(
           });
         }
       }
-      if (result.code !== 0 && output.includes('[工作流工具审批阻断]')) {
+      if (result.code !== 0 && workerAccessBlocker(output)) {
         throw new AgentCallError(
-          `[工作流工具审批阻断] 执行 ${task.id} 的工具审批未完成；已保留原会话和恢复点，详见 ${logFile}`,
+          `${workerAccessBlocker(output)} 执行 ${task.id} 的工具访问条件未满足；已保留原会话和恢复点，详见 ${logFile}`,
           'external-blocker',
           tokensUsed,
         );
@@ -1838,7 +1840,7 @@ ${review.findings
   }
   const output = failureText(result);
   const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
-  if (sessionId && (result.code === 0 || output.includes('[工作流工具审批阻断]'))) {
+  if (sessionId && (result.code === 0 || workerAccessBlocker(output))) {
     await saveWorkerSession(root, {
       key: sessionScope.key,
       sessionId,
@@ -1852,12 +1854,10 @@ ${review.findings
   }
   if (result.code !== 0) {
     throw new AgentCallError(
-      output.includes('[工作流工具审批阻断]')
-        ? `[工作流工具审批阻断] 审查修复工具审批未完成；保留原会话，详见 ${logFile}`
+      workerAccessBlocker(output)
+        ? `${workerAccessBlocker(output)} 审查修复工具访问条件未满足；保留原会话，详见 ${logFile}`
         : `审查修复失败，详见 ${logFile}`,
-      output.includes('[工作流工具审批阻断]')
-        ? 'external-blocker'
-        : classifyAgentFailure(output, result.code),
+      workerAccessBlocker(output) ? 'external-blocker' : classifyAgentFailure(output, result.code),
       tokensUsed,
     );
   }
