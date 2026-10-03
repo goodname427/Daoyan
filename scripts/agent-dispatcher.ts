@@ -90,7 +90,13 @@ import {
   type ScopeAmendmentAdvanceAudit,
 } from './scope-amendment-advance';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const runtimeRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// A stopped formal run may own dirty task drafts while the verified control plane
+// has advanced on master. Run that control plane against the original checkout
+// without merging into, moving, or rewriting those drafts first.
+const root = process.env.DAOYAN_DISPATCHER_WORKSPACE_ROOT
+  ? resolve(process.env.DAOYAN_DISPATCHER_WORKSPACE_ROOT)
+  : runtimeRoot;
 const policyPath = resolve(root, 'agents/policy.json');
 const planSchemaPath = resolve(root, 'agents/plan.schema.json');
 const reviewSchemaPath = resolve(root, 'agents/review.schema.json');
@@ -2192,6 +2198,18 @@ async function commitAndPush(
 }
 
 const options = parseArgs(process.argv.slice(2));
+if (root !== runtimeRoot) {
+  if (!options.resumeDirectory) {
+    throw new Error('跨工作树控制面只能用于 --resume，不能创建新任务');
+  }
+  if (!isAbsolute(process.env.DAOYAN_DISPATCHER_WORKSPACE_ROOT!)) {
+    throw new Error('DAOYAN_DISPATCHER_WORKSPACE_ROOT 必须是绝对路径');
+  }
+  if (!existsSync(resolve(root, '.git')) || !existsSync(resolve(root, 'AGENTS.md'))) {
+    throw new Error('跨工作树目标必须是具备 .git 和 AGENTS.md 的仓库根目录');
+  }
+  console.log(`[跨工作树恢复] 控制面：${runtimeRoot}；原任务工作区：${root}`);
+}
 const policy = validatePolicy(JSON.parse(await readFile(policyPath, 'utf8')));
 const runsRoot = resolve(root, '.daoyan-agent', 'runs');
 let runDirectory: string;
