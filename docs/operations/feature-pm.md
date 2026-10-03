@@ -160,6 +160,16 @@ Windows 启动器会在当前进程缺少这些配置时，从当前用户环境
 
 ## 当前限制
 
+### 后台应用许可
+
+执行合同明确要求 Electron、Computer Use 或实际玩家操作时，调度器自动使用 `scripts/codex-worker-host.ts` 承接官方 App Server stdio 协议；原执行会话直接 `thread/resume`，不派新角色。旧合同可由主 Agent 内部使用 `--interactive-task <task-id>` 指定原计划中的任务，配置随恢复点保留。普通文档、规划和独立审查仍使用现有批处理链路。
+
+许可通过工具实际提出的 `mcpServer/elicitation/request` 转发，宿主严格核对 thread、turn、node_repl、computer-use 元数据、electron/electron.exe 身份和空应用许可 schema。前台由主 Agent 展示实时 `[审批待处理]` 链接。正式后台由 guard 启动每个 PM 的私有管道，直接向已配置制作人通道投递实际链接；看板、事件及日志只写无链接摘要。管道和秘密不传给模型进程，没有通道或投递失败会中止该请求；不能把 stdout 重定向到文件当成审批已展示。短期许可通知不进工作区持久 outbox；其他通知仍沿用原可靠投递。管道等待为 30 秒，覆盖默认 20 秒通道发送与状态落盘，发送方断开后不发布成功待办。
+
+后台执行 Agent 必须等待，不访问该页面或自行提交。`application-approval.json` 只记录请求状态与作用域，`application-approval-audit.jsonl` 记录原请求和实际选择，均不含审批 URL。当前只支持本次允许，不生成“始终允许”或改变 Codex 配置；未覆盖的 Edge 策略错误保持独立问题。
+
+拒绝、取消、四分钟超时及不支持的请求中断当前 turn，并输出 `[工作流工具审批阻断]`；调度器据此停止恢复重试和模型升级。主 Agent 先核对原恢复点和草稿，再处理展示端或外部访问阻断，不能让制作人切换主对话权限来掩盖后台接收端缺失。此链路依据 [官方 App Server 协议](https://learn.chatgpt.com/docs/app-server)，没有调用原生 helper 私有协议。完整代码门禁、审批等待和只读窗口诊断不构成游戏实玩验收。
+
 - PM 仍按依赖顺序编辑同一工作区，暂不并行写入。
 - CLI 没有单次调用硬 token 上限，当前依靠聚焦输入、模型分层、超时和事后记录控制成本。
 - notice guard 是本机进程，系统重启后需要登录启动项、进程管理器或 `npm run secretary:start` 拉起。

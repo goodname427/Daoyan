@@ -62,6 +62,7 @@ import {
   type SecretaryNotice,
 } from './secretary-channel';
 import { secretaryChannelHubFromEnvironment } from './secretary-channels';
+import { startApprovalRelay, deliverHumanApproval } from './worker-approval-relay';
 import {
   appendPublicWorkEvent,
   readPublicWorkEvents,
@@ -296,6 +297,7 @@ let stopping = false;
 let stateWrites = Promise.resolve();
 let noticeDeliveries = Promise.resolve();
 let channelHub: SecretaryChannelHub | null = null;
+let activeApprovalRelay: Awaited<ReturnType<typeof startApprovalRelay>> | null = null;
 const acceptedRequestIds = new Set<string>();
 const recordedCorrelationIds = new Set<string>();
 const processExitNotices = new Map<number, ChildProcess>();
@@ -4396,10 +4398,50 @@ async function launch(item: SecretaryItem): Promise<void> {
   state.activeItemId = item.id;
   const args = runArgs(item);
   item.orchestration!.runId = item.runDirectory ? basename(item.runDirectory) : item.id;
+  const approvalRelay = await startApprovalRelay({
+    onPending: async (event, formUrl, signal) => {
+      const message = `后台任务 ${item.id} 申请应用许可：${event.request.message}。许可页面将通过已配置的制作人通道发送；当前 Agent 保持等待。`;
+      const pendingMessage = {
+        id: `application-approval-${event.id}`,
+        role: 'secretary' as const,
+        content: message,
+        intent: 'reply' as const,
+        createdAt: new Date().toISOString(),
+      };
+      state.messages.push(pendingMessage);
+      await saveState();
+      try {
+        await deliverHumanApproval(channelHub, event, formUrl, item.id);
+        if (signal.aborted) throw new Error('许可宿主已断开；停止发布等待审批状态');
+        pendingMessage.content = `后台任务 ${item.id} 的应用许可已送到制作人通道：${event.request.message}。Agent 等待本次选择，四分钟未处理会取消。`;
+        await saveState();
+      } catch (error) {
+        pendingMessage.content = `后台任务 ${item.id} 的许可请求未能送达制作人：${error instanceof Error ? error.message : String(error)}。保留原角色和恢复点，未批准操作。`;
+        await saveState();
+        throw error;
+      }
+      await emitNotice(
+        'application-approval',
+        message,
+        item,
+        undefined,
+        `application-approval-${event.id}`,
+      );
+    },
+    onResolved: async (event) => {
+      const message = state.messages.find(
+        (entry) => entry.id === `application-approval-${event.id}`,
+      );
+      if (message)
+        message.content = `后台任务 ${item.id} 的本次应用许可已处理：${event.action}。原请求入口已失效；游戏验收以原角色的正式证据为准。`;
+      await saveState();
+    },
+  });
+  activeApprovalRelay = approvalRelay;
   const log = openSync(resolve(secretaryRoot, `${item.id}.log`), 'a');
   const child = spawn(process.execPath, args, {
     cwd: root,
-    env: workerEnvironment(),
+    env: { ...workerEnvironment(), ...approvalRelay.environment },
     stdio: ['ignore', log, log],
     windowsHide: true,
   });
@@ -4424,6 +4466,8 @@ async function launch(item: SecretaryItem): Promise<void> {
   child.on('close', () => {
     void (async () => {
       if (activeChild === child) activeChild = null;
+      if (activeApprovalRelay === approvalRelay) activeApprovalRelay = null;
+      await approvalRelay.close();
       await locateVersionRun(item);
       await reconcileAfterProcessExit(item, 'pm', launchedProcess);
       activeLaunchStartedAt.delete(item.id);
@@ -7889,6 +7933,8 @@ async function shutdown(): Promise<void> {
   inboxWatcher?.close();
   runWatcher?.close();
   httpServer?.close();
+  await activeApprovalRelay?.close();
+  activeApprovalRelay = null;
   await channelHub?.stop();
   await writeChannelStatus();
   channelHub = null;

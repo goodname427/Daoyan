@@ -68,6 +68,8 @@ import {
 } from './agent-routing';
 import { candidateManifestPath, parseCandidateEvidence } from './candidate-evidence';
 import { endChildInput } from './child-process-input';
+import { taskNeedsApplicationApproval } from './worker-app-approval';
+import { redactApprovalFormUrls, withoutApprovalRelay } from './worker-approval-relay';
 import { treeFingerprint as validationTreeFingerprint } from './pre-push-verify.mjs';
 import { getProcessIdentity, waitForProcessIdentity } from './process-identity';
 import { appendPublicWorkEvent } from './public-work-log';
@@ -113,6 +115,7 @@ interface CliOptions {
   resumeReviewTask: string;
   resumeDirectory: string | null;
   runId: string | null;
+  interactiveTaskIds: string[];
 }
 
 interface ProcessResult {
@@ -130,6 +133,7 @@ interface ProcessOptions {
   timeoutMs?: number;
   workerModel?: string;
   workerRole?: string;
+  interactiveTools?: boolean;
 }
 
 interface TaskRun {
@@ -232,6 +236,7 @@ interface RecoveryCheckpoint {
   abnormalRecoveryCount: number | null;
   localRepairRoundCount: number | null;
   updatedAt: string;
+  interactiveTaskIds?: string[];
 }
 
 class AgentCallError extends Error {
@@ -261,6 +266,7 @@ function printHelp() {
   --decision-confirmed  制作人已对当前不可逆或发布边界给出明确决定
   --producer-guidance  传入制作人决定正文，供恢复后的 Agent 执行
   --resume     从失败运行的恢复点续跑，不重复已完成任务
+  --interactive-task <任务 ID>  为该执行任务启用真实应用审批宿主，不自动批准
   --resume-review-task <任务 ID>  审查停滞后重做该任务及下游，需附制作人指导
   --run-id     为版本级调度指定稳定的运行目录名
   --help       显示帮助
@@ -280,6 +286,7 @@ function parseArgs(argv: string[]): CliOptions {
   let resumeDirectory: string | null = null;
   let runId: string | null = null;
   let resumeRequested = false;
+  const interactiveTaskIds: string[] = [];
   const direction: string[] = [];
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -287,7 +294,12 @@ function parseArgs(argv: string[]): CliOptions {
       printHelp();
       process.exit(0);
     }
-    if (arg === '--plan-only') planOnly = true;
+    if (arg === '--interactive-task') {
+      const value = argv[++index];
+      if (!value || !/^[a-zA-Z0-9_-]+$/.test(value))
+        throw new Error('--interactive-task 后需要任务 ID');
+      if (!interactiveTaskIds.includes(value)) interactiveTaskIds.push(value);
+    } else if (arg === '--plan-only') planOnly = true;
     else if (arg === '--deep-plan') deepPlan = true;
     else if (arg === '--doctor') doctor = true;
     else if (arg === '--no-push') noPush = true;
@@ -336,6 +348,7 @@ function parseArgs(argv: string[]): CliOptions {
   }
   return {
     direction: joined || (doctor ? 'doctor' : 'resume'),
+    interactiveTaskIds,
     planOnly,
     deepPlan,
     doctor,
@@ -379,11 +392,27 @@ async function runProcess(
   options: ProcessOptions = {},
 ): Promise<ProcessResult> {
   return await new Promise((resolvePromise, reject) => {
-    const invocation = executable(command, args);
+    let invocation = executable(command, args);
+    if (command === 'codex' && options.interactiveTools) {
+      const prefixArgs = invocation.command === process.execPath ? [invocation.args[0]] : [];
+      invocation = {
+        command: process.execPath,
+        args: [
+          resolve(runtimeRoot, 'node_modules/tsx/dist/cli.mjs'),
+          resolve(runtimeRoot, 'scripts/codex-worker-host.ts'),
+          invocation.command,
+          JSON.stringify(prefixArgs),
+          JSON.stringify(args),
+        ],
+      };
+    }
     const startedAt = Date.now();
     const child = spawn(invocation.command, invocation.args, {
       cwd: root,
-      env: process.env,
+      env:
+        command === 'codex' && options.interactiveTools
+          ? process.env
+          : withoutApprovalRelay(process.env),
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -470,7 +499,11 @@ async function runProcess(
         if (heartbeat) clearInterval(heartbeat);
         if (timeout) clearTimeout(timeout);
         if (options.logFile) {
-          await writeFile(options.logFile, `${stdout}\n--- STDERR ---\n${stderr}`, 'utf8');
+          await writeFile(
+            options.logFile,
+            redactApprovalFormUrls(`${stdout}\n--- STDERR ---\n${stderr}`),
+            'utf8',
+          );
         }
         const finalCode = timedOut ? 124 : (code ?? 1);
         recordProgress(timedOut ? 'timed_out' : spawnFailed ? 'failed' : 'finished', finalCode);
@@ -1236,13 +1269,14 @@ async function runTask(
         heartbeatLabel: `执行 ${task.id} / ${route.model}`,
         workerModel: route.model,
         workerRole: '执行 Agent',
+        interactiveTools: options.interactiveTaskIds.includes(task.id),
         progressFile: resolve(runDirectory, 'progress.json'),
         timeoutMs: minutes(policy.timeouts.workers[tier]),
       });
       const output = failureText(result);
       const invocationTokens = parseTokenUsage(output);
       tokensUsed = addTokenUsage(tokensUsed, invocationTokens);
-      if (result.code === 0) {
+      if (result.code === 0 || output.includes('[工作流工具审批阻断]')) {
         const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
         if (sessionId) {
           await saveWorkerSession(root, {
@@ -1259,6 +1293,13 @@ async function runTask(
             ...(sessionScope.taskId ? { ownerTaskId: sessionScope.taskId } : {}),
           });
         }
+      }
+      if (result.code !== 0 && output.includes('[工作流工具审批阻断]')) {
+        throw new AgentCallError(
+          `[工作流工具审批阻断] 执行 ${task.id} 的工具审批未完成；已保留原会话和恢复点，详见 ${logFile}`,
+          'external-blocker',
+          tokensUsed,
+        );
       }
       if (result.code === 0) {
         const changedFiles = await changedFilesSince(taskStartFiles);
@@ -1774,6 +1815,10 @@ ${review.findings
         heartbeatLabel: `审查修复 / 第 ${round} 轮 / ${route.model}`,
         workerModel: route.model,
         workerRole: '修复 Agent',
+        interactiveTools: plan.tasks.some(
+          (task) =>
+            taskNeedsApplicationApproval(task) || options.interactiveTaskIds.includes(task.id),
+        ),
         progressFile: resolve(runDirectory, 'progress.json'),
         timeoutMs: minutes(policy.timeouts.repairs[highestTier(plan.tasks)]),
       },
@@ -1791,16 +1836,9 @@ ${review.findings
     result = await invoke(null);
     tokensUsed = addTokenUsage(tokensUsed, parseTokenUsage(failureText(result)));
   }
-  if (result.code !== 0) {
-    throw new AgentCallError(
-      `审查修复失败，详见 ${logFile}`,
-      classifyAgentFailure(failureText(result), result.code),
-      tokensUsed,
-    );
-  }
   const output = failureText(result);
   const sessionId = workerSessionId(output) ?? previousSession?.sessionId;
-  if (sessionId) {
+  if (sessionId && (result.code === 0 || output.includes('[工作流工具审批阻断]'))) {
     await saveWorkerSession(root, {
       key: sessionScope.key,
       sessionId,
@@ -1811,6 +1849,17 @@ ${review.findings
       updatedAt: new Date().toISOString(),
       ...(sessionScope.taskId ? { ownerTaskId: sessionScope.taskId } : {}),
     });
+  }
+  if (result.code !== 0) {
+    throw new AgentCallError(
+      output.includes('[工作流工具审批阻断]')
+        ? `[工作流工具审批阻断] 审查修复工具审批未完成；保留原会话，详见 ${logFile}`
+        : `审查修复失败，详见 ${logFile}`,
+      output.includes('[工作流工具审批阻断]')
+        ? 'external-blocker'
+        : classifyAgentFailure(output, result.code),
+      tokensUsed,
+    );
   }
   return tokensUsed;
 }
@@ -2299,6 +2348,7 @@ async function persistCheckpoint(status: RecoveryCheckpoint['status'], error = '
     workspaceFingerprint: await workspaceFingerprint(),
     workspaceChangeBaseline: await captureWorkspaceChangeBaseline(),
     plan: activePlan,
+    interactiveTaskIds: options.interactiveTaskIds,
     taskRuns: activeTaskRuns,
     review: activeReview,
     reviewStall: activeReviewStall,
@@ -2638,6 +2688,9 @@ try {
       );
     }
     activePlan = checkpoint.plan;
+    options.interactiveTaskIds = [
+      ...new Set([...(checkpoint.interactiveTaskIds ?? []), ...options.interactiveTaskIds]),
+    ];
     activeBaseline =
       emptyRecoveryCanRebase ||
       failedRoutingRecoveryCanRebase ||
@@ -2972,6 +3025,14 @@ try {
   }
 
   const plan = activePlan;
+  for (const task of plan.tasks) {
+    if (taskNeedsApplicationApproval(task) && !options.interactiveTaskIds.includes(task.id)) {
+      options.interactiveTaskIds.push(task.id);
+    }
+  }
+  if (options.interactiveTaskIds.some((id) => !plan.tasks.some((task) => task.id === id))) {
+    throw new Error('交互审批任务不在当前计划中，拒绝启动');
+  }
   if (applyFormalStageValidationProfile(plan, activeResolvedDirection)) {
     await writeFile(
       resolve(runDirectory, 'plan.validated.json'),

@@ -430,6 +430,13 @@ export function isWorkflowControlPlanePath(path: string): boolean {
       'agents/README.md',
       'agents/policy.json',
       'scripts/task-run-audit-recovery.ts',
+      'scripts/worker-app-approval.ts',
+      'scripts/worker-approval-relay.ts',
+      'scripts/codex-app-worker.ts',
+      'scripts/codex-worker-host.ts',
+      'test/worker-app-approval.test.ts',
+      'test/worker-approval-relay.test.ts',
+      'test/codex-app-worker.test.ts',
       'test/task-run-audit-recovery.test.ts',
       'docs/workflow.md',
       'docs/agent-workflow.md',
@@ -1244,6 +1251,7 @@ export function classifyAgentFailure(output: string, code: number): AgentFailure
       '账号或鉴权阻塞',
       '额度已用尽',
       '用量上限',
+      '[工作流工具审批阻断]',
     ])
   ) {
     return 'external-blocker';
