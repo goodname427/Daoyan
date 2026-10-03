@@ -1,0 +1,53 @@
+{
+  "taskId": "drb2-contact-closure-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "独立复核已选首批 A、完整策划批准、drb1 和重复升级撤回；有限接触的先序、三行为条件纸面账、失败余态及 ADR 0018 冲突边界可定位，但 B1 缺可判的 k0 材料阈值、误差与同刻组正反例，不能签首撞壳损和 B4 成功。定向退物理材料权威补证，后续由理论、账本、程序、生命、桥接按事实键重签，并由架构归属者另提覆盖 ADR。本轮未修改实现或取得运行读数，未新增制作人取舍。",
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"assert/strict\"),f=require(\"fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb2-contact-closure-review.json\",\"utf8\")),s=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `drb2-contact-closure-review`\")[1];a.equal(j.taskId,\"drb2-contact-closure-review\");a.equal(j.completed,true);a.equal(j.status,\"completed\");a.ok(s);for(const x of j.evidence)a.ok(f.existsSync(x),x);for(const x of [\"首批 A\",\"有效质量\",\"同刻\",\"未越阈值\",\"无碰撞\",\"再撞\",\"J1\",\"D1\",\"B4\",\"ADR 0018\",\"退回物理材料\"])a.ok(s.includes(x),x);console.log(\"PASS drb2 task evidence and review content\")'",
+      "exitCode": 0,
+      "output": "PASS drb2 task evidence and review content"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object ($expected | Sort-Object) $actual).Count -ne 0){throw \"Changed paths differ from contract: $($actual -join ', ')\"}; $staged=@(git diff --cached --name-only | Sort-Object); if(@($staged).Count -ne 0){throw \"Unexpected staged paths: $($staged -join ', ')\"}; Write-Output 'PASS working tree contains exactly the two contract writePaths; index is empty'",
+      "exitCode": 0,
+      "output": "PASS working tree contains exactly the two contract writePaths; index is empty"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb2-contact-closure-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-tasks.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "src/core/world.ts",
+    "src/core/compiler.ts",
+    "src/core/vm.ts"
+  ],
+  "scopeNote": "本轮差异严格限于任务合同两项 writePaths；工作区未暂存。Git 元数据不可写，暂存/本地提交未完成；未推送、未打 tag、未发布。",
+  "deliveryBlocker": {
+    "operation": "git add -- <the two contract writePaths>",
+    "result": "failed",
+    "detail": "Git could not create .git/index.lock: Permission denied; no paths were staged and no local commit was created."
+  }
+}

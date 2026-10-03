@@ -1,0 +1,112 @@
+{
+  "taskId": "mdai-world",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "仅重签唯一世界理论的 mdai-world 现行段。按物理 mdai-b4-fields、账本 mdai-b4-quote、程序 mdai-b4-carrier、生命 mdai-b4-life 与 drb4 退回，同 S0/seed 核十九读、固定审计原子 mdai-B4-audit-v1、B4 新 AST 假设、自然先序和独立生命证。条件 B4 本人 50=29 读+5 装+10 作用+6 余，程序 ≤313/330 tick、314 S 仅纸面前提；真实 Quote=unknownPrice、capacityUnknown，未宣告运行成功。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json"
+    ],
+    "readOnlyPredecessors": [
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json"
+    ],
+    "nonGoals": "不改其他模块、模块总览、ADR 或代码；不把条件账视为实测，不签范围外第二响应、关键修复或复苏。"
+  },
+  "checks": {
+    "actualResult": "四份现行权威的十九固定 ID、字段投影、价目、工作界、物理和生命边界在纸面同键相合；完成指定独立分支的条件重放及旧下游消费点定位。真实 grant、样本、到账/收据、规范 AST/hash、球容量和 VM 实耗未取得，当前不能签可执行成功；drb4 仍 changes-requested。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md#mdai-b4-fields",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "C-B1-01",
+          "N-B1-impact-01",
+          "X-B1-shell-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "V0…VP"
+        ],
+        "result": "十九 ID 固定七模板、S/P/U/A/H/T/E/C/R/D/W 逐字段来源、R/POST 独立 grant/样本与 n_19/n_extra。自然 10=4+2+4 E0、遗体 3q=2q+残片 q；B4 独立 100=53+47 E0/12、包 32/12→8/12、仓 4q=2q+q+q，互不转款或借料。"
+      },
+      {
+        "source": "mana-ledger-design.md#mdai-b4-quote",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "acct-B1-B4",
+          "payerGrant-B4-v1",
+          "receipt-B4-funded-v1"
+        ],
+        "result": "每阶段读 6 M/≤56 tick，POST 5 M/≤47 tick，总 F=199/E=53、读 29 M/≤271 tick；R0 50→44、装后39、R1/R2/R3 后33/27/21、锁15可用6、作用后39已付/11暂余、POST 后44已付/6余。合法空 material-R0 2/48；R3 同 payer 20 M 竞争欠14；attempt 1 与成功互斥。J1 自己32、P0/P2 1/2 与可选 P1 1 分账户合计35/36；D1 自己26/余14，不代付 B4。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdai-b4-carrier",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdai-audit-v1",
+          "B4-R19-projection-v1",
+          "H_B4_mdai_assumed_v1",
+          "C-B4-mdai-carrier-v1"
+        ],
+        "result": "新版 B4 与旧 B4 AST/hash 不别名；十九索引、一订阅/FIFO/帧，条件物理链≤313 tick、响应≤330 tick、本体布局候选314 S 且安装峰另证。真实规范 hash、页/旧占用和 VM 容量未证。"
+      },
+      {
+        "source": "life-identity-design.md#mdai-b4-life; docs/adr/0020-事件执行上下文与生命周期.md",
+        "versionKeys": [
+          "LifeId",
+          "assessmentId",
+          "DeathBarrier",
+          "rev-B4-read-v1",
+          "rev-B4-post-v1"
+        ],
+        "result": "普通 k0 壳损/补不替代 k_m/k_a、K0/V0、保存/控制三链；已死旧 LifeId 历史不复苏，未知四证不签屏障，四证齐才⑤一次、⑥撤派生未来权。B1/A1 独立源、账户和有效 grant 保留。"
+      }
+    ],
+    "scenarioRecalculation": "同 S0/seed 各行独立：有证成功前提44/6；不破仅C与3/2 E0热、无撞无C/N/X；无撞获准空读2/48；读前拒绝零扣与已调用 attempt1/49互斥；原读/价格/容量未知不填成功；域外零新作用；同 payer/lot 先序锁15和20竞争欠14；再撞 C-B1-02 换版；同刻两C一球壳X；POST全失证39/11释5；创建者四证齐一次 DeathBarrier 并撤派生未来授权。自然、已付和已提交作用不倒带，玩家只见获准普通壳与本人真账，POST 包余待测。",
+    "consumerReverseSearch": "physics-material-design.md:631–698 为字段/fact/场景键权威，mana-ledger-design.md:886–末尾为 mdai-B4-audit-v1 与 payer 权威，programmable-spells-design.md:866–末尾为新 AST/hash/容量权威，life-identity-design.md:676–末尾为 LifeId 权威；player-bridge-design.md:237–290 与 module-design.md:3–22 仍有旧 mdah 字段/价版/34/16/40 S 条件消费。Version PM 须按 readId、factId、priceVersion 和本人可见余态更新两下游；本任务不代改。",
+    "remainingChiefPlannerScope": "drb4 仍 changes-requested；主策须判断固定审计与 ADR-0019 通用单字段探查的玩家边界、44/6 可施放性和 314 S 条件布局，以及下游提示是否一致。若需改变字段/价/容量，退独占权威升版再重审。",
+    "developmentAcceptance": "采真实逐字段 grant/撤权/校准原读、factId/causeId/worldSeq、逐 payer 到账和 ReadTx/作用实扣、规范 AST 字节及 SHA-256、球页/槽/FIFO/旧占用、VM tick/同刻活 S、LifeId 四证与六入口可见余态；静态资源界须不低于实耗。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",phys=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\")[1],ledger=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\")[1],theory=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\").split(\"## `mdai-world`\")[1].split(\"## 修订纪律\")[0],rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=x=>x.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)),q=rows(phys),r=rows(ledger);a.equal(q.length,19);a.equal(r.length,19);let M=0,T=0,F=0,E=0;for(let i=0;i<19;i++){let u=q[i].split(\"|\"),v=r[i].split(\"|\"),id=u[1].match(rx)[1],norm=x=>x.replace(/`/g,\"\").replace(/；\\d+\\s*$/,\"\").replace(/；/g,\";\").replace(/\\s/g,\"\");a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);let pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fc=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ec=pairs.length,cost=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[3].trim(),fc+\"/\"+ec,id);a.equal(+cost[1],ec===2?1:2,id);a.equal(+cost[2],1+fc+ec,id);F+=fc;E+=ec;M+=+cost[1];T+=+cost[2]}a.deepEqual([F,E,M,T,M+5+10,50-M-5-10],[199,53,29,271,44,6]);for(const k of [\"mdai-B4-audit-v1\",\"AST-B4-mdai-audit-v1\",\"H_B4_mdai_assumed_v1\",\"POST-B4-material\",\"assessmentId\",\"DeathBarrier\",\"创建者死亡\",\"ok([])\",\"unknownPrice\",\"capacityUnknown\",\"outOfDomain\",\"同 payer/lot 竞争\",\"再撞、双接触\",\"POST 失证\",\"39/暂余 11\",\"314 S\",\"drb4\"])a.ok(theory.includes(k),k);console.log(\"PASS mdai world: 19 exact projections, prices, arithmetic and branch keys\")'",
+      "exitCode": 0,
+      "output": "PASS mdai world: 19 exact projections, prices, arithmetic and branch keys"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai exact worktree writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdai exact worktree writePaths"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-world.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId);a.equal(e.taskId,\"mdai-world\");a.equal(e.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.ok(e.scope.readOnlyPredecessors.every(x=>JSON.parse(f.readFileSync(x,\"utf8\")).status===\"completed\"));a.ok(e.commands.length>=4&&e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.every(x=>x.exitCode!==0));a.equal(e.evidence.length,2);console.log(\"PASS mdai world evidence matches exact task contract and completed predecessors\")'",
+      "exitCode": 0,
+      "output": "PASS mdai world evidence matches exact task contract and completed predecessors"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "rg -n '^## .*(mdai|B4 固定投影)' docs/versions/pilot-agent-intent-2026-09-24/{mana-ledger-design,programmable-spells-design,life-identity-design}.md",
+      "exitCode": 1,
+      "output": "PowerShell ParserError: Missing argument in parameter list (brace expansion unsupported).",
+      "resolution": "改用显式三个文件路径的定向 rg；该错误仅影响检索命令，未改文件。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md#mdai-world十九读新价版程序与生命证的同键重放范围修订-13",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-world.json"
+  ]
+}

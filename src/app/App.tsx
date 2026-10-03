@@ -53,6 +53,7 @@ export function App() {
 
 function ReadyApp() {
   const [tab, setTab] = useState<Tab>('lab');
+  const [labSelection, setLabSelection] = useState('spell:基础剑气');
   const [initial] = useState(() => {
     const loaded = loadPlayerState(DEFAULT_PLAYER_STATE);
     return loaded.ok
@@ -171,7 +172,12 @@ function ReadyApp() {
         </p>
       )}
       {tab === 'lab' ? (
-        <LabView source={spellSource} onSourceChange={setSpellSource} />
+        <LabView
+          source={spellSource}
+          onSourceChange={setSpellSource}
+          initialSelection={labSelection}
+          onSelectionChange={setLabSelection}
+        />
       ) : (
         <CombatView
           source={spellSource}

@@ -1,0 +1,67 @@
+{
+  "taskId": "mdp-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "dependsOn": ["mdp-physics", "mdp-mana", "mdp-life", "mdp-program"],
+  "summary": "在唯一世界理论正文整合四项已完成前驱的 A0 起步/续步、K0/V0 代谢、M1/A1 失供与救援、载体容量和授权六阶段逐笔链；以 H/B 为只读反例逐格标已证、条件、未知或不可表达，并列物理、M、材料、散逸、tick、神识及 ADR 0017–0020/旧原型影响。本项仅完成策划纸面整合，不代表候选批准、规则实测或开发就绪。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),path=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",s=fs.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),t=JSON.parse(fs.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdp-theory\");a.deepEqual(t.dependsOn,[\"mdp-physics\",\"mdp-mana\",\"mdp-life\",\"mdp-program\"]);for(const id of t.dependsOn)a.equal(JSON.parse(fs.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"N-m1→X-m1\",\"N-a1→X-a1\",\"Tx-s↔A-s\",\"Tx-maintain↔A\",\"LifeAssessment\",\"DeathBarrier\",\"CarrierCapacityCertificate\",\"6 tick/S=4\",\"13 tick/S=8\",\"7 tick/S=5\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\"])a.ok(s.includes(k),k);for(const k of [\"接触未裁定不触发 H/B\",\"失供球保惯性\",\"人工生命凭自身资格行动\",\"创建者死亡撤权\",\"迟到补源不倒救\",\"回收无套利\"]){const line=s.split(/\\r?\\n/).find(x=>x.startsWith(\"| \"+k));a.ok(line&&[\"已证\",\"条件\",\"未知\",\"不可表达\"].some(v=>line.includes(v)),k)}a.equal(19+31+12+8,70);a.equal(7+0+31+3+12+8,61);a.equal(7+0+3+100+20,130);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const q=m[1].split(\"#\")[0];if(q&&!q.includes(\"://\")){a.ok(fs.existsSync(path.resolve(b,q)),q);n++}}console.log(\"PASS mdp-theory predecessors, six cases, totals and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdp-theory predecessors, six cases, totals and 74 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw ('outside contract: '+($actual -join ', '))}; Write-Output 'PASS mdp-theory only two contract paths'",
+      "exitCode": 0,
+      "output": "PASS mdp-theory only two contract paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json\",j=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(j.taskId,\"mdp-theory\");a.equal(j.status,\"completed\");a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdp-theory evidence JSON\")'",
+      "exitCode": 0,
+      "output": "PASS mdp-theory evidence JSON",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json"
+      ]
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdp-program.json"
+  ]
+}

@@ -112,6 +112,7 @@ export class VM {
   private returnValue: Value = null;
   private entryName = '';
   private lastInstruction: VMSnapshot['instruction'] = null;
+  private worldCleanups: Array<() => void> = [];
 
   constructor(
     private program: Program,
@@ -122,6 +123,7 @@ export class VM {
     this.ctx = {
       world,
       caster,
+      programHash: program.astHash,
       controlSession: options?.controlSession,
       log: [],
       keys: null,
@@ -129,6 +131,9 @@ export class VM {
     };
     this.opts = { ...DEFAULT_OPTIONS, ...options };
     this.ctx.availableMana = () => this.caster.mana;
+    this.ctx.chargeWorldWork = (payerId, mana, ticks, kind, reservationId) =>
+      this.payWork(mana, ticks, kind, payerId, reservationId);
+    this.ctx.registerWorldCleanup = (cleanup) => this.worldCleanups.push(cleanup);
   }
 
   /** 接入按键状态（duration / 键位法术用）。引用共享，战斗层原地修改即可 */
@@ -143,6 +148,7 @@ export class VM {
   // ---------------- 生命周期 ----------------
 
   start(entryName?: string): void {
+    this.releaseWorldLocks();
     this.releaseAllShenshi();
     const prog = this.program;
     let entryIdx = prog.entry;
@@ -292,6 +298,7 @@ export class VM {
   /** 战斗打断或重置时显式结束，并归还仍由本 VM 占用的共享神识。 */
   cancel(): void {
     if (this.status !== 'running') return;
+    this.releaseWorldLocks();
     this.ctx.controlSession?.end();
     this.releaseAllShenshi();
     this.frames = [];
@@ -301,6 +308,7 @@ export class VM {
   // ---------------- 内部 ----------------
 
   private fail(reason: string): void {
+    this.releaseWorldLocks();
     this.ctx.controlSession?.end();
     this.status = 'failed';
     this.error = reason;
@@ -309,7 +317,13 @@ export class VM {
   }
 
   /** 先检查累计工作上限，再一次提交法力与 tick 债务；失败无本笔扣款。 */
-  private payWork(mana: number, ticks: number, kind: string): boolean {
+  private payWork(
+    mana: number,
+    ticks: number,
+    kind: string,
+    payerId = this.caster.id,
+    reservationId?: string,
+  ): boolean {
     if (!Number.isFinite(mana) || mana < 0 || !Number.isSafeInteger(ticks) || ticks < 0) {
       this.fail('非法资源价格');
       return false;
@@ -324,10 +338,11 @@ export class VM {
     let paid: number | null;
     try {
       paid = this.ctx.world.resourceLedger.payMana(
-        this.caster.id,
+        payerId,
         mana,
         kind,
-        this.opts.resources?.trySpendMana,
+        payerId === this.caster.id ? this.opts.resources?.trySpendMana : undefined,
+        reservationId,
       );
     } catch (error) {
       this.fail(`资源结算失败：${String(error)}`);
@@ -337,7 +352,7 @@ export class VM {
       this.fail(`法力不足：本次还需 ${Math.round(mana)}`);
       return false;
     }
-    this.manaSpent += paid;
+    if (payerId === this.caster.id) this.manaSpent += paid;
     this.ticksUsed += ticks;
     this.tickDebt += ticks;
     return true;
@@ -367,6 +382,10 @@ export class VM {
     }
   }
 
+  private releaseWorldLocks(): void {
+    for (const cleanup of this.worldCleanups.splice(0)) cleanup();
+  }
+
   private releaseShenshi(amount: number): void {
     this.shenshiCur = Math.max(0, this.shenshiCur - amount);
     this.opts.resources?.releaseShenshi(amount);
@@ -389,6 +408,7 @@ export class VM {
   private execOne(): void {
     if (this.frames.length === 0) {
       this.status = 'done';
+      this.releaseWorldLocks();
       if (!this.opts.retainControlSessionOnCompletion) this.ctx.controlSession?.end();
       return;
     }
@@ -402,6 +422,7 @@ export class VM {
       this.frames.pop();
       if (this.frames.length === 0) {
         this.status = 'done';
+        this.releaseWorldLocks();
         if (!this.opts.retainControlSessionOnCompletion) this.ctx.controlSession?.end();
       } else this.stack.push(null);
       return;
@@ -642,6 +663,7 @@ export class VM {
         // 「结束施法」元函数会让当前施法立即结束
         if (this.ctx.endRequested) {
           this.status = 'done';
+          this.releaseWorldLocks();
           this.ctx.controlSession?.end();
           return;
         }
@@ -683,6 +705,7 @@ export class VM {
         if (this.frames.length === 0) {
           this.returnValue = val;
           this.status = 'done';
+          this.releaseWorldLocks();
           if (!this.opts.retainControlSessionOnCompletion) this.ctx.controlSession?.end();
           return;
         }

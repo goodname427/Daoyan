@@ -1,0 +1,90 @@
+{
+  "taskId": "mdr-experience",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "直接承接 mdr-spells 修订玩家桥接候选策划：区分现实输入和世界请求，定义统一意图、相同初态下的共享法术书推演至实战往返、逐笔作用价/来源/临界身份/越权/待定价诊断，并用同一程序列出四载体与成功、拒绝、空状态、旧原件情形。仅完成文档与轻量直接检查；价格、身份、输入恢复及迁移等缺口仍待整版审核，不代表新规则已运行或批准开发。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"player-bridge-design.md\",s=f.readFileSync(q,\"utf8\"),t=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdr-experience\");a.deepEqual(t.dependsOn,[\"mdr-spells\"]);for(const k of [\"现实设备\",\"世界请求\",\"intentId/causeId\",\"programHash\",\"requestId\",\"descriptorId/version\",\"同一 AST\",\"相同初态\",\"DSL\",\"蓝图\",\"预算\",\"单步推演\",\"绑定\",\"自然 `C`\",\"主动作用 `A/X`\",\"返回修改\",\"作用价\",\"来源\",\"临界/身份\",\"越权\",\"unknownPrice\",\"attemptQuote\",\"空书\",\"空目标\",\"旧原件诊断\",\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"瞄准\",\"模拟时间\",\"暂停\",\"UI 探查\",\"表现\",\"配置/存档\",\"修士\",\"法球\",\"机关\",\"敌方修士\",\"现行原型\"])a.ok(s.includes(k),k);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),x);n++}}console.log(\"PASS mdr-experience contract topics and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-experience contract topics and 6 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(parseStageTaskResult(r,\"mdr-experience\").status,\"completed\");a.ok(r.commands.length&&r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const q of r.evidence)a.ok(f.existsSync(q),q);console.log(\"PASS mdr-experience result and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-experience result and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from task contract' }; Write-Output 'PASS only two task paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two task paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json\",r=JSON.parse(fs.readFileSync(p,\"utf8\")),c=r.commands.find(x=>x.command.includes(\"Compare-Object\"));c.command=c.command.replace(\"Replace('\\\\','/')\",\"Replace('\\','/')\");fs.writeFileSync(p,JSON.stringify(r,null,2)+\"\\n\")'",
+      "exitCode": 1,
+      "output": "SyntaxError: Invalid or unexpected token",
+      "resolution": "Shell quoting cut off the inline edit before the replacement expression; used a character-code replacement command, then rechecked the JSON."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json",
+      "exitCode": 1,
+      "output": "Code style issues found in module-design-mdr-experience.json",
+      "resolution": "Formatted the JSON with Prettier and reran the direct check."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-experience.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+  ]
+}

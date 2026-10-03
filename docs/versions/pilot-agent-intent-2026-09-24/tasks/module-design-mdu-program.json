@@ -1,0 +1,49 @@
+{
+  "taskId": "mdu-program",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "承接 mdu-source、mdu-ledger、mdu-life 的已完成纸面结论，给 M1/B1/J1/A1 逐部位待测下界、原读与误差记录规则、单帧及排队同时占用峰值；以独立 AT0 包和未定毛价建立最坏分支/列表/循环工作式，复算起步加 H2、B 全链、维持、攻击及 100/20 的条件 M/tick/S，并给现场实耗核验和六类反证。所有逐体原读为空，装载价、攻击价/包、部分正功与生命终界未签；纸面上界未经过运行验证，不代表可执行成功。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-program.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdu-program.json\",\"utf8\")),t=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")).stageTasks.find(x=>x.id===\"mdu-program\");for(const id of [\"mdu-source\",\"mdu-ledger\",\"mdu-life\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);const s=d.split(\"## `mdu-program`\")[1].split(\"### H、B\")[0];a.ok(s);for(const k of [\"M1\",\"B1\",\"J1\",\"A1\",\"rawReadings[]\",\"absoluteError\",\"4096 B\",\"600 tick\",\"21/20/21/21 S\",\"AT0\",\"p_AT0=unknownPrice\",\"100/20\",\"capacityUnknown\",\"capacityFull\",\"queueFull\",\"grantRevoked\",\"不回滚\",\"实耗\"])a.ok(s.includes(k),k);a.equal(12+9+12,33);a.equal(11+24,35);a.equal(3*23+5+43,117);a.equal(23+100+20,143);for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdu-program paper contract, predecessors, arithmetic and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdu-program paper contract, predecessors, arithmetic and evidence"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-program.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-program.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-program.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdu-program writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdu-program writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "rg -n 'mdu-program|mdu-source|mdu-ledger|mdu-life' docs/versions/pilot-agent-intent-2026-09-24/tasks/*.json",
+      "exitCode": 1,
+      "reason": "PowerShell 没有展开传给 rg 的通配路径；之后按明确的三个直接前驱证据文件读取。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",want=[p+\"programmable-spells-design.md\",p+\"tasks/module-design-mdu-program.json\"].sort(),got=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(got,want);console.log(\"PASS only two mdu-program writePaths changed\")'",
+      "exitCode": 1,
+      "reason": "Node 子进程在当前宿主 spawnSync git EPERM；随后改用 PowerShell 直接调用 git status，writePaths 检查通过。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-program.json",
+      "exitCode": 1,
+      "reason": "当前宿主 .git 仅可读，无法创建 E:/CGL/Programs/Daoyan/.git/index.lock；未暂存或执行本地 commit。"
+    }
+  ]
+}

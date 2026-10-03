@@ -1,0 +1,64 @@
+{
+  "taskId": "mdw-life-state",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "承接 mdw-source-proof/mdw-price-proof，分判 M1/A1 的条件可保存、现行窄域不可表达醒回及旧 LifeId 同一所需三链；逐体列独立 F1/F2、保存原读和保守时钟。推荐将当前体验解释为保存待判供主策升级，不预批名称、关键回路扩域或独立死后提款。F2 单断不签 DeathBarrier，四证齐才一次撤权；现场原读、装载价和成功事实仍未知。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),s=d.split(\"## `mdw-life-state`\")[1]?.split(\"## 直接前驱与相关约束\")[0],v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.filter(x=>x.id===\"mdw-life-state\").at(-1);a.ok(s,\"mdw section\");a.deepEqual(t.writePaths,[p+\"life-identity-design.md\",p+\"tasks/module-design-mdw-life-state.json\"]);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"可保存\",\"可醒回\",\"原 `LifeId` 同一\",\"N-M1-F1@T1\",\"N-M1-F2@T2\",\"N-A1-F1@T1A\",\"N-A1-F2@T2A\",\"m-store:128q\",\"a-store:128q\",\"dueAt_M=10\",\"preservationDueAt_M=12\",\"recoveryDeadline_M=min(11,13,11,12,12)=11\",\"dueAt_A=8\",\"preservationDueAt_A=10\",\"recoveryDeadline_A=min(10,11,10,11,10)=10\",\"结构链\",\"记忆链\",\"控制链\",\"保存型休眠\",\"保存待判\",\"零余额最后一击\",\"迟到补源\",\"修壳与分叉\",\"创建者死亡\",\"遗体再损\",\"终界四证\",\"F2 单断\",\"DeathBarrier=∅\",\"unknownPrice\",\"独立死后提款\"])a.ok(s.includes(k),k);a.equal(Math.min(11,13,11,12,12),11);a.equal(Math.min(10,11,10,11,10),10);console.log(\"PASS mdw-life-state contract coverage, predecessors and deadline arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdw-life-state contract coverage, predecessors and deadline arithmetic",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdw-life-state writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdw-life-state writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdw-life-state.json\",\"utf8\"));a.equal(e.taskId,\"mdw-life-state\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,[p+\"life-identity-design.md\",p+\"tasks/module-design-mdw-life-state.json\"]);a.ok(e.commands.every(x=>x.exitCode===0&&x.command));a.ok(e.failedAttempts.every(x=>x.exitCode!==0&&x.command));console.log(\"PASS mdw-life-state evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdw-life-state evidence metadata",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-life-state.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 1,
+      "reason": "新增表格未满足 Prettier 格式；仅对本任务文档执行 --write 后复查。"
+    }
+  ]
+}

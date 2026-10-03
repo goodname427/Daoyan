@@ -1,0 +1,48 @@
+{
+  "taskId": "mdu-source",
+  "status": "completed",
+  "summary": "在物理材料设计中新增 H2 正功和 B4 惰性材料摄取的有限初态、取得链、授权、主辅源装载四读、保守可取界及未来实测办法；逐项裁定其余驱动、摄取、保存与 AT0 的缺证拒绝，补齐耗尽、竞争、回收反证和 M1/A1 的独立 F1/F2 保存输入。两条正例仍是纸面测试向量，现场取得与实读未知，当前无成功 LoadTx/Tx/A。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-source.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdu-source.json\",\"utf8\")),t=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")).stageTasks.filter(x=>x.id===\"mdu-source\").at(-1);a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const k of [\"有限初态取得与装载的纸面正例\",\"Acquire-J1-01\",\"Acquire-B1-01\",\"Acquire-k0-01\",\"EL-J1-H2\",\"EL-B1-B4\",\"R0=(40,0,0)\",\"R0=(64,0,0)\",\"E0/288\",\"0q\",\"D1\",\"D2\",\"K0\",\"V0\",\"A1 驱动\",\"AT0\",\"N-M1-F1\",\"N-M1-F2\",\"N-A1-F1\",\"N-A1-F2\",\"outOfDomain\",\"LoadTx/Tx↔A=∅\"])a.ok(d.includes(k),k);a.equal(Math.min(18-6,14,15),12);a.equal(Math.min(42-14,30,31),28);a.equal(Math.min(10-6,6,7),4);for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdu-source paper bounds, coverage and contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdu-source paper bounds, coverage and contract"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-source.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-source.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdu-source.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdu-source writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdu-source writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "rg -n 'module-design-mdu-source|mdu-source|writePaths|taskId|commands|evidence' docs/versions/pilot-agent-intent-2026-09-24/tasks/*.json",
+      "exitCode": 1,
+      "reason": "PowerShell 未展开此处的通配路径；改为向任务目录传递 -g '*.json' 定向查找。"
+    },
+    {
+      "command": "rg -n 'F1|F2|H2|B4|D1|D2|K0|V0|A1|AT0|q/0q|E0/12' docs/versions/pilot-agent-intent-2026-09-24/{module-design.md,world-theory-draft.md,mana-ledger-design.md,life-identity-design.md,programmable-spells-design.md}",
+      "exitCode": 1,
+      "reason": "PowerShell 不支持该 Bash brace 展开；后续按明确文件路径读取直接前驱。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdu-source.json\",\"utf8\")),t=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdu-source\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const k of [\"有限初态取得与装载的纸面正例\",\"Acquire-J1-01\",\"Acquire-B1-01\",\"Acquire-k0-01\",\"EL-J1-H2\",\"EL-B1-B4\",\"R0=(40,0,0)\",\"R0=(64,0,0)\",\"E0/288\",\"0q\",\"D1\",\"D2\",\"K0\",\"V0\",\"A1 驱动\",\"AT0\",\"N-M1-F1\",\"N-M1-F2\",\"N-A1-F1\",\"N-A1-F2\",\"outOfDomain\",\"LoadTx/Tx↔A=∅\"])a.ok(d.includes(k),k);a.equal(Math.min(18-6,14,15),12);a.equal(Math.min(42-14,30,31),28);a.equal(Math.min(10-6,6,7),4);for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdu-source paper bounds, coverage and contract\")'",
+      "exitCode": 1,
+      "reason": "首次校验误从规划清单读取 writePaths；正式合同在版本状态的 stageTasks 中。改用该合同后相同内容检查通过。"
+    }
+  ]
+}

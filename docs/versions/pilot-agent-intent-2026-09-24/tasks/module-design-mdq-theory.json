@@ -1,0 +1,78 @@
+{
+  "taskId": "mdq-theory",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "以 physical-mdq-1、mdq-mana、mdq-life-1 和 mdq-program-1 同版证书重写唯一理论整链；H/B、普通行动和 100/20 分列触发、执行、付款、正功材料、反作用、失供、撤权与已付余态，八项反例逐格分级，并给 mdq-bridge 共同验收前提。预存物理包及摄取包上游、独立攻击价、逐体容量和关键生命材料仍未获证；H 的 J1 方向槽及资源/程序 tick 数冲突已列为未决，正向结果保持条件或未知。本轮不是策划批准或可玩验证。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),t=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdq-theory\");a.deepEqual(t.dependsOn,[\"mdq-physics\",\"mdq-mana\",\"mdq-life\",\"mdq-program\"]);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const x of [\"physical-mdq-1\",\"mdq-mana\",\"mdq-life-1\",\"mdq-program-1\",\"C/N\",\"Quote/Tx\",\"LifeAssessment\",\"DeathBarrier\",\"100/20\",\"capacityUnknown\",\"capacityFull\",\"queueFull\",\"ADR-0017\",\"ADR-0018\",\"ADR-0019\",\"ADR-0020\",\"mdq-bridge\"])a.ok(d.includes(x),x);a.ok(!d.includes(\"### `mdp-theory`\"));const q=d.split(\"**交叉反证矩阵。**\")[1].split(\"**交给 `mdq-bridge`\")[0],rows=q.split(\"\\n\").filter(x=>x.startsWith(\"| \"));a.equal(rows.length,10);for(const row of rows.slice(2))a.ok(/已证|条件|未知|不可表达/.test(row),row);for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\"))a.ok(f.existsSync(p.resolve(b,x)),x)}console.log(\"PASS mdq-theory predecessor, eight-row matrix, required coverage and local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-theory predecessor, eight-row matrix, required coverage and local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from task contract' }; Write-Output 'PASS only mdq-theory design and evidence paths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdq-theory design and evidence paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdq-theory.json\",\"utf8\"));a.equal(r.taskId,\"mdq-theory\");a.equal(r.status,\"completed\");a.deepEqual(r.artifacts,[b+\"world-theory-draft.md\",b+\"tasks/module-design-mdq-theory.json\"]);a.ok(r.commands.length>0&&r.commands.every(x=>x.exitCode===0&&x.evidence.every(f.existsSync)));a.ok(r.failedAttempts.every(x=>x.exitCode!==0));console.log(\"PASS mdq-theory result and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-theory result and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "PowerShell here-string piped to python -c for whole-section replacement (located headings using unencoded Chinese literals)",
+      "exitCode": 1,
+      "output": "ValueError: substring not found",
+      "resolution": "PowerShell 管道的非 UTF-8 标题在 Python 命令参数中乱码；该脚本未写文件，随后使用精确补丁并按 ASCII 标记移除旧节。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-theory.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+  ]
+}

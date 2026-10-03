@@ -1,0 +1,110 @@
+{
+  "taskId": "mdai-b4-carrier",
+  "status": "completed",
+  "summary": "本轮仅重签程序设计与证据：以物理 mdai-b4-fields 的 S0-physical-v1/seed-physical-v1、B4-v1/slice-B4-01、V0…VP 及十九项逐字段投影，和账本 mdai-B4-audit-v1/audit-work-v1 为权威；J1 同 AST/hash 纸面别名和十五读、D1 独立 AST/hash 仅作核对。十九读 F=199/E=53、读款29 M/≤271 tick，B4 本人 acct-B1-B4 净入50、装载5、作用10，全链条件付44/余6；自然 E0/q 不折 M，他体付款不合并。新纸面 AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1 与旧 B4 非别名，真实 hash 未生成；条件响应≤330 tick，保守本体布局 S_response≤314 S、安装峰另证。事件仅已提交 factId/获准字段，九类场景逐项保留已付和自然 C/N/X；容量未读 capacityUnknown，唯球内 FIFO 证满 queueFull。主策 drb4 仍 changes-requested，固定审计与通用单字段探查边界、44/6 玩家可施放性及314 S 方案待判断。真实授权、样本、收据、页/旧占用、规范 hash 与 VM 实耗缺失，现况 Quote=unknownPrice，不是可运行成功。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json"
+    ],
+    "nonGoals": "不改物理、账本、ADR、理论、桥接、生命或代码；不以纸面数冒充运行实测。"
+  },
+  "checks": {
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md#mdai-b4-fields",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "V0…VP",
+          "rev-B4-read-v1",
+          "rev-B4-post-v1"
+        ],
+        "result": "十九 ID 的 7 模板逐字段与账本相等；自然首撞 10=4+2+4 E0、原壳3q=2q+残片q；B4 独立源100=53+47 E0/12、包32/12→8/12、仓4q=2q+q+q。无撞空读不伪造 C；再撞换版。"
+      },
+      {
+        "source": "mana-ledger-design.md#mdai-b4-quote; tasks/module-design-mdai-b4-quote.json",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "acct-B1-B4",
+          "payerGrant-B4-v1",
+          "receipt-B4-funded-v1"
+        ],
+        "result": "2端1 M、3/4端2 M；t=1+F+E；R阶段6 M/56 tick各四次，POST5 M/47 tick；总读29 M/271 tick，连同5+10为44 M/余6。R3已付29/余21，作用+POST锁15、可用6，作用后39/11，POST后44/6。J1本人32、P0/P2自付1/2、可选P1自付1，跨账户35/36；D1独立40=26+14。收据模板非实扣。"
+      },
+      {
+        "source": "docs/adr/0019-属性探查与资源账本.md#决策三; docs/adr/0020-事件执行上下文与生命周期.md",
+        "versionKeys": [
+          "fieldGrant",
+          "revocationVersion",
+          "priceVersion",
+          "factId",
+          "worldSequence"
+        ],
+        "result": "固定审计不开放任意字段；通用单字段沿ADR公式。逐字段授权、公开预算、ok([])与unavailable分开，可支付拒绝尝试1 M/1 tick与成功互斥。事件只给已提交事实和获准投影，世界1024队列不代球内FIFO。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdai-b4-carrier; design-review-findings.md#drb4",
+        "versionKeys": [
+          "AST-B4-mdai-audit-v1",
+          "B4-R19-projection-v1",
+          "H_B4_mdai_assumed_v1",
+          "C-B4-mdai-carrier-v1"
+        ],
+        "result": "新AST仅纸面；十九索引、条件313物理链/330响应、314 S候选覆盖新投影。J1同一假设AST/hash别名与十五读只读核，D1独立程序只读核。真实hash、页/旧占用与VM峰未证；drb4 changes-requested。"
+      }
+    ],
+    "scenarioRecalculation": "同S0/seed独立复位：单订阅全链条件44/余6；不破仅C、无撞无C/N/X；双接触两C一球壳X、球FIFO实满才queueFull；再撞C-B1-02换版；感官/执行部位失证停止；无撞合法空material-R0只付2余48；无权预检零扣或真调用互斥尝试1；unknownPrice与容量未读均零成功作用；R3后他笔20先付则余1、锁15缺14，POST全失证已付39/暂余11、包余待测。已付、自然事实不倒带。",
+    "remainingChiefPlannerScope": "固定投影审计与通用单字段边界、44/6 M玩家可施放性、314 S保守布局是否可接受；若改变字段/价/容量应由权威升版并重审，理论/桥接/总览旧成功句待各自归属者消费。",
+    "developmentAcceptance": "真实 grant/撤权、物理采样/校准、到账和每笔 ReadTx/LoadTx/Tx↔A/X、规范 AST 字节/SHA-256、球页/槽/FIFO/引用/帧/旧占用、安装和响应 VM tick/同时活 S、六入口玩家余态。缺证为可执行 Quote 阻断，不影响本轮纸面交付。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",p=f.readFileSync(b+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1),l=f.readFileSync(b+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\").at(-1),d=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\").split(\"## `mdai-b4-carrier`\").at(-1),rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=s=>s.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)).slice(0,19),x=rows(p),y=rows(l),m=Object.fromEntries(d.split(/\\r?\\n/).filter(z=>/^\\| `(main|aux|heat|material|POST-main|POST-heat|POST-material)`/.test(z)).map(z=>{let q=z.split(\"|\");return[q[1].trim().replaceAll(\"`\",\"\"),q[2]]})),norm=s=>s.replaceAll(\"`\",\"\").replace(/；\\d+\\s*$/,\"; \").replace(/\\s/g,\"\").replace(/；/g,\";\").replace(/;$/,\"\");a.equal(x.length,19);a.equal(y.length,19);a.equal(Object.keys(m).length,7);let F=0,E=0,M=0,T=0;for(let i=0;i<19;i++){let u=x[i].split(\"|\"),v=y[i].split(\"|\"),id=u[1].match(rx)[1],key=id.startsWith(\"POST-B4-\")?\"POST-\"+id.slice(8):id.match(/^Read-B4-(\\w+)-R/)[1],pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fc=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ec=pairs.length,c=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);a.equal(norm(m[key]),norm(v[2]),id);a.equal(v[3].trim(),fc+\"/\"+ec,id);a.equal(+c[1],ec===2?1:2,id);a.equal(+c[2],1+fc+ec,id);F+=fc;E+=ec;M+=+c[1];T+=+c[2]}a.deepEqual([F,E,M,T,50-5-10-M],[199,53,29,271,6]);a.ok(d.includes(\"S_response≤314 S\"));a.equal(8+1+1+1+1+19+199+53+31,314);a.ok(d.includes(\"Quote=unknownPrice\")&&d.includes(\"capacityUnknown\")&&d.includes(\"queueFull\"));console.log(\"PASS mdai 19 projections, prices, 44/6 M, 313/330 tick and 314 S paper checks\")'",
+      "exitCode": 0,
+      "output": "PASS mdai 19 projections, prices, 44/6 M, 313/330 tick and 314 S paper checks"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",s=f.readFileSync(p,\"utf8\").split(\"## `mdai-b4-carrier`\").at(-1);for(const t of [\"单订阅破壳正例\",\"不破或无撞\",\"双接触争球位\",\"再撞换版\",\"感官或执行部位损坏\",\"合法空读\",\"无权或隐藏\",\"`unknownPrice` 或容量未读\",\"欠费、竞争或 POST 失证\",\"n_extra>0\",\"programHash=unknown\"])a.ok(s.includes(t),t);a.equal(4*6+5+10+5,44);a.equal(4*56+47,271);a.equal(271+10+20+12,313);a.equal(313+12+5,330);a.equal(50-29-5,16);a.equal(21-15,6);a.equal(50-29-20,1);a.equal(15-1,14);a.equal(29+10,39);a.equal(50-39,11);console.log(\"PASS mdai scenario labels and paper totals\")'",
+      "exitCode": 0,
+      "output": "PASS mdai scenario labels and paper totals"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),s=c.execFileSync(\"git\",[\"status\",\"--porcelain\",\"--untracked-files=all\"],{encoding:\"utf8\"}).split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(s,[\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json\"].sort());console.log(\"PASS mdai carrier exact writePaths\")'",
+      "exitCode": 0,
+      "output": "PASS mdai carrier exact writePaths"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",p=f.readFileSync(b+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1),l=f.readFileSync(b+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\").at(-1),d=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\").split(\"## `mdai-b4-carrier`\").at(-1),rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=s=>s.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)).slice(0,19),x=rows(p),y=rows(l),m=Object.fromEntries(d.split(/\\r?\\n/).filter(z=>/^\\| `(main|aux|heat|material|POST-main|POST-heat|POST-material)`/.test(z)).map(z=>{let q=z.split(\"|\");return[q[1].trim().replaceAll(\"`\",\"\"),q[2]]})),norm=s=>s.replaceAll(\"`\",\"\").replace(/；\\d+\\s*$/,\"; \").replace(/\\s/g,\"\").replace(/；/g,\";\");a.equal(x.length,19);a.equal(y.length,19);a.equal(Object.keys(m).length,7);let F=0,E=0,M=0,T=0;for(let i=0;i<19;i++){let u=x[i].split(\"|\"),v=y[i].split(\"|\"),id=u[1].match(rx)[1],key=id.startsWith(\"POST-B4-\")?\"POST-\"+id.slice(8):id.match(/^Read-B4-(\\w+)-R/)[1],pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fc=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ec=pairs.length,c=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);a.equal(norm(m[key]),norm(v[2]),id);a.equal(v[3].trim(),fc+\"/\"+ec,id);a.equal(+c[1],ec===2?1:2,id);a.equal(+c[2],1+fc+ec,id);F+=fc;E+=ec;M+=+c[1];T+=+c[2]}a.deepEqual([F,E,M,T,50-5-10-M],[199,53,29,271,6]);a.ok(d.includes(\"S_response≤314 S\"));a.equal(8+1+1+1+1+19+199+53+31,314);a.ok(d.includes(\"Quote=unknownPrice\")&&d.includes(\"capacityUnknown\")&&d.includes(\"queueFull\"));console.log(\"PASS mdai 19 projections, prices, 44/6 M, 313/330 tick and 314 S paper checks\")'",
+      "exitCode": 1,
+      "reason": "首次投影核验仅因物理表末尾的端点数分隔符残留分号，与程序模板空白规范化不同；补充末尾分号归一后同一逐字段检查通过。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),s=c.execFileSync(\"git\",[\"status\",\"--porcelain\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(s,[\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json\"].sort());console.log(\"PASS mdai carrier exact writePaths\")'",
+      "exitCode": 1,
+      "reason": "首次范围脚本对 porcelain 输出整体 trim，删掉已修改行开头的状态空格，导致路径首字母被 slice(3) 误删；移除 trim 后重跑。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-carrier.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md#mdai-b4-fields",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md#mdai-b4-quote",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json"
+  ]
+}

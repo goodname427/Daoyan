@@ -1,0 +1,38 @@
+{
+  "taskId": "mdv-carrier-budget",
+  "status": "completed",
+  "summary": "在既有 mdu-program 条件容量上，按 mdv 物理、账本和生命只读前驱补四体逐维原读/误差/可用下界/同刻峰值、AT0 独立装载和最坏路径、H/B/普通行动/维持/100/20 的条件静态 M/tick/S，以及指定反例和开发后实耗核验。所有现场容量原读为空，攻击价和装载价未签；100/20 无至少 120 M 池证且攻击无价，当前不可执行。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-carrier-budget.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-carrier-budget.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-carrier-budget.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdv-carrier-budget.json\",\"utf8\"));if(e.taskId!==\"mdv-carrier-budget\"||e.status!==\"completed\"||![\"M1\",\"B1\",\"J1\",\"A1\",\"capacityUnknown\",\"capacityFull\",\"queueFull\",\"grantRevoked\",\"120 M 储池压力裁定\",\"τ_AT0\",\"第二信封\",\"第三引用\"].every(x=>d.includes(x)))process.exit(1);console.log(\"PASS mdv-carrier-budget coverage and evidence identity\")'",
+      "exitCode": 0,
+      "output": "PASS mdv-carrier-budget coverage and evidence identity"
+    },
+    {
+      "command": "git status --short",
+      "exitCode": 0,
+      "output": " M docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\n?? docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-carrier-budget.json"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),c=require(\"node:child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdv-carrier-budget.json\",\"utf8\")),s=c.execFileSync(\"git\",[\"status\",\"--porcelain\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort(),want=[p+\"programmable-spells-design.md\",p+\"tasks/module-design-mdv-carrier-budget.json\"].sort();if(e.taskId!==\"mdv-carrier-budget\"||e.status!==\"completed\"||JSON.stringify(s)!==JSON.stringify(want)||![\"M1\",\"B1\",\"J1\",\"A1\",\"capacityUnknown\",\"capacityFull\",\"queueFull\",\"grantRevoked\",\"120 M 储池压力裁定\",\"τ_AT0\",\"第二信封\",\"第三引用\"].every(x=>d.includes(x)))process.exit(1);console.log(\"PASS mdv-carrier-budget coverage and exact changed paths\")'",
+      "exitCode": 1,
+      "reason": "Node 子进程调用 Git 时宿主返回 spawnSync git EPERM；改由直接 Git 命令核对路径，内容与证据身份由无子进程的 Node 命令核对。"
+    }
+  ]
+}

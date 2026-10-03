@@ -1,0 +1,70 @@
+{
+  "taskId": "md-mana",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "补齐共同报价函数及当前可表达域、正价与静态上界、普通驱动授权和付款、按笔 U 守恒及重复回收无套利证明、起步/注能/零余额补源/100-20/取消死亡/B1-B4 事务、T-A 双 ID、上下游字段链路，并对照 pricing、VM、ADR 0019 标明仅未来覆盖与原型重做影响；正功和材料新价因缺批准兑换证书仍不可表达。任务完成仅为模块详细策划及轻量检查，不批准实现或 ADR 覆盖。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),d=\"docs/versions/pilot-agent-intent-2026-09-24/\",s=f.readFileSync(d+\"mana-ledger-design.md\",\"utf8\");for(const x of [\"Quote(x)\",\"pFloor>0\",\"M↔μ·L²/s²\",\"静态上界\",\"合法尝试\",\"grantId\",\"重复创建/回收\",\"T-<worldSequence>\",\"A-<kindSequence>\",\"100 M\",\"B1\",\"B2\",\"B3\",\"B4\",\"world.ts\",\"pricing.ts\",\"vm.ts\",\"ADR 0019\",\"玩家界面显示\",\"未知/不可报价\"])a.ok(s.includes(x),\"missing \"+x);for(const id of [\"S1-a\",\"I1-a\",\"I1-b\",\"Z1-a\",\"Z1-b\",\"L1\",\"L2\",\"F1\",\"R1/R2\"])a.ok(s.includes(id),\"missing flow \"+id);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const q=m[1].split(\"#\")[0];if(q&&!q.includes(\"://\")){a.ok(f.existsSync(p.resolve(d,q)),\"broken link \"+q);n++}}console.log(\"PASS mana ledger clauses and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mana ledger clauses and 12 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json"
+      ]
+    },
+    {
+      "command": "node -e assertion including the U_j' equation in a PowerShell single-quoted command",
+      "resolution": "Reran equivalent contract assertion without embedded apostrophe; passed.",
+      "exitCode": 1,
+      "output": "JavaScript SyntaxError: Invalid or unexpected token; PowerShell terminated the command at the embedded apostrophe before the assertion ran.",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "src/core/pricing.ts",
+    "src/core/vm.ts",
+    "src/core/world.ts",
+    "docs/adr/0019-属性探查与资源账本.md"
+  ],
+  "delivery": {
+    "status": "blocked",
+    "intendedCommitMessage": "docs: design mana flow and resource ledger",
+    "commit": null,
+    "blocker": "git add exits 1: cannot create .git/index.lock (Permission denied); .git is read-only in this workspace.",
+    "pushed": false
+  }
+}

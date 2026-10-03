@@ -1,0 +1,120 @@
+{
+  "taskId": "mdag-architecture-coverage",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "提出待采纳 ADR 0024：逐项对照 ADR 0018 的惯性、不重复收费、来源防双计、确定顺序及单边阻挡、damage 池、Wm 自动补给、固定寿命冲突；按已完成物理前驱提出自然双边 C/N/X、一次材料/HP 投影、真实 World→compiler→VM 接入、旧法术/存档等价或定位拒绝、隔离迁移和仅安全副本回退。未改变运行语义、未采纳 ADR。",
+  "scope": {
+    "problem": "已批准首批 A 的自然接触和有源主动行为与旧运动、命中、供能和寿命合同冲突，旧运行时尚无新合同接入。",
+    "nonGoals": "不更改代码、已采纳 ADR 或其他模块权威；不声称纸面数值为原读/实扣，不扩展首批 A 玩家规则或执行迁移与回退。",
+    "writePaths": [
+      "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json"
+    ]
+  },
+  "reconciliation": {
+    "predecessor": "module-design-mdag-physical-contact.json 已完成；physics-material-design.md#mdag-physical-contact 是有限纸面夹具而非现场原读。",
+    "authorities": [
+      {
+        "source": "physics-material-design.md#mdag-physical-contact 与 world-theory-draft.md#mdad-theory-reconcile",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "B1-contact-fixture-v1",
+          "C-B1-01",
+          "N-B1-impact-01",
+          "X-B1-shell-v1",
+          "XB1-shell-v1",
+          "B4-v1",
+          "slice-B4-01"
+        ],
+        "result": "世界序 20 自然首撞先于 B4 读 50、作用 80；首撞 ±6、动能 10=4+2+4 E0、遗体普通壳 3q=2q+q；B4 独立材料 4q=2q+q+q、包 32/12→8/12，均为条件纸面数值。唯一理论尚未按新接触和材料版重签。"
+      },
+      {
+        "source": "world-theory-draft.md#权威来源与当前版本键对账清单、physics-material-design.md#b4-承接跨模块权威对账与开发读数；账本权威正文不在本任务 readPaths",
+        "versionKeys": [
+          "receipt-B4-funded-v1",
+          "mdz-B4-v1",
+          "payerGrant-B4-v1",
+          "mdz-D1-v1",
+          "mdy-JH-read-v1"
+        ],
+        "result": "条件账 B4 本人净入 50、16+5+10+3=34 M、余 16；POST 未付时已付 31、暂余 19。D1 独立 40−26=14；J1 本人 32、P0/P2 1/2、可选 P1 1，跨账户 35/36。物理来源/授权不等于 payer grant；新读和换版须重价，逐 payer 实扣未证。"
+      },
+      {
+        "source": "world-theory-draft.md#权威来源与当前版本键对账清单；程序权威正文不在本任务 readPaths",
+        "versionKeys": ["book-mdu-01/v1", "capacity-D1-v1", "capacity-B1-v1", "J1ProgramIdentity"],
+        "result": "J1 唯一 AST/hash 仅纸面别名，D1/B4 分立；B4 ≤232 物理链、≤249 tick/40 S，D1 ≤193 tick/37 S，J1 38 S 均为条件容量。真正规范 AST/hash、本体旧占用和 VM 用量未证，不准以假设身份准入。"
+      },
+      {
+        "source": "world-theory-draft.md#权威来源与当前版本键对账清单；生命及桥接权威正文不在本任务 readPaths",
+        "versionKeys": ["LifeId", "assessmentId", "XB1-shell-v1", "book-mdu-01/v1"],
+        "result": "B4 仅改普通 k0，不推出 k_m/k_a、h/v、保存或身份恢复；玩家仅见获准壳损、本人已付、裁剪拒因及待测余态。六入口同键和同书往返未实玩。"
+      },
+      {
+        "source": "ADR 0017/0018/0019/0020 与 src/core/world.ts、compiler.ts、vm.ts",
+        "versionKeys": ["ADR-0018", "CALLMETA", "World.hitProjectile", "World.advanceActorMotion"],
+        "result": "旧代码仍按 damage 池扣命中 HP、movePower 周期消耗及补给、life 固定寿命运行；编译器/VM 有共享 AST 到 CALLMETA、动态价与 payWork 的真实接入链，但尚无自然双边材料 C/N/X。ADR 0024 待采纳。"
+      }
+    ],
+    "contractGaps": [
+      "本任务 readPaths 未包含 mana-ledger-design.md、programmable-spells-design.md、life-identity-design.md 和 player-bridge-design.md，故其数值与结论仅由读集内唯一理论及直接前驱转述，不能登记为独立权威重签。",
+      "物理前驱新增 contactVersion/materialVersion 后，唯一理论及账本、程序、生命、桥接尚需同键复核；若事实冲突，受影响正向准入停止。",
+      "实际双端原读、付款收据、规范 AST/hash、容量旧占用、VM tick/S、六入口体验和安全回退演练均属开发与候选阶段，当前无成功证据。"
+    ],
+    "pendingLeadJudgment": "主策须审 ADR 0018 覆盖提案及跨模块同键联签；只有发现范围修订 13 外玩家规则或不可逆数据损失才升级制作人。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),base=\"docs/versions/pilot-agent-intent-2026-09-24/\",adr=\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",ep=base+\"tasks/module-design-mdag-architecture-coverage.json\",d=f.readFileSync(adr,\"utf8\"),e=JSON.parse(f.readFileSync(ep,\"utf8\")),pre=JSON.parse(f.readFileSync(base+\"tasks/module-design-mdag-physical-contact.json\",\"utf8\")),t=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")).stageTasks.find(x=>x.id===\"mdag-architecture-coverage\");a.equal(pre.status,\"completed\");a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.deepEqual(e.scope.writePaths,t.writePaths);for(const x of t.readPaths)a.ok(f.existsSync(x),x);for(const x of [\"状态：**待采纳**\",\"单边阻挡\",\"damage\",\"Wm\",\"固定\",\"C-B1-01\",\"N-B1-impact-01\",\"X-B1-shell-v1\",\"XB1-shell-v1\",\"World→compiler→VM\",\"AST→AST\",\"定位拒绝\",\"安全副本\",\"不可逆数据损失\"])a.ok(d.includes(x),x);for(const x of [\"账本权威正文不在\",\"程序权威正文不在\",\"生命/桥接权威正文不在\"])a.ok(d.includes(x),x);a.equal((1+0.5)*4/(0.5+0.5),6);a.equal(10,4+2+4);a.equal(3,2+1);a.equal(4,2+1+1);a.equal(32-8,12+12);a.equal(50,16+5+10+3+16);a.equal(40,26+14);a.equal(35,32+1+2);for(const m of d.matchAll(/\\]\\((\\.\\.?\\/[^)#]+)(?:#[^)]+)?\\)/g))a.ok(f.existsSync(p.resolve(p.dirname(adr),m[1])),m[1]);console.log(\"PASS ADR coverage, predecessor, arithmetic, local links and exact evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS ADR coverage, predecessor, arithmetic, local links and exact evidence paths",
+      "evidence": [
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check 'docs/adr/0024-自然接触与旧运动命中语义覆盖.md' 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json'",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- 'docs/adr/0024-自然接触与旧运动命中语义覆盖.md' 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json'",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json"
+      ]
+    },
+    {
+      "command": "$actual = @(git -c core.quotePath=false status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @('docs/adr/0024-自然接触与旧运动命中语义覆盖.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json' | Sort-Object); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS exact writePaths worktree scope",
+      "evidence": [
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check 'docs/adr/0024-自然接触与旧运动命中语义覆盖.md'",
+      "exitCode": 1,
+      "reason": "初稿 Markdown 未符合 Prettier 格式；仅格式化 ADR writePath 后复查。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check 'docs/adr/0024-自然接触与旧运动命中语义覆盖.md' 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json'",
+      "exitCode": 1,
+      "reason": "证据 JSON 初稿未符合 Prettier 格式；仅格式化证据 writePath 后复查。"
+    }
+  ],
+  "evidence": [
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdag-architecture-coverage.json"
+  ]
+}

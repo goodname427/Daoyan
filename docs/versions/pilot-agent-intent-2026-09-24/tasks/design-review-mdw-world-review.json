@@ -1,0 +1,56 @@
+{
+  "taskId": "mdw-world-review",
+  "status": "completed",
+  "deliveryStatus": "local-commit-blocked",
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "独立比较 mdv 六项退回缺口与 mdw 六项交付，审查唯一世界因果、指定反例、两体生命、四载体整链、同刻竞争、六入口及原型/ADR 影响。纸面退回要求多数已覆盖；首批可判正向报价与表达域仍需详细策划收口，保存不能醒回的称谓留制作人判断。没有新规则现场原读、实扣或可玩验收。当前工作区的 .git 仅可读，git add 无法创建 index.lock，本地提交未完成。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdw-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\"),t=JSON.parse(f.readFileSync(p+\"design-review-tasks.json\",\"utf8\")).tasks[0];a.equal(t.id,\"mdw-world-review\");for(const id of [\"source-proof\",\"price-proof\",\"life-state\",\"program-bound\",\"bridge-evidence\",\"theory-closure\"]){const j=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdw-\"+id+\".json\",\"utf8\"));a.equal(j.status,\"completed\",id);a.ok(d.includes(\"mdw-\"+id),id)}for(const s of [\"# `mdw-world-review`\",\"changes-requested\",\"120 M\",\"DeathBarrier=∅\",\"unknownPrice\",\"capacityUnknown\",\"保存待判\",\"ADR-0020\",\"退回合同\",\"六入口\"]){a.ok(d.includes(s),s)}a.equal(Math.min(18-6,14,15),12);a.equal(Math.min(42-14,30,31),28);a.equal(7+0+123,130);console.log(\"PASS mdw six sources, review coverage and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdw six sources, review coverage and arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",t=JSON.parse(f.readFileSync(p+\"design-review-tasks.json\",\"utf8\")).tasks[0],e=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdw-world-review.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.equal(e.reviewDecision,\"changes-requested\");a.deepEqual(e.evidence,t.writePaths);for(const path of e.evidence)a.ok(f.existsSync(path),path);for(const c of e.commands)a.equal(c.exitCode,0);console.log(\"PASS mdw task evidence contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdw task evidence contract"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdw-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdw-world-review.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@(\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdw-world-review.json\"); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace(\"\\\",\"/\") }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw \"Changed paths differ from contract\"}; Write-Output \"PASS only two mdw-world-review writePaths changed\"",
+      "exitCode": 0,
+      "output": "PASS only two mdw-world-review writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdw-world-review.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；工作区文件允许写入，但 .git 在当前权限配置下仅可读，本地暂存与提交未完成。"
+    }
+  ]
+}

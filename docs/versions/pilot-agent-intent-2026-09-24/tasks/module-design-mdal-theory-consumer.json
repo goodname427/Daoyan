@@ -1,0 +1,169 @@
+{
+  "taskId": "mdal-theory-consumer",
+  "status": "completed",
+  "summary": "唯一理论保留同初态稳定因果、有限十九读设计合同及逐付款方账；清除 1293/1299/1301 对总览旧阻断、后续交付和主策轮次的当前断言。物理、账本、程序、生命、桥接和总览同键纸面无新实质冲突；运行准入仍待原件。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json"
+    ],
+    "readOnlyPredecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
+    "nonGoals": "不改物理、账本、程序、生命、桥接、总览、ADR 或运行代码；不以纸面账宣称实玩或实扣。"
+  },
+  "reconciliation": {
+    "overviewAndReview": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-13; docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md:1219-1233; docs/versions/pilot-agent-intent-2026-09-24/design-review.md:3-18",
+      "keys": [
+        "S0-physical-v1/seed-physical-v1",
+        "B4-v1/slice-B4-01",
+        "mdai-B4-audit-v1",
+        "C-B4-mdai-carrier-v1"
+      ],
+      "result": "总览 5–11 的事实矩阵与理论新价、559 S、生命分支一致；旧第 12/14/18/20 行阻断是历史段。主策轮次与总览进度是 Version PM 流程事实，理论仅引用稳定事实键、价版和设计界。"
+    },
+    "physical": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:637-679,683-710",
+      "keys": [
+        "C-B1-01/N-B1-impact-01/X-B1-shell-v1",
+        "B4-v1/slice-B4-01",
+        "Read-B4-main/aux/heat/material-R0…R3",
+        "POST-B4-main/heat/material",
+        "V0…VP"
+      ],
+      "result": "物理独占 S0/seed、自然 C/N/X、十一端点逐字段投影、十九 readId、逐端 grant/撤权、样本与校准版本。首撞双端 −6/+6、10=4+2+4 E0、旧壳 3q=2q+残片q；B4 独立 100=53+47 E0/12、包 32/12→8/12、仓 4q=2q+q+q。自然零 B4 M/tick，首撞热与残片不转 B4 来源。POST-material 的 R 与 H 分别原读。材料 R0 2 M/≤21 tick 只消费账本新价，旧 1/49 属历史候选。"
+    },
+    "ledger": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:896-946",
+      "keys": [
+        "priceVersion=mdai-B4-audit-v1",
+        "workVersion=audit-work-v1",
+        "acct-B1-B4/payerGrant-B4-v1",
+        "receipt-B4-funded-v1",
+        "receipt-B4-read-[readId]-[requestId]-v1"
+      ],
+      "result": "账本独占按 readId/requestId 的唯一不可取 ReadTx/receiptId、本人 payer/grant、互斥成功/attempt 和锁/释锁。四阶段各 6 M/≤56 tick，POST 5 M/≤47 tick；十九读 29 M/≤271 tick、装载 5、作用 10，B4 条件本人净入 50 后付 44 余 6。POST 全失证前十六读 24+装载5+作用10=39，暂余11、未用锁5释放。J1 本人 9+11+12=32，P0/P2 各自 1/2、可选 P1 自付1，跨账户35/36非J1余额；D1 本人净40付26余14，互不代付B4。真实到账及收据未产生。"
+    },
+    "program": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:682-700,866-925,981-985",
+      "keys": [
+        "book-mdu-01/v1",
+        "AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1",
+        "B4-R19-projection-v1",
+        "C-B4-mdai-carrier-v1",
+        "mdai-B4-audit-v1"
+      ],
+      "result": "B4 十九索引0…18与各投影、样本、grant、价版、receiptId同纸面证书；旧 B4 AST/hash 非别名。J1 的 mdx-JH-AST-v1/H_JH_assumed_v1 与 AST-J1-mdaa-assumed-v1/H_J1_mdaa_assumed_v1 仅按逐节点和完整版本向量映射为纸面别名，D1 独立。单页279 S、转交双页加槽559 S、释暂存281 S、响应峰314 S，S_install=Smax=559 且 C_S−O≥559，另须页/槽/订阅/FIFO/引用/帧分项同版。物理链≤313、响应≤330 tick。规范 AST 字节/SHA-256、球实容/旧占用和 VM 实耗未证，capacityUnknown。"
+    },
+    "life": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:676-748; docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
+      "keys": ["LifeId", "assessmentId", "k0/k_m/k_a", "DeathBarrier", "structureVersion"],
+      "result": "普通 k0 修壳仅产生新结构版与评估输入，不修 k_m/k_a、保存或三链，不能复苏旧 LifeId。四证不足 unknown/unknown 并冻结旧私权；创建者自身四证齐才⑤按 (LifeId,terminalSequence) 一次屏障，⑥撤派生未来控制/订阅/提款/读/付款 grant、释未执行锁。B1/A1 自有有效权独立复核；既结自然与主动事实、收据不倒带。直接前驱只读。"
+    },
+    "bridge": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:370-383",
+      "keys": [
+        "book-mdu-01/v1",
+        "B4-v1/slice-B4-01",
+        "readId/receiptId/priceVersion",
+        "LifeId/assessmentId"
+      ],
+      "result": "六入口在规范意图、能力、可见字段、executor/payer/grant、书/AST/hash、价/容量版、世界与请求序同键时才等价。只投影获准普通壳、本人真实已结/暂余/释锁及裁剪拒因；无权/隐藏同形，POST 未读包余待测，不展示他方余额或私值。桥接旧流程句不改变此稳定消费合同。"
+    },
+    "theory": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1241-1301",
+      "result": "理论以 S0/seed 合并事实、授权、价版、程序及生命的先后和失败余态；1293/1299/1301 不再把任务完成、总览 blocked 或主策轮次写作世界规则。当前字段、价版、来源、付款及身份无实质纸面冲突。"
+    }
+  },
+  "finiteContract": {
+    "objectAndReadIds": "objectId=B4-v1，executor=B1；S/P、U/A/H、T/E、C/R/D/W 四组在 R0/R1/R2/R3 各有独立 readId，另有 POST-main(S/P/D)、POST-heat(T/E)、POST-material(C/R/H/W)，共 4×4+3=19；十一端点的精确字段见理论1247–1257和物理641–679。",
+    "authorizationAndVersions": "先核能力、关系、可见、距离与逐 {endpointId,field,phase} grant，grant-B1-B4-v1 只许作用，payerGrant-B4-v1 只许付款，POST 另签 grant。各 Ri 用 Vi、sample-[readId]-v1、逐端样本和 rev-B4-read-v1；POST 用 VP/独立样本/rev-B4-post-v1。变版撤旧 Quote、覆盖与未执行锁。",
+    "priceAndBounds": "mdai-B4-audit-v1/audit-work-v1 按固定投影每读 p(E)=1 M(两端)/2 M(三四端)、t(F,E)=1+F+E tick；十九读29 M/≤271 tick，装载5、作用10，单次条件毛界44 M；物理链≤313、响应≤330 tick，Smax=559 S 与 C_S−O≥559。额外读须另签 ID/价/AST 并提高 M/W/S 静态界，实耗不得超过静态界。"
+  },
+  "counterexamples": {
+    "success": "B1 自然 C→N→X 先结且零 B4 M/tick；B4 本人 R0四读6→装5→R1/R2/R3各6→作用10→POST5，总付44/余6，锁归零；只有十九鲜读、净入、规范程序和容量全证才可呈现普通壳已修。J1/P0/P2/P1 与 D1 分账如上。",
+    "rejection": "擦边仅C、不破壳故无可修缺口；无权/隐藏/不存在/欠费在读前同形拒绝，零新扣、条件余50，释未执行锁。只有全价已锁且已做合法有界求证后的先序失败，互斥attempt 1/余49，不能加在成功价上。",
+    "empty": "无撞常规事件路径无C/N/X、零新扣；独立直扫四端C/R/D/W有权、鲜值且Read-B4-material-R0真实ok([])时，仅一张成功ReadTx付2 M/≤21 tick、50→48，不装载/作用，不伪造C。",
+    "unknown": "根不证不签C；材料阈值缺证时N/X未知。失鲜、校准/撤权、价/净入未证停unknownPrice，球页/旧占用未证停capacityUnknown；未执行原子零新扣，已结事实和付款保留，同版FIFO原读实满才queueFull。",
+    "outOfDomain": "k_m/k_a修复、旧LifeId复苏、热/残片换M、再撞自动第二付费修壳或第五端点借旧价均outOfDomain/unexpressible；本笔零新作用并释锁，旧事实与已付款保留。",
+    "competition": "R3后本人已付29/余21；B4先锁作用+POST15时可用6，他笔毛20欠14，B4全结余6。他笔先付20则同账户余1，B4锁15欠14、新作用零，旧29不退。同lot稳定先序仅赢家领切片；全价锁后合法求证失败才互斥attempt1使B4已付30/余20。",
+    "postFailure": "前十六读24+装5+作用10=39，暂余11，三POST未执行锁5释放；A/X、壳+q、桶+q、功热、切片退役和先前收据保留。部分POST只结实读ID，同requestId/effectId重投零新扣；未读包余公开unknown/待测。",
+    "death": "四证不足unknown/unknown、无新DeathBarrier；四证齐仅⑤一次屏障及⑥撤创建者派生未来权并释锁。普通k0壳修不复苏已证dead，B1/A1自有有效权独立核，已结C/N/X、A/X与收据不回滚。"
+  },
+  "remaining": {
+    "paperConflict": "按现行事实键、价版与有据程序别名复核无新的实质纸面冲突；若权威字段、价格、来源或安装时相变化，先由该权威升键，再重签理论与公开投影。",
+    "architecture": "ADR-0024 对旧hitProjectile/damage/life/Wm仍待架构归属采纳，不能当已实施；采纳前不得切换旧运行语义。保全旧原件与新版增量，隔离证明等价才原子迁移；回退会丢数据或重扣时拒绝运行回退。",
+    "development": "真实逐端grant/撤权/鲜样及校准、本人净入与不可取实收据、规范AST字节/SHA-256、球实容/旧占用与分项容量、World/VM M/tick/S和六入口往返尚无运行原件；现时Quote=unknownPrice/capacityUnknown。缺这些原件不退回已闭合的有限纸面价格与静态上界。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\");a.equal(4*4+3,19);a.equal(4*6+5,29);a.equal(4*56+47,271);a.equal(29+5+10,44);a.equal(50-44,6);a.equal(24+5+10,39);a.equal(50-39,11);a.equal(9+11+12,32);a.equal(32+1+2,35);a.equal(32+1+2+1,36);a.equal(40-26,14);a.equal(2*279+1,559);a.equal(21-15,6);a.equal(15-1,14);console.log(\"PASS mdal conditional ledgers and capacity\")'",
+      "exitCode": 0,
+      "output": "PASS mdal conditional ledgers and capacity",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=n=>f.readFileSync(b+n,\"utf8\"),w=r(\"world-theory-draft.md\"),s=w.split(\"### 稳定键、权威归属与消费者反查\").at(-1).split(\"## 修订纪律\")[0],e=JSON.parse(r(\"tasks/module-design-mdal-theory-consumer.json\"));a.equal(e.taskId,\"mdal-theory-consumer\");a.equal(e.status,\"completed\");for(const k of [\"S0-physical-v1/seed-physical-v1\",\"B4-v1/slice-B4-01\",\"mdai-B4-audit-v1\",\"C-B4-mdai-carrier-v1\",\"unknown/unknown\",\"ADR-0024\"])a.ok(s.includes(k),k);for(const k of [\"仍据旧物理冲突阻断\",\"当前 `blocked`\",\"最新 `drb6`\",\"待派\"])a.ok(!s.includes(k),k);for(const n of [\"physics-material-design.md\",\"mana-ledger-design.md\",\"programmable-spells-design.md\",\"life-identity-design.md\",\"player-bridge-design.md\",\"module-design.md\"])a.ok(r(n).includes(\"B4-v1\")||n===\"module-design.md\",n);console.log(\"PASS mdal stable keys, six sources and evidence status\")'",
+      "exitCode": 0,
+      "output": "PASS mdal stable keys, six sources and evidence status",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json') | Sort-Object; $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,'/') } | Sort-Object); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){Write-Error ('writePaths mismatch: '+($actual -join ', ')); exit 1}; Write-Output 'PASS mdal theory exact writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdal theory exact writePaths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json",
+      "exitCode": 1,
+      "reason": "初次定向格式检查指出新表格行和新证据 JSON 尚未按 Prettier 格式化；随后执行定向格式化并复查。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
+  ]
+}

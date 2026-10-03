@@ -1,0 +1,62 @@
+{
+  "taskId": "mdaf-bridge-scope",
+  "status": "completed",
+  "summary": "修订桥接现行范围为制作人已选首批 A：J1 一次有源杆推、D1 一次有源左足起步、B1 首撞后 B4 一次普通惰性 k0 壳修补；补足范围内待证/域外提示、同书返修、逐 payer 与 POST 余态、六入口条件等价、反例和获批开发后验收。按当前审核及唯一理论完成五份模块正文、理论和总览的定向反向检查；模块总览 1、4、17 仍保留桥接修订前阻断语义，属于 writePaths 外消费者，必须由 Version PM 更新并重判整版联签。本任务不改上游合同、不宣称总览一致、整版通过或游戏可玩。",
+  "acceptance": {
+    "scope": "J1 一次有源杆推、D1 一次有源左足起步、B1 首撞后 B4 一次普通惰性 k0 壳修补是首批 A 条件纸面正例。B/C 仅为选择前历史；续步、攻击、完整护送/救援、关键回路与醒回仍不在首批。范围内但原读、实扣或逐体容量未证时提示待证，不提示未开放或已可玩。",
+    "commonKeys": "三条路径分别从 S0-physical-v1/seed-physical-v1/pilot-physical-v1 与 book-mdu-01/v1 独立复位；逐项核对物理、账本、程序、生命权威段及世界先序。保留 JH-v1/D1-v1/B4-v1、各自 slice、C-B1-01、来源/读/封印/付款/结构/容量/价格版本、因果、E0/q、反作用、热及材料归属；未改写跨模块规则。",
+    "paperBalances": "J1 本人净入 32 M，付款 9+11+12=32；P0 另付 1、P2 另付 2，跨账户条件毛额 35。仅失证、P1 自有到账/grant 有效且新读结算时条件另付 1，跨账户毛额 36。D1 净入 40，12+4+8+2=26，POST 成功余 14；POST 未结仅已付 24、暂余 16。B4 净入 50，16+5+10+3=34，POST 成功余 16；POST 未结仅已付 31、暂余 19。均为条件纸面账，不代表实扣且不从 M 推导 E0。",
+    "programAndResidual": "核对 J1ProgramIdentity 十五读仅为同一 AST 纸面别名，D1/B4 独立 AST/hash 假设、capacity-D1-v1/capacity-B1-v1 及条件容量 37/40 S、176/193 和 232/249 tick。规范 hash、逐体容量和旧占用保持 unknown；改书/读集/授权/物理/价格/容量/结构版撤销受影响报价与证书。",
+    "playerStates": "J1/D1/B4 分别记录成功、读前同形拒绝、获准空读、unknown、域外、同刻竞争和 POST 失证的提示、付款与自然/已付余态；包含幂等重投及 B1 首撞先于 B4、再撞后的 queueFull/换版重报/capacityUnknown 三分判。未来入口仅在条件相同时等价，不进入首批实现。",
+    "crossModuleSignoff": "五份模块正文及唯一理论的同键纸面事实与桥接一致；理论确认 A 已选。模块总览部分段落确认 A，但第 1、4、17 行仍以旧桥接待选措辞作为现行阻断，故消费者结论与修订后的桥接范围冲突。须 Version PM 更新合同外总览并重判；轻量检查不等于整版联签。",
+    "postDevelopment": "获批开发后采集真实 Acquire/双端 R0-R3/POST 原读及误差、逐 payer/grant 实扣、规范 AST/hash、逐体容量与旧占用、VM tick/S、六入口玩家提示/私值、同书推演台至演武再返回原节点的实际往返。未声称这些已执行。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"assert/strict\"),f=require(\"fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),t=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),m=f.readFileSync(p+\"module-design.md\",\"utf8\"),r=f.readFileSync(p+\"design-review.md\",\"utf8\");for(const x of [\"首批 A 的**已选范围\",\"J1ProgramIdentity\",\"D1-v1/slice-D1-01\",\"B4-v1/slice-B4-01\",\"POST 三读未结\",\"本任务不宣称总览已一致\",\"完整详细策划与游戏开发仍未获批准\"])a.ok(b.includes(x),x);for(const x of [\"制作人已选首批 A\",\"D1 修士一次有源起步\",\"B4\"]){a.ok(r.includes(x),\"review: \"+x)}a.equal(9+11+12+1+2,35);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(40-24,16);a.equal(50-31,19);a.ok(t.includes(\"后续设计评审反馈已选择首批 A\"));a.ok(m.includes(\"制作人已选择首批 A（三行为）\"));console.log(\"PASS mdaf bridge paper and scope checks\")'",
+      "exitCode": 0,
+      "output": "PASS mdaf bridge paper and scope checks"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaf-bridge-scope.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaf-bridge-scope.json",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "commandSummary": "初次纸面断言使用了不匹配的总览措辞样本“未宣称总览已一致”",
+      "exitCode": 1,
+      "reason": "产物使用“本任务不宣称总览已一致”；修正取样串后复核。"
+    },
+    {
+      "commandSummary": "第二次纸面断言误用理论范围短语的词序“首批 A 已由制作人选定”",
+      "exitCode": 1,
+      "reason": "唯一理论原文为“后续设计评审反馈已选择首批 A”；调整为文件真实原文后定向断言通过。"
+    },
+    {
+      "commandSummary": "修订后首次 Prettier check",
+      "exitCode": 1,
+      "reason": "桥接新增表格段未符合 Prettier Markdown 格式；对合同两文件运行 Prettier --write 后重新检查通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaf-bridge-scope.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md"
+  ],
+  "scopeNote": "合同 writePaths 仅为 player-bridge-design.md 与 tasks/module-design-mdaf-bridge-scope.json。本任务仅本地提交；不推送、不打 tag、不发布。未运行 npm run verify 或 npm run verify:full。"
+}

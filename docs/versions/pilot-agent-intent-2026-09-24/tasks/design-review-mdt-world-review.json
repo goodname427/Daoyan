@@ -1,0 +1,39 @@
+{
+  "taskId": "mdt-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "decision": "changes-requested",
+  "summary": "独立复审五项 mdt 成果及同版 H/B、普通行动、代谢、攻击与 100/20 账目，纸面核对生命身份、授权、容量、跨入口往返、现行代码和 ADR 0017–0020。正功与摄取上游、攻击实证、关键修复及四载体实测未闭合，退回详细策划；不建议提交完整方案供制作人审阅。未修改游戏实现或测试，未进行新规则实玩。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json",
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json",
+      "output": "",
+      "exitCode": 0,
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json",
+      "output": "Checking formatting... [warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdt-world-review.json; Code style issues found in the above file.",
+      "exitCode": 1,
+      "resolution": "对任务证据 JSON 执行 Prettier --write 后重跑检查。"
+    }
+  ]
+}

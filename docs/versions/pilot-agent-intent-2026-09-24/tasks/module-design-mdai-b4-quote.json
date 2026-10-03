@@ -1,0 +1,97 @@
+{
+  "taskId": "mdai-b4-quote",
+  "status": "completed",
+  "summary": "按 mdai-b4-fields 的十九项固定字段投影签封闭 B4 物理审计原子 mdai-B4-audit-v1：公开目录按端点数定 1/2 M、tick=1+字段数+端点数；十九项 199 字段/53 端点引用、29 M/≤271 tick，连同条件装载 5 和作用 10，B4 本人净入 50 的全链纸面已付 44、余 6。真实读 grant、付款与 ReadTx、规范 AST/hash 和球容量仍缺，现况 Quote=unknownPrice、无成功实扣。未改范围外权威。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json"
+    ],
+    "nonGoals": "不改物理投影、通用探查 ADR、其他模块或运行代码；不把设计键当实测样本或收据。"
+  },
+  "checks": {
+    "projectionAndPrice": "逐 readId 与 {endpointId,field,phase} 对上现行物理 mdai 表，十九行字段投影逐字相等；R0-R3 各 6 M/≤56 tick，POST 5 M/≤47 tick。旧 1 M/≤10 tick 复合候选不再沿用。",
+    "adrAndPermissions": "封闭审计原子固定用途、固定投影、公开预算、逐字段读授权/撤权、有限容量、同形拒绝；通用单字段仍按 ADR 0019 公式。物理 grant、读 grant 与 payerGrant 分立；每 readId 独立不可取收款槽/receiptId/ReadTx，成功价与 1 M/1 tick 可支付拒绝尝试互斥。",
+    "paperAccounts": "B4 条件净入 50；R0 后 44、装载后 39、R1 后 33、R2 后 27、R3 后 21，锁作用+POST 15 可用 6，作用后已付 39/暂余 11，POST 结束已付 44/余 6。合法空 material-R0 单笔 2 后余 48；R3 后另一笔 20 的先后竞争欠 14；POST 全失证已付 39/暂余 11 并释未用锁 5；互斥有价尝试后已付 30/余 20。n_extra 按阶段实际正价求和，不以价差冒充读数。旧 34/16 仅十九读各恰 1 M、n_extra=0、价版/容量/收据齐全才成立。",
+    "independentAccounts": "J1 本人 32=9+11+12，P0/P2 自付 1/2、P1 可选自付 1，跨账户 35/36；D1 40=26+14 只读核，不向 B4 或 J1 代付。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md#mdai-b4-fields",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "C-B1-01",
+          "N-B1-impact-01",
+          "X-B1-shell-v1",
+          "B4-v1",
+          "V0…VP",
+          "source-B1-work",
+          "EL-B1-B4",
+          "slice-B4-01"
+        ],
+        "result": "自然首撞 10=4+2+4 E0、3q=2q+fragment q，与 B4 独立 100=53+47 E0/12、包 32/12→8/12、4q=隔离2q+壳q+废q 分账；十九投影、n_19/n_extra 归物理。"
+      },
+      {
+        "source": "ADR 0019 决策三",
+        "versionKeys": ["fieldGrant", "revocationVersion", "priceVersion", "ReadTx"],
+        "result": "单字段探查沿 ADR 公式；限定用途的固定投影审计原子先付公开正价/有界 tick，逐字段授权，私值不影响报价；预检与已调用拒绝尝试分开。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdah-b4-program",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdaa-assumed-v1",
+          "H_B4_assumed_v1",
+          "capacity-B1-v1",
+          "mdai-B4-audit-v1"
+        ],
+        "result": "B4 规范 AST/hash、旧占用和容量未证；新读工作 271 tick 撤旧 232/249 tick、40 S 准入证，程序须重编 M/tick/S。J1 假设 AST/hash 别名同一程序，D1 独立。"
+      },
+      {
+        "source": "design-review-findings.md#drb4; module-design.md; life-identity-design.md; world-theory-draft.md; player-bridge-design.md",
+        "versionKeys": ["scopeRevision=13", "LifeId", "assessmentId", "B4-v1", "priceVersion"],
+        "result": "主策仍 changes-requested；仅普通 k0 壳修，非复苏。理论/桥接/总览需消费新价版；玩家只见授权壳态、本人已结/暂余、裁剪拒因，未读包余与他人账户隐藏。"
+      }
+    ],
+    "remainingChiefPlannerScope": "确认封闭审计与通用单字段探查的玩家边界及新版 44/6 的可施放性；若改为任意字段查询或改变余额，应重走价版与产品评审。真实 grant、实扣、AST/hash、容量、VM tick/S 与六入口留开发和主策整版复核。",
+    "actualResult": "纯文档纸面合同及定向检查完成；无运行实证、无可执行成功 Quote。本地提交被 .git/index.lock 写权限阻断，产物留在工作区待秘书统一收取。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1),y=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\").at(-1),rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=s=>s.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)),q=rows(x),r=rows(y);a.equal(q.length,19);a.equal(r.length,19);let M=0,T=0,F=0,E=0;for(let i=0;i<19;i++){let u=q[i].split(\"|\"),v=r[i].split(\"|\"),id=u[1].match(rx)[1],norm=s=>s.replace(/`/g,\"\").replace(/；\\d+\\s*$/,\"\").replace(/；/g,\";\").replace(/\\s/g,\"\");a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);let pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fcount=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ecount=pairs.length,cost=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[3].trim(),fcount+\"/\"+ecount,id);a.equal(+cost[1],ecount===2?1:2,id);a.equal(+cost[2],1+fcount+ecount,id);F+=fcount;E+=ecount;M+=+cost[1];T+=+cost[2]}a.deepEqual([F,E,M,T,50-5-10-M],[199,53,29,271,6]);console.log(\"PASS mdai exact 19 projections and 44 M / 6 M paper account\")'",
+      "exitCode": 0,
+      "output": "PASS mdai exact 19 projections and 44 M / 6 M paper account"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\\\','/') } | Sort-Object); $expected = @( 'docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json' | Sort-Object ); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai quote exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS mdai quote exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json",
+      "exitCode": 1,
+      "reason": "Initial JSON formatting differed from Prettier; formatted the evidence file and reran the same check."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied. The sandbox only permits reading .git, so no local commit was formed."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json"
+  ]
+}

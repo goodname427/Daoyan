@@ -1,0 +1,77 @@
+{
+  "taskId": "mdac-world-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "已独立复审制作人原始方向、范围修订 13、mdab 裁定、mdac 桥接和跨模块权威正文。桥接 D1/B4 物理摘要已与物理材料及账本对齐；唯一理论 940、949、951 行仍在相同 D1-v1/B4-v1 下使用旧能量数，941、951 行的 B4 第二响应简写未与三分判同步。退唯一理论归属者精确修订六阶段、正例、失败余态与第二响应，再由受影响模块按共同键复核重签、主策复审；当前完整方案不可作为通过稿交制作人，任务完成不代表整版通过。A/B/C 首批范围和新增不可逆语义仍待制作人判断，不批准开发；真实原读、实扣、规范 AST/hash、容量、VM tick/S 与实玩留获批开发后。 本地提交因工作区 .git 只读而受阻，未推送或发布。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `mdac-world-review`\")[1],j=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdac-world-review.json\",\"utf8\"));a(r);for(const s of [\"changes-requested\",\"S0-physical-v1\",\"D1-v1\",\"B4-v1\",\"16/12→4/12\",\"32/12→8/12\",\"26 M\",\"34 M\",\"queueFull\",\"capacityUnknown\",\"ADR-0017\",\"0020\",\"A/B/C\"])a(r.includes(s),s);a.equal(16-12,4);a.equal(6+6,12);a.equal(32-24,8);a.equal(12+12,24);a.equal(2+1+1,4);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(j.taskId,\"mdac-world-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");a(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdac review document and evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdac review document and evidence metadata",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json"
+      ]
+    },
+    {
+      "command": "$allowed = @(\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\", \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json\"); $changed = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3) } | Sort-Object); if (@(Compare-Object $changed ($allowed | Sort-Object)).Count -ne 0) { throw \"Unexpected changed path\" }; Write-Output \"PASS mdac two writePaths only\"",
+      "exitCode": 0,
+      "output": "PASS mdac two writePaths only",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"assert\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `mdac-world-review`\")[1],j=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdac-world-review.json\",\"utf8\"));a(r);for(const s of [\"changes-requested\",\"S0-physical-v1\",\"D1-v1\",\"B4-v1\",\"16/12→4/12\",\"32/12→8/12\",\"26 M\",\"34 M\",\"queueFull\",\"capacityUnknown\",\"ADR-0017\",\"ADR-0020\",\"A/B/C\"])a(r.includes(s),s);a.equal(16-12,4);a.equal(6+6,12);a.equal(32-24,8);a.equal(12+12,24);a.equal(2+1+1,4);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(j.taskId,\"mdac-world-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");a(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdac review document and evidence metadata\")'",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: ADR-0020",
+      "resolution": "The prose labels the linked ADR as 0020; the final check tests that existing label."
+    },
+    {
+      "command": "node -e 'const a=require(\"assert\"),c=require(\"child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",allowed=[p+\"design-review-findings.md\",p+\"tasks/design-review-mdac-world-review.json\"],lines=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean),paths=lines.map(x=>x.slice(3));a.deepEqual(paths.sort(),allowed.sort());console.log(\"PASS mdac two writePaths only\")'",
+      "exitCode": 1,
+      "output": "Error: spawnSync git EPERM",
+      "resolution": "Run git status directly in PowerShell for the same two-path scope assertion."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdac-world-review.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create E:/CGL/Programs/Daoyan/.git/index.lock: Permission denied",
+      "resolution": "Managed filesystem permits edits in the workspace but exposes .git as read-only; no local commit could be created."
+    }
+  ],
+  "commitStatus": "BLOCKED: git add exited 1 because .git/index.lock is not writable; no local Conventional Commit created. No push or tag."
+}

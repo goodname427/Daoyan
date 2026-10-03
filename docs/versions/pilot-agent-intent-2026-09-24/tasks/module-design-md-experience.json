@@ -1,0 +1,73 @@
+{
+  "taskId": "md-experience",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "完成输入意图桥接、推演—实战往返、四类载体请求与反馈一致性及空状态/旧原件诊断策划。completed 仅指本模块文档和轻量定向检查；统一意图类型、UI 隐私规则、时间/暂停细则、迁移政策及游戏开发仍待整版审核。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-experience.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),assert=require(\"node:assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md\",s=fs.readFileSync(p,\"utf8\");for(const x of [\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"统一请求\",\"瞄准\",\"模拟时间\",\"暂停\",\"UI 探查\",\"表现\",\"配置/存档\",\"DSL\",\"蓝图\",\"预算\",\"单步推演\",\"绑定整备\",\"自然 `C`\",\"付费主动 `A`\",\"失败定位\",\"返回修改\",\"空书\",\"空目标\",\"旧原件\",\"往返\",\"修士\",\"法球\",\"机关\",\"敌方修士\",\"预设\",\"不制作预设\"])assert.ok(s.includes(x),\"missing \"+x);for(const x of [\"## 请求与反馈案例矩阵\",\"| 同一请求阶段 |\",\"| 成功 \",\"| 拒绝\",\"| 空目标\",\"| 往返/诊断\",\"## 失败、空书、旧原件与往返验收\",\"| 空书\",\"| 旧原件诊断\"])assert.ok(s.includes(x),\"missing scenario \"+x);console.log(\"PASS bridge topics and all required scenarios\")'",
+      "exitCode": 0,
+      "output": "PASS bridge topics and all required scenarios",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "No whitespace errors (exit 0).",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-experience.json'); $untracked = @(git ls-files --others --exclude-standard); if (@(Compare-Object $expected $untracked).Count -ne 0) { exit 1 }; if (@(git diff --name-only HEAD).Count -ne 0) { exit 1 }; Write-Output 'PASS only two contract write paths are new; no tracked files modified'",
+      "exitCode": 0,
+      "output": "PASS only two contract write paths are new; no tracked files modified",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-experience.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),assert=require(\"node:assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md\",s=fs.readFileSync(p,\"utf8\");for(const x of [\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"统一请求\",\"瞄准\",\"模拟时间\",\"暂停\",\"UI 探查\",\"表现\",\"配置/存档\",\"DSL\",\"蓝图\",\"预算\",\"单步推演\",\"绑定整备\",\"自然 `C`\",\"付费主动 `A`\",\"失败定位\",\"返回修改\",\"空书\",\"空目标\",\"旧原件\",\"往返\",\"修士\",\"法球\",\"机关\",\"敌方修士\",\"预设\",\"不制作预设\"])assert.ok(s.includes(x),\"missing \"+x);for(const x of [\"| 成功 |\",\"| 拒绝 |\",\"| 空目标 |\",\"| 往返/诊断 |\",\"| 空书 |\",\"| 旧原件诊断 |\"])assert.ok(s.includes(x),\"missing scenario \"+x);console.log(\"PASS bridge topics, scenario matrix and boundary checks\")'",
+      "exitCode": 1,
+      "reason": "检查断言预期的表格单元边界与正文真实表格列名/列间空格不匹配；修正为按章节和行前缀检查后通过。"
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),assert=require(\"node:assert/strict\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md\",s=fs.readFileSync(p,\"utf8\");for(const x of [\"鼠标\",\"键盘\",\"手柄\",\"AI\",\"实体事件\",\"统一请求\",\"瞄准\",\"模拟时间\",\"暂停\",\"UI 探查\",\"表现\",\"配置/存档\",\"DSL\",\"蓝图\",\"预算\",\"单步推演\",\"绑定整备\",\"自然 `C`\",\"付费主动 `A`\",\"失败定位\",\"返回修改\",\"空书\",\"空目标\",\"旧原件\",\"往返\",\"修士\",\"法球\",\"机关\",\"敌方修士\",\"预设\",\"不制作预设\"])assert.ok(s.includes(x),\"missing \"+x);for(const x of [\"## 请求与反馈案例矩阵\",\"| 同一请求阶段 |\",\"| 成功 \",\"| 拒绝 \",\"| 空目标 \",\"| 往返/诊断 \",\"## 失败、空书、旧原件与往返验收\",\"| 空书 |\",\"| 旧原件诊断 |\"])assert.ok(s.includes(x),\"missing scenario \"+x);let links=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const target=m[1].split(\"#\")[0];if(target&&!target.includes(\"://\")){assert.ok(fs.existsSync(require(\"node:path\").resolve(require(\"node:path\").dirname(p),target)),\"broken \"+target);links++;}}console.log(\"PASS bridge topics, scenario matrix, boundaries and \"+links+\" local links\")'",
+      "exitCode": 1,
+      "reason": "第二次断言仍按表格列单元检测“空书”，但该主题位于验收表首列并由 Prettier 对齐空格；取消重复脆弱断言后用章节/主题正文校验通过。"
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-experience.json'); $changed = @(git diff --name-only HEAD); if (@(Compare-Object $expected $changed).Count -ne 0) { exit 1 }; Write-Output 'PASS tracked and untracked changes are limited to the two contract write paths'",
+      "exitCode": 1,
+      "reason": "首次范围断言只比较 tracked diff，两个新建交付物因此未出现在该清单；修正为分别核验 tracked 与 untracked 后通过。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-experience.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；当前环境不能写入 .git index，因此无法暂存或本地提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-experience.json"
+  ],
+  "delivery": {
+    "status": "blocked",
+    "intendedCommitMessage": "docs: design player intent bridge experience",
+    "commit": null,
+    "blocker": "git add 退出码 1：创建 .git/index.lock 被拒绝；两份交付物已通过轻量检查并保留在工作区，未推送。",
+    "pushed": false
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "taskId": "mdx-admission-bound",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "承接 mdx-action-domain 与 mdx-decidable-price，给 J1→H2 的规范 AST 假设、逐部位容量和两引用一帧的同刻上界；纸面证书 mdx-JH-program-1 限一次装载订阅 4113 tick/20 S、一次响应 51 tick/23 S、J1 毛额 25 M 与池峰值 32 M。M1/B1/A1 的未选路径保留域外或 capacityUnknown；逐项反证竞争、换证、满队列、撤权、欠费和 100/20。所有实际 AST/hash、容量原读、VM tick、逐时 S 和实扣留开发后验收，现无运行成功事实。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"programmable-spells-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdx-admission-bound.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===e.taskId),s=d.split(\"## `mdx-admission-bound`\")[1];a.equal(e.taskId,\"mdx-admission-bound\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const id of [\"mdx-action-domain\",\"mdx-decidable-price\"])a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"mdx-JH-program-1\",\"W-mdx-JH-1\",\"mdx-JH-AST-v1\",\"J1\",\"M1\",\"B1\",\"A1\",\"双订阅\",\"同源\",\"同 payer\",\"损坏换证\",\"满队列\",\"撤权\",\"读后余额不足\",\"100/20\",\"capacityUnknown\",\"逐 VM 指令\",\"逐时\",\"静态毛锁额≥实扣\"])a.ok(s.includes(k),k);a.equal(4096+12+4+1,4113);a.equal(2+2+1+12+10+12+12,51);a.equal(4113+51,4164);a.equal(12+1+10,23);a.equal(9+4+12,25);a.equal(32-25,7);for(const p of e.evidence)a.ok(f.existsSync(p),p);console.log(\"PASS mdx admission contract, predecessors, paper bounds and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdx admission contract, predecessors, paper bounds and evidence",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdx-admission-bound writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdx-admission-bound writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "仅格式化合同内的策划文档后重跑。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-admission-bound.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前工作区 .git 仅可读，未暂存或执行本地 commit；保留两项合同改动供可写 Git 的环境接续。"
+    }
+  ]
+}

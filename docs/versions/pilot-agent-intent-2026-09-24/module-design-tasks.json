@@ -1,0 +1,181 @@
+{
+  "tasks": [
+    {
+      "id": "mdal-physical-consumer",
+      "title": "物理材料现行消费者状态清理",
+      "objective": "清除物理正文把已收束的理论和总览误记为待办的断言，不改接触与材料规则。",
+      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"],
+      "acceptance": [
+        "相对 mdak 新增判断：对照理论 1289–1301、总览 1–13 更正物理 706/708；旧任务时态标历史或删除，现行正文只留稳定 S0/seed、C/N/X、材料热与读字段合同，不再声称桥接旧价或总览留旧阻断。",
+        "按 S0-physical-v1/seed-physical-v1、C-B1-01/N-B1-impact-01/X-B1-shell-v1、B4-v1/slice-B4-01、Read-B4-material-R0、mdai-B4-audit-v1 定向反查其他模块及理论命中段，对照权威现行结论，实质冲突列阻断；任何新数值、单位或余态先核物理、账本、程序和生命权威。",
+        "反例核合法空读 2 M/条件 50→48、无权预拒、双接触只一壳 X、再撞不倒带自然事实；559 S 设计界与 capacityUnknown 运行状态分开。"
+      ],
+      "dependsOn": [],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"],
+      "contextPolicy": "continue",
+      "contextReason": "同一正文的十九读、自然接触和安装界推导有效，只清理新表中的流程时态。"
+    },
+    {
+      "id": "mdal-program-consumer",
+      "title": "程序载体现行消费者状态清理",
+      "objective": "消除对生命、理论及总览的过时状态断言，保留程序身份和容量设计界。",
+      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"],
+      "acceptance": [
+        "相对 mdak 新增判断：对照生命 723–748、理论 1289–1301、总览 1–13 更正程序 960/970–973；不得称总览只记 314 S 或仍留旧物理阻断，也不以模块正文宣告整版完成。",
+        "按 B4-v1/slice-B4-01、book-mdu-01/v1、AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1、B4-R19-projection-v1、C-B4-mdai-carrier-v1、mdai-B4-audit-v1 定向反查物理、账本、生命、理论、桥接、总览；核同一 AST/hash 或有据别名、十九读覆盖、279/559/281/314 S 与 C_S−O≥559，并对照现行权威而非关键词。",
+        "反例核容量未知不报 queueFull、失鲜撤未执行证/锁、POST 全失证保留已付 39/暂余 11；规范 hash、球实容与 VM 实耗留开发。"
+      ],
+      "dependsOn": ["mdal-physical-consumer"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"],
+      "contextPolicy": "continue",
+      "contextReason": "十九读、程序身份与 559 S 安装峰已核实，只修错误的消费者时态。"
+    },
+    {
+      "id": "mdal-life-consumer",
+      "title": "生命身份现行总览引用清理",
+      "objective": "更正生命正文对总览旧阻断的误述，保持身份与死亡授权合同。",
+      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
+      "acceptance": [
+        "相对 mdak 新增判断：对照总览 1–13 和 drb7，更正生命 723/734；旧总览第 12/14/18/20 行阻断不得写成当前事实，模块正文不预言总览之后是否通过。",
+        "按 B4-v1/slice-B4-01、LifeId/assessmentId、k0/k_m/k_a、DeathBarrier、priceVersion 反查物理、账本、程序、理论和桥接命中段；普通壳修、付款方、死亡后授权与已付余态逐项对照权威，实质冲突列阻断。",
+        "反例核四证不足 unknown/unknown、普通 k0 修壳不复苏、⑤一次屏障与⑥撤派生未来权、已提交自然事实及付款不倒带；真实四证留开发。"
+      ],
+      "dependsOn": ["mdal-program-consumer"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"],
+      "contextPolicy": "continue",
+      "contextReason": "生命身份与四证推理未变，只纠正同一正文的流程引用。"
+    },
+    {
+      "id": "mdal-theory-consumer",
+      "title": "唯一世界理论现行状态清理",
+      "objective": "让唯一理论只保留稳定因果合同，移除对 Version PM 总览进度的过时断言。",
+      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
+      "acceptance": [
+        "相对 mdak 新增判断：对照总览 1–13 和本轮物理、程序、生命结论，更正理论 1293/1299/1301；旧进度标历史或删除，总览 blocked 与主策轮次只由 Version PM 记录。",
+        "按 S0/seed、C/N/X、B4-v1/slice-B4-01、readId/receiptId/priceVersion、同 AST/hash 或有据别名反查物理、账本、程序、生命、桥接及总览命中段，逐处列权威来源和消费结论；实质冲突不得仅删流程句就称闭合。",
+        "反例复算 J1 本人 32、P0/P2 本人 1/2、可选 P1 本人 1、跨账户 35/36；D1 本人付 26/余 14；B4 十九读 29、全链条件 44/余 6、POST 全失证 39/暂余 11。逐格核成功、拒绝、空、未知、域外、竞争与死亡，不改公理。"
+      ],
+      "dependsOn": ["mdal-life-consumer"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"],
+      "contextPolicy": "fresh",
+      "contextReason": "理论正文连续两轮把总览时态当游戏合同阻断；重置流程状态归属，保留已核实的公理与账目。"
+    },
+    {
+      "id": "mdal-bridge-consumer",
+      "title": "玩家桥接现行流程引用清理",
+      "objective": "清除六入口桥接正文对旧总览阻断和旧主策轮次的断言。",
+      "deliverables": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
+      "acceptance": [
+        "相对 mdak 新增判断：对照总览 1–13 和 drb7，更正桥接 385 的旧阻断与 drb5 时态；现行正文只保留规范意图、同书返改、公开余态及可执行验收。",
+        "按 B4-v1/slice-B4-01、Read-B4-material-R0、mdai-B4-audit-v1、book-mdu-01/v1、AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1、C-B4-mdai-carrier-v1、LifeId/assessmentId 反查物理、账本、程序、生命、理论和总览命中段；六入口同 AST/hash、授权、付款、价版、容量版、世界序与请求序及公开余态逐项对照权威。",
+        "反例核无权/隐藏同形拒绝、获准 ok([]) 条件 2 M/50→48、capacityUnknown 不伪称 queueFull、竞争、POST 失证 39/暂余 11 与创建者死亡；实玩留开发和候选。"
+      ],
+      "dependsOn": ["mdal-theory-consumer"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"
+      ],
+      "writePaths": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"],
+      "contextPolicy": "continue",
+      "contextReason": "六入口等价和同书路径已核实，仍在原正文清理一处旧进度断言。"
+    },
+    {
+      "id": "mdal-adr-decision",
+      "title": "ADR-0024 覆盖状态与采纳结论",
+      "objective": "清除 ADR 的旧总览时态，取得明确架构采纳结论或列出具体阻断。",
+      "deliverables": ["docs/adr/0024-自然接触与旧运动命中语义覆盖.md"],
+      "acceptance": [
+        "相对 mdak 新增判断：对照总览 1–13 更正 ADR-0024 第 57 行；架构归属者逐条核 ADR 0017–0020 的覆盖、旧 Wm/damage/HP/三池 E/fixed life 的隔离、旧 DSL/蓝图/预设/存档保原件、等价迁移与失败回退，并在 ADR 记录采纳结论或具体不采纳理由；待采纳提案不能写成已实施。",
+        "按 S0/seed、B4-v1/slice-B4-01、C/N/X、readId/receiptId/priceVersion、AST/hash 或有据别名、capacityVersion 反查物理、账本、程序、生命、理论、桥接及总览；核十九读 29、全链条件 44/余 6、POST 失证 39/暂余 11、559 S 与自然双边接触。",
+        "反例核旧程序拒绝迁移后原字节及新版增量仍在、回退不重扣自然壳损或已付作用、同 lot 竞争不复制来源；真实收据、hash、容量和 VM 实耗留开发。"
+      ],
+      "dependsOn": ["mdal-bridge-consumer"],
+      "readPaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/adr/0017-统一实体控制属性模型.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0019-属性探查与资源账本.md",
+        "docs/adr/0020-事件执行上下文与生命周期.md",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md"
+      ],
+      "writePaths": ["docs/adr/0024-自然接触与旧运动命中语义覆盖.md"],
+      "contextPolicy": "fresh",
+      "contextReason": "本轮职责从覆盖提案补写转为架构决策，旧上下文混淆总览时态与采纳状态。"
+    }
+  ],
+  "modules": [
+    { "id": "physics-material", "title": "物理材料", "taskId": "mdal-physical-consumer" },
+    { "id": "programmable-spells", "title": "程序载体", "taskId": "mdal-program-consumer" },
+    { "id": "life-identity", "title": "生命身份", "taskId": "mdal-life-consumer" },
+    { "id": "world-theory", "title": "唯一世界理论", "taskId": "mdal-theory-consumer" },
+    { "id": "player-bridge", "title": "玩家桥接", "taskId": "mdal-bridge-consumer" },
+    { "id": "architecture-coverage", "title": "架构覆盖", "taskId": "mdal-adr-decision" }
+  ],
+  "crossModuleContracts": [
+    "物理权威 physics-material-design.md：S0/seed、B4-v1/slice-B4-01、C/N/X、十九 readId 的端点/字段/相位及 E0/q/热；程序、账本、生命、理论、桥接、ADR 按 factId/readId/contactVersion/materialVersion 消费。合法空读须有权且鲜值，拒绝不倒带自然事实。",
+    "账本只读权威 mana-ledger-design.md：mdai-B4-audit-v1/audit-work-v1、payerId/payerGrantId、sourceLotId、receiptId、价格及锁；各任务按 B4-v1/slice-B4-01/readId/priceVersion 核十九读 29 M、全链条件本人 44/余 6、POST 全失证 39/暂余 11、空读 2 M/50→48。J1 本人 32，P0/P2 本人 1/2、可选 P1 本人 1，跨账户 35/36；D1 本人付 26/余 14，不跨付款方抵账。",
+    "程序权威 programmable-spells-design.md：book-mdu-01/v1、AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1 或有据别名、B4-R19-projection-v1、C-B4-mdai-carrier-v1、priceVersion/capacityVersion；其他模块按同程序身份和证书覆盖消费。279/559/281/314 S 为设计界，C_S−O≥559 才能准入；规范 hash、球实容及 VM 实耗留开发。",
+    "生命权威 life-identity-design.md：LifeId/assessmentId、k0/k_m/k_a、DeathBarrier 与死亡后 grant；理论、桥接、ADR 按 factId/assessmentId 消费。普通壳修不复苏，四证不足保持 unknown，已付及自然事实不倒带。",
+    "唯一理论 world-theory-draft.md 按 S0/seed、factId/readId/sourceLotId/sliceId/payerId/receiptId/priceVersion/AST 汇合稳定因果；桥接 player-bridge-design.md 以同键投六入口公开余态。逐项核成功、拒绝、空、未知、域外、竞争；任务完成、总览阻断及主策轮次只由 Version PM 记入 module-design.md。ADR-0024 采纳是旧语义替换前的架构门禁，不等于已实施。"
+  ]
+}

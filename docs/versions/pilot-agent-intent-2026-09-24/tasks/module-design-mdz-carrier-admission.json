@@ -1,0 +1,92 @@
+{
+  "taskId": "mdz-carrier-admission",
+  "status": "completed",
+  "scopeRevision": 13,
+  "deliveryNote": "设计与直接检查完成；本地提交因 .git/index.lock 写权限被拒而未形成。两份合同产物留在当前工作区，未推送。",
+  "summary": "四载体独立结构页及四类行为边界；M1/D1 与 B1/B4 的有条件程序工作和事件准入，J1 自身 mdy 条件链，A1 与 K0/V0/攻击缺证拒绝；六项同刻反证、逐体理论/桥接可执行验收及开发后实测清单。所有正例仍是纸面条件，当前容量原读和真实 AST/hash 缺失。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdz-carrier-admission\"),s=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\");a.deepEqual(t.writePaths,[p+\"programmable-spells-design.md\",p+\"tasks/module-design-mdz-carrier-admission.json\"]);a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-mdz-life-boundary.json\",\"utf8\")).status,\"completed\");for(const x of [\"### M1：\",\"### B1：\",\"### J1：\",\"### A1：\",\"四类行为逐体动作门\",\"W-mdz-carrier-1\",\"E-mdz-carrier-1\",\"两订阅争一订阅位\",\"同撞双观察争同源\",\"伤后换证\",\"创建者死亡撤权\",\"队列实满与容量未读\",\"攻击与维持同刻峰值\",\"真实规范序列化 AST\",\"programHash\",\"capacityUnknown\",\"unknownPrice\",\"unexpressible\"])a.ok(s.includes(x),x);a.equal(176+12+5,193);a.equal(232+12+5,249);a.equal(8+2+2+1+14+10,37);a.equal(8+1+2+19+10,40);console.log(\"PASS mdz carrier contract, coverage and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdz carrier contract, coverage and arithmetic",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",d=f.readFileSync(q,\"utf8\");let n=0;for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),x);n++}}console.log(\"PASS \"+n+\" local document links\")'",
+      "exitCode": 0,
+      "output": "PASS 45 local document links",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdz-carrier-admission.json\",\"utf8\"));a.equal(e.taskId,\"mdz-carrier-admission\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,[p+\"programmable-spells-design.md\",p+\"tasks/module-design-mdz-carrier-admission.json\"]);a.ok(e.commands.every(x=>x.exitCode===0&&x.command&&typeof x.output===\"string\"));a.ok(e.failedAttempts.every(x=>x.exitCode!==0&&x.command));console.log(\"PASS mdz carrier evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdz carrier evidence metadata",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdz-carrier-admission writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdz-carrier-admission writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "Formatted the new tables and reran the same direct check successfully."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "Formatted the evidence JSON before checking both contract write paths again."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "Formatted the new command entries and checked the final evidence file."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-carrier-admission.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "No existing index.lock was present; repository metadata is read-only in this execution environment. Changes remain unstaged for the delivery owner to commit."
+    }
+  ]
+}

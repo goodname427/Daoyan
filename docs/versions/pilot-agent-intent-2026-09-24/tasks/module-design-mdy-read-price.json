@@ -1,0 +1,68 @@
+{
+  "taskId": "mdy-read-price",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "逐项对齐 15 个物理读 ID；旧四原子仅覆盖主源四读。重签 mdy-JH-read-v1：装载 11 M、热基线 1 M、作用后两读 2 M、作用 12 M，J1 32 M 条件分支和外部付款逐笔守恒；给六类拒因及有限工作候选，实测与程序准入留开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",phy=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"### `mdy-read-provenance`\")[1],doc=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),sec=doc.split(\"## 逐读价格与付款重签\")[1],tab=sec.split(\"### 六类反证\")[0],ids=[...phy.matchAll(/^\\| `(JH-[A-Z0-9-]+)`\\s+\\|/gm)].map(x=>x[1]),priced=[...tab.matchAll(/^\\| `(JH-[A-Z0-9-]+)`\\s*\\|/gm)].map(x=>x[1]);a.equal(ids.length,15);a.deepEqual(priced.toSorted(),ids.toSorted());a.equal(new Set(priced).size,15);for(const s of [\"priceVersion=mdy-JH-read-v1\",\"lJ=11 M\",\"35/36 M\",\"4301 tick\",\"4310 tick\",\"M_unavailable.action +12\",\"P0:b0→b0−1\",\"P2:b2−1→b2−2\",\"unknownPrice/undeterminedEnergy\",\"sealRetired/sliceUnavailable\"])a.ok(sec.includes(s),s);a.equal(9+11+12+1+2,35);a.equal(4+4+3+1+2,14);console.log(\"PASS mdy-read-price: 15 physical IDs mapped once; price, payer, balance, refusal and work markers present\")'",
+      "exitCode": 0,
+      "output": "PASS mdy-read-price: 15 physical IDs mapped once; price, payer, balance, refusal and work markers present",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",phy=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"### `mdy-read-provenance`\")[1],doc=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),sec=doc.split(\"## 逐读价格与付款重签\")[1],tab=sec.split(\"### 六类反证\")[0],ids=[...phy.matchAll(/^\\| `(JH-[A-Z0-9-]+)`\\s+\\|/gm)].map(x=>x[1]),priced=[...tab.matchAll(/^\\| `(JH-[A-Z0-9-]+)`\\s*\\|/gm)].map(x=>x[1]);a.equal(ids.length,15);a.deepEqual(priced,ids);a.equal(new Set(priced).size,15);for(const s of [\"priceVersion=mdy-JH-read-v1\",\"lJ=11 M\",\"35/36 M\",\"4301 tick\",\"4310 tick\",\"M_unavailable.action +12\",\"P0:b0→b0−1\",\"P2:b2−1→b2−2\",\"unknownPrice/undeterminedEnergy\",\"sealRetired/sliceUnavailable\"])a.ok(sec.includes(s),s);a.equal(9+11+12+1+2,35);a.equal(4+4+3+1+2,14);console.log(\"PASS mdy-read-price: 15 physical IDs mapped once; price, payer, balance, refusal and work markers present\")'",
+      "exitCode": 1,
+      "reason": "定向检查最初按物理文档的分组顺序比较读 ID；账本按执行时序排列，同一 15 个 ID 顺序不同。改按集合比较后通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 1,
+      "reason": "新增 Markdown 表格尚未格式化；运行 Prettier --write 后复检通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdy-read-price.json",
+      "exitCode": 1,
+      "reason": "证据 JSON 初次写入后未符合 Prettier 格式；运行 Prettier --write 后再检查。"
+    }
+  ]
+}

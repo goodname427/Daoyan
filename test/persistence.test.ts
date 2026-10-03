@@ -114,6 +114,21 @@ describe('versioned player state', () => {
     }
   });
 
+  it('locates and rejects a legacy finite spell without inventing its world certificates', () => {
+    const original = JSON.stringify({
+      version: 1,
+      spellSource: 'spell J1执行 -> bool { return true }',
+      arenaBindings: { '1': 'J1执行' },
+      balances: { player: 32 },
+    });
+    localStorage.clear();
+    localStorage.setItem(SAVE_STORAGE_KEY, original);
+    const loaded = loadPlayerState(defaults);
+    expect(loaded).toMatchObject({ ok: false });
+    if (!loaded.ok) expect(loaded.message).toContain('第 1 行');
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+  });
+
   it('drops legacy spell cooldowns and cooldown attributes while loading a current save', () => {
     const loaded = decodePlayerState(
       JSON.stringify({

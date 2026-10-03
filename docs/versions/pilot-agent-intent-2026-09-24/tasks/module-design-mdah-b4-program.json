@@ -1,0 +1,135 @@
+{
+  "taskId": "mdah-b4-program",
+  "status": "completed",
+  "outcome": "design-audit-completed; executable B4 Quote and capacity certificate remain blocked",
+  "summary": "消费 mdah-b4-prices 的 unknownPrice 裁定，在程序权威逐项映射十六前读与三 POST，重签 B4 独立纸面 AST/hash、factId/获准投影、Quote 和 M/tick/S 条件式、n>0 重编以及球本体单订阅容量与正反例。没有把候选价或假设 hash 宣称为实证。",
+  "scope": {
+    "problem": "旧 B4 的 34 M/232/249 tick/40 S 候选证缺现行逐字段授权和价版覆盖。",
+    "nonGoals": "不修改其他模块、ADR、代码或版本状态；不把条件夹具当真实收据与 VM 用量。",
+    "dependsOn": ["mdah-b4-prices"],
+    "readOnlyComparisons": [
+      "J1 one AST/hash alias and fifteen reads",
+      "D1 independent AST/hash and carrier certificate"
+    ],
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json"
+    ]
+  },
+  "reconciliation": {
+    "prices": {
+      "source": "mana-ledger-design.md#mdah-b4-prices; tasks/module-design-mdah-b4-prices.json",
+      "versionKeys": [
+        "mdah-B4-read-v1[pending]",
+        "mdz-B4-v1",
+        "acct-B1-B4",
+        "payerGrant-B4-v1",
+        "receipt-B4-funded-v1"
+      ],
+      "result": "前驱 completed 仅为审计完成；每读候选 1 M/≤10 tick、逐项 gross/receipt 未签，ADR-0019 复合读价来源缺口令当前 Quote=unknownPrice。仅全覆盖且 n=0 时 50=34+16、POST 前 31/19。"
+    },
+    "physical": {
+      "source": "physics-material-design.md#mdah-b4-reads and #mdag-physical-contact",
+      "versionKeys": [
+        "S0-physical-v1",
+        "seed-physical-v1",
+        "B4-v1",
+        "B4-read-coverage-v1",
+        "B4-post-evidence-v1",
+        "C-B1-01",
+        "N-B1-impact-01",
+        "X-B1-shell-v1",
+        "XB1-shell-v1",
+        "ML-B1-shell-k0-v1",
+        "contact-B1-impact-v1",
+        "contact-B4-v1"
+      ],
+      "result": "十六候选 R0–R3 ID 和三 POST 与程序逐项相同，逐字段 grant、部分热/环境/仪表端点、state/calibration/sample 原件未签。自然首撞 -6/+6、10=4+2+4 E0、3q=2q+残片 q 不生 B4 M/Tx/VM tick。"
+    },
+    "energyMaterial": {
+      "source": "physics-material-design.md#mdaa-physical-key and #mdag-physical-contact",
+      "versionKeys": ["source-B1-work", "EL-B1-B4", "slice-B4-01", "anchor-B1-v1", "Depot-k0-01"],
+      "result": "B4 独立 72+28=100=53+47 E0/12，包 32/12→8/12 耗 24/12=12/12 壳功+12/12 热；仓 4q=2q 隔离+q 新壳+q 废料，不取首撞动能或残片。"
+    },
+    "identityCapacity": {
+      "source": "programmable-spells-design.md#mdah-b4-program; world-theory-draft.md#mdab-theory-signoff",
+      "versionKeys": [
+        "book-mdu-01/v1",
+        "AST-B4-mdaa-assumed-v1",
+        "H_B4_assumed_v1",
+        "capacity-B1-v1",
+        "AST-D1-mdaa-assumed-v1",
+        "mdx-JH-AST-v1",
+        "H_JH_assumed_v1"
+      ],
+      "result": "B4 独立纸面 AST/hash，J1 单别名十五读及 D1 独立程序仅只读核对。旧十九索引/一订阅/一 FIFO 引用/一帧与 40 S/232/249 tick 仅 n=0 且全部获准时成立；n>0 重编重算。容量及旧占用未读为 capacityUnknown，球内 FIFO 实满才 queueFull。"
+    },
+    "adrVisibleState": {
+      "source": "ADR-0019 decision three; ADR-0020; design-review.md#drb3-world-closure-review; design-review-findings.md#drb3-world-closure-review; life-identity-design.md#mdag-life-boundary; player-bridge-design.md#mdag-bridge-reconcile",
+      "versionKeys": [
+        "ADR-0019",
+        "ADR-0020",
+        "drb3-world-closure-review",
+        "LifeId",
+        "assessmentId"
+      ],
+      "result": "逐字段授权/公开正价及已调用拒读的 1 M/1 tick 与读前零扣预检分开；事实负载仅已提交 factId/获准字段。普通 k0 修补不复苏。玩家只见获准壳损、本人实付/暂余及裁剪拒因；最新主策仍 changes-requested。"
+    },
+    "arithmeticAndCases": "条件 n=0：19×1+5+10=34 M、50−34=16；19×10+10+20+12=232 tick、一次外层/事件 12+5 得 249；8+1+2+19+10=40 S。n 为额外有价读，只有同价/同工作/同活集假设时 34+n、232+10n、249+10n、40+n 是重编前候选；n>16 不能从 50 付全价。独立复位核破/不破/无撞、获准空读/已调用拒读、双接触、再撞、感官/执行器损坏、容量未读/实满、竞争与 POST 失证，均保留真实已付和自然事实。"
+  },
+  "openContractGaps": [
+    "物理未签逐字段端点/grant/样本与三 POST；账本未闭 ADR-0019 单字段正价和旧 1 M 复合读的关系，未签 mdah-B4-read-v1。当前 Quote=unknownPrice，M/tick/S 无可执行证书；由原权威补签后程序重编重算。",
+    "物理与账本对 n 的术语冲突未闭；本程序仅采用账本的额外有价读定义。理论、桥接、模块总览须由其归属者消费最终价版，主策再复核。",
+    "真实规范 AST/SHA-256 hash、球本体容量/误差/旧占用、逐 VM tick/同时活 S、各付款方实际收据与六入口体验留获批开发验收。"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),s=d.split(\"## `mdah-b4-program`\")[1],e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-b4-program.json\",\"utf8\")),pred=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-b4-prices.json\",\"utf8\")),phys=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),ledger=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\");a.equal(e.taskId,\"mdah-b4-program\");a.equal(e.status,\"completed\");a.equal(pred.status,\"completed\");const reads=[...s.matchAll(/^\\| `(Read-B4-(?:main|aux|heat|material)-R[0-3])`/gm)].map(x=>x[1]),posts=[...s.matchAll(/^\\| `(POST-B4-(?:main|heat|material))`/gm)].map(x=>x[1]);a.equal(reads.length,16);a.equal(new Set(reads).size,16);a.equal(posts.length,3);for(const id of [...reads,...posts]){a.ok(phys.includes(\"`\"+id+\"`\"),id);a.ok(ledger.includes(\"`\"+id+\"`\"),id)}for(const k of [\"Quote=unknownPrice\",\"factId\",\"34+n\",\"232+10n\",\"249+10n\",\"40+n\",\"capacityUnknown\",\"queueFull\",\"M_unavailable.read[readId]\",\"M_unavailable.post[postReadId]\"])a.ok(s.includes(k),k);a.equal(19+5+10,34);a.equal(50-34,16);a.equal(31+3+16,50);a.equal(19*10+10+20+12,232);a.equal(232+12+5,249);a.equal(8+1+2+19+10,40);a.equal(32+1+2,35);a.equal(35+1,36);a.equal(40-26,14);console.log(\"PASS: B4 contract, predecessor, 16 reads/3 POST, arithmetic and capacity cases\")'",
+      "exitCode": 0,
+      "output": "PASS: B4 contract, predecessor, 16 reads/3 POST, arithmetic and capacity cases",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json' | Sort-Object); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){Write-Error \"writePaths mismatch: $($actual -join ', ')\"; exit 1}; Write-Output 'PASS exact two writePaths only'",
+      "exitCode": 0,
+      "output": "PASS exact two writePaths only",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; git diff --cached --check; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; git diff --cached --name-only; git commit -m \"docs: record B4 module design evidence\"",
+      "exitCode": 128,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "disposition": "environment denied Git metadata write; no commit created"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-program.json"
+  ]
+}

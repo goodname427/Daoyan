@@ -1,0 +1,117 @@
+{
+  "taskId": "mdai-b4-fields",
+  "status": "completed",
+  "summary": "物理权威已按范围修订 13 签 B4 十六阶段读与三项独立 POST 的逐端点字段、phase、objectId、投影、分所有者读授权/撤权、结构/材料/接触/锚/环境/仪表/样本版本及至多四端限额；n_19 与十九项外 n_extra 分开，字段价差不虚增 readId。固定 S0/seed 下复核完整覆盖、合法空读、同形拒绝、超端点、失鲜、再撞、双接触和 POST 失证；B1 10=4+2+4 E0 与 B4 100=53+47 E0/12、4q 来源账保留。与账本对账：B4 本人净入 50、34/末余16仅十九读逐项 1 M 时成立，J1 跨账户 35/36 与 D1 本人26独立；程序 B4 假设 AST/hash 与 40 S/232/249 tick 仅旧布局条件证，玩家只见授权壳状态、本人已付与裁剪余态。仍待账本按 ADR-0019 逐字段签新价/收款、程序重编真实 hash/容量、生命/理论/桥接/总览同键重签和主策复审；无新增制作人范围取舍，原始运行读数留开发。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json"
+    ],
+    "nonGoals": "不改其他模块权威、ADR、代码或状态；不把设计字段键写成已签现场 grant、实读、实扣或可执行 Quote。"
+  },
+  "checks": {
+    "readIds": "Read-B4-{main,aux,heat,material}-R0…R3 共 16；POST-B4-main/heat/material 共 3，均独立 sampleVersion/ReadTx；每行 2、3 或 4 个端点，POST 头/环不同 endpoint、grant 和 endpointSampleVersion。",
+    "counting": "n_19 只数十九项内实际获准已结 ReadTx；n_extra 只数十九项外另签且实际获准执行的不同有价 readId。字段差价改变 p_id(fields)，不改变 n_extra。",
+    "paperCases": "十九读完整覆盖条件 n_19=19/n_extra=0；获准 material-R0 空读仅 n_19=1；无权/隐藏/不存在同形、超端点、版本失鲜拒读；C-B1-02 再撞和双接触不重用旧证；POST 失证保留已作用与已付。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md#mdag-physical-contact and #mdaa-physical-key",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "C-B1-01",
+          "N-B1-impact-01",
+          "X-B1-shell-v1",
+          "B4-v1",
+          "slice-B4-01"
+        ],
+        "result": "自然 10=4+2+4 E0、遗体 3q=2q+fragment q 与 B4 独立 100=53+47 E0/12、4q=2q+q+q 分账。"
+      },
+      {
+        "source": "mana-ledger-design.md#mdah-b4-prices and ADR-0019",
+        "versionKeys": [
+          "mdah-B4-read-v1[pending]",
+          "mdz-B4-v1",
+          "receipt-B4-funded-v1",
+          "payerGrant-B4-v1",
+          "acct-B1-B4"
+        ],
+        "result": "B4 本人 50=34+16 仅十九读各 1 M、装5、作用10且 POST 完结时的条件账；字段迁移及独立 POST 须重新逐字段定正价、公开界、attempt、不可取收款槽与价版。J1 本人32加 P0/P2/可选P1 跨账户35/36，D1 本人40=26+14，各不代付。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdah-b4-program",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdaa-assumed-v1",
+          "H_B4_assumed_v1",
+          "capacity-B1-v1"
+        ],
+        "result": "B4 独立假设 AST/hash、十九索引、一订阅/FIFO/帧的 40 S、232/249 tick 只属旧同价同活集条件；新投影及价版要求重编、真实 hash、旧占用和本体容量。J1 十五读同一 AST/hash 别名与 D1 独立程序不可借。"
+      },
+      {
+        "source": "life-identity-design.md#mdah-b4-life; world-theory-draft.md#mdah-theory; player-bridge-design.md#mdah-bridge; module-design.md",
+        "versionKeys": ["LifeId", "assessmentId", "B4-v1", "POST-B4-material", "priceVersion"],
+        "result": "仅普通 k0 壳变，不推出关键回路/复苏；理论、桥接的旧端点分配及总览缺逐 ID POST-B4-material、n 两义、34/16 展示须按本读集和新价重签。玩家只见获准壳状态、本人实际已付及裁剪拒因，POST 前包余待测。"
+      }
+    ],
+    "developmentMeasurements": "十九读逐 {endpointId,field,phase} 原值/误差/样本/授权/撤权/版本/收据，POST 头与环两端后态；逐 payer 到账实扣、规范 AST/hash、球本体旧占用和 VM tick/S、六入口公开余态。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),s=d.slice(d.lastIndexOf(\"## B4 十九读字段与额外读取边界\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdai-b4-fields\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-b4-fields.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);const rows=s.split(/\\r?\\n/).filter(x=>/^\\| `(?:Read-B4-(?:main|aux|heat|material)-R[0-3]|POST-B4-(?:main|heat|material))`/.test(x)),ids=rows.map(x=>x.split(\"`\")[1]);a.equal(rows.length,19);a.equal(new Set(ids).size,19);for(const row of rows){const fields=row.split(\"|\")[2],n=(fields.match(/[SUPAHTECRDW]\\.\\{/g)||[]).length;a.ok(n>0&&n<=4,row);a.ok(row.includes(\"B4-v1/\"),row);a.ok(row.includes(\"sample-\"),row)}for(const k of [\"n_19=\",\"n_extra\",\"endpointSampleVersion\",\"rev-B4-post-v1\",\"g-B4-target-v1\",\"env-B1-heat-v1\",\"POST-B4-material\",\"C-B1-02\",\"deniedOrUnavailable\",\"tooManyEndpoints\",\"staleReadVersion\",\"10=4+2+4 E0\",\"100=53+47 E0/12\"])a.ok(s.includes(k),k);a.equal(10,4+2+4);a.equal(100,53+47);a.equal(50,16+5+10+3+16);console.log(\"PASS mdai 19 read rows, endpoint caps, fields and paper ledgers\")'",
+      "exitCode": 0,
+      "output": "PASS mdai 19 read rows, endpoint caps, fields and paper ledgers"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),s=d.slice(d.lastIndexOf(\"## B4 十九读字段与额外读取边界\")),defs={S:\"energyRaw,err,lotVersion\",P:\"energyRaw,err,sliceState,sealVersion\",U:\"energyRaw,err,lotVersion\",A:\"loadLower,reactionEndpointId,structureVersion\",H:\"integrityLower,loadLower,err,structureVersion\",T:\"energyRaw,err,freeCapacityLower,sinkVersion\",E:\"energyRaw,err,freeCapacityLower,environmentVersion\",C:\"Qk0Raw,thresholdLow,thresholdHigh,gapQ,structureVersion,materialVersion\",R:\"apertureQ,loadLower,err,connectionVersion\",D:\"Qk0Raw,availableQ,lotVersion\",W:\"Qk0Raw,freeCapacityQ,lotVersion\"},rows=s.split(/\\r?\\n/).filter(x=>/^\\| `(?:Read-B4-(?:main|aux|heat|material)-R[0-3]|POST-B4-(?:main|heat|material))`/.test(x));a.equal(rows.length,19);for(const row of rows){const id=row.split(\"`\")[1],pairs=[...row.split(\"|\")[2].matchAll(/([A-Z])\\.\\{([^}]+)\\}/g)],want=id.startsWith(\"POST\")?({\"POST-B4-main\":\"SPD\",\"POST-B4-heat\":\"TE\",\"POST-B4-material\":\"CRHW\"}[id]):({\"main\":\"SP\",\"aux\":\"UAH\",\"heat\":\"TE\",\"material\":\"CRDW\"}[id.split(\"-\")[2]]);a.equal(pairs.map(x=>x[1]).join(\"\"),want,id);for(const x of pairs)a.equal(x[2],defs[x[1]],id+\":\"+x[1]);a.ok(pairs.length<=4)}console.log(\"PASS mdai per-ID endpoint field projection and POST partitions\")'",
+      "exitCode": 0,
+      "output": "PASS mdai per-ID endpoint field projection and POST partitions"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",files={\"mana-ledger-design.md\":[\"mdah-b4-prices\",\"mdah-B4-read-v1[pending]\",\"receipt-B4-funded-v1\",\"payerGrant-B4-v1\"],\"programmable-spells-design.md\":[\"mdah-b4-program\",\"AST-B4-mdaa-assumed-v1\",\"H_B4_assumed_v1\",\"capacity-B1-v1\"],\"life-identity-design.md\":[\"mdah-b4-life\",\"LifeId\",\"assessmentId\"],\"world-theory-draft.md\":[\"mdah-theory\",\"POST-B4-material\",\"n_extra\"],\"player-bridge-design.md\":[\"mdah-bridge\",\"n_extra\"],\"module-design.md\":[\"n_extra\"]};for(const [name,keys] of Object.entries(files)){const s=f.readFileSync(p+name,\"utf8\");for(const k of keys)a.ok(s.includes(k),name+\":\"+k)}const d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1);a.ok(!f.readFileSync(p+\"module-design.md\",\"utf8\").includes(\"POST-B4-material\"));for(const k of [\"mdah-b4-prices\",\"mdah-b4-program\",\"mdah-b4-life\",\"mdah-theory\",\"mdah-bridge\",\"module-design.md\",\"50=34+16\",\"35/36\",\"40 S/232/249 tick\"])a.ok(d.includes(k),k);console.log(\"PASS mdai current cross-module consumer keys and account boundaries\")'",
+      "exitCode": 0,
+      "output": "PASS mdai current cross-module consumer keys and account boundaries"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @( 'docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json' | Sort-Object ); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS mdai exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "commandSummary": "PowerShell rg lookup with Bash-style brace expansion across six current module files",
+      "exitCode": 1,
+      "reason": "PowerShell parser rejected the brace list; reran rg with explicit file paths successfully."
+    },
+    {
+      "commandSummary": "First nineteen-row assertion used a malformed readId extraction regex",
+      "exitCode": 1,
+      "reason": "Rows counted 19 but the malformed extraction collapsed IDs; replaced extraction with backtick-delimited ID and the corrected command passed."
+    },
+    {
+      "commandSummary": "Cross-module key check expected POST-B4-material in module-design.md",
+      "exitCode": 1,
+      "reason": "The current module summary lacks that explicit readId; recorded it as a consumer gap and reran the check against current facts."
+    },
+    {
+      "commandSummary": "Cross-module key check expected literal 50=34+16 in the new physical prose",
+      "exitCode": 1,
+      "reason": "The prose initially gave the three numbers separately; added the explicit equality and reran successfully."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-fields.json"
+  ]
+}

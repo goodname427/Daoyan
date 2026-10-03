@@ -1,0 +1,130 @@
+{
+  "taskId": "mdak-theory-status",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "按最新 drb6/changes-requested 和四项 completed 的 mdak 直接前驱只读结论，修正唯一理论 1287–1290 的过时消费者时序：mdaj-bridge-consumers 已交付，桥接现行 mdaj 段已消费材料 R0 新价 2/48、全链 44/6、POST 失证 39/11 与安装 559 S；总览 1–20 已列新价和 559 S，但旧物理阻断理由仍待 Version PM 重核，整版未联签。五模块权威与桥接的十九读投影、29 M/≤271 tick、逐 payer 账、279/559/281/314 S、AST/hash 设计身份、普通 k0/生命边界均纸面同键，无本轮数值实质变化。真实授权、样本、入账/收据、规范 hash、球容量和 VM 实耗缺失，可执行 Quote/容量仍未知；主策仍需判断固定审计与通用探查边界及 44/6 M、559 S 的可施放性。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json"
+    ],
+    "readOnlyPredecessors": [
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-program-status.json",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-ledger-status.json",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json"
+    ],
+    "nonGoals": "不代改物理、账本、程序、生命、桥接、总览、ADR 或代码；不将纸面设计峰或条件 M 账冒充运行容量、实扣或体验。"
+  },
+  "checks": {
+    "actualResult": "定向核对世界理论 1287–1290、桥接 358–385、程序 910–960、总览 1–20 及四项 mdak 前驱；撤销理论旧消费者状态，保留总览阻断和 drb6 退回。改动只修唯一理论及本轮证据；未运行代码门禁或独立代码审查。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md#mdai-b4-fields/mdaj-physical-price/mdak-physical-status",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "C-B1-01",
+          "N-B1-impact-01",
+          "X-B1-shell-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "V0…VP"
+        ],
+        "result": "自然 10=4+2+4 E0、旧壳 3q=2q+残片 q，B4 自有 100=53+47 E0/12、包 32/12→8/12、仓 4q=2q+q+q；自然零 M/tick。十九投影、逐端 grant/样本及 POST R/H 独立，材料 R0 空读按新目录 2/48；程序 279/559/281/314 S 设计界已被物理消费。"
+      },
+      {
+        "source": "mana-ledger-design.md#mdai-b4-quote/mdak-ledger-status",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "acct-B1-B4",
+          "payerGrant-B4-v1",
+          "receipt-B4-funded-v1",
+          "receipt-B4-read-[readId]-[requestId]-v1"
+        ],
+        "result": "十六前读24、三 POST5，共十九读29 M/≤271 tick；装载5、作用10，本人条件净入50→已付44/余6。POST 全失证已付39/暂余11、释锁5；读前拒绝0或合法调用互斥 attempt1；竞争 R3 后29/余21、锁15、他笔20使后者欠14。J1 本人32、P0/P2分付1/2、可选P1分付1，跨账户35/36；D1本人40=26+14，各不代 B4。"
+      },
+      {
+        "source": "programmable-spells-design.md#mdai-b4-carrier/mdaj-carrier-install/mdak-program-status",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdai-audit-v1",
+          "B4-R19-projection-v1",
+          "H_B4_mdai_assumed_v1",
+          "C-B4-mdai-carrier-v1"
+        ],
+        "result": "十九索引0–18与价版/收据/样本同证；旧 B4 hash 非别名。单页279、两页加槽559、释暂存后281、响应314 S，条件 S_install=Smax=559 S、C_S−O≥559 并需分项容量；物理链≤313、响应≤330 tick。规范 hash、真实旧占用、球实容及 VM 峰未知。"
+      },
+      {
+        "source": "life-identity-design.md#mdai-b4-life/mdak-life-status",
+        "versionKeys": ["LifeId", "assessmentId", "DeathBarrier", "k0", "k_m", "k_a"],
+        "result": "普通 k0 壳修不复苏关键回路或旧 LifeId；四证不足为 unknown/unknown，齐证才阶段⑤一次屏障、⑥撤派生未来权及未执行锁，自有 B1/A1 权与已付历史保留。生命已承认总览消费新价和559 S但仍阻断。"
+      },
+      {
+        "source": "player-bridge-design.md#mdaj-bridge-consumers; module-design.md:1–20",
+        "versionKeys": [
+          "readId",
+          "factId",
+          "priceVersion",
+          "receiptId",
+          "ASTVersion",
+          "programHash"
+        ],
+        "result": "桥接 mdaj 现行段已交付并消费2/48、44/6、39/11、559 S，六入口仅同能力/可见/payer/grant/AST/价版/请求序才等价，玩家仅见获准壳与本人实付/释锁，POST 包余待测。总览已列新价和559 S但旧物理阻断文句仍待 Version PM 重核，不由理论单方签通过。"
+      }
+    ],
+    "scenarioRecalculation": "同 S0/seed 独立格：成功须 C/N/X、十九独立 ReadTx、净入及球容量全证，条件44/余6、锁清零；未破仅 C、无撞无 C/N/X，读前零新扣；获准 ok([]) 只付2/余48；预检拒绝零新扣、已发可付 attempt1/余49 与成功互斥；失鲜、unknownPrice/capacityUnknown 不补造读或容量；域外零新作用、释锁；同 payer/lot 稳定序锁15与他笔20竞争欠14；再撞换版、双接触两 C 一球壳 X；POST 全失证39/11、释5；创建者四证齐一次屏障、⑥撤派生未来权并释锁。自然、已付、已提交作用保留；玩家只见获准与本人真实余态。",
+    "remainingChiefPlannerScope": "最新 drb6 仍 changes-requested。Version PM 重核总览第12/14/18/20行旧物理阻断与559 S 消费状态；主策判断封闭审计与通用逐字段探查玩家边界，以及44/6 M与559 S对可施放性的影响。若权威字段/价/安装时相实质变化，归属模块升键并让桥接/总览重签，不能由理论改他人断言。",
+    "developmentAcceptance": "真实逐字段 grant/撤权及校准样本、逐 payer 净入/锁/ReadTx与作用收据、规范 AST 字节/SHA-256、球页/槽/FIFO/帧与旧占用、VM M/tick/S 峰、六入口同书往返和 LifeId 四证均留开发/候选验收；设计559 S不是实测容量。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",read=n=>f.readFileSync(p+n,\"utf8\"),ph=read(\"physics-material-design.md\").split(\"## B4 十九读字段与额外读取边界\")[1],le=read(\"mana-ledger-design.md\").split(\"## B4 固定投影审计原子\")[1],pr=read(\"programmable-spells-design.md\"),br=read(\"player-bridge-design.md\").split(\"## `mdaj-bridge-consumers`\")[1],ov=read(\"module-design.md\").split(/\\r?\\n/).slice(0,20).join(\"\\n\"),th=read(\"world-theory-draft.md\").split(\"### 权威归属、消费者反查与待收束\")[1].split(\"## 修订纪律\")[0],rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=x=>x.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)),q=rows(ph),r=rows(le);a.equal(q.length,19);a.equal(r.length,19);let M=0,T=0,F=0,E=0;for(let i=0;i<19;i++){let u=q[i].split(\"|\"),v=r[i].split(\"|\"),id=u[1].match(rx)[1],norm=x=>x.replace(/`/g,\"\").replace(/；\\d+\\s*$/,\"\").replace(/；/g,\";\").replace(/\\s/g,\"\");a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);let pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fc=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ec=pairs.length,cost=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[3].trim(),fc+\"/\"+ec,id);a.equal(+cost[1],ec===2?1:2,id);a.equal(+cost[2],1+fc+ec,id);F+=fc;E+=ec;M+=+cost[1];T+=+cost[2]}a.deepEqual([F,E,M,T,M+15,50-M-15,24+5+10,50-39],[199,53,29,271,44,6,39,11]);a.deepEqual([8+19+199+53,2*279+1,279+1+1,281+1+1+31],[279,559,281,314]);for(const k of [\"559 S\",\"mdai-B4-audit-v1\",\"H_B4_mdai_assumed_v1\"])a.ok(pr.includes(k)&&br.includes(k)&&th.includes(k),k);a.ok(ov.includes(\"559 S\")&&ov.includes(\"阻断\"));for(const k of [\"mdak-theory-status\",\"drb6\",\"2/余48\",\"39/11\",\"创建者死亡\",\"同 payer/lot\",\"capacityUnknown\",\"Version PM\"])a.ok(th.includes(k),k);for(const k of [\"待派接任务\",\"桥接和总览当前文本尚未写入\",\"桥接数字明细同价\"])a.ok(!th.includes(k),k);console.log(\"PASS mdak theory: 19 projections, price, 279/559/281/314 S and current consumers\")'",
+      "exitCode": 0,
+      "output": "PASS mdak theory: 19 projections, price, 279/559/281/314 S and current consumers"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdak theory exact worktree writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdak theory exact worktree writePaths"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdak-theory-status.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId);a.equal(e.taskId,\"mdak-theory-status\");a.equal(e.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.equal(e.scope.readOnlyPredecessors.length,4);a.ok(e.scope.readOnlyPredecessors.every(x=>JSON.parse(f.readFileSync(x,\"utf8\")).status===\"completed\"));a.ok(e.commands.length>=4&&e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.length>=2&&e.failedAttempts.every(x=>x.exitCode===1));a.deepEqual(e.evidence,t.writePaths);console.log(\"PASS mdak theory evidence matches task contract and four completed predecessors\")'",
+      "exitCode": 0,
+      "output": "PASS mdak theory evidence matches task contract and four completed predecessors"
+    },
+    {
+      "command": "$p='docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json'; $j=Get-Content $p -Raw | ConvertFrom-Json; $allowed=@($j.scope.writePaths); $changed=@(git diff --name-only); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; $changed+=@(git ls-files --others --exclude-standard); $outside=@($changed | Where-Object {$_ -notin $allowed}); if($outside.Count){Write-Error \"Changes outside writePaths: $outside\"; exit 1}; Write-Output \"PASS current worktree scope: $($changed.Count) changed paths, all within writePaths\"",
+      "exitCode": 0,
+      "output": "PASS current worktree scope: 1 changed paths, all within writePaths"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",read=n=>f.readFileSync(p+n,\"utf8\"),ph=read(\"physics-material-design.md\").split(\"## B4 十九读字段与额外读取边界\")[1],le=read(\"mana-ledger-design.md\").split(\"## B4 固定投影审计原子\")[1],pr=read(\"programmable-spells-design.md\"),br=read(\"player-bridge-design.md\").split(\"## `mdaj-bridge-consumers`\")[1],ov=read(\"module-design.md\").split(/\\r?\\n/).slice(0,20).join(\"\\n\"),th=read(\"world-theory-draft.md\").split(\"### 权威归属、消费者反查与待收束\")[1].split(\"## 修订纪律\")[0],rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=x=>x.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)),q=rows(ph),r=rows(le);a.equal(q.length,19);a.equal(r.length,19);let M=0,T=0,F=0,E=0;for(let i=0;i<19;i++){let u=q[i].split(\"|\"),v=r[i].split(\"|\"),id=u[1].match(rx)[1],norm=x=>x.replace(/`/g,\"\").replace(/；\\d+\\s*$/,\"\").replace(/；/g,\";\").replace(/\\s/g,\"\");a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);let pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fc=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ec=pairs.length,cost=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[3].trim(),fc+\"/\"+ec,id);a.equal(+cost[1],ec===2?1:2,id);a.equal(+cost[2],1+fc+ec,id);F+=fc;E+=ec;M+=+cost[1];T+=+cost[2]}a.deepEqual([F,E,M,T,M+15,50-M-15,24+5+10,50-39],[199,53,29,271,44,6,39,11]);a.deepEqual([8+19+199+53,2*279+1,279+1+1,281+1+1+31],[279,559,281,314]);for(const k of [\"559 S\",\"mdai-B4-audit-v1\",\"H_B4_mdai_assumed_v1\"])a.ok(pr.includes(k)&&br.includes(k)&&th.includes(k),k);a.ok(ov.includes(\"559 S\")&&ov.includes(\"阻断\"));for(const k of [\"mdak-theory-status\",\"drb6\",\"2/余48\",\"39/11\",\"创建者死亡\",\"同 payer/lot\",\"capacityUnknown\",\"Version PM\"])a.ok(th.includes(k),k);for(const k of [\"待派接任务\",\"桥接和总览当前文本尚未写入\",\"桥接数字明细同价\"])a.ok(!th.includes(k),k);console.log(\"PASS mdak theory: 19 projections, price, 279/559/281/314 S and current consumers\")'",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: 同 payer/lot",
+      "resolution": "理论新增段补明同 payer/lot 竞争标签；同一断言重跑退出码 0。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json",
+      "exitCode": 1,
+      "reason": "追加本轮范围复核命令后，证据 JSON 缩进未符合 Prettier；本轮据此记录失败，再格式化并复跑检查。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "taskId": "mdv-life-proof",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "基于 mdv-physical-residual 和 mdv-action-ledger，分别核对 M1/A1 独立 F1/F2、保存来源与反馈阈值、保守截止、逐 tick 包/材料/账/程序承载、三链唯一 LifeId 和六类反例。所有现场原读及 K0/V0/攻击/容量正证仍未知；D0 不可修 k_m/k_a，保存仅为条件能力，当前 LifeAssessment/identityRelation=unknown、DeathBarrier=∅、旧私权冻结。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),x=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdv-physical-residual.json\",\"utf8\")),y=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdv-action-ledger.json\",\"utf8\"));a.equal(x.status,\"completed\");a.equal(y.status,\"completed\");for(const k of [\"## `mdv-life-proof`\",\"N-M1-F1@T1\",\"N-M1-F2@T2\",\"N-A1-F1@T1A\",\"N-A1-F2@T2A\",\"source-M1-store/EL-M1-store\",\"source-A1-store/EL-A1-store\",\"dueAt_M=10\",\"preservationDueAt_M=12\",\"recoveryDeadline_M=min(11,13,11,12,12)=11\",\"dueAt_A=8\",\"preservationDueAt_A=10\",\"recoveryDeadline_A=min(10,11,10,11,10)=10\",\"capacityUnknown\",\"≥120 M\",\"unexpressible\",\"LifeAssessment=unknown\",\"DeathBarrier=∅\",\"复制分叉\",\"创建者死亡\",\"遗体再损\"])a.ok(d.includes(k),k);a.equal(Math.min(11,13,11,12,12),11);a.equal(Math.min(10,11,10,11,10),10);console.log(\"PASS mdv-life-proof coverage, predecessors and deadline arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdv-life-proof coverage, predecessors and deadline arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json\",e=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(e.taskId,\"mdv-life-proof\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,[\"docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json\"]);a.ok(e.commands.every(x=>x.exitCode===0&&x.command));console.log(\"PASS mdv-life-proof evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdv-life-proof evidence metadata"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from task scope'}; Write-Output 'PASS only mdv-life-proof document and evidence changed'",
+      "exitCode": 0,
+      "output": "PASS only mdv-life-proof document and evidence changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\");const x=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(s=>s.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(x,[\"docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json\"].sort());console.log(\"PASS only mdv-life-proof document and evidence changed\")'",
+      "exitCode": 1,
+      "reason": "Node child_process 在本宿主执行 git status 时 spawnSync git EPERM；改用 PowerShell 直接运行 git status 并精确比较路径，退出码 0。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-life-proof.json",
+      "exitCode": 1,
+      "reason": "Git 无法创建 .git/index.lock：Permission denied；当前执行环境仅可读 .git，两个合同文件仍在工作区，未形成本地提交。"
+    }
+  ]
+}

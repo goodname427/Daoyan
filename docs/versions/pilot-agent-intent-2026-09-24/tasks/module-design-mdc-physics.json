@@ -1,0 +1,56 @@
+{
+  "taskId": "mdc-physics",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "依据 mdc-theory、主策复审、ADR 0018 与现行 world/battle 事实修订物理材料细则：补齐接触组顺序无关结算、C/X 唯一事实、材料分区和作用描述符、六类场景的成功与拒绝余态、跨模块交接及 ADR 覆盖影响。数值精度、材料阈值、共同价格和生命身份仍待决；仅交付策划文档，不表示新规则已实现或获准开发。本地提交因 .git/index.lock 写入权限不足未执行成功，原始失败另列。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-physics.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),assert=require(\"node:assert/strict\");const s=fs.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\",\"utf8\");for(const x of [\"mdc-physics\",\"mdc-theory\",\"连续碰撞的规范化与精度边界\",\"接触未裁定\",\"材料分区、作用描述符与下游交付\",\"μ·L/s\",\"Q[k]\",\"parents=[C1,C2]\",\"指定接触的顺序无关账本\",\"球切过活体边缘\",\"球撞有锚墙\",\"同刻撞静止中体\",\"球先撞活体再撞遗体\",\"失供球已有先前\",\"球越开放模拟边界\",\"不可表达\",\"ADR 0018\",\"Battle.updateProjectiles\"]){assert.ok(s.includes(x),x)}assert.ok((s.match(/\\| 球/g)||[]).length>=5);console.log(\"PASS mdc-physics contract and six scenarios\")'",
+      "exitCode": 0,
+      "output": "PASS mdc-physics contract and six scenarios",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),path=require(\"node:path\"),assert=require(\"node:assert/strict\");const q=\"docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\",s=fs.readFileSync(q,\"utf8\");let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")){assert.ok(fs.existsSync(path.resolve(path.dirname(q),t)),t);n++}}console.log(\"PASS \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS 7 local links",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-physics.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "Git 元数据在当前执行环境不可写；未暂存或提交本任务文件，保留工作区现状交由可写宿主完成本地提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdc-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "src/core/world.ts",
+    "src/game/battle.ts",
+    "test/entity-vnext.test.ts"
+  ]
+}

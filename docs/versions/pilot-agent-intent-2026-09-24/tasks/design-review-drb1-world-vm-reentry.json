@@ -1,0 +1,51 @@
+{
+  "taskId": "drb1-world-vm-reentry",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "producer-decision-and-adr-required",
+  "summary": "独立复核 review-3、review-4、范围修订 13、现行物理与世界理论、ADR 0018 及真实 World/编译器/VM 接入点。B1 阈值、材料证据与同刻求解尺度不足以确立首撞壳损；旧 Projectile 命中池的迁移须新 ADR 裁定。已记录 J1/D1/B1→B4 窄范围接入合同、自然接触五类反例、状态归属与 Node/真实 VM 取证门禁，并列出制作人选项。未将纸面数据记为实测，也未宣称开发获批或完成。",
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=b+\"design-review-findings.md\",s=f.readFileSync(d,\"utf8\").split(\"# `drb1-world-vm-reentry`\")[1],j=JSON.parse(f.readFileSync(b+\"tasks/design-review-drb1-world-vm-reentry.json\",\"utf8\"));a.ok(s);a.equal(j.taskId,\"drb1-world-vm-reentry\");for(const x of [\"review-3\",\"review-4\",\"ADR 0018\",\"范围修订 13\",\"J1\",\"D1\",\"B1\",\"B4\",\"扫掠\",\"同刻\",\"POST\"])a.ok(s.includes(x),x);for(const x of j.evidence)a.ok(f.existsSync(x),x);for(const m of s.matchAll(/\\]\\((\\.\\.?\\/[^)#]+)(?:#[^)]*)?\\)/g))a.ok(f.existsSync(p.resolve(p.dirname(d),decodeURIComponent(m[1]))),m[1]);console.log(\"PASS drb1 evidence\")'",
+      "exitCode": 0,
+      "output": "PASS drb1 evidence"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@(\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json\"); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace(\"\\\",\"/\") } | Sort-Object); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object ($expected | Sort-Object) $actual).Count -ne 0){throw \"Changed paths differ from contract\"}; Write-Output \"PASS only two drb1-world-vm-reentry writePaths changed\"",
+      "exitCode": 0,
+      "output": "PASS only two drb1-world-vm-reentry writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json",
+      "exitCode": 1,
+      "output": "Code style issues found in design-review-findings.md before formatting"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb1-world-vm-reentry.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-3/review-3-gpt-6-sol-attempt-1.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-3/review-4-gpt-6-sol-attempt-1.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "src/core/world.ts",
+    "src/core/compiler.ts",
+    "src/core/vm.ts"
+  ],
+  "scopeNote": "只修改本任务两项 writePaths；策划与纯文档轻量 Profile。执行 Agent 不 commit、push、tag 或发布。"
+}

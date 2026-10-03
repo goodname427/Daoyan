@@ -1,0 +1,91 @@
+{
+  "taskId": "drb8-world-closure-review",
+  "status": "completed",
+  "reviewDecision": "approved",
+  "summary": "范围修订 13、首批 A 的物理、账本、程序、生命、唯一理论、桥接、总览及已采纳 ADR-0024 在指定事实、价格、身份和容量键上可作有限条件纸面联签；未见新增实质同键冲突或须制作人新增取舍。程序、理论、桥接及账本的少量 ADR/总览状态句由原归属定向清理，不单独阻断纸面结论。真实 World/VM 接入、逐端授权与原读、逐 payer 收据、规范 AST/hash、球容量和同书六入口体验留开发后实测，当前不签可执行成功。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json"
+    ],
+    "nonGoals": "不改模块正文、ADR、共享阶段结论、游戏代码、测试或运行状态；不运行统一代码门禁，不推送、打 tag 或发布。"
+  },
+  "checks": {
+    "paperClosed": [
+      "S0/seed 的 B1 自然 C/N/X 与 B4 独立 source/lot/slice、E0/q、十九 readId 和逐端样本/授权版本",
+      "J1 本人 32、P0/P2 分付 1/2、可选 P1 分付 1；D1 本人 26/余 14；B4 十九读 29、装载 5、作用 10、本人 44/余 6 M",
+      "材料 R0 获准空读 2 M/50→48；POST 全失证已付 39/暂余 11、释锁 5；同 payer/lot 竞争逐世界序结算",
+      "B4 安装 279/559/281 S、响应 314 S、新增峰 559 S 与同版 C_S−O≥559；普通 k0 修补不复苏旧 LifeId",
+      "ADR-0024 已采纳设计覆盖、旧资产隔离、等价迁移、定位拒绝及安全回退；六入口与同书往返只有条件纸面合同"
+    ],
+    "sameKeyConflicts": [],
+    "designEvidenceGaps": [],
+    "editorialCleanup": [
+      "programmable-spells-design.md:985、world-theory-draft.md:1301、player-bridge-design.md:389,413 的 ADR-0024 待采纳措辞",
+      "mana-ledger-design.md:944 的总览仍阻断及其他旧审核轮次时态由各原归属定向清理"
+    ],
+    "afterDevelopmentAcceptance": "真实 World→共享 AST→compiler→VM→World 的物理 grant/原读/误差、净入/锁/不可取收据、规范 AST 字节与 SHA-256、球页/FIFO/旧占用及分项容量、VM M/tick/S 上界、六入口公开余态与推演台编辑—演武绑定观察—返书修改实玩。"
+  },
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb8-world-closure-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-17",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-physical-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-theory-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-bridge-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:545-710",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:886-952",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:866-985",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:676-750",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1287-1301",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:387-413",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md:1-97",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0019-属性探查与资源账本.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md",
+    "src/core/world.ts:661-674",
+    "src/core/world.ts:1140-1161",
+    "src/core/compiler.ts:362",
+    "src/core/vm.ts:312-341"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb8-world-closure-review.json\",\"utf8\")),d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"## `drb8-world-closure-review`\")[1].split(\"## `mdy-world-review`\")[0];a.equal(j.taskId,\"drb8-world-closure-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"approved\");for(const x of [\"纸面联签\",\"50→48\",\"39\",\"C_S−O≥559\",\"待实测\",\"ADR-0024\"])a.ok(d.includes(x),x);a.equal(4*4+3,19);a.equal(4*(1+2+1+2)+(2+1+2),29);a.equal(4*56+47,271);a.equal(29+5+10,44);a.equal(50-44,6);a.equal(24+5+10,39);a.equal(50-39,11);a.equal(8+19+199+53,279);a.equal(2*279+1,559);a.equal(9+11+12,32);a.equal(32+1+2,35);a.equal(12+4+8+2,26);a.equal(40-26,14);for(const q of [\"physical\",\"program\",\"life\",\"theory\",\"bridge\",\"adr\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-mdal-\"+q+(q===\"adr\"?\"-decision\":\"-consumer\")+\".json\",\"utf8\")).status,\"completed\");console.log(\"PASS drb8 evidence, mdal statuses and arithmetic\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb8-world-closure-review.json\",\"utf8\")),d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"## `drb8-world-closure-review`\")[1].split(\"## `mdy-world-review`\")[0];for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const u=m[1].split(\"#\")[0];if(u)a.ok(f.existsSync(path.resolve(p,u)),u)}for(const u of j.evidence){const q=u.split(\"#\")[0].replace(/:\\d+(?:-\\d+)?$/,\" \").trim();a.ok(f.existsSync(q),u)}console.log(\"PASS drb8 relative links and evidence paths\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json') | Sort-Object; $actual=@(git -c core.quotePath=false status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,'/') } | Sort-Object); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS drb8 exact two writePaths'",
+      "exitCode": 0
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",want=[p+\"design-review-findings.md\",p+\"tasks/design-review-drb8-world-closure-review.json\"].sort(),got=c.execFileSync(\"git\",[\"-c\",\"core.quotePath=false\",\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3)).sort();a.deepEqual(got,want);console.log(\"PASS drb8 exact two writePaths\")'",
+      "exitCode": 1,
+      "reason": "Node 子进程启动 git 遇 EPERM；改用 PowerShell 直接执行同一 Git 状态检查并通过。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json",
+      "exitCode": 1,
+      "reason": "当前环境的 .git 为只读，无法创建 .git/index.lock；本地提交未执行。"
+    }
+  ]
+}

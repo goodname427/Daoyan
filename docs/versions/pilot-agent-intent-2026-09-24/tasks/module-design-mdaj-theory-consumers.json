@@ -1,0 +1,68 @@
+{
+  "taskId": "mdaj-theory-consumers",
+  "status": "completed",
+  "summary": "以已接纳的 mdaj-physical-price 与 mdaj-carrier-install 为只读前驱，修正唯一理论消费者状态并将 559 S 安装峰并入 B4 条件容量界；复核空读、新价十九读、44/6 条件全链、payer 归属、AST 假设和各失败余态。桥接 mdai 交付已完成但当前消费者状态行尚待本轮修正；模块总览的 mdai 跨模块对账结论仍为阻断，须待桥接状态同步后由 Version PM 重核。真实 grant、收据、规范 hash、容量与 VM 实耗未取得，不作运行成功结论。本轮未提交。",
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",w=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),m=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),o=f.readFileSync(p+\"module-design.md\",\"utf8\");for(const k of [\"16/12→4/12 E0\",\"32/12→8/12 E0\",\"mdai-B4-audit-v1\",\"2 M/≤21 tick\",\"50→48\",\"29 M/≤271 tick\",\"已付 44、余额 6\",\"S_install=max(279,559,281)=559 S\",\"Smax=max(314,559)=559 S\",\"C_S−O≥559\",\"n_19=19,n_extra=0\",\"35/36 M\",\"40=26+14 M\",\"Version PM 的 mdai 总览已完成对账且仍判跨模块阻断\",\"capacityUnknown\",\"queueFull\",\"POST 失证\",\"同 payer/lot 竞争\",\"创建者死亡\"])a.ok(w.includes(k),k);a.ok(x.includes(\"旧 `mdah-B4-read-v1[pending]` 的 `1 M` 只属历史候选\"));a.ok(m.includes(\"mdai-B4-audit-v1\"));a.ok(d.includes(\"S_install=max(279,559,281)=559 S\"));a.ok(b.includes(\"mdai-bridge\"));a.ok(b.includes(\"mdah-B4-read-v1[pending]\"));a.ok(o.includes(\"阶段结论为阻断\"));a.equal(29+5+10+6,50);a.equal(50-2,48);a.equal(314<559,true);console.log(\"PASS mdaj theory consumer reconciliation, B4 conditions, S peak and residual branches\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj theory consumer reconciliation, B4 conditions, S peak and residual branches"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json\",j=JSON.parse(f.readFileSync(p,\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.filter(x=>x.id===\"mdaj-theory-consumers\").at(-1);a.equal(j.taskId,t.id);a.equal(j.status,\"completed\");a.deepEqual(j.evidence,t.writePaths);a.ok(j.commands.length>=4);a.ok(j.commands.every(c=>c.command&&c.exitCode===0));a.ok(j.failedAttempts.length>=1);for(const p of j.evidence)a.ok(f.existsSync(p),p);console.log(\"PASS mdaj task evidence metadata and contract paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj task evidence metadata and contract paths"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw \"Changed paths differ from contract: $actual\"}; Write-Output 'PASS only mdaj-theory-consumers writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdaj-theory-consumers writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "commandSummary": "首次跨模块内容断言要求正文逐字包含 `29+5+10=44/余6`。",
+      "exitCode": 1,
+      "reason": "正文表格将账目写作 `已付 44、余额 6`；检查改用文件现有措辞并分别校验算式。"
+    },
+    {
+      "commandSummary": "首次物理来源断言搜索 `旧 1 M 仅留历史候选`。",
+      "exitCode": 1,
+      "reason": "权威物理段的准确表述为旧 `mdah-B4-read-v1[pending]` 的 `1 M` 只属历史候选，检查改为核实该原文。"
+    },
+    {
+      "commandSummary": "首次桥接状态断言要求桥接现行文档已出现 `mdaj-bridge-consumers`。",
+      "exitCode": 1,
+      "reason": "该下游任务尚待派接；桥接现行文档仍是已完成的 mdai 交付且含旧 mdah 消费者说明，故正文区分前序交付完成和本轮状态修正未完成。"
+    },
+    {
+      "commandSummary": "桥接历史状态断言搜索带反引号的 `桥接 mdai-bridge` 字面格式。",
+      "exitCode": 1,
+      "reason": "实际文档以标题和交付证据标识 mdai-bridge；检查后改用源文件内真实标识。"
+    },
+    {
+      "commandSummary": "桥接旧冲突断言搜索未在桥接文件中出现的概述句 `358 行仍将物理已修正的旧价冲突写为现行问题`。",
+      "exitCode": 1,
+      "reason": "该句是对桥接第 358 行的归纳，不是源文逐字内容；检查改为核对源行实际写入的 `mdah-B4-read-v1[pending]`。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 1,
+      "reason": "新增消费者表需按 Prettier 对齐；仅格式化合同正文后，最终格式检查通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-theory-consumers.json"
+  ]
+}

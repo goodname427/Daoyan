@@ -1,0 +1,65 @@
+{
+  "taskId": "mdo-mana",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "在 P0 之外新增有限 R0 读取、K0 活跃回路维持、V0 保存窗口的独立纸面候选证书：逐字段/范围/候选槽观察价及空结果实扣、隐藏目标同形拒绝、功能与失供结构义务、互斥尝试价、tick/神识/静态毛界和付款来源；按 100/20 条件攻击与 K0 样例逐笔复算最后一击、及时与逾期补源。缺证仍为 unknownPrice，数值未经整版批准或代码实现。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),s=f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md\",\"utf8\");for(const x of [\"`mdo-mana`\",\"获准空查询\",\"隐藏目标或不存在\",\"到期后才补源\",\"unknownPrice\"])a.ok(s.includes(x),x);for(const [got,want] of [[2+4+8*5,46],[3+4+8*5,47],[2+8*5,42],[2+1+2*3,9],[4+4*3+4,20],[3+3+2,8],[7+123,130],[20+7+103,130]])a.equal(got,want);console.log(\"PASS mdo-mana direct clauses and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdo-mana direct clauses and arithmetic",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json\",x=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(x.taskId,\"mdo-mana\");a.equal(x.status,\"completed\");a.ok(x.commands.every(c=>c.exitCode===0));a.ok(x.failedAttempts.every(c=>c.exitCode!==0));for(const e of x.evidence)a.ok(f.existsSync(e),e);console.log(\"PASS mdo-mana task evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdo-mana task evidence",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+      "exitCode": 1,
+      "output": "Code style issues found in module-design-mdo-mana.json.",
+      "resolution": "Format the evidence JSON and rerun the direct formatting check."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "Git metadata is read-only in this workspace; the two verified task files remain uncommitted for the secretary to commit in a Git-writable environment. No push or tag was attempted."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdo-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"
+  ]
+}

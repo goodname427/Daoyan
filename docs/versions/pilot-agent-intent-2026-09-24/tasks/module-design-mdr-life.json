@@ -1,0 +1,81 @@
+{
+  "taskId": "mdr-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "依据已交付的 mdr-mana 前驱与主策退回意见，修订生命身份候选细则：给出临界、可逆休眠、复苏及同一身份的连续记录和证据门槛；按生命/身份 B 核对人工造物自维持、失供、修复与新生命边界；接上结构 C/A/X、资源 T、六阶段同刻顺序和死亡撤权；逐项列明五类实体与 100/20、及时补源、死亡后再损、信标修复的成功、失败及空状态。关键回路阈值、身份最低证据、休眠成本和窄域外复苏仍属理论/产品缺口。本任务已完成策划与轻量文档检查，不批准游戏实现或覆盖 ADR；本地提交因沙盒拒绝写入 .git/index.lock 尚未形成。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=require(\"node:path\"),a=require(\"node:assert/strict\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",q=b+\"life-identity-design.md\",s=f.readFileSync(q,\"utf8\"),t=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdr-life\");a.deepEqual(t.dependsOn,[\"mdr-mana\"]);for(const k of [\"同一身份所需的连续记录\",\"critical\",\"dormant\",\"dead\",\"100 余额、20 维持义务\",\"临界前及时补源\",\"死亡后再损\",\"遗体旁的修复信标\",\"B3\",\"B2\",\"B4\",\"理论缺口\",\"ADR 0017\",\"ADR 0020\",\"本轮闭合边界\"])a.ok(s.includes(k),k);let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),x)),x);n++}}console.log(\"PASS mdr-life coverage, predecessor and \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-life coverage, predecessor and 9 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(parseStageTaskResult(r,\"mdr-life\").status,\"completed\");a.ok(r.commands.length&&r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const q of r.evidence)a.ok(f.existsSync(q),q);console.log(\"PASS mdr-life task contract and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdr-life task contract and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from contract' }; Write-Output 'PASS only two contract paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two contract paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "Get-Content docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
+      "exitCode": 1,
+      "output": "Cannot find path: docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
+      "resolution": "本轮证据文件在任务开始时不存在；依据 module-design-tasks.json 中的 mdr-life 合同创建。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前沙盒仅允许读取 .git，无法形成本地提交；保留两个产物及检查证据，待有 Git 写权限的交付环境提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/adr/0017-统一实体控制属性模型.md",
+    "docs/adr/0020-事件执行上下文与生命周期.md"
+  ]
+}

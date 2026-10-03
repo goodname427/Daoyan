@@ -1,0 +1,56 @@
+{
+  "taskId": "mdx-theory-replay",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "只读消费三项 completed 直接前驱，在唯一世界理论正文以同一 mdw S0 和 mdx 版本锁重放 J1→H2 设计时条件成功、自然无源拒绝、获准空读与同刻两响应竞争；逐格给出自然事实、读/装/作用付款、双账守恒、材料热反作用、公开投影和余态，并保留生命三判、反例、ADR 影响及开发后验收。全部成功仍为纸面候选，现场原读、真实 AST/hash、实耗和实玩未执行。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"world-theory-draft.md\",\"utf8\"),s=d.split(\"### `mdx-theory-replay`\")[1].split(\"### 世界的最小物理层\")[0],e=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdx-theory-replay.json\",\"utf8\")),v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===e.taskId);a.equal(e.taskId,\"mdx-theory-replay\");a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const id of t.dependsOn)a.equal(JSON.parse(f.readFileSync(b+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const k of [\"S0=mdw-r13-S0-01\",\"JH+ 条件成功\",\"JH− 无源拒绝\",\"JH∅ 获准空读\",\"JH× 同刻竞争\",\"32=9+4+12+7\",\"76=20+8+5+4+6+33\",\"sourceLotId=source-J1-work\",\"priceVersion=mdx-JH-v1\",\"capacityCertificateVersion=mdx-JH-program-1\",\"DeathBarrier=∅\",\"100→120→20→0\",\"refundAlreadySettled\",\"开发后\",\"ADR-0017\"])a.ok(s.includes(k),k);a.equal(48+28,20+8+5+4+6+33);a.equal(32,9+4+12+7);a.equal(4096+12+4+1+51,4164);console.log(\"PASS mdx same-S0 replay, predecessor status, conservation, boundary and exact writePaths\")'",
+      "exitCode": 0,
+      "output": "PASS mdx same-S0 replay, predecessor status, conservation, boundary and exact writePaths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdx-theory-replay writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdx-theory-replay writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdx-theory-replay.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "仅对合同内世界理论正文执行 Prettier --write，之后连同本轮证据 JSON 重跑定向格式检查。"
+    }
+  ]
+}

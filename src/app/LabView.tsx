@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   VM,
@@ -13,6 +13,9 @@ import {
   type VMSnapshot,
 } from '../core/index';
 import type { CastResult, MetaDef, SpellBook } from '../core/index';
+import { appendFirstBatchSpell, FIRST_BATCH_SPELLS, type FirstBatchKind } from '../game/firstBatch';
+import { appendB4Spell } from '../game/firstBatchB4';
+import { compileFiniteProgram } from '../game/finiteProgram';
 import { Battlefield } from './Battlefield';
 import type { BattleEntity } from './Battlefield';
 import {
@@ -49,6 +52,8 @@ interface StepSession {
 interface LabViewProps {
   source: string;
   onSourceChange: (source: string) => void;
+  initialSelection?: string;
+  onSelectionChange?: (selection: string) => void;
 }
 
 /** 布阵：越晚生成越近，便于暴露「容量小 → 看漏目标」的代价 */
@@ -79,9 +84,15 @@ function aimedAt(world: World): string {
   return best === null ? '未命中' : `#${best}`;
 }
 
-export function LabView({ source, onSourceChange }: LabViewProps) {
+export function LabView({
+  source,
+  onSourceChange,
+  initialSelection,
+  onSelectionChange,
+}: LabViewProps) {
   const [editorMode, setEditorMode] = useState<'code' | 'blueprint'>('code');
-  const [selected, setSelected] = useState('spell:基础剑气');
+  const [selected, setSelected] = useState(initialSelection ?? 'spell:基础剑气');
+  useEffect(() => onSelectionChange?.(selected), [selected, onSelectionChange]);
   const [enemyCount, setEnemyCount] = useState(6);
   const [shenshiMax, setShenshiMax] = useState(64);
   const [manaMax, setManaMax] = useState(300);
@@ -92,6 +103,7 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
   const [chosenPresets, setChosenPresets] = useState<string[]>([]);
   const [presetNames, setPresetNames] = useState<Record<string, string>>({});
   const [presetFeedback, setPresetFeedback] = useState('');
+  const [firstBatchFeedback, setFirstBatchFeedback] = useState('');
   const stepVm = useRef<VM | null>(null);
   const [stepSession, setStepSession] = useState<StepSession | null>(null);
 
@@ -154,6 +166,24 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
         .join('；') || '请选择要导入的预设。',
     );
   };
+  const addFirstBatch = (kind: FirstBatchKind): void => {
+    try {
+      onSourceChange(appendFirstBatchSpell(source, kind));
+      setSelected(`spell:${FIRST_BATCH_SPELLS[kind].name}`);
+      setFirstBatchFeedback(`${kind} 已加入同一法术书；请查看静态预算，绑定后用有限场景实测。`);
+    } catch (error) {
+      setFirstBatchFeedback(error instanceof Error ? error.message : String(error));
+    }
+  };
+  const addB4 = (): void => {
+    try {
+      onSourceChange(appendB4Spell(source));
+      setSelected('spell:B4修壳');
+      setFirstBatchFeedback('B4修壳已加入同书；B1 自然首撞会在演武场有限场景先提交。');
+    } catch (error) {
+      setFirstBatchFeedback(error instanceof Error ? error.message : String(error));
+    }
+  };
   const requestedSpell = selected.startsWith('spell:') ? selected.slice(6) : '';
   const requestedMeta = selected.startsWith('meta:') ? selected.slice(5) : '';
   const active = names.includes(requestedSpell) ? requestedSpell : '';
@@ -168,6 +198,24 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
           ? `meta:${metas[0].name}`
           : '';
   const activeSpell = active || (activeKey.startsWith('spell:') ? activeKey.slice(6) : '');
+  const firstBatchIdentity = useMemo(() => {
+    if (
+      !parsed.book ||
+      !activeSpell ||
+      !['J1执行', 'D1执行', 'B4修壳'].includes(activeSpell) ||
+      !parsed.costs?.[activeSpell] ||
+      parsed.costs[activeSpell].errors.length
+    )
+      return null;
+    try {
+      return { hash: compileFiniteProgram(parsed.book, activeSpell).astHash, error: '' };
+    } catch (error) {
+      return {
+        hash: '',
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }, [parsed.book, parsed.costs, activeSpell]);
   const shownMeta =
     activeMeta ??
     (!parsed.error && activeKey.startsWith('meta:')
@@ -184,6 +232,12 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
     setStepSession(null);
     stepVm.current = null;
     if (!parsed.book || !activeSpell) return;
+    if (activeSpell === 'J1执行' || activeSpell === 'D1执行' || activeSpell === 'B4修壳') {
+      setRunError(
+        '首批有限世界法术需要同版来源、授权和容量；请到演武场绑定并运行有限世界观察。普通沙盒不提供这些事实。',
+      );
+      return;
+    }
     try {
       const program = compileProgram(parsed.book, activeSpell);
       const world = new World();
@@ -231,6 +285,10 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
     setRunError('');
     setOutcome(null);
     if (!parsed.book || !activeSpell) return;
+    if (activeSpell === 'J1执行' || activeSpell === 'D1执行' || activeSpell === 'B4修壳') {
+      setRunError('单步沙盒没有首批有限世界来源与证书；请在演武场观察真实场景。');
+      return;
+    }
     try {
       const program = compileProgram(parsed.book, activeSpell);
       const world = new World();
@@ -455,6 +513,31 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
             </section>
           )}
           <div className="spell-catalog">
+            <section className="preset-panel" aria-label="首批有限世界法术">
+              <h3>首批有限世界</h3>
+              <p className="muted small">
+                J1 杆推、D1 起步及 B1 自然首撞后的 B4 普通壳修使用真实 World/VM
+                的有限场景；静态预算只是上界。绑定不提供来源或授权，现场结果以实测收据为准。
+              </p>
+              {(['J1', 'D1'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="mini"
+                  onClick={() => addFirstBatch(kind)}
+                >
+                  加入{kind}执行
+                </button>
+              ))}
+              <button type="button" className="mini" onClick={addB4}>
+                加入B4修壳
+              </button>
+              {firstBatchFeedback && (
+                <p role="status" className="muted small">
+                  {firstBatchFeedback}
+                </p>
+              )}
+            </section>
             <section className="catalog-group">
               <h3>
                 自定义法术 <span>{names.length}</span>
@@ -568,7 +651,22 @@ export function LabView({ source, onSourceChange }: LabViewProps) {
             </optgroup>
           </select>
           {activeSpell && parsed.costs?.[activeSpell] && (
-            <CostCard cost={parsed.costs[activeSpell]} />
+            <>
+              <CostCard cost={parsed.costs[activeSpell]} />
+              {firstBatchIdentity && (
+                <p className="muted small" aria-label="首批程序身份">
+                  {firstBatchIdentity.hash ? (
+                    <>
+                      当前法术规范 AST/hash：{firstBatchIdentity.hash}
+                      。当前只有静态预算；改程序或读集后 hash
+                      重新生成，旧现场报价撤销，需在演武场重新实测。
+                    </>
+                  ) : (
+                    <>当前法术身份未证：{firstBatchIdentity.error}</>
+                  )}
+                </p>
+              )}
+            </>
           )}
         </section>
 

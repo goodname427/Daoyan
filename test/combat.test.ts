@@ -1,15 +1,25 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { analyzeBook, parseSpellbook, TICK_MS } from '../src/core/index';
 import { Battle } from '../src/game/battle';
 import { importSpellPresets, SPELL_PRESETS } from '../src/app/spellPresets';
+import { appendFirstBatchSpell } from '../src/game/firstBatch';
+import { appendB4Spell, runFirstBatchB4 } from '../src/game/firstBatchB4';
 
 const SRC = join(process.cwd(), 'src', 'game', 'spells.dy');
 
 function makeBattle(): Battle {
   return new Battle(parseSpellbook(readFileSync(SRC, 'utf8')));
+}
+
+function firstBatchBattle(bindings: Record<string, string> = {}): Battle {
+  let source = readFileSync(SRC, 'utf8');
+  source = appendFirstBatchSpell(source, 'J1');
+  source = appendFirstBatchSpell(source, 'D1');
+  source = appendB4Spell(source);
+  return new Battle(parseSpellbook(source), { playerBindings: bindings });
 }
 
 /** 推进指定秒数 */
@@ -25,6 +35,167 @@ describe('战斗初始化', () => {
     expect(b.player.alive).toBe(true);
     expect(b.foesLeft()).toBe(3);
     expect(b.state).toBe('fighting');
+  });
+});
+
+describe('首批有限世界槽位边界', () => {
+  it('invalidates the first B4 success after recontact without inventing a second quote', () => {
+    const book = parseSpellbook(appendB4Spell(''));
+    expect(runFirstBatchB4(book, 'success').success).toBe(true);
+    const after = runFirstBatchB4(book, 'recontact');
+    expect(after.naturalContacts).toBe(2);
+    expect(after.success).toBe(false);
+    expect(after.nextResponse).toEqual({
+      contactCommitted: true,
+      quote: 'invalidated',
+      capacity: 'capacityUnknown',
+      capacityReadCount: 0,
+      capacityReadPaid: 0,
+      freshReadReceipts: 0,
+      vmRan: false,
+    });
+    expect(after.readReceipts).toBe(19);
+    expect(after.actionFacts).toBe(1);
+    expect(after.payerPaid).toBe(44);
+    expect(after.shellAfter).toBeNull();
+    expect(after.reason).toContain('第二 VM 未执行');
+    for (const [scenario, capacity] of [
+      ['recontactMeasured', 'sufficient'],
+      ['recontactQueueFull', 'queueFull'],
+    ] as const) {
+      const measured = runFirstBatchB4(book, scenario);
+      expect(measured.naturalContacts).toBe(2);
+      expect(measured.success).toBe(false);
+      expect(measured.nextResponse).toEqual({
+        contactCommitted: true,
+        quote: 'invalidated',
+        capacity,
+        capacityReadCount: 2,
+        capacityReadPaid: 4,
+        freshReadReceipts: 0,
+        vmRan: false,
+      });
+      expect(measured.readReceipts).toBe(19);
+      expect(measured.actionFacts).toBe(1);
+      expect(measured.payerPaid).toBe(48);
+      expect(measured.payerBalance).toBe(2);
+      expect(measured.shellAfter).toBeNull();
+      expect(measured.reason).toContain('第二 VM 未执行');
+    }
+    const incomplete = runFirstBatchB4(
+      parseSpellbook(appendB4Spell('').replace('首批B4审计(1, 18)', '首批B4审计(1, 17)')),
+      'recontact',
+    );
+    expect(incomplete.success).toBe(false);
+    expect(incomplete.naturalContacts).toBe(1);
+    expect(incomplete.nextResponse?.contactCommitted).toBe(false);
+  });
+
+  it('rejects all three spells before VM, control session, payment or success recording', () => {
+    const battle = firstBatchBattle({
+      mouse: 'J1执行',
+      '1': 'D1执行',
+      'gamepad-a': 'B4修壳',
+    });
+    const createVm = vi.spyOn(
+      battle as unknown as { createBattleVm: (...args: unknown[]) => unknown },
+      'createBattleVm',
+    );
+    const createControlSession = vi.spyOn(battle.world, 'createControlSession');
+    const mana = battle.player.mana;
+    const paid = battle.world.resourceLedger.manaAccountSnapshot(battle.player.id)!.paid;
+    const casts = battle.stats.casts;
+
+    for (const slot of ['mouse', '1', 'gamepad-a']) {
+      expect(battle.castPlayer(slot)).toBe(false);
+      expect(battle.player.mana).toBe(mana);
+      expect(battle.world.resourceLedger.manaAccountSnapshot(battle.player.id)!.paid).toBe(paid);
+      expect(battle.stats.casts).toBe(casts);
+      expect(battle.activeCasts(battle.player.id)).toHaveLength(0);
+      expect(battle.world.controlRecordSnapshot()).toHaveLength(0);
+    }
+
+    expect(createVm).not.toHaveBeenCalled();
+    expect(createControlSession).not.toHaveBeenCalled();
+    expect(battle.world.driveActionFacts).toHaveLength(0);
+    expect(battle.firstBatchLegacyRejections.map((item) => item.spell)).toEqual([
+      'B4修壳',
+      'D1执行',
+      'J1执行',
+    ]);
+    expect(battle.firstBatchLegacyRejections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          vmCreated: false,
+          controlSessionCreated: false,
+          manaPaid: 0,
+          successRecorded: false,
+        }),
+      ]),
+    );
+    expect(battle.log.join(' ')).toContain('缺少同版来源、授权和容量证书');
+  });
+
+  it('applies the same rejection to mouse input, AI labels and entity events', () => {
+    const battle = firstBatchBattle({ mouse: 'J1执行' });
+    const createVm = vi.spyOn(
+      battle as unknown as { createBattleVm: (...args: unknown[]) => unknown },
+      'createBattleVm',
+    );
+    const createControlSession = vi.spyOn(battle.world, 'createControlSession');
+    const mana = battle.player.mana;
+    const paid = battle.world.resourceLedger.manaAccountSnapshot(battle.player.id)!.paid;
+
+    expect(battle.pressSlot('mouse')).toBe(true);
+    battle.update(0.01);
+    battle.releaseSlot('mouse');
+    battle.update(0.01);
+
+    const foe = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+    battle.setBinding('mouse', 'D1执行');
+    foe.bindings.attack = 'B4修壳';
+    expect(battle.trigger(foe.id, 'attack')).toBe(false);
+
+    for (const spell of ['J1执行', 'D1执行', 'B4修壳']) {
+      expect(
+        battle.subscribeSpellEvent(battle.player.id, `legacy-${spell}`, 'damage', spell, {
+          targetId: battle.player.id,
+        }),
+      ).not.toBeNull();
+    }
+    battle.world.damage(battle.player.id, 1);
+    battle.world.dispatchWorldEvents();
+
+    expect(createVm).not.toHaveBeenCalled();
+    expect(createControlSession).not.toHaveBeenCalled();
+    expect(battle.player.mana).toBe(mana);
+    expect(battle.world.resourceLedger.manaAccountSnapshot(battle.player.id)!.paid).toBe(paid);
+    expect(battle.stats.casts).toBe(0);
+    expect(battle.activeCasts(battle.player.id)).toHaveLength(0);
+    expect(battle.world.controlRecordSnapshot()).toHaveLength(0);
+    expect(battle.eventResponses).toHaveLength(3);
+    expect(battle.eventResponses.every((response) => response.state === 'failed')).toBe(true);
+    expect(battle.eventResponses.every((response) => response.mana === 0)).toBe(true);
+    expect(battle.firstBatchLegacyRejections.map((item) => item.source)).toEqual(
+      expect.arrayContaining([
+        'slot:mouse',
+        'slot:attack',
+        'event:damage:legacy-J1执行',
+        'event:damage:legacy-D1执行',
+        'event:damage:legacy-B4修壳',
+      ]),
+    );
+  });
+
+  it('keeps unrelated foe casts in global stats without turning a rejection into success', () => {
+    const battle = firstBatchBattle({ mouse: 'J1执行' });
+    expect(battle.castPlayer('mouse')).toBe(false);
+    const rejected = battle.firstBatchLegacyRejections[0];
+    const foe = battle.world.actors.find((actor) => actor.faction === 'foe')!;
+    expect(battle.trigger(foe.id, 'attack')).toBe(true);
+    expect(battle.stats.casts).toBe(1);
+    expect(rejected).toMatchObject({ spell: 'J1执行', successRecorded: false });
+    expect(battle.firstBatchLegacyRejections).toHaveLength(1);
   });
 });
 

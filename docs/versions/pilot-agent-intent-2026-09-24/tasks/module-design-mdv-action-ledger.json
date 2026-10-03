@@ -1,0 +1,38 @@
+{
+  "taskId": "mdv-action-ledger",
+  "status": "completed",
+  "summary": "消费 mdv-physical-residual 与 mdu-ledger，补齐 l* 零价/正毛价、payer/grant、LoadTx 来源净减、AT0 独立原子与算法报价义务、互斥成功/失证/求证失败账及套利反例。当前物理包与攻击描述符未签；旧 100 M 攻击为 unknownPrice，相关 LoadTx/Tx/A 仍为空。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-action-ledger.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-action-ledger.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-action-ledger.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e '<inline assertions: contract coverage, physical predecessor, arithmetic and evidence>'",
+      "exitCode": 0,
+      "output": "PASS mdv-action-ledger contract coverage, physical predecessor, arithmetic and evidence"
+    },
+    {
+      "command": "PowerShell exact changed-path comparison against the two task writePaths",
+      "exitCode": 0,
+      "output": "PASS only two task writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-action-ledger.json",
+      "reason": "在将实际通过命令写入证据后，JSON 首次格式检查未通过；随后对证据 JSON 执行 prettier --write 并复查通过。",
+      "exitCode": 1
+    }
+  ]
+}

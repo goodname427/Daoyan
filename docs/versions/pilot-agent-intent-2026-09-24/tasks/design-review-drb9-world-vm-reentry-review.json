@@ -1,0 +1,64 @@
+{
+  "taskId": "drb9-world-vm-reentry-review",
+  "status": "completed",
+  "reviewDecision": "approved",
+  "summary": "范围修订 13、首批 A 的有限纸面合同及 ADR-0024 覆盖未见新增实质同键冲突；J1、D1、B1→B4 已给出同一 World/VM 的接入点、反例和最小退回。development-5 的 J1 双端/辅源/取得前热原读仍受审查阻断，三行为运行交付、真实收据、规范 AST/hash、球容量和 VM 实耗未获验收。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json"
+    ],
+    "nonGoals": "不改实现、测试、模块正文、ADR、共享阶段结论或运行状态；不运行代码门禁、不推送或发布。"
+  },
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb9-world-vm-reentry-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb8-world-closure-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/report.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/recovery.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-1-gpt-6-sol-attempt-1.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-3-gpt-6-sol-attempt-1.json",
+    ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-4-gpt-6-sol-attempt-1.json",
+    "src/core/world.ts",
+    "src/core/compiler.ts",
+    "src/core/vm.ts"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb9-world-vm-reentry-review.json\",\"utf8\")),d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\");a.equal(j.taskId,\"drb9-world-vm-reentry-review\");a.equal(j.status,\"completed\");a.ok(d.includes(\"ADR-0018 逐条覆盖\"));a.ok(d.includes(\"development-5 的运行交付仍受阻\"));a.equal(4*4+3,19);a.equal(29+5+10,44);a.equal(2*279+1,559);console.log(\"PASS drb9 JSON and contract\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),path=require(\"node:path\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=require(\"./\"+p+\"tasks/design-review-drb9-world-vm-reentry-review.json\"),d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"## `drb9-world-vm-reentry-review`\")[1].split(\"## `drb8-world-closure-review`\")[0];for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const q=m[1].split(\"#\")[0];if(q)a.ok(f.existsSync(path.resolve(p,q)),q)}for(const q of j.evidence)a.ok(f.existsSync(q.split(\"#\")[0]),q);console.log(\"PASS drb9 links and evidence\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json') | Sort-Object; $actual=@(git -c core.quotePath=false status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,'/') } | Sort-Object); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS drb9 exact two writePaths'",
+      "exitCode": 0
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json",
+      "exitCode": 1,
+      "reason": "首次 Markdown 格式检查发现新增表格未按 Prettier 排版；执行 --write 后同命令复检退出 0。"
+    }
+  ]
+}

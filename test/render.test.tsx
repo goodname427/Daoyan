@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import * as externalMetas from '../src/game/externalMetas';
-import { defMeta, getMeta, T } from '../src/core/index';
+import { defMeta, getMeta, parseSpellbook, T, World } from '../src/core/index';
 import { SAVE_INCREMENTAL_KEY, SAVE_STORAGE_KEY } from '../src/app/persistence';
+import { appendFirstBatchSpell } from '../src/game/firstBatch';
+import { compileFiniteProgram } from '../src/game/finiteProgram';
 
 async function renderReady(element: ReactElement) {
   const view = render(element);
@@ -42,6 +44,168 @@ afterEach(() => {
 });
 
 describe('app rendering smoke test', () => {
+  it('does not list targets whose position is unavailable to the player', async () => {
+    const senseQuote = World.prototype.senseQuote;
+    vi.spyOn(World.prototype, 'senseQuote').mockImplementation(function (
+      this: World,
+      reader,
+      targetId,
+      field,
+    ) {
+      if (targetId !== reader.id && field === 'position') return null;
+      return senseQuote.call(this, reader, targetId, field);
+    });
+    const { App } = await import('../src/app/App');
+    const view = await renderReady(<App />);
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
+    const target = view.getByRole('combobox', { name: '探查目标' }) as HTMLSelectElement;
+    expect(target.options).toHaveLength(1);
+    expect(target.textContent).toBe('无目标');
+  });
+
+  it('round trips J1, D1 and B4 in one book, then edits J1 and discards the old quote', async () => {
+    const { App } = await import('../src/app/App');
+    const view = await renderReady(<App />);
+    for (const name of ['加入J1执行', '加入D1执行', '加入B4修壳'])
+      fireEvent.click(view.getByRole('button', { name }));
+    fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
+    const identity = view.getByLabelText('首批程序身份');
+    const originalHash = identity.textContent?.match(/[a-f0-9]{64}/)?.[0];
+    expect(originalHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(view.container.querySelector('.cost-card')?.textContent).toMatch(/神识|法力|耗时/);
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    const slot = view.getByRole('combobox', { name: '1' });
+    fireEvent.change(slot, { target: { value: 'J1执行' } });
+    fireEvent.click(view.getByRole('button', { name: '有源执行' }));
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('原读收据 15');
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('本人已付 32 M');
+    fireEvent.click(view.getByRole('button', { name: '无源反例' }));
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('作用未提交');
+    fireEvent.change(slot, { target: { value: 'D1执行' } });
+    expect(view.queryByLabelText('有限世界收据')).toBeNull();
+    fireEvent.click(view.getByRole('button', { name: '有源执行' }));
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('原读收据 14');
+    expect(view.getByLabelText('有限世界收据').textContent).toContain('本人已付 26 M');
+    fireEvent.change(slot, { target: { value: 'B4修壳' } });
+    fireEvent.click(view.getByRole('button', { name: 'B1首撞后修壳' }));
+    const b4Receipt = view.getByLabelText('B1与B4有限世界收据');
+    expect(b4Receipt.textContent).toContain('原读收据 19');
+    expect(b4Receipt.textContent).toContain('当前普通壳 3、废料 1');
+    expect(b4Receipt.textContent).not.toMatch(/Corpse-k0-01|grantId|treasury/);
+    fireEvent.click(view.getByRole('button', { name: '修壳后获准空读' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain('空结果收据已提交');
+    fireEvent.click(view.getByRole('button', { name: 'POST 失证' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain('全链未证成');
+    fireEvent.click(view.getByRole('button', { name: '修壳后再撞（未获准读容量）' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain(
+      '报价已撤销、容量 capacityUnknown',
+    );
+    fireEvent.click(view.getByRole('button', { name: '再撞容量足额' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain(
+      '报价已撤销、容量 sufficient、本人容量新读 2 笔 / 已付 4 M',
+    );
+    fireEvent.click(view.getByRole('button', { name: '再撞 FIFO 实满' }));
+    expect(view.getByLabelText('B1与B4有限世界收据').textContent).toContain(
+      '报价已撤销、容量 queueFull、本人容量新读 2 笔 / 已付 4 M',
+    );
+    fireEvent.click(view.getByRole('button', { name: /推演台/ }));
+    fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
+    const editor = view.container.querySelector('.code-input') as HTMLTextAreaElement;
+    fireEvent.change(editor, {
+      target: { value: editor.value.replace('首批J1原读(1, 14)', '首批J1原读(1, 13)') },
+    });
+    await waitFor(() =>
+      expect(view.getByLabelText('首批程序身份').textContent).not.toContain(originalHash),
+    );
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    expect(view.queryByLabelText('B1与B4有限世界收据')).toBeNull();
+    fireEvent.change(view.getByRole('combobox', { name: '1' }), {
+      target: { value: 'J1执行' },
+    });
+    fireEvent.click(view.getByRole('button', { name: '有源执行' }));
+    const revisedReceipt = view.getByLabelText('有限世界收据').textContent;
+    expect(revisedReceipt).toContain('作用已提交；全链未证成');
+    expect(revisedReceipt).toContain('原读收据 14');
+    expect(revisedReceipt).toContain('旧报价不继承');
+  });
+
+  it('shows all three old Battle rejections without finite payment or player success records', async () => {
+    const { App } = await import('../src/app/App');
+    const view = await renderReady(<App />);
+    for (const name of ['加入J1执行', '加入D1执行', '加入B4修壳'])
+      fireEvent.click(view.getByRole('button', { name }));
+    fireEvent.click(view.getByRole('button', { name: /演武场/ }));
+    fireEvent.change(view.getByRole('combobox', { name: '左键' }), {
+      target: { value: 'J1执行' },
+    });
+    fireEvent.change(view.getByRole('combobox', { name: '1' }), {
+      target: { value: 'D1执行' },
+    });
+    fireEvent.change(view.getByRole('combobox', { name: '2' }), {
+      target: { value: 'B4修壳' },
+    });
+    fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
+
+    const canvas = view.container.querySelector('canvas.arena')!;
+    fireEvent.mouseDown(canvas);
+    fireEvent.mouseUp(canvas);
+    await waitFor(() =>
+      expect(view.getByLabelText('旧 Battle 首批拒绝').textContent).toContain('J1执行'),
+    );
+    fireEvent.keyDown(window, { code: 'Digit1' });
+    fireEvent.keyUp(window, { code: 'Digit1' });
+    await waitFor(() =>
+      expect(view.getByLabelText('旧 Battle 首批拒绝').textContent).toContain('D1执行'),
+    );
+    fireEvent.keyDown(window, { code: 'Digit2' });
+    fireEvent.keyUp(window, { code: 'Digit2' });
+    await waitFor(() =>
+      expect(view.getByLabelText('旧 Battle 首批拒绝').textContent).toContain('B4修壳'),
+    );
+
+    const rejection = view.getByLabelText('旧 Battle 首批拒绝').textContent ?? '';
+    expect(rejection).toContain('缺少同版来源、授权和容量证书');
+    expect(rejection).toContain('VM 0、控制会话 0');
+    expect(rejection).toContain('玩家法力扣除 0、有限世界付款 0、成功施法记录 0');
+    expect(view.getByLabelText('账户与会话摘要').textContent).toContain('本人法力 300.0');
+    expect(view.getByLabelText('账户与会话摘要').textContent).toContain('累计付款 0.0');
+    expect(view.queryByLabelText('有限世界收据')).toBeNull();
+    expect(view.queryByLabelText('B1与B4有限世界收据')).toBeNull();
+    expect(view.queryByTestId('active-casts')).toBeNull();
+    expect(view.container.querySelector('.meta-info')?.textContent).toContain(
+      '全场施法起手（含妖兽）',
+    );
+    expect(rejection).toContain('不代表本次拒绝成功');
+  });
+
+  it('updates the finite entry budget and hash when a same-book helper is edited', async () => {
+    const { LabView } = await import('../src/app/LabView');
+    const source = appendFirstBatchSpell(
+      'spell 二级 -> num { return 0 }\nspell 旁注 -> num { return 二级() }',
+      'J1',
+    ).replace('spell J1执行 -> bool {', 'spell J1执行 -> bool {\n旁注()');
+    function Harness() {
+      const [book, setBook] = useState(source);
+      return <LabView source={book} onSourceChange={setBook} initialSelection="spell:J1执行" />;
+    }
+    const view = render(<Harness />);
+    const identity = view.getByLabelText('首批程序身份');
+    const oldHash = compileFiniteProgram(parseSpellbook(source), 'J1执行').astHash;
+    expect(identity.textContent).toContain(oldHash);
+    const oldBudget = view.container.querySelector('.cost-card')?.textContent;
+    fireEvent.click(view.getByRole('button', { name: /^二级/ }));
+    const editor = view.container.querySelector('.code-input') as HTMLTextAreaElement;
+    fireEvent.change(editor, {
+      target: { value: editor.value.replace('return 0', '自身位置()\nreturn 0') },
+    });
+    fireEvent.click(view.getByRole('button', { name: /^J1执行/ }));
+    await waitFor(() =>
+      expect(view.getByLabelText('首批程序身份').textContent).not.toContain(oldHash),
+    );
+    expect(view.container.querySelector('.cost-card')?.textContent).not.toBe(oldBudget);
+  });
+
   it('shows a paid unavailable sense result in the lab sandbox', async () => {
     const { LabView } = await import('../src/app/LabView');
     const view = render(
@@ -199,6 +363,7 @@ describe('app rendering smoke test', () => {
     fireEvent.click(view.getByRole('button', { name: /演武场/ }));
     expect(view.getByLabelText('授权属性面板').textContent).toContain('无目标');
     expect(view.getByLabelText('授权属性面板').textContent).not.toContain('speedMax');
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
     fireEvent.click(view.getByRole('button', { name: '读取自身快照' }));
     const panel = view.getByLabelText('授权属性面板');
@@ -208,8 +373,8 @@ describe('app rendering smoke test', () => {
     expect(target.options.length).toBeGreaterThan(1);
     fireEvent.change(target, { target: { value: target.options[1].value } });
     fireEvent.click(view.getByRole('button', { name: '读取目标快照' }));
-    expect(panel.textContent).toContain('不可探查');
-    expect(panel.textContent).toContain('尚无获准快照');
+    expect(panel.textContent).toContain('position');
+    expect(panel.textContent).toContain('hp未知');
 
     fireEvent.click(view.getByRole('button', { name: /推演台/ }));
     fireEvent.click(view.getByRole('button', { name: /演武场/ }));
@@ -359,6 +524,7 @@ describe('app rendering smoke test', () => {
     expect((view.getByRole('button', { name: '开启目标监控' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     fireEvent.click(view.getAllByRole('button', { name: '开始演武' })[0]);
     const target = view.getByRole('combobox', { name: '探查目标' }) as HTMLSelectElement;
     fireEvent.change(target, { target: { value: target.options[1].value } });

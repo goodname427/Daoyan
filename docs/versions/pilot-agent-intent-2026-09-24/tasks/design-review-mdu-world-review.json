@@ -1,0 +1,39 @@
+{
+  "taskId": "mdu-world-review",
+  "status": "completed",
+  "summary": "独立复审五项 mdu 成果并追加逐项判断、共同初态的物理/法力/生命/程序逐笔复算、未预设跨实体组合、六入口五结果纸面往返及现行实现与 ADR 0017–0020 影响。五项纸面合同均有未闭合正证；另发现封印整包与保守可用份额混记、暂停边沿与 ADR-0020 冲突及 100/20 支线池容量缺口。结论为 changes-requested，退回详细策划；没有新规则实玩或代码门禁结论。当前宿主 .git 只读，git add 被拒，未形成本地提交。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdu-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdu-world-review.json\",\"utf8\")),t=JSON.parse(f.readFileSync(p+\"design-review-tasks.json\",\"utf8\")).tasks[0];a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);for(const k of [\"# `mdu-world-review`\",\"`mdu-source`\",\"`mdu-ledger`\",\"`mdu-life`\",\"`mdu-program`\",\"`mdu-theory`\",\"封印整包与消耗份额\",\"暂停边沿\",\"≥120 M\",\"changes-requested\"])a.ok(d.includes(k),k);a.equal(Math.min(18-6,14,15),12);a.equal(Math.min(42-14,30,31),28);a.equal(16-12,4);a.equal(32-24,8);a.equal(7+3+100+20,130);for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdu review contract, coverage and arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdu review contract, coverage and arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdu-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdu-world-review.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdu-world-review.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdu-world-review writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdu-world-review writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdu-world-review.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "reason": "当前执行环境对 .git 只有读取权限；两个合同路径的改动保留在工作区，未暂存、提交、推送或打 tag。"
+    }
+  ]
+}

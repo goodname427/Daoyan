@@ -1,0 +1,51 @@
+{
+  "taskId": "mdv-pause-bridge",
+  "status": "completed",
+  "summary": "修订玩家桥接合同，使暂停输入按 ADR-0020 的有界 FIFO 缓存并在恢复先结算到期/续费后有序复验；明确短按、到期、溢出和重放的玩家结果，修正 mds 历史条件证、ADR-0018 职责及六入口权限映射，并补充推演台—演武场—返回同书修改的未来纸面验收步骤。未声称已完成实际可玩验证。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-pause-bridge.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "$d=Get-Content docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md -Raw; $checks=@('每输入拥有者最多 64 条','先在当前模拟时刻结算到期/失效，再处理应付续费','按原到达序逐项复验','墙钟暂停时长不计入','mds-*` 证书/事实仅为历史条件稿','mdt-theory','暂停中按下再松开','缓存超过 64 条','未知与域外','未来验收脚本','不代表新证书规则已经实现','ADR-0018《运动、供能与命中守恒》','规范意图','actorId','executorId','六种入口'); foreach($x in $checks){if(-not $d.Contains($x)){throw \"missing: $x\"}}; 'PASS pause bridge coverage checks'",
+      "exitCode": 0,
+      "output": "PASS pause bridge coverage checks",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md"]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-pause-bridge.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only two mdv-pause-bridge writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two mdv-pause-bridge writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-pause-bridge.json",
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "$d=Get-Content docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md -Raw; $checks=@('每输入拥有者最多 64 条','先在当前模拟时刻结算到期/失效，再处理应付续费','按原到达序逐项复验','墙钟暂停时长不计入','mds-*` 证书/事实仅为历史条件稿','mdt-theory','暂停中按下再松开','缓存超过 64 条','未知与域外','未来验收脚本','不代表新证书规则已经实现','ADR-0018《运动、供能与命中守恒》','规范意图、actorId、executorId','六种入口'); foreach($x in $checks){if(-not $d.Contains($x)){throw \"missing: $x\"}}; 'PASS pause bridge coverage checks'",
+      "exitCode": 1,
+      "output": "内容断言使用的复合格式串未匹配文本中的逗号分隔写法；改为分别断言规范意图、actorId 与 executorId 后通过。"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdv-pause-bridge.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw \"Changed paths differ from contract: $($actual -join ', ')\"}; Write-Output 'PASS only mdv-pause-bridge writePaths changed'",
+      "exitCode": 1,
+      "output": "证据 JSON 创建前运行，工作区仅含设计文档；写入合同证据文件后将重跑精确路径比较。"
+    }
+  ]
+}

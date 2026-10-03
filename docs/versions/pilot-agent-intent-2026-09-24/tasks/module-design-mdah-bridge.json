@@ -1,0 +1,66 @@
+{
+  "taskId": "mdah-bridge",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "Consumed mdah-theory and current physics, ledger, program and life conclusions; updated the first-batch A player bridge with a finite 16+3 read precheck, six-entry same-book flow, conditional payer projections and ten failure/success branches. Executable B4 success remains blocked by unsigned field grants, endpoints/samples, ADR-0019 composite pricing and the pending priceVersion. No runtime interaction or charge was claimed.",
+  "writePaths": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-bridge.json"
+  ],
+  "reconciliation": {
+    "chiefReview": "design-review.md#drb3-world-closure-review remains changes-requested; earlier producer approval does not sign this revision.",
+    "predecessor": "tasks/module-design-mdah-theory.json completed; world-theory-draft.md:1165-1226 is the read-only replay and current consumer audit.",
+    "physical": "physics-material-design.md:584-615 has 16 named R0-R3 candidate reads and three independent POST candidates at B4-v1/slice-B4-01 after C-B1-01→N-B1-impact-01→X-B1-shell-v1. Endpoint-field grants, environment/meter IDs, fresh sample versions and POST originals are not signed. Natural 10=4+2+4 E0 and corpse 3q=2q+fragment q precede the independent B4 100=53+47 E0/12, 32/12→8/12 package and 4q=2q isolated+q shell+q waste.",
+    "ledger": "mana-ledger-design.md:820-870 owns acct-B1-B4/payerGrant-B4-v1, receipt-B4-funded-v1 conditional net credit 50, per-read/post receipt slots and mdah-B4-read-v1[pending]. Executable Quote=unknownPrice. Physical and ledger n meanings conflict; bridge uses ledger n_extra only for counterfactual additional reads. If all nineteen and extras are authorized 1 M composite atoms with unchanged load/action costs, n_extra=0 gives paid 34/end 16, POST unexecuted after action paid 31/temporary 19; n_extra>0 needs staged 34+n_extra/16−n_extra only through 16 and actual receipts. J1 self 32 plus P0/P2 1/2 and optional P1 1 gives cross-account 35/36; D1 own 40−26=14, without transferring payer rights.",
+    "program": "programmable-spells-design.md:807-849 owns book-mdu-01/v1, independent assumed B4 AST/hash with 16+3 indices, body page/slot/FIFO/frame admission and conditional Mmax/Wmax/Smax. Real canonical hash, body capacity/old occupancy and VM usage are unknown. Old 40 S/232/249 tick only hold under strict unchanged nineteen-read assumptions; new reads or price/version changes revoke affected Quote and certificates.",
+    "life": "life-identity-design.md:616-656 limits repair to ordinary k0. LifeId/assessmentId, key k_m/k_a, preservation/control chains and DeathBarrier remain separate; repair or POST failure does not resurrect an old LifeId.",
+    "playerCases": "Independent resets cover conditional repair, contact without fracture, no collision, authorized empty read, pre-read refusal versus an invoked ADR-0019 denied probe, unknown price/material/capacity, out of domain, same-payer/lot competition, recollision/double contact, POST evidence loss and idempotent event replay. Only settled atoms are projected to their authorized payer; hidden endpoints and other payer balances are clipped.",
+    "consumerClosure": "module-design.md:1-5,12-20,37-43 still describes the mdag candidate-endpoint gap and old conditional 34/16 and 40 S/249 tick displays. Version PM must distinguish newly enumerated candidate IDs from unsigned grant/price evidence, add pending priceVersion/POST/n_extra, then reassess cross-module signoff. This task does not modify the shared overview.",
+    "designBlockers": [
+      "B4 per-endpoint field grants and post-state sample versions",
+      "environment and meter endpoint identity and all three independent POST originals",
+      "ADR-0019 per-field public positive price/work bound versus 1 M composite audit atom",
+      "physical versus ledger n definition and signed mdah-B4-read-v1 priceVersion",
+      "canonical B4 hash and measured per-body capacity/old occupancy for executable admission"
+    ],
+    "deferredAcceptance": "Actual six-entry inputs and the same spell-book editing/binding/return loop, acquired readings and errors, settled receipts/debits, canonical hash, body capacity and VM tick/S belong to approved development and candidate acceptance."
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\").split(\"## `mdah-bridge`\")[1],src=[\"physics-material-design.md\",\"mana-ledger-design.md\",\"programmable-spells-design.md\",\"life-identity-design.md\",\"world-theory-draft.md\"].map(x=>f.readFileSync(p+x,\"utf8\")),ids=[...new Set([...src[0].matchAll(/`(Read-B4-(?:main|aux|heat|material)-R[0-3])`/g)].map(x=>x[1]))],post=[\"POST-B4-main\",\"POST-B4-heat\",\"POST-B4-material\"];a.equal(ids.length,16);for(const id of [...ids,...post])for(const s of src)a.ok(s.includes(id),id);for(const k of [\"book-mdu-01/v1\",\"B4-v1/slice-B4-01\",\"mdah-B4-read-v1[pending]\",\"n_extra\",\"unknownPrice\",\"capacityUnknown\",\"deniedOrUnavailable\",\"同一书的六入口\",\"定向反查\"])a.ok(b.includes(k),k);for(const [x,y] of [[16+5+10+3,34],[50-34,16],[16+5+10,31],[50-31,19],[19*10+10+20+12,232],[232+12+5,249],[8+1+2+19+10,40],[32+1+2,35],[35+1,36],[40-26,14]])a.equal(x,y);console.log(\"PASS mdah bridge 16+3 read keys and conditional paper accounts\")'",
+      "exitCode": 0,
+      "output": "PASS mdah bridge 16+3 read keys and conditional paper accounts"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-bridge.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-bridge.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdah-bridge\");a.equal(e.taskId,\"mdah-bridge\");a.equal(e.status,\"completed\");a.deepEqual(e.writePaths,t.writePaths);a.deepEqual(e.evidence,t.writePaths);a.ok(e.commands.every(c=>c.exitCode===0));console.log(\"PASS mdah bridge evidence identity and exact paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdah bridge evidence identity and exact paths"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-bridge.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",x=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).split(/\\r?\\n/).filter(Boolean).map(s=>s.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(x,[p+\"player-bridge-design.md\",p+\"tasks/module-design-mdah-bridge.json\"].sort());console.log(\"PASS mdah exact two writePaths\")'",
+      "exitCode": 0,
+      "output": "PASS mdah exact two writePaths"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",x=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(s=>s.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(x,[p+\"player-bridge-design.md\",p+\"tasks/module-design-mdah-bridge.json\"].sort());console.log(\"PASS mdah exact two writePaths\")'",
+      "exitCode": 1,
+      "reason": "The path-only check called trim() on porcelain output, removed the leading status-space from the modified file entry, and then sliced off its first path character. The check was corrected to split lines without trimming and rerun."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-bridge.json"
+  ]
+}

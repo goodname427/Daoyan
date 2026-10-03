@@ -1,0 +1,135 @@
+{
+  "taskId": "mdal-life-consumer",
+  "status": "completed",
+  "summary": "相对 mdak 和前驱 mdal-program-consumer，仅修订生命正文的现行总览引用及 drb7 轮次；保留 LifeId、四证、普通 k0 修壳、死亡授权与已付余态规则。总览 1–13 已列新价和 559 S 并撤旧阻断，生命正文不裁定总览后续状态。设计合同纸面同键，无运行成功声明。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json"
+    ],
+    "readOnlyPredecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
+    "nonGoals": "不改总览、其他模块、ADR 或代码；不重签生命阈值、付款价或运行验收。"
+  },
+  "reconciliation": {
+    "reviewAndOverview": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/design-review.md:3-18; docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md:1211-1227; docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-13",
+      "keys": [
+        "drb7-world-closure-review",
+        "changes-requested",
+        "mdak",
+        "mdai-B4-audit-v1",
+        "C-B4-mdai-carrier-v1"
+      ],
+      "result": "drb7 只退回消费者旧流程句；总览 1–13 已撤旧第 12/14/18/20 行的物理阻断并列 44/6 M、559 S、C_S−O≥559。生命正文不预言总览之后是否通过，纸面汇总不等于实测。"
+    },
+    "physical": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:637-710",
+      "keys": [
+        "S0-physical-v1/seed-physical-v1",
+        "B4-v1/slice-B4-01",
+        "C-B1-01/N-B1-impact-01/X-B1-shell-v1",
+        "V0…VP",
+        "Q[k0]"
+      ],
+      "result": "物理独占十九个 readId 的 endpointId/field/phase、授权撤权、鲜值/校准及 k0 结构版。首撞两端 −6/+6 μ·L/s、10=4+2+4 E0、旧壳 3q=2q+残片q；B4 独立 100=53+47 E0/12、包 32/12→8/12、仓 4q=隔离2q+壳q+废料q。自然过程零 B4 M/VM tick，普通 k0 编辑不触及 k_m/k_a、store 或三链。"
+    },
+    "ledger": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:896-946; docs/adr/0019-属性探查与资源账本.md",
+      "keys": [
+        "priceVersion=mdai-B4-audit-v1",
+        "workVersion=audit-work-v1",
+        "acct-B1-B4/payerGrant-B4-v1",
+        "receipt-B4-funded-v1",
+        "Read-B4-material-R0"
+      ],
+      "result": "账本独占逐 readId/requestId 的不可取 ReadTx/receiptId、本人 payer/grant、成功与 attempt 互斥及锁/释锁。十九读 29 M/≤271 tick，装载 5、作用 10；B4 本人条件净入 50、已付 44、余 6。合法空材料 R0 自付 2、50→48。POST 三读全未执行时已付 39、暂余 11、释未用锁 5。J1 本人 32=9+11+12，P0/P2 自付 1/2、可选 P1 自付 1，跨账户 35/36；D1 本人 40=26+14。均不代 B4 付款；真实净入与收据未证，Quote=unknownPrice。"
+    },
+    "program": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:866-925,960-989; docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
+      "keys": [
+        "book-mdu-01/v1",
+        "AST-B4-mdai-audit-v1/H_B4_mdai_assumed_v1",
+        "B4-R19-projection-v1",
+        "C-B4-mdai-carrier-v1",
+        "mdai-B4-audit-v1"
+      ],
+      "result": "单一纸面 AST/hash 定位符覆盖十九个索引 0…18、各 readId 投影/收据及已提交 factId，旧 B4 hash 不是别名；J1 同 AST/hash 纸面别名与十五读另核，D1 独立。设计页 279 S、转交峰 559 S、释暂存后 281 S、响应 314 S，Smax=559 且 C_S−O≥559，另需页/槽/订阅/FIFO/引用/帧同版分项容量；物理链≤313、响应≤330 tick。规范字节/SHA-256、实容与实耗未知，capacityUnknown。"
+    },
+    "life": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:676-750; docs/adr/0020-事件执行上下文与生命周期.md",
+      "keys": ["LifeId", "assessmentId", "k0/k_m/k_a", "DeathBarrier", "structureVersion", "K0/V0"],
+      "result": "生命独占旧 LifeId、每次 assessmentId、结构/记忆/控制三链及四证评估；普通 k0 壳修仅给新结构版与 assessmentId，不复苏旧 LifeId。四证不足 lifeState/identityRelation=unknown/unknown 并冻结旧私权；真终界仅⑤按 (LifeId,terminalSequence) 一次屏障，⑥撤死者派生未来控制、订阅、提款、读/付款 grant 并释未执行锁。独立有效 A1/B1 自有权另核，已提交事实/付款不倒带。"
+    },
+    "theory": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1289-1301",
+      "keys": [
+        "B4-v1/slice-B4-01",
+        "readId/priceVersion/receiptId",
+        "LifeId/assessmentId",
+        "mdai-B4-audit-v1"
+      ],
+      "result": "同键消费 44/6、39/11、空读 2/48、559 S 与自然先于付费、⑤评估、⑥派发；保留已付与独立 payer。1293/1299/1301 的旧总览 blocked/待重核是理论归属的流程句，不构成生命合同数值冲突。"
+    },
+    "bridge": {
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:370-385",
+      "keys": [
+        "book-mdu-01/v1",
+        "B4-v1/slice-B4-01",
+        "readId/receiptId/priceVersion",
+        "LifeId/assessmentId"
+      ],
+      "result": "六入口按同书同价及身份评估投影，只显示获准普通壳况、本人真实已结/暂余、释锁及裁剪拒因；POST 未读包余为待测，无权/隐藏不泄露私值。385 的旧总览阻断/drb5 句由桥接归属清理，六入口实玩未证。"
+    }
+  },
+  "counterexamples": {
+    "fourProofsMissing": "创建者关键损、store 不可逆失承载、三链终局、所有获准延续路径关闭任一缺证时，旧身份 lifeState/identityRelation=unknown/unknown；不得以零余额、过期、壳破或创建者关系补证。",
+    "ordinaryShellRepair": "B4 同版十九读+装载+作用即使条件已付 44/余 6 且 k0 壳已修，也只更新 structureVersion/assessmentId；k_m/k_a 与保存/控制链无修复，旧 dead 不复苏，新 LifeId 不自动签。",
+    "deathAndRevocation": "四证齐仅⑤一次 DeathBarrier；⑥撤主体派生未来控制/订阅/提款/读/付款权、释未执行锁，B1/A1 自有独立有效权不被连坐。遗体再损或修壳不重放屏障。",
+    "committedRemainder": "已提交 C/N/X、A/X、热/残片/切片退役、ReadTx/Tx 与已付不因后续拒绝、失鲜、POST 失证或死亡倒带；POST 全未读时已付 39、暂余 11、释锁 5、包余 unknown/待测，玩家只见本人真余态。"
+  },
+  "remaining": {
+    "materialConflict": "本任务反查的生命稳定规则、数值、付款和授权无新实质冲突；理论 1293/1299/1301、桥接 385 及 ADR-0024 57 的流程措辞归各自任务更正，不在生命 writePaths 内代改。",
+    "planner": "封闭十九读审计与 ADR-0019 通用单字段探查的玩家边界、关键回路修复开放与否，以及 44/余6 M 和 559 S 对可施放性的影响仍待主策判断；若改变玩家规则须经既有评审。ADR-0024 仍待采纳。",
+    "development": "逐端 grant/撤权/鲜样/校准、本人净入和唯一不可取收据、K0/V0 实结、真实四证及 assessmentId、规范 AST 字节/SHA-256、球页/槽/FIFO/旧占用、VM M/tick/S、六入口实玩。当前纸面价和静态上界不证明 Quote 或容量可执行。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"life-identity-design.md\",\"utf8\"),j=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdal-life-consumer.json\",\"utf8\")),o=f.readFileSync(b+\"module-design.md\",\"utf8\").split(/\\r?\\n/).slice(0,13).join(\"\\n\"),r=f.readFileSync(b+\"design-review.md\",\"utf8\");a.equal(j.taskId,\"mdal-life-consumer\");a.equal(j.status,\"completed\");for(const k of [\"总览 1–13\",\"drb7-world-closure-review\",\"LifeId/assessmentId\",\"B4-v1/slice-B4-01\",\"k0\",\"k_m/k_a\",\"DeathBarrier\",\"priceVersion\",\"unknown/unknown\",\"559 S\"])a.ok(d.includes(k),k);a.ok(o.includes(\"C_S−O≥559\"));a.ok(r.includes(\"生命 723、734\"));a.ok(!d.split(\"**因果不变证与跨模块对账。**\").at(-1).includes(\"总览继续阻断\"));a.equal(29+5+10,44);a.equal(50-44,6);a.equal(24+5+10,39);a.equal(50-39,11);a.equal(2*279+1,559);console.log(\"PASS mdal life authority keys, status and conditional arithmetic\")'",
+      "exitCode": 0,
+      "output": "PASS mdal life authority keys, status and conditional arithmetic"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdal-life-consumer.json\",\"utf8\")),p=[b+\"life-identity-design.md\",b+\"tasks/module-design-mdal-life-consumer.json\"];a.deepEqual(j.scope.writePaths,p);for(const k of [\"physical\",\"ledger\",\"program\",\"life\",\"theory\",\"bridge\"])a.ok(j.reconciliation[k].source&&j.reconciliation[k].keys.length&&j.reconciliation[k].result,k);a.equal(Object.keys(j.counterexamples).length,4);a.ok(j.evidence.every(x=>typeof x===\"string\"));console.log(\"PASS mdal life exact evidence schema\")'",
+      "exitCode": 0,
+      "output": "PASS mdal life exact evidence schema"
+    },
+    {
+      "command": "$expected=@(\"docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json\"); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace(\"\\\",\"/\") } | Sort-Object); if (@(Compare-Object ($expected | Sort-Object) $actual).Count -ne 0) { throw \"writePaths mismatch: $($actual -join \", \")\" }; Write-Output \"PASS mdal life exact writePaths\"",
+      "exitCode": 0,
+      "output": "PASS mdal life exact writePaths"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-life-consumer.json",
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdal-life-consumer.json\",\"utf8\")),p=[b+\"life-identity-design.md\",b+\"tasks/module-design-mdal-life-consumer.json\"],s=c.execFileSync(\"git\",[\"status\",\"--porcelain\",\"--untracked-files=all\"],{encoding:\"utf8\"}).split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(s,p.sort());a.deepEqual(j.scope.writePaths,p);for(const k of [\"physical\",\"ledger\",\"program\",\"life\",\"theory\",\"bridge\"])a.ok(j.reconciliation[k].source&&j.reconciliation[k].keys.length&&j.reconciliation[k].result,k);a.equal(Object.keys(j.counterexamples).length,4);console.log(\"PASS mdal life exact writePaths and evidence schema\")'",
+      "exitCode": 1,
+      "output": "Node.js v24.18.0: Error: spawnSync git EPERM; git status did not start inside the Node child process."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md#mdal-life-consumer-现行合同",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md#稳定键定向反查相对-mdak-与总览-113",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-program-consumer.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md#当前轮次drb7-world-closure-reviewmdak-首批-a-同版世界合同复核范围修订-13"
+  ]
+}

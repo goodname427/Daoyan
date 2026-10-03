@@ -1,0 +1,132 @@
+{
+  "taskId": "mdah-b4-prices",
+  "status": "completed",
+  "scopeRevision": 13,
+  "outcome": "design-audit-completed; executable B4 Quote remains unknownPrice",
+  "summary": "逐一核对 mdah-b4-reads 的 16 个 R0-R3 readId 与 3 个独立 POST，给出共同 payer/grant、候选正价和逐 ID 不可取收款槽，记录当前字段授权、部分端点、采样版本及 ADR-0019 复合计价缺口。新价键 mdah-B4-read-v1 保持 pending；无法从候选清单判 n=0 或有限 n>0，故不签可执行 Quote。按额外读阶段拆分复算 34+n/16-n 的严格适用条件及 n>16 欠款，核 J1/P0/P1/P2 和 D1 独立账户、各失败事实键、自然事实与已付保留。",
+  "scope": {
+    "problem": "drb3 主策退回要求 B4 逐 readId 价格、付款、收款与新版账户闭合；直接前驱仅提供候选端点表。",
+    "nonGoals": "不伪造逐字段授权、现场原读或实际扣款，不改其他模块、ADR、代码、任务计划或版本状态。",
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json"
+    ]
+  },
+  "audit": {
+    "directPredecessor": "module-design-mdah-b4-reads.json status=completed; physics-material-design.md#mdah-b4-reads 列 16 个候选前读和 3 个独立 POST，但字段 grant、部分环境/仪表端点、phase state/calibration/sample 原件未签。前驱的 n 同时被描述为已执行读数和完整覆盖时的 0，账本将额外有价读数单独定义并标记跨模块术语冲突。",
+    "readIds": {
+      "r0ToR3Count": 16,
+      "families": ["main", "aux", "heat", "material"],
+      "phases": ["R0", "R1", "R2", "R3"],
+      "postReadIds": ["POST-B4-main", "POST-B4-heat", "POST-B4-material"],
+      "payerId": "acct-B1-B4",
+      "payerGrantId": "payerGrant-B4-v1",
+      "fundingReceiptId": "receipt-B4-funded-v1",
+      "candidatePriceVersion": "mdah-B4-read-v1[pending]",
+      "previousConditionalPriceVersion": "mdz-B4-v1",
+      "candidateEachM": 1,
+      "currentExecutablePrice": "unknownPrice",
+      "receiptSlots": "M_unavailable.read[readId] for 16 pre-reads; M_unavailable.post[postReadId] for 3 independent POSTs; no settled per-read receipts exist in the supplied evidence",
+      "workPriceBasis": "mdz-action-prices composite read t_read(e)=2+2e<=10 tick, e<=4, Quote<=12 tick; ADR-0019 requires per-field positive public quote or stable conservative bound and distinguishes refused attempt from admitted empty read. Composite 1 M coverage under ADR is unproven."
+    },
+    "conditionalB4Ledger": "Only if all 19 original reads and any extra n reads are authorized 1 M composites, unchanged load/action slots and independent POST are proven: 50 net = (16+n)+5+10+3+(16-n), 0<=n<=16 with every stage sufficiently funded. R0 46-n0, load 41-n0, R1 37-n0-n1, R2 33-n0-n1-n2, R3 29-n0-n1-n2-n3, then lock 13+na+np; after lock-internal na reads and action pay 31+n0+n1+n2+n3+na, temporary balance 19-n0-n1-n2-n3-na and POST lock 3+np; after independent POST balance 16-n. n>16 cannot lock full success and never creates a negative balance. If ADR price differs, reprice by each read instead of forcing 34+n.",
+    "otherPayers": "J1 receipt-J1-funded-v1 net 32, self pays 9+11+12=32; P0/P2 separately pay 1/2 and optional P1 pays 1 after authorized new read, cross-account totals 35/36, not J1 single-account debit. D1 receipt-D1-funded-v1 net 40, pays 12+4+8+2=26 and has conditional 14; D1 is read-only comparison.",
+    "factCases": "Independent resets record conditional success, feasibility precheck refusal before world read, ADR-0019 actually invoked denied read, authorized empty Read-B4-material-R0, unknown/undetermined, out of domain, same payer and lot competition, C-B1-02 reimpact, POST-B4-main/heat/material loss, and mutually exclusive attempt after legal lock and bounded proof. Every case separates settled readId receipts, lock, balance, C/N/X, already committed action and player-visible residual. No actual debit is asserted.",
+    "authorities": [
+      {
+        "source": "physics-material-design.md#mdah-b4-reads and #mdag-physical-contact",
+        "versionKeys": [
+          "S0-physical-v1",
+          "seed-physical-v1",
+          "B4-v1",
+          "slice-B4-01",
+          "XB1-shell-v1",
+          "ML-B1-shell-k0-v1",
+          "contact-B1-impact-v1"
+        ],
+        "result": "16 candidate rows and 3 POST rows match by readId and named endpoint families; physical 10=4+2+4 E0, 3q=2q+fragment q and B4 100=53+47 E0/12, 4q=2q+q+q remain separate from M. Field authorization and samples unknown."
+      },
+      {
+        "source": "docs/adr/0019-属性探查与资源账本.md#决策三-五",
+        "versionKeys": ["ADR-0019", "ReadTx", "payerId", "priceVersion"],
+        "result": "Per-field positive public price, nonleaking quote, fixed payable refused-read attempt and unique settlement are required; mdz flat 1 M composite read lacks an authority mapping, so no active price version is signed."
+      },
+      {
+        "source": "programmable-spells-design.md#mdag-program-resign",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdaa-assumed-v1",
+          "H_B4_assumed_v1",
+          "capacity-B1-v1"
+        ],
+        "result": "J1 one assumed AST/hash alias with 15 reads; D1 and B4 independent assumed identities. B4 old 19 indices, 34 M/232 physical/249 response tick/40 S only at proven n=0 and matching body capacity; real hash and occupancy absent."
+      },
+      {
+        "source": "life-identity-design.md#mdag-life-boundary; world-theory-draft.md#mdag-theory-reconcile; player-bridge-design.md#mdag-bridge-reconcile; module-design.md",
+        "versionKeys": ["LifeId", "assessmentId", "pilot-physical-v1", "B4-v1", "book-mdu-01/v1"],
+        "result": "B4 k0 shell work does not repair k_m/k_a or revive LifeId; theoretical 31/19 POST residual is conditional. Player sees only authorized shell state, own settled debit/temporary balance and clipped reasons; old unconditional 34/16 presentation cannot pass current review."
+      },
+      {
+        "source": "design-review-findings.md#drb3-world-closure-review and design-review.md current round",
+        "versionKeys": [
+          "drb3-world-closure-review",
+          "scopeRevision-13",
+          "B4-read-coverage-v1",
+          "B4-post-evidence-v1"
+        ],
+        "result": "Latest chief review remains changes-requested; missing per-field grants and price contract are design blockers. Physical n terminology and ADR refusal-pricing interaction need authority reconciliation. No new producer decision is inferred."
+      }
+    ],
+    "remaining": "Physical owner must sign per-field endpoint/projection/grant/version and post evidence, price authority must reconcile ADR-0019 with composite read atoms and n definition, then program/theory/bridge/module overview must consume revised PriceVersion. Real reads, actual charges, AST/hash, body occupancy/VM use and six-entry experience remain for development."
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),h=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdah-b4-prices.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===\"mdah-b4-prices\"),s=d.split(\"## B4 逐 readId 价版与阶段账户\")[1];a.ok(s);a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.deepEqual(e.evidence,t.writePaths);const ids=[...s.matchAll(/^\\| `(Read-B4-(?:main|aux|heat|material)-R[0-3])`/gm)].map(x=>x[1]);a.equal(ids.length,16);a.equal(new Set(ids).size,16);for(const id of ids)a.ok(h.includes(\"`\"+id+\"`\"),id);const posts=[...s.matchAll(/^\\| `(POST-B4-(?:main|heat|material))`/gm)].map(x=>x[1]);a.equal(posts.length,3);a.equal(new Set(posts).size,3);for(const id of posts)a.ok(h.includes(\"`\"+id+\"`\"),id);for(const n of [0,1,16])a.equal(50-(34+n),16-n);a.ok(50-(34+17)<0);a.equal(9+11+12+1+2,35);a.equal(35+1,36);a.equal(40-(12+4+8+2),14);a.equal(16+5+10,31);a.equal(50-31,19);for(const k of [\"mdah-B4-read-v1[pending]\",\"ADR-0019\",\"n=unknown\",\"unknownPrice\",\"M_unavailable.read[readId]\",\"M_unavailable.post[postReadId]\"])a.ok(s.includes(k),k);console.log(\"PASS mdah 16 reads, 3 POSTs, payer arithmetic, price blockers and exact evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdah 16 reads, 3 POSTs, payer arithmetic, price blockers and exact evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json"
+      ]
+    },
+    {
+      "command": "git status --short --untracked-files=all",
+      "exitCode": 0,
+      "output": " M docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md\n?? docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git config --get core.hooksPath; rg --files .husky | rg 'pre-commit|commit-msg' ",
+      "exitCode": 1,
+      "reason": "Git 配置输出 .githooks；随后检查不存在的 .husky 目录使 rg 返回 1。已改读实际的 .githooks/pre-commit 与 .githooks/commit-msg。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdah-b4-prices.json"
+  ]
+}

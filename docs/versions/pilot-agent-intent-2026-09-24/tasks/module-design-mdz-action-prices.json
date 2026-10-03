@@ -1,0 +1,42 @@
+{
+  "taskId": "mdz-action-prices",
+  "status": "completed",
+  "summary": "消费同版 mdz-action-sources 物理描述符，为 D1 与 B4 有界纸面正例记录逐原子 M/tick 毛价、账户到账与锁款、竞争余态和有限回收毛界；K0/V0、AT0 与旧百点攻击保持 unknownPrice 或域外。完成定向覆盖、文档链接、格式、差异范围检查并本地提交；无现场实扣或可玩验收。",
+  "commands": [
+    {
+      "command": "node -e '<定向断言：物理描述符引用、D1/B4 价格与 tick 合计、40=14+26、50=16+34>'",
+      "exitCode": 0,
+      "output": "PASS mdz price coverage and paper accounts"
+    },
+    {
+      "command": "node -e '<校验 mana-ledger-design.md 的相对 Markdown 链接均存在>'",
+      "exitCode": 0,
+      "output": "PASS 25 local document links"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-action-prices.json",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-action-prices.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "PowerShell Compare-Object against the two mdz-action-prices writePaths using git status --porcelain=v1 --untracked-files=all",
+      "exitCode": 0,
+      "output": "PASS only two task evidence paths changed"
+    },
+    {
+      "command": "git diff --cached --check; git diff --cached --name-only; git commit -m \"docs: record mdz action price ledger evidence\"; git status --short",
+      "exitCode": 0,
+      "output": "Local commit created; post-commit working tree clean. No push or tag performed."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdz-action-prices.json"
+  ],
+  "failedAttempts": []
+}

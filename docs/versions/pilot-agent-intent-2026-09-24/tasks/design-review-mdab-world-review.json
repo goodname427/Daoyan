@@ -1,0 +1,82 @@
+{
+  "taskId": "mdab-world-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "changes-requested",
+  "summary": "独立纸面复核 mdab 三项：J1 假设 AST 别名、十五读/版本键、本人 32 M 与 P0/P2/P1 跨账户 35/36 M、六阶段余态、六入口授权裁剪及 B4 第二响应三分判已覆盖前轮退回合同。发现桥接 D1 装载包 3→2 E0 与物理 16/12→4/12 E0、B4 2 E0 入壳另加 1 E0 热与物理总耗 2 E0 不同版，退桥接两句定点校正后主策复核。A/B/C 范围仍待制作人判断；真实 AST/hash、原读、实扣、容量、VM 实耗和实玩留获批开发后，不批准开发。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `mdab-world-review`\")[1],j=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdab-world-review.json\",\"utf8\"));a.ok(r);for(const k of [\"mdab-program-identity\",\"mdab-theory-signoff\",\"mdab-bridge-payers\",\"book-mdu-01/v1\",\"programHash=unknown\",\"15\",\"32→23→12→0\",\"35 M\",\"36 M\",\"queueFull\",\"capacityUnknown\",\"3→2 E0\",\"32/12→8/12\",\"ADR-0017\",\"ADR-0020\",\"changes-requested\"])a.ok(r.includes(k),k);a.equal(1+11+1+2,15);a.equal(9+11+12,32);a.equal(32+1+2,35);a.equal(35+1,36);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(j.taskId,\"mdab-world-review\");a.equal(j.status,\"completed\");a.equal(j.completed,true);a.equal(j.reviewDecision,\"changes-requested\");a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdab review identity, arithmetic, counterexamples and evidence metadata\")'",
+      "exitCode": 0,
+      "output": "PASS mdab review identity, arithmetic, counterexamples and evidence metadata",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json"
+      ]
+    },
+    {
+      "command": "git status --porcelain=v1 --untracked-files=all",
+      "exitCode": 0,
+      "output": " M docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\n?? docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "Get-Content docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json",
+      "exitCode": 1,
+      "output": "Cannot find path: target result JSON did not yet exist.",
+      "resolution": "确认精确目标是本轮新建文件，随后按合同创建。"
+    },
+    {
+      "command": "rg -n '^## .*mdab|^### .*mdab|mdab-' docs/versions/pilot-agent-intent-2026-09-24/{world-theory-draft,player-bridge-design,programmable-spells-design,physics-material-design,mana-ledger-design,life-identity-design}.md",
+      "exitCode": 1,
+      "output": "PowerShell ParserError: Missing argument in parameter list.",
+      "resolution": "改用明确文件路径读取相关段落。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "exitCode": 1,
+      "output": "Code style issues found in design-review-findings.md.",
+      "resolution": "仅格式化合同内审核记录，后续重跑双文件检查。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),s=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).filter(Boolean).map(x=>x.slice(3));a.deepEqual(s.sort(),[\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\",\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdab-world-review.json\"].sort());console.log(\"PASS only mdab-world-review writePaths changed\")'",
+      "exitCode": 1,
+      "output": "Error: spawnSync git EPERM",
+      "resolution": "Node 子进程受限；改为直接执行 git status，核对输出仅有两个合同 writePaths。"
+    }
+  ]
+}

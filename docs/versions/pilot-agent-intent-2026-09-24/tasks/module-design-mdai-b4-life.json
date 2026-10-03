@@ -1,0 +1,63 @@
+{
+  "taskId": "mdai-b4-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "消费 completed 的 mdai-b4-quote 只读前驱，按现行 mdai-b4-fields/mdai-b4-quote/mdai-b4-carrier 与 drb4 退回重签普通 k0 壳、十九读及独立 POST 的生命授权与因果边界。逐字段物理/账本投影一致：19 ID、199 字段/53 端点引用、读 29 M/≤271 tick；B4 本人条件净入 50、全链 44 已付/6 余，空 material-R0 2/48、R3 竞争锁 15 与他笔 20 均欠 14、POST 全失证 39 已付/11 暂余并释 5；J1 本人 32 与 P0/P2 1/2（可选 P1 1）、D1 本人 40 均独立。程序新版 AST/hash 假设不别名旧 B4，容量与运行仍待证。普通壳/POST 不推 k_m/k_a、K0/V0、三链、LifeId 复苏或第二 DeathBarrier；创建者有证终界仅撤派生未来 grant，已付与 A1/B1 独立权保留。主策仍 changes-requested，理论/桥接/总览未消费新价版，当前 Quote=unknownPrice，无运行签名/样本/收据/VM 实耗。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json"
+    ],
+    "readPathsAudited": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+      "docs/adr/0020-事件执行上下文与生命周期.md"
+    ],
+    "readOnlyPredecessor": "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-quote.json"
+  },
+  "checks": {
+    "physicalAndPrice": "十九物理/账本表行投影逐字相等；四阶段各 6 M/≤56 tick，POST 5 M/≤47 tick；自然首撞 10=4+2+4 E0、3q=2q+fragment q，与 B4 来源 100=53+47 E0/12、仓 4q=2q+q+q 分账。",
+    "accounts": "B4 acct-B1-B4 与 payerGrant-B4-v1 的条件 50=29+5+10+6；成功读逐 ID ReadTx/receipt/不可取槽和 1 M attempt 互斥，真实结算为零原件。J1、P0/P1/P2、D1 不代付 B4。",
+    "programAndIdentity": "AST-B4-mdai-audit-v1/B4-R19-projection-v1/H_B4_mdai_assumed_v1/C-B4-mdai-carrier-v1 为新版纸面身份；旧 B4 hash 非别名，实际 hash/capacity 缺。LifeAssessment/identityRelation 缺关键与三链证仍 unknown/unknown；旧 dead 历史不变，DeathBarrier 四证齐仅一次。",
+    "visibleResidual": "玩家仅见获准壳况、本人实际已结及暂余、裁剪拒因；POST 未读包余待测，隐藏端点与他人账不可见。理论/玩家桥接不在本任务 readPaths，模块总览的旧 34/16 需其归属任务更新。",
+    "chiefReviewNeeded": "主策复核封闭审计与任意单字段探查的玩家边界、新 44/6 的可施放性及下游理论/桥接/总览同键消费；如新增玩家规则再升级。开发后核真实 grant、到账与收据、采样、规范 AST/hash、球容量、VM 实耗及生命四证，当前不签可执行成功或复苏。",
+    "actualResult": "纯文档有限设计及定向检查完成；当前 Quote=unknownPrice，未实施运行观察。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",life=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),s=life.split(\"## `mdai-b4-life`\")[1].split(\"## 直接前驱与相关约束\")[0],phys=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\")[1],ledger=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\").split(\"## B4 固定投影审计原子\")[1],rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,rows=x=>x.split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)),q=rows(phys),r=rows(ledger);a.equal(q.length,19);a.equal(r.length,19);let M=0,T=0,F=0,E=0;for(let i=0;i<19;i++){let u=q[i].split(\"|\"),v=r[i].split(\"|\"),id=u[1].match(rx)[1],norm=x=>x.replace(/`/g,\"\").replace(/；\\d+\\s*$/,\"\").replace(/；/g,\";\").replace(/\\s/g,\"\");a.equal(v[1].match(rx)[1],id);a.equal(norm(u[2]),norm(v[2]),id);let pairs=[...v[2].matchAll(/[A-Z]\\.\\{([^}]+)\\}/g)],fc=pairs.reduce((n,z)=>n+z[1].split(\",\").length,0),ec=pairs.length,cost=v[4].match(/(\\d+) M \\/ (\\d+) tick/);a.equal(v[3].trim(),fc+\"/\"+ec,id);a.equal(+cost[1],ec===2?1:2,id);a.equal(+cost[2],1+fc+ec,id);F+=fc;E+=ec;M+=+cost[1];T+=+cost[2]}a.deepEqual([F,E,M,T,M+5+10,50-M-5-10],[199,53,29,271,44,6]);for(const k of [\"mdai-B4-audit-v1\",\"AST-B4-mdai-audit-v1\",\"V_P\",\"POST-B4-material\",\"assessmentId\",\"DeathBarrier\",\"创建者死亡\",\"合法空读\",\"再撞\",\"竞争\",\"outOfDomain\",\"Quote=unknownPrice\",\"39\",\"11\",\"20\",\"14\"])a.ok(s.includes(k),k);console.log(\"PASS mdai life: exact 19 physical-ledger projections, prices, identity cases and 44/6 account\")'",
+      "exitCode": 0,
+      "output": "PASS mdai life: exact 19 physical-ledger projections, prices, identity cases and 44/6 account"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-b4-life.json\",\"utf8\")),t=require(\"./.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\").stageTasks.find(x=>x.id===e.taskId),pred=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdai-b4-quote.json\",\"utf8\"));a.equal(e.taskId,\"mdai-b4-life\");a.equal(e.status,\"completed\");a.equal(pred.status,\"completed\");a.deepEqual(e.scope.writePaths,t.writePaths);a.deepEqual(e.scope.readPathsAudited,t.readPaths);a.deepEqual(e.evidence,t.writePaths);a.ok(e.commands.every(x=>x.exitCode===0));console.log(\"PASS mdai life evidence matches exact task contract and completed predecessor\")'",
+      "exitCode": 0,
+      "output": "PASS mdai life evidence matches exact task contract and completed predecessor"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json' | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){ Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdai exact worktree writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdai exact worktree writePaths"
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdai-b4-life.json"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "tasks": [
+    {
+      "id": "drb9-world-vm-reentry-review",
+      "title": "首批 A 停滞开发的世界合同与 World/VM 接入复核",
+      "objective": "主策核对 B1 自然接触壳损与 ADR 0018、已批准详细策划的关系，形成 J1、D1、B1→B4 接入现有 World/VM 的窄范围实现合同及反例。",
+      "deliverables": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md：追加本轮逐条覆盖裁定、World/VM 接入合同、反例、证据及阻断条件，保留旧轮次。",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json：记录任务 ID、审核结论、证据路径和实际通过的直接文档检查。"
+      ],
+      "acceptance": [
+        "以范围修订 13、首批 A、module-design.md 现行总览、六项现行模块合同、drb8 联签及已采纳 ADR-0024 为边界；核原 development-5 合同、审查、恢复证据与当前代码。旧 charter 和代码仅作旧解读及运行事实，不替代制作人意图或设计权威。",
+        "逐条裁定 ADR 0018 的惯性、Wm 自动补给、三池来源/预留/退款、damage 池命中限制、传送和迁移哪些被 ADR-0024 覆盖、哪些仍有效或只在隔离旧语义中有效。B1 自然 C→N→X 的双端接触及普通 k0 壳损不从旧 damage 池付款、不再调用 hitProjectile/HP 双扣；B4 使用独立获准来源和付款，不凭空添阈值或玩家规则。",
+        "对 J1 一次有源杆推、D1 一次有源起步、B1 自然首撞后 B4 普通壳修，分别给出共享 AST→compiler→VM→现有 World→事件/账本的接入点、原读、source lot、payer/grant、C/N/X 与付费作用先序、结构/生命余态、报价与容量证书、静态界及实耗待验项。独立 PilotWorld、夹具 execute() 或纸面条件账不能代替真实 World/VM。",
+        "给出有证首撞壳损正例及擦边未破、无源或无权、获准空读、隐藏或失鲜、未知价或容量、同刻双接触、同 payer/lot 竞争、再撞、POST 失证、死亡撤权和域外反例的自然事实、付款与失败余态。已结自然事实和已付不倒带；B4 不修生命关键回路或复苏旧 LifeId。区分设计条件值与真实原读、收据、规范 AST/hash、逐体容量和 M/tick/S 待测。",
+        "实质玩法、资源、身份同键冲突须定位权威与最小退回范围；过时的完成或 ADR 状态措辞仅列原归属定向清理，不单独阻断纸面合同。若必须改变已批准玩家规则或作不可逆架构取舍，向制作人列通俗选项、玩家效果、代价和推荐理由，停在既有门禁；不得把新解释写成既定开发任务。",
+        "只修改本任务两个独占证据；不改游戏实现、测试、模块正文、ADR、共享 design-review.md、design-review.json、docs/status.md 或其他任务证据。只做 JSON、链接、格式、范围及写入冲突的直接文档检查。"
+      ],
+      "dependsOn": [],
+      "readPaths": [
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/report.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/recovery.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-1-gpt-6-sol-attempt-1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-3-gpt-6-sol-attempt-1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-5/review-4-gpt-6-sol-attempt-1.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/charter-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb8-world-closure-review.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/adr/0018-运动供能与命中守恒.md",
+        "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+        "src/core/world.ts",
+        "src/core/compiler.ts",
+        "src/core/vm.ts"
+      ],
+      "writePaths": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb9-world-vm-reentry-review.json"
+      ],
+      "contextPolicy": "fresh",
+      "contextReason": "本轮由 drb8 纸面联签转为 development-5 停滞后的实现接入复核；旧审核会话的推理及反复修复脉络可能误导当前代码与 ADR 覆盖判断。保留文件、审查和恢复点为有限输入，独立审核角色重新起会话。"
+    }
+  ]
+}

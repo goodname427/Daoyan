@@ -1,0 +1,64 @@
+{
+  "taskId": "mdw-bridge-evidence",
+  "status": "completed",
+  "summary": "在桥接设计正文中将 mdt/mds 旧矩阵限定为历史条件格，明确当前成功须使用同版 priceVersion、sealVersion、capacityCertificateVersion；补充成功、拒绝、获准空读、未知、域外的公开投影和未来验收，以及隐藏目标、过期授权、边沿重放、敌方修士设备特权四类反证。64 边沿合同只读沿用；明确纸面脚本不代表实玩，UI、跨入口同价同扣和返回修订体验留开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-bridge-evidence.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-bridge-evidence.json",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-bridge-evidence.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-bridge-evidence.json",
+      "exitCode": 0,
+      "output": "No whitespace errors.",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-bridge-evidence.json"
+      ]
+    },
+    {
+      "command": "node scripts/check-mdw-bridge-evidence.js",
+      "exitCode": 0,
+      "output": "PASS bridge contract coverage and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-bridge-evidence.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "Initial coverage assertion expected the literal table fragment 成功 |.",
+      "exitCode": 1,
+      "output": "Assertion failed: missing 成功 | because Markdown table spacing differs from the exact substring.",
+      "resolution": "Changed to stable row labels and reran successfully."
+    },
+    {
+      "command": "PowerShell command constructing the evidence JSON inline.",
+      "exitCode": 1,
+      "output": "ParserError: Unexpected token in quoted check list.",
+      "resolution": "A standalone Node script was used to construct the JSON."
+    },
+    {
+      "command": "Node -e command constructing the evidence JSON with nested PowerShell quoting.",
+      "exitCode": 1,
+      "output": "ParserError: Missing argument in parameter list.",
+      "resolution": "A standalone Node script was used to construct the JSON."
+    },
+    {
+      "command": "node scripts/check-mdw-bridge-evidence.js",
+      "exitCode": 1,
+      "output": "ReferenceError: require is not defined in ES module scope because the repository package type is module.",
+      "resolution": "Renamed the temporary script to .cjs; the same command then passed."
+    }
+  ]
+}

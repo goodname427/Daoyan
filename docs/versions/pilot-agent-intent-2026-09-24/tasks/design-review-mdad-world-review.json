@@ -1,0 +1,86 @@
+{
+  "taskId": "mdad-world-review",
+  "status": "completed",
+  "completed": true,
+  "scopeRevision": 13,
+  "reviewDecision": "paper-closure-producer-decision-pending",
+  "summary": "独立复核 mdac 退回、mdad 理论和桥接及六模块正文；J1、D1、B4 的共同 S0、六阶段双账、失败余态、B4 第二响应三分判、六入口纸面等价和未命名组合可同版复算。旧 D1 3→2 E0 与 B4 超支已在当前同键正文撤回。首批 A/B/C 仍待制作人选择；真实原读、实扣、规范 AST/hash、容量、VM 实耗和实玩待获批开发后验证。本任务完成不批准整版策划或开发。",
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"# `mdad-world-review`\")[1],j=JSON.parse(f.readFileSync(p+\"tasks/design-review-mdad-world-review.json\",\"utf8\"));for(const x of [\"S0-physical-v1\",\"16→4\",\"32→8\",\"queueFull\",\"capacityUnknown\",\"接力护送\",\"自修复信标\",\"A/B/C\"])a.ok(r.includes(x),x);for(const [x,y] of [[16-12,4],[32-24,8],[6+6,12],[12+12,24],[35+33,68],[53+47,100],[32+1+2,35],[35+1,36],[12+4+8+2,26],[16+5+10+3,34],[40-26,14],[50-34,16],[176+17,193],[232+17,249]])a.equal(x,y);a.equal(j.taskId,\"mdad-world-review\");a.equal(j.status,\"completed\");a.equal(j.completed,true);a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdad review paper and evidence\")'",
+      "exitCode": 0,
+      "output": "PASS mdad review paper and evidence",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json"
+      ]
+    },
+    {
+      "command": "$allowed = @(\"docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md\", \"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json\"); $changed = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3) } | Sort-Object); if (@(Compare-Object $changed ($allowed | Sort-Object)).Count -ne 0) { throw \"Unexpected changed path\" }; Write-Output \"PASS mdad two writePaths only\"",
+      "exitCode": 0,
+      "output": "PASS mdad two writePaths only",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json\",j=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(j.taskId,\"mdad-world-review\");a.equal(j.completed,true);a.ok(j.commands.length>=4);for(const x of j.commands.slice(0,4)){a.equal(x.exitCode,0);a.ok(x.command.trim());a.ok(!/TODO|PLACEHOLDER|计划命令/.test(x.command));a.ok(x.evidence.every(y=>f.existsSync(y)))}a.equal(j.failedAttempts.length,3);a.equal(j.failedAttempts[0].exitCode,1);a.equal(j.failedAttempts[1].exitCode,1);a.equal(j.failedAttempts[2].exitCode,1);a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdad evidence contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdad evidence contract",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "reason": "当前托管工作区允许写入合同文档，但 .git/index.lock 无写权限，本地暂存及提交未能完成。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --write docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json",
+      "exitCode": 1,
+      "reason": "证据数组追加时误留补丁前缀，JSON 解析失败；已清除前缀并修正分隔符。"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json\",j=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(j.taskId,\"mdad-world-review\");a.equal(j.completed,true);a.ok(j.commands.length>=4);for(const x of j.commands){a.equal(x.exitCode,0);a.ok(x.command.trim());a.ok(!/TODO|PLACEHOLDER|计划命令/.test(x.command));a.ok(x.evidence.every(y=>f.existsSync(y)))}a.equal(j.failedAttempts.length,2);a.equal(j.failedAttempts[0].exitCode,1);a.equal(j.failedAttempts[1].exitCode,1);a.ok(j.evidence.every(x=>f.existsSync(x)));console.log(\"PASS mdad evidence contract\")'",
+      "exitCode": 1,
+      "reason": "命令扫描其自身所含的占位符检测字面量，产生自引用误判；检查范围已限定为前四条交付命令并复跑。"
+    }
+  ],
+  "commitStatus": "blocked: git add exit 1; no local commit, push, tag or release",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-mdad-world-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-theory-reconcile.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdad-bridge-reconcile.json"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "taskId": "mdq-mana",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "按 physical-mdq-1 核对 A0/P0/D0/R0/K0/V0 及普通行动、H/B 的 actor、付款授权、M 和物理包、逐种 Q[k]、收款、工作与静态毛界；重算 100/20、起步续步、代谢及封闭返还。预存工作包和摄取包的上游装载来源尚无证书，相关正向交易只保留条件算式，实际应返回 unknownPrice/undetermined，不能签 Tx↔A；开放环境与热回收未获批准。",
+  "deliveryNote": "本轮轻量文档及两路径检查通过；尝试本地暂存时 .git/index.lock 权限拒绝，未暂存、未提交或推送。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=require(\"node:path\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(b+\"mana-ledger-design.md\",\"utf8\"),h=f.readFileSync(b+\"physics-material-design.md\",\"utf8\"),t=JSON.parse(f.readFileSync(b+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdq-mana\");a.deepEqual(t.dependsOn,[\"mdq-physics\"]);a.ok(h.includes(\"physical-mdq-1\"));for(const s of [\"physical-mdq-1\",\"`A0`\",\"`P0`\",\"`D0/P0`\",\"`R0`\",\"`K0`\",\"`V0`\",\"`100/20`\",\"起步→续步\",\"H1\",\"B3a–c\",\"来源→作用→回收→再作用\",\"unknownPrice/undeterminedEnergy\",\"E0/12\",\"Q[k]\",\"B后≤B前\"])a.ok(d.includes(s),s);a.equal(2+7+3,12);a.equal(2+14+3,19);a.equal(2+14+22+5,43);a.equal(2+1+2*(1+2),9);a.equal(4+4*3+4,20);a.equal(3+3+2,8);a.equal(69-3*(2+1)-5-43,12);for(const m of d.matchAll(/\\]\\(([^)]+)\\)/g)){const q=m[1].split(\"#\")[0];if(q&&!q.includes(\"://\"))a.ok(f.existsSync(p.resolve(b,q)),q)}console.log(\"PASS mdq-mana contract, balances, prices and local links\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-mana contract, balances, prices and local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from contract' }; Write-Output 'PASS only two contract paths changed'",
+      "exitCode": 0,
+      "output": "PASS only two contract paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),b=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=JSON.parse(f.readFileSync(b+\"tasks/module-design-mdq-mana.json\",\"utf8\"));a.equal(r.taskId,\"mdq-mana\");a.equal(r.status,\"completed\");a.deepEqual(r.artifacts,[b+\"mana-ledger-design.md\",b+\"tasks/module-design-mdq-mana.json\"]);a.ok(r.commands.length>0&&r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>Number.isSafeInteger(x.exitCode)&&x.exitCode!==0));for(const p of r.evidence)a.ok(f.existsSync(p),p);console.log(\"PASS mdq-mana task result and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-mana task result and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(parseStageTaskResult(r,\"mdq-mana\").status,\"completed\");console.log(\"PASS stage task result parser\")'",
+      "exitCode": 0,
+      "output": "PASS stage task result parser",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+      "exitCode": 1,
+      "output": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
+      "resolution": "当前宿主 .git 索引只读；两文件留在工作树，未暂存、未提交或推送。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ]
+}

@@ -85,6 +85,41 @@ export interface EnergyBalance {
 
 /** 活跃债权与有界历史分离；实体终结额保留至世界重置，保证重放幂等。 */
 export class ResourceLedger {
+  /** Named future payments remain in the payer account but are unavailable to competing work. */
+  private manaReservations = new Map<number, Map<string, number>>();
+
+  reserveMana(payerId: number, reservationId: string, amount: number): boolean {
+    const payer = this.actor(payerId);
+    if (!payer?.alive || !reservationId || !Number.isFinite(amount) || amount <= 0) return false;
+    const debit = units(amount, 'up');
+    const reservations = this.manaReservations.get(payerId) ?? new Map<string, number>();
+    if (reservations.has(reservationId)) return false;
+    const reserved = [...reservations.values()].reduce((sum, value) => checkedAdd(sum, value), 0);
+    if (units(payer.mana, 'down') - reserved < debit) return false;
+    reservations.set(reservationId, debit);
+    this.manaReservations.set(payerId, reservations);
+    return true;
+  }
+
+  releaseManaReservation(payerId: number, reservationId: string): boolean {
+    const reservations = this.manaReservations.get(payerId);
+    if (!reservations?.delete(reservationId)) return false;
+    if (reservations.size === 0) this.manaReservations.delete(payerId);
+    return true;
+  }
+
+  reservedMana(payerId: number): number {
+    return (
+      [...(this.manaReservations.get(payerId)?.values() ?? [])].reduce(
+        (sum, value) => sum + value,
+        0,
+      ) / RESOURCE_SCALE
+    );
+  }
+
+  reservedManaFor(payerId: number, reservationId: string): number {
+    return (this.manaReservations.get(payerId)?.get(reservationId) ?? 0) / RESOURCE_SCALE;
+  }
   private nextSequence = 1;
   private nextReservation = 1;
   private sources: Source[] = [];
@@ -117,6 +152,7 @@ export class ResourceLedger {
   ) {}
 
   reset(): void {
+    this.manaReservations.clear();
     this.sources = [];
     this.sourceHistory = [];
     this.reservations.clear();
@@ -245,10 +281,23 @@ export class ResourceLedger {
     amount: number,
     kind: string,
     spend?: (amount: number) => boolean,
+    reservationId?: string,
   ): number | null {
     const payer = this.actor(payerId);
     const debit = units(amount, 'up');
-    if (!payer || !payer.alive || units(payer.mana, 'down') < debit) return null;
+    const reservations = this.manaReservations.get(payerId);
+    const reserved = [...(reservations?.values() ?? [])].reduce(
+      (sum, value) => checkedAdd(sum, value),
+      0,
+    );
+    const ownReservation = reservationId === undefined ? 0 : reservations?.get(reservationId);
+    if (
+      !payer ||
+      !payer.alive ||
+      (reservationId !== undefined && (ownReservation === undefined || ownReservation < debit)) ||
+      units(payer.mana, 'down') - reserved + (ownReservation ?? 0) < debit
+    )
+      return null;
     this.observeMana(payerId);
     const account = this.accounts.get(payerId)!;
     const next = checkedAdd(this.totals.payerMana, debit);
@@ -262,6 +311,12 @@ export class ResourceLedger {
     this.totals.payerMana = next;
     account.paid = nextPaid;
     account.last = units(payer.mana, 'down');
+    if (reservationId !== undefined && reservations) {
+      const left = ownReservation! - debit;
+      if (left === 0) reservations.delete(reservationId);
+      else reservations.set(reservationId, left);
+      if (reservations.size === 0) this.manaReservations.delete(payerId);
+    }
     this.entry(kind, payerId, null, null, null, debit, 0);
     this.manaCommitted?.(payerId);
     return paid;

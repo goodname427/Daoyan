@@ -1,0 +1,165 @@
+{
+  "taskId": "mdak-physical-status",
+  "status": "completed",
+  "summary": "物理现行段已承认程序 910–925 给出的 279/559/281/314 S、S_install=Smax=559 S 与 C_S−O≥559 是纸面安装设计界；真实球容量、旧占用、规范 AST/hash、VM tick/S 和逐项容量仍留开发验收。十九字段、材料阈值和材料 R0 合法空读 2 M/50→48 未改。",
+  "actualResult": "正文与精确证据通过定向检查；当前沙盒对 .git 只读，git add 创建 .git/index.lock 被拒，本地 Conventional Commit 未形成。两份 writePaths 文件保留在工作区。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json"
+    ],
+    "nonGoals": "不修改其他模块权威、ADR、测试、代码或正式运行状态；不把条件账、设计键或容量判准当作运行结果。"
+  },
+  "checks": {
+    "designBoundary": "程序 mdaj-carrier-install 的一页 8+19+199+53=279 S；双页+槽 559 S；释暂存后页+槽+订阅 281 S；响应 314 S；新增峰 559 S。实装须同版 C_S−O≥559 且分项容量合格。当前 O、C_S、规范 hash、VM 峰未知，capacityUnknown。",
+    "authorityReconciliation": [
+      {
+        "source": "physics-material-design.md:631-710",
+        "versionKeys": [
+          "S0-physical-v1/seed-physical-v1",
+          "B4-v1/slice-B4-01",
+          "Read-B4-material-R0",
+          "V0…VP"
+        ],
+        "result": "一致：十九读端点/字段/阶段与材料阈值未改；自然 C→N→X 的 E0/q 与 B4 独立来源分账。"
+      },
+      {
+        "source": "mana-ledger-design.md:888-946",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "audit-work-v1",
+          "acct-B1-B4/payerGrant-B4-v1",
+          "receipt-B4-read-[readId]-[requestId]-v1"
+        ],
+        "result": "一致：同 ID 材料 R0 为 2 M/≤21 tick；十九读 29、装载 5、作用 10，条件本人已付 44/余 6；成功与 attempt 收据互斥，未执行锁释放。"
+      },
+      {
+        "source": "programmable-spells-design.md:866-925",
+        "versionKeys": [
+          "book-mdu-01/v1",
+          "AST-B4-mdai-audit-v1",
+          "B4-R19-projection-v1",
+          "H_B4_mdai_assumed_v1",
+          "C-B4-mdai-carrier-v1"
+        ],
+        "result": "一致：十九索引 0–18 与响应 314 S、安装 559 S 及 C_S−O≥559 的纸面判准已给；真实容量/旧占用、规范 hash 和 VM 实耗阻断运行准入。"
+      },
+      {
+        "source": "life-identity-design.md:676-723",
+        "versionKeys": ["mdai-b4-life", "LifeId/assessmentId", "k0/k_m/k_a"],
+        "result": "数值及身份界一致：空读 2/48、全链 44/6，普通壳修不复苏；723 的总览消费状态仍需生命归属同步。"
+      },
+      {
+        "source": "world-theory-draft.md:1239-1293",
+        "versionKeys": [
+          "mdai-world",
+          "B4-v1/slice-B4-01",
+          "Read-B4-material-R0",
+          "S_install=559 S"
+        ],
+        "result": "数值一致、状态需同步：已消费新价与 559 S，但 1287–1290 仍称已交付的桥接修正待派或旧价。"
+      },
+      {
+        "source": "player-bridge-design.md:295-385",
+        "versionKeys": [
+          "mdai-bridge/mdaj-bridge-consumers",
+          "Read-B4-material-R0",
+          "mdai-B4-audit-v1",
+          "C_S−O≥559"
+        ],
+        "result": "一致：现行 370–385 已消费 2/48、44/6、559 S，只公开获准壳态、本人实结与裁剪拒因；未采 POST 包余仍待测。"
+      },
+      {
+        "source": "module-design.md:1-20",
+        "versionKeys": [
+          "mdai-B4-audit-v1",
+          "Read-B4-material-R0",
+          "receipt-B4-read-*",
+          "S_install=559 S"
+        ],
+        "result": "新价与容量键一致、公开结论需同步：首段仍记录物理旧状态和其他模块状态冲突；Version PM 收束前整版阻断，不能据本任务宣称联签。"
+      }
+    ],
+    "cases": [
+      "合法空读：四端授权、可见、V0/逐端鲜值及实际 ok([]) 才有唯一材料 R0 ReadTx/成功收据，条件本人 2 M、50→48；不装载/作用，未执行锁释放。无撞本身 C/N/X=∅ 不证明空读，已结首撞 C/N/X 不倒带。",
+      "无权：已结首撞 C/N/X 留存；预检同形 deniedOrUnavailable，无成功收据、新付 0/条件余 50，释放未执行锁；真正可付且已调用的互斥 attempt 另依账本定价。",
+      "失鲜：R0 前三读若各已结，条件已付 1+2+1=4/余 46；材料 R0 无成功收据、不再收 2，旧收据及自然 C/N/X 留存，未执行锁释放。",
+      "双接触：组解有证则两 C、一球壳双 parent X，无遗体普通 k0 缺口；不造 B4 读/作用收据，本请求新付 0/条件余 50，未执行锁释放。",
+      "再撞：C-B1-02 换版，首撞 C/N/X 与再撞自然事实留；若 R0 四读已结则条件已付 6/余 44，旧收据不退，新成功读/作用不伪造，未执行锁释放。",
+      "POST 全失证：此前十六读 24、装载 5、作用 10，条件已付 39/暂余 11；POST 5 锁释放，已提交 A/X、热、废料及切片退役留，包余待测。"
+    ],
+    "crossModuleContracts": "物理独占 C/N/X、E0/q、十九投影及 V_i；账本独占 M 价、payer/receipt/锁，J1 本人 32+P0/P2 自付 1/2=跨账户 35、可选 P1 自付 1 得 36，D1 本人 40=26+14，均不借 B4；程序独占新 AST 设计身份、十九索引和 M/tick/S 条件证，旧 B4 hash 非别名；生命只承认普通 k0 新结构；理论同键合并，桥接仅公开获准壳态、本人真实已结及裁剪余态。所有 29/44/6、39/11 等为条件账，现无实收据。",
+    "remaining": "账本 944、程序 960、生命 723、理论 1287–1290 及模块总览首段的消费者状态由各归属者和 Version PM 同步；主策再判固定审计与可施放性。开发采真实 grant/鲜值、付款收据、规范 AST/hash、球容量与旧占用、VM 实耗及六入口体验。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"physics-material-design.md\",\"utf8\").split(\"## B4 十九读字段与额外读取边界\").at(-1),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdak-physical-status.json\",\"utf8\"));a.equal(e.taskId,\"mdak-physical-status\");a.equal(e.status,\"completed\");a.equal(e.checks.authorityReconciliation.length,7);a.equal(d.split(/\\r?\\n/).filter(x=>/^\\| `(?:Read-B4-(?:main|aux|heat|material)-R[0-3]|POST-B4-(?:main|heat|material))`/.test(x)).length,19);for(const k of [\"S_install=559 S\",\"C_S−O≥559\",\"279/559/281/314 S\",\"50→余 48\",\"capacityUnknown\",\"| 无权\",\"| 失鲜\",\"| 双接触\",\"| 再撞\"])a.ok(d.includes(k),k);a.equal(8+19+199+53,279);a.equal(2*279+1,559);a.equal(279+1+1,281);a.equal(279+1+1+1+1+31,314);a.equal(4*6+5,29);a.equal(29+5+10,44);a.equal(50-2,48);a.equal(24+5+10,39);console.log(\"PASS mdak contract, seven sources, nineteen reads, install and account cases\")'",
+      "exitCode": 0,
+      "output": "PASS mdak contract, seven sources, nineteen reads, install and account cases"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "$actual = @(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); $expected = @( 'docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json' | Sort-Object ); if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS mdak exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS mdak exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "commandSummary": "首次读取本轮证据 JSON",
+      "exitCode": 1,
+      "reason": "文件尚不存在；按合同新建。"
+    },
+    {
+      "commandSummary": "首次 Node 算式检查在 Node 子进程内执行 git show",
+      "exitCode": 1,
+      "reason": "spawnSync git EPERM；改由外层 Git diff 核差异，并在 Node 中检查当前正文。"
+    },
+    {
+      "commandSummary": "首次六来源键检查假定理论存在 mdaj-theory-consumers 标题",
+      "exitCode": 1,
+      "reason": "现行理论标题为 mdai-world；改为核现行键与正文。"
+    },
+    {
+      "commandSummary": "首次物理 Markdown Prettier 检查",
+      "exitCode": 1,
+      "reason": "新对账表列宽未排版；写入 Prettier 格式后复查。"
+    },
+    {
+      "commandSummary": "第二次十九行检查从全文计数",
+      "exitCode": 1,
+      "reason": "历史表与现行表共 38 行；改为只检查 mdai-b4-fields 现行段。"
+    },
+    {
+      "commandSummary": "第二次总览来源键检查要求未出现的逐字短语 物理旧价冲突",
+      "exitCode": 1,
+      "reason": "总览现行表实际写作 物理价冲突判定已过期；改按实际文字核。"
+    },
+    {
+      "commandSummary": "第二次物理 Markdown Prettier 检查",
+      "exitCode": 1,
+      "reason": "修正理论表标签后须重新排版；已写入 Prettier 格式。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；当前沙盒仅允许读取 .git，本地提交未形成。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:910",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:903",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1"
+  ]
+}

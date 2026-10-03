@@ -1,0 +1,64 @@
+{
+  "taskId": "mdaj-bridge-consumers",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "按 drb5 与已交付 mdaj-theory-consumers 只读结论重核桥接同键消费者。物理已将旧 1 M/50→49 降为历史候选；总览已消费 mdai 新价但仍按旧物理冲突阻断，须 Version PM 复核。桥接对齐十九读 mdai-B4-audit-v1、合法空 2/48、条件全链 44/6、POST 失证 39/11、程序安装峰 559 S，并逐格核六入口公开提示、已结/释锁、私值裁剪及返书撤证。真实原读、收据、规范 hash、球容量、VM 实耗及实玩均未取得。",
+  "reconciliation": {
+    "authority": "physics-material-design.md:631-710 mdai-b4-fields/mdaj-physical-price 只签 E0/q 与十九字段；mana-ledger-design.md:886-946 mdai-b4-quote 独占 mdai-B4-audit-v1/audit-work-v1、逐 readId 正价、payerGrant/receiptId 与锁；programmable-spells-design.md:866-938 mdai-b4-carrier/mdaj-carrier-install 独占 book-mdu-01/v1 新 AST 假设、十九索引、313/330 tick、响应314 S、安装及总峰559 S；life-identity-design.md:676-721 mdai-b4-life 限普通壳与旧 LifeId；world-theory-draft.md:1239-1293 mdai-world/mdaj-theory-consumers 消费新价、559 S 与消费者状态。",
+    "accounts": "B4 receipt-B4-funded-v1 净入50仅作条件；合法空 Read-B4-material-R0 单收2 M/≤21 tick、50→48；十九读29+装5+作用10=44、余6，R3后29/21，POST全失证39/11且释放锁5。J1本人32，P0/P2 1/2、可选P1 1，跨账户35/36；D1自有40−26=14。锁不等于付款，M不兑E0/q。",
+    "player": "鼠标、键盘、手柄、妖兽AI、实体事件、敌方修士只在规范意图、执行者能力/可见集、payer/grant、书/AST/价/物理/容量版、readId/receiptId及先序相同才等价；敌方仅为反例。纸面逐格核成功、合法空、无权/隐藏/不存在、失鲜、unknownPrice/capacityUnknown、域外、竞争、再撞、POST失证、创建者死亡的裁剪提示、实结与未执行锁。返书改程序撤受影响 Quote/读覆盖/容量证，旧付款和自然事实保留。",
+    "consumers": "player-bridge-design.md 原358行物理旧价现改历史候选，原362行总览改已消费新价仍阻断；module-design.md:1-20 的旧物理冲突理由及第15行未纳559 S 须 Version PM 定向复核。最新 drb5/changes-requested 仍有效，不能宣称整版通过。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),ph=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),m=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),li=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),w=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),o=f.readFileSync(p+\"module-design.md\",\"utf8\");for(const k of [\"mdaj-bridge-consumers\",\"1 M/50→49\",\"历史候选\",\"总览已逐项列十九固定投影\",\"S_install=max(279,559,281)=559 S\",\"Smax=max(314,559)=559 S\",\"2 M/≤21 tick\",\"50→48\",\"29+5+10=44 M\",\"capacityUnknown\",\"staleReadVersion\",\"POST 失证\",\"创建者死亡\",\"鼠标、键盘、手柄、妖兽 AI、实体事件、敌方修士\"])a.ok(b.includes(k),k);a.ok(ph.includes(\"旧 `mdah-B4-read-v1[pending]` 的 `1 M` 只属历史候选\"));a.ok(m.includes(\"priceVersion=mdai-B4-audit-v1\"));a.ok(pr.includes(\"S_install=max(279,559,281)=559 S\"));a.ok(li.includes(\"mdai-b4-life\"));a.ok(w.includes(\"Version PM 的 mdai 总览已完成对账且仍判跨模块阻断\"));a.ok(o.includes(\"阶段结论为阻断\"));a.equal(29+5+10+6,50);a.equal(50-2,48);a.equal(50-39,11);console.log(\"PASS mdaj bridge authority, six-entry paper states and conditional accounts\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj bridge authority, six-entry paper states and conditional accounts",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json"
+      ]
+    },
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",v=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")),t=v.stageTasks.find(x=>x.id===\"mdaj-bridge-consumers\"),e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mdaj-bridge-consumers.json\",\"utf8\"));a.equal(e.taskId,t.id);a.equal(e.status,\"completed\");a.deepEqual(e.evidence,t.writePaths);a.ok(e.commands.every(x=>x.exitCode===0));for(const q of e.evidence)a.ok(f.existsSync(q),q);console.log(\"PASS mdaj bridge task evidence and contract paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdaj bridge task evidence and contract paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json"
+      ]
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json' | Sort-Object); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\\\','/') } | Sort-Object); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw \"Changed paths differ from contract: $actual\"}; Write-Output 'PASS only mdaj-bridge-consumers writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdaj-bridge-consumers writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json"
+      ]
+    }
+  ],
+  "failedAttempts": [],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaj-bridge-consumers.json"
+  ]
+}

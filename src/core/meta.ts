@@ -6,6 +6,18 @@ import type { KeyState } from './input';
 export interface Ctx {
   world: World;
   caster: Actor;
+  /** Set by the shared compiler/VM path; direct meta calls have no program identity. */
+  programHash?: string;
+  /** World-owned atoms charge the real payer and VM work at each committed stage. */
+  chargeWorldWork?: (
+    payerId: number,
+    mana: number,
+    ticks: number,
+    kind: string,
+    reservationId?: string,
+  ) => boolean;
+  /** World transactions held by this cast are released on every terminal path. */
+  registerWorldCleanup?: (cleanup: () => void) => void;
   /** 当前核心施法实例的控制会话，由 VM 或 Battle 提供。 */
   controlSession?: ControlSession;
   log: string[];
@@ -98,6 +110,8 @@ export interface MetaDef {
   legacyParams?: MetaParam[][];
   /** 旧 AST 可运行，但不再显示为玩家可新建的元函数。 */
   legacyOnly?: boolean;
+  /** 有限世界开发入口仍可由共享 AST/VM 调用，但不列入玩家公开目录。 */
+  internalOnly?: boolean;
   desc: string;
   impl: (ctx: Ctx, args: Value[]) => Value;
 }
@@ -151,7 +165,7 @@ export function allMetas(): readonly MetaDef[] {
 }
 
 export function publicMetas(): readonly MetaDef[] {
-  return registry.filter((meta) => !meta.legacyOnly);
+  return registry.filter((meta) => !meta.legacyOnly && !meta.internalOnly);
 }
 
 export function getMeta(name: string): MetaDef | null {

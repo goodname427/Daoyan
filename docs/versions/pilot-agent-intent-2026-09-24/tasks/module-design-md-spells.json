@@ -1,0 +1,86 @@
+{
+  "taskId": "md-spells",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "完成法术语言、最小原子作用、AST 到分析/定价/VM/事件的统一候选合同、五种载体六类结果、旧 94 项与十属性审计，以及 ADR 0017–0020 和旧数据非等价影响。completed 仅表示本模块策划与直接文档检查完成；数值、身份、环境回收、ADR 覆盖及游戏开发仍待整版审核。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),p=require(\"path\"),a=require(\"node:assert/strict\");const q=\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",s=f.readFileSync(q,\"utf8\");for(const x of [\"可编辑材料\",\"不可组合\",\"AST\",\"神识\",\"tick\",\"动态\",\"原子提交\",\"事件\",\"死亡后\",\"空目标\",\"修士\",\"法球\",\"机关\",\"人工生命\",\"残余遗体\",\"缺材料\",\"队列上限\",\"ADR 0017\",\"ADR 0018\",\"ADR 0019\",\"ADR 0020\"])a.ok(s.includes(x),\"missing \"+x);const n=[30,1,4,6,17,6,2,5,1,2,3,3,2,12].reduce((v,x)=>v+x,0);a.equal(n,94);let links=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const t=m[1].split(\"#\")[0];if(t&&!t.includes(\"://\")){a.ok(f.existsSync(p.resolve(p.dirname(q),t)),\"broken \"+t);links++}}console.log(\"PASS md-spells topics, 94-entry grouping, \"+links+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS md-spells topics, 94-entry grouping, 16 local links",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md"
+      ]
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),base=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-\";for(const id of [\"md-world\",\"md-physics\",\"md-mana\",\"md-life\"]){const r=JSON.parse(f.readFileSync(base+id+\".json\",\"utf8\"));a.equal(parseStageTaskResult(r,id).status,\"completed\");for(const x of r.evidence)a.ok(f.existsSync(x),\"missing \"+x)}console.log(\"PASS four completed predecessor records and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS four completed predecessor records and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-world.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\"),a=require(\"node:assert/strict\"),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json\",r=JSON.parse(f.readFileSync(q,\"utf8\"));a.equal(parseStageTaskResult(r,\"md-spells\").status,\"completed\");a.ok(r.commands.length>0&&r.commands.every(x=>x.exitCode===0));a.ok(r.failedAttempts.every(x=>x.exitCode!==0));for(const x of [...r.artifacts,...r.evidence,...r.commands.flatMap(y=>y.evidence)])a.ok(f.existsSync(x),\"missing \"+x);console.log(\"PASS md-spells task parser, artifacts, evidence and command status\")'",
+      "exitCode": 0,
+      "output": "PASS md-spells task parser, artifacts, evidence and command status",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 1,
+      "reason": "正文初稿未符合 Prettier 格式；随后仅格式化本任务正文并通过相同检查。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json",
+      "exitCode": 1,
+      "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied；当前工作区的 .git 只读，无法本地暂存或提交。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-md-spells.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "src/core/attributes.ts",
+    "src/core/pricing.ts",
+    "src/core/vm.ts",
+    "test/core.test.ts"
+  ],
+  "delivery": {
+    "status": "blocked",
+    "intendedCommitMessage": "docs: design programmable spells and entity execution",
+    "commit": null,
+    "blocker": "git add 退出码 1：.git/index.lock 写入被拒绝；仅能保留两个已验证的工作区文件，未能本地提交。",
+    "pushed": false
+  }
+}

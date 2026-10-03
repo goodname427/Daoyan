@@ -1,0 +1,78 @@
+{
+  "taskId": "mdak-ledger-status",
+  "status": "completed",
+  "summary": "已按 mdai-B4-audit-v1/audit-work-v1 修订账本现行消费者状态。逐段核程序 866–960、生命 704–721、理论 1261–1281、桥接 370–385；确认四者已纸面消费新键，程序安装峰条件为 559 S，但运行 hash、真实授权/样本/收据与容量仍未证。十九读 29 M/≤271 tick、装载 5 M、作用 10 M，均明确为设计条件；B4 本人 44/余6。逐 payer 复算 J1 本人32、P0本人1、P2本人2、可选P1本人1，跨账户35/36；D1本人40、支出26、余14。空读2/50→48、拒绝与尝试、未知价、POST失证39/11、同 payer/lot 竞争、重投均注明付款方、锁/释放与不可取收款限制；未虚构实收据。",
+  "writePaths": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-ledger-status.json"
+  ],
+  "reconciliation": {
+    "consumers": {
+      "programmable-spells-design.md:866-960": "book-mdu-01/v1 下 AST-B4-mdai-audit-v1、B4-R19-projection-v1、H_B4_mdai_assumed_v1、C-B4-mdai-carrier-v1；priceVersion=mdai-B4-audit-v1/workVersion=audit-work-v1；安装 Smax=559 S，C_S-O>=559 为条件容量门槛；设计 hash 非运行 SHA-256。",
+      "life-identity-design.md:704-721": "消费同键普通 k0 壳修；不改关键回路、不复苏旧 LifeId；死亡终局仍须四证及阶段屏障。",
+      "world-theory-draft.md:1261-1281": "已纸面消费程序新身份/安装峰、因果先序和各 payer 分账；自然与已提交效果不因后续欠费回滚。",
+      "player-bridge-design.md:370-385": "已纸面消费同键并描述空读、拒绝、失鲜、竞争、POST失证及仅显示本人获准余态。"
+    },
+    "payerArithmetic": "B4 本人条件 50=29 读+5 装载+10 作用+6 余；J1本人32，P0本人1，P2本人2，可选P1本人1，跨账户35/36；D1本人40-26=14。",
+    "counterexamples": "合法空读 B4 本人2、50→48；读前拒绝/未知价零扣零锁，已发且可付尝试互斥1；POST三项失证时B4本人已付39/暂余11、释放未用锁5、包余未知；竞争依同 payer 余额与同 lot 稳定先序；重投不新增收据/扣款。不可取收款不能提款或作后续 payer 余额。",
+    "evidenceLimits": "所有数字均为合同纸面条件账；真实净入、ReadTx/receiptId、规范程序 SHA-256、实际样本/授权和 VM/容量证据仍待开发验收。"
+  },
+  "commands": [
+    {
+      "command": "node -e cross-module keys and payer arithmetic assertions over the five named design documents",
+      "exitCode": 0,
+      "output": "PASS mdak cross-module keys and payer arithmetic"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-ledger-status.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-ledger-status.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "=@(two mdak-ledger-status writePaths); =@(git status --porcelain=v1 --untracked-files=all); Compare-Object  ; Write-Output PASS only mdak-ledger-status writePaths changed",
+      "exitCode": 0,
+      "output": "PASS only mdak-ledger-status writePaths changed"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e initial payer reconciliation assertion",
+      "exitCode": 1,
+      "reason": "首次定向断言使用了与正文不同的短语本人条件 50；该断言未通过，改为核验玩家条件余 6后整组断言通过。"
+    },
+    {
+      "command": "node -e update evidence JSON with unquoted angle-bracket placeholder",
+      "exitCode": 1,
+      "reason": "PowerShell 将尖括号解析为重定向语法；改用普通字符串后成功更新证据文件。"
+    },
+    {
+      "command": "node -e consumer assertion using phrase cross-account total 35",
+      "exitCode": 1,
+      "reason": "定向检查断言的短语与正文格式不一致，随后修正词面断言。"
+    },
+    {
+      "command": "node -e evidence JSON update with literal slash-n suffix",
+      "exitCode": 1,
+      "reason": "PowerShell 传参将换行写成字面反斜杠 n，导致 JSON 解析失败；本次重写为规范 JSON。"
+    },
+    {
+      "command": "node -e exact writePaths check invoking git via child_process",
+      "exitCode": 1,
+      "reason": "当前沙盒禁止 Node 子进程启动 git（EPERM）；改用 PowerShell 直接运行 git status 并对合同两条路径作精确比较，退出码0。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:886-946",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:866-960",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:704-721",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1261-1281",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:370-385",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-program-status.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json#mdak-ledger-status"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "taskId": "drb7-world-closure-review",
+  "status": "completed",
+  "reviewDecision": "changes-requested",
+  "summary": "六项 mdak 已消除 drb6 指定原句的价、安装峰和消费者状态错误，十九读及 B4 条件账和 559 S 设计界可纸面复算；物理、程序、生命、理论、桥接及 ADR-0024 的新现行消费者段仍与 module-design.md 当前首段互斥，故定向退回这些状态句，暂不作同版联签。ADR-0024 待采纳；真实授权、原读、收据、规范 hash、容量、VM 实耗及六入口实玩均未获本审核验证。首批 A 和既有制作人开发批准不撤销。",
+  "scope": {
+    "writePaths": [
+      "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json"
+    ],
+    "nonGoals": "不改模块正文、ADR、游戏实现、测试、共享 design-review.md/json、docs/status.md 或运行态；不运行统一代码门禁，不推送或发布。"
+  },
+  "checks": {
+    "paperClosed": [
+      "drb6 指定原句、十九 readId 的固定投影/正价/工作与独立 receiptId 模板",
+      "材料 R0 获准真空读 2 M/≤21 tick，条件 50→48；十九读 29 M/≤271 tick，B4 本人全链 44/余 6 M，POST 全失证已付 39/暂余 11 M 并释锁 5",
+      "安装 279/559/281 S、响应 314 S、新增设计峰 559 S 与实际准入判准 C_S−O≥559",
+      "J1/D1/B1→B4 有限因果及六入口同书往返的条件纸面分支"
+    ],
+    "sameKeyConflicts": [
+      "physics-material-design.md:706,708 仍将理论修正和总览消费者冲突写为待办",
+      "programmable-spells-design.md:960,970-973 仍将生命、理论、总览的旧阻断写为现行状态",
+      "life-identity-design.md:723,734 仍说总览因旧物理行而 blocked",
+      "world-theory-draft.md:1293,1299,1301 仍说总览因旧物理行而阻断或待重核",
+      "player-bridge-design.md:385 仍指总览旧阻断并称当前主策为 drb5",
+      "docs/adr/0024-自然接触与旧运动命中语义覆盖.md:57 仍称总览首段有旧 mdaj 冲突"
+    ],
+    "designEvidenceGap": "ADR-0024 已给新价、自然双边接触、旧资产隔离和回退提案，但尚待采纳；旧运动/命中语义不得据提案替换。",
+    "afterDevelopmentAcceptance": "真实逐端 grant/撤权及鲜原读、净入/锁/不可取 receiptId、规范 AST 字节与 SHA-256、球容量及旧占用和分项容量、同一 World→compiler→VM 的 M/tick/S 实耗与静态界、推演台—演武场六入口同书往返及失败余态实玩。"
+  },
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md#drb7-world-closure-review",
+    "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
+    ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb6-world-closure-review.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-physical-status.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-program-status.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-ledger-status.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-theory-status.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-adr-coverage.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md:1-13",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md:631-710",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md:886-946",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md:866-977",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md:676-748",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md:1239-1301",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md:370-385",
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md:1-87",
+    "src/core/world.ts:661-674",
+    "src/core/world.ts:1140-1161",
+    "src/core/compiler.ts:362",
+    "src/core/vm.ts:312-341"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",j=JSON.parse(f.readFileSync(p+\"tasks/design-review-drb7-world-closure-review.json\",\"utf8\")),d=f.readFileSync(p+\"design-review-findings.md\",\"utf8\").split(\"## `drb7-world-closure-review`\").at(-1);a.equal(j.taskId,\"drb7-world-closure-review\");a.equal(j.status,\"completed\");a.equal(j.reviewDecision,\"changes-requested\");for(const x of [\"50→48\",\"39/暂余11\",\"C_S−O≥559\",\"缺设计证\",\"待开发实测\",\"1 M/1 tick\"])a.ok(d.includes(x),x);a.equal(4*4+3,19);a.equal(4*6+5,29);a.equal(4*56+47,271);a.equal(29+5+10,44);a.equal(50-44,6);a.equal(24+5+10,39);a.equal(50-39,11);a.equal(2*(8+19+199+53)+1,559);console.log(\"PASS drb7 evidence and arithmetic\")'",
+      "exitCode": 0
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json",
+      "exitCode": 0
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json') | Sort-Object; $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,'/') } | Sort-Object); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0) { Write-Error 'writePaths mismatch'; exit 1 }; Write-Output 'PASS drb7 exact two writePaths'",
+      "exitCode": 0
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-drb7-world-closure-review.json",
+      "exitCode": 1,
+      "reason": "首次格式检查发现新增审核表格尚未按仓库 Prettier 格式排版；仅格式化 findings 后复检。"
+    }
+  ]
+}

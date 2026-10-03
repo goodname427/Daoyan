@@ -1,0 +1,92 @@
+{
+  "taskId": "mdaa-ledger-key",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "在账本策划末尾新增 J1/D1/B4 同版价格、到账凭证、executor/payer/grant、逐项余额和已付读复用键联签附节。核对 mdaa-physical-key 的共同事实 ID；确认 J1 35/36 M、D1 26 M、B4 34 M 条件毛价，撤销旧 D1 12/19 M 与 B4 43 M 正价地位。逐笔复算欠到账、R0 后先扣、同 payer/同切片竞争、授权撤销、失证重读、失败重试、两轮回收套利；规定共同版本改价时撤证、重签与下游通知。真实逐 payer 实扣和价格静态界列开发后验收。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\");for(const s of [\"S0-physical-v1\",\"pilot-physical-v1\",\"JH-v1\",\"D1-v1\",\"B4-v1\",\"XB1-shell-v1\",\"receipt-J1-funded-v1\",\"receipt-D1-funded-v1\",\"receipt-B4-funded-v1\",\"35 M=`9+11+12+1+2`\",\"36 M=`35+1`\",\"26 M\",\"34 M\",\"acct-M1-D1\",\"acct-B1-B4\",\"payerGrant-D1-v1\",\"payerGrant-B4-v1\",\"slice-J1-H2-01\",\"slice-D1-01\",\"slice-B4-01\",\"旧 D1 `12/19 M`\",\"B4 `43 M`\",\"欠到账收据\",\"R0 后他笔先扣\",\"同 payer / 同切片竞争\",\"授权撤销\",\"失证重读\",\"失败重试\",\"两轮回收套利\",\"版本撤证\",\"Mmax\",\"开发后验收\"])a.ok(d.includes(s),s);for(const s of [\"source-J1-work\",\"source-M1-drive-D1\",\"source-B1-work\",\"slice-J1-H2-01\",\"slice-D1-01\",\"slice-B4-01\",\"mdz-D1-v1\",\"mdz-B4-v1\",\"Read-J1-H2-\",\"Read-D1-\",\"Read-B4-\"])a.ok(x.includes(s),s);a.equal(9+11+12+1+2,35);a.equal(35+1,36);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(32-9-11-12,0);a.equal(40-26,14);a.equal(50-34,16);console.log(\"PASS mdaa-ledger-key: physical keys, receipts, prices, authorizations, balances, seven counterexamples and version rules\")'",
+      "exitCode": 0,
+      "output": "PASS mdaa-ledger-key: physical keys, receipts, prices, authorizations, balances, seven counterexamples and version rules",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --write docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md 247ms",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json"
+      ]
+    },
+    {
+      "command": "PowerShell Compare-Object against mdaa-ledger-key writePaths using git status --porcelain=v1 --untracked-files=all",
+      "exitCode": 0,
+      "output": "PASS only mdaa-ledger-key writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),x=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),e=p+\"tasks/module-design-mdaa-ledger-key.json\";for(const s of [\"S0-physical-v1\",\"pilot-physical-v1\",\"JH-v1\",\"D1-v1\",\"B4-v1\",\"XB1-shell-v1\",\"receipt-J1-funded-v1\",\"receipt-D1-funded-v1\",\"receipt-B4-funded-v1\",\"35 M=`9+11+12+1+2`\",\"36 M=`35+1`\",\"26 M\",\"34 M\",\"acct-M1-D1\",\"acct-B1-B4\",\"payerGrant-D1-v1\",\"payerGrant-B4-v1\",\"slice-J1-H2-01\",\"slice-D1-01\",\"slice-B4-01\",\"旧 D1 `12/19 M`\",\"B4 `43 M`\",\"欠到账收据\",\"R0 后他笔先扣\",\"同 payer / 同切片竞争\",\"授权撤销\",\"失证重读\",\"失败重试\",\"两轮回收套利\",\"版本撤证\",\"Mmax\",\"开发后验收\"])a.ok(d.includes(s),s);for(const s of [\"source-J1-work\",\"source-M1-drive-D1\",\"source-B1-work\",\"slice-J1-H2-01\",\"slice-D1-01\",\"slice-B4-01\",\"mdz-D1-v1\",\"mdz-B4-v1\",\"Read-J1-H2-\",\"Read-D1-\",\"Read-B4-\"])a.ok(x.includes(s),s);a.equal(9+11+12+1+2,35);a.equal(35+1,36);a.equal(12+4+8+2,26);a.equal(16+5+10+3,34);a.equal(32-9-11-12,0);a.equal(40-26,14);a.equal(50-34,16);a.ok(f.existsSync(e));console.log(\"PASS mdaa-ledger-key: physical keys, receipts, prices, authorizations, balances, seven counterexamples and version rules\")'",
+      "exitCode": 1,
+      "reason": "覆盖断言与算术均通过，但本轮证据文件尚未创建，末尾的 existsSync 断言失败；创建证据文件后以移除该过早存在性断言的完整覆盖命令重跑并通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+      "exitCode": 1,
+      "reason": "首次检查发现新增附节格式不符合 Prettier；对合同允许的策划文档运行 --write 后复检通过。"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdaa-ledger-key.json",
+      "exitCode": 1,
+      "reason": "证据 JSON 初次写入后未格式化；运行 Prettier --write 修复并复检通过。"
+    },
+    {
+      "command": "node -e task evidence self-check invoking child_process.execFileSync(git status --porcelain...)",
+      "exitCode": 1,
+      "reason": "宿主 Node 子进程启动 git 遭遇 spawn EPERM；改用 PowerShell 直接调用 git 完成路径边界核对并通过。"
+    }
+  ],
+  "notes": [
+    "本轮为策划纸面交付，没有真实到账、逐 payer 实扣、AST 静态界或程序容量测量；这些明确留作开发后验收。",
+    "按用户指示未运行统一 verify/verify:full，未 commit、push、tag 或发布。"
+  ]
+}

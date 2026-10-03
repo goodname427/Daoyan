@@ -1,0 +1,75 @@
+{
+  "taskId": "mdn-physics",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "在 mdc-physics 细则上形成首批圆盘/线段与承力部位、惰性材料整数份额、窄改接域 D、接触容差/细分/残差与未裁定返回候选；向共同报价提供有单位的冲量、正做功、材料差量和反作用。六个独立初态分别用 1/30 与 1/120 秒外层步长纸面复算，补齐首次相关窗口、C/X/A/H 唯一事实、反作用、残差去向及成功/未裁定/域外余态；交换对象数组顺序仍保持同组单次致伤。该结果是可审阅设计和代数复核，尚非现行代码运行或最终材料/法力价格批准。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-physics.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-physics.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-physics.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node -e <mdn-physics coverage, six cases, result fields, contract and evidence paths>",
+      "exitCode": 0,
+      "output": "PASS mdn-physics coverage, six cases, result fields, contract and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e <coverage and local link validation>",
+      "exitCode": 1,
+      "output": "AssertionError: expected six R1-R6 rows; the broad prefix also matched two additional R1-prefixed rows (actual 8).",
+      "resolution": "Narrowed the structural check to the six table rows whose first cell is exactly R1 through R6."
+    },
+    {
+      "command": "node -e <per-case timestep regex validation>",
+      "exitCode": 1,
+      "output": "AssertionError: expected timestep label on each row; timestep values are table column headers.",
+      "resolution": "Changed the check to validate six unique case IDs in the table and retain the table-level two-step structure."
+    },
+    {
+      "command": "node -e <per-row window-word validation>",
+      "exitCode": 1,
+      "output": "AssertionError: persistent-contact row did not contain the assumed “window” wording.",
+      "resolution": "Removed wording assumptions unrelated to acceptance; checked unique IDs and required document contract terms."
+    },
+    {
+      "command": "node -e <row content heuristic validation>",
+      "exitCode": 1,
+      "output": "AssertionError: a case row did not contain a hard-coded timestep or C-1 token.",
+      "resolution": "Removed the brittle token heuristic; six unique IDs and all direct scope/evidence checks then passed."
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-physics.json",
+      "exitCode": 1,
+      "output": "Prettier reported formatting issues in the task JSON after evidence update.",
+      "resolution": "Formatted the task JSON with Prettier --write; final check will verify both deliverables."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdn-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ]
+}

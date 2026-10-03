@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import {
   ATTR_LABELS,
@@ -18,6 +19,8 @@ import type {
 } from '../core/index';
 import { sfx } from '../game/audio';
 import { Battle } from '../game/battle';
+import { runFirstBatchDrive, type FirstBatchCase, type FirstBatchResult } from '../game/firstBatch';
+import { runFirstBatchB4, type B4Case, type B4Result } from '../game/firstBatchB4';
 import { ARENA_ATTR_CONSTRAINTS } from './arenaConfig';
 import { Renderer } from './renderer';
 
@@ -58,6 +61,13 @@ interface ParsedBook {
   error: string;
 }
 
+function finitePlayerError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.startsWith('同书缺少') || message.includes('静态预算未通过')
+    ? message
+    : '有限场景未准入：当前程序、来源、授权或容量证据不齐；未提交新作用。';
+}
+
 interface CombatViewProps {
   source: string;
   attrs: Attributes;
@@ -72,9 +82,10 @@ interface ArenaProps {
   bindings: Record<string, string>;
   onAttrChange: (key: AttrKey, value: number) => void;
   onBindingChange: (slot: string, spell: string) => void;
+  children?: ReactNode;
 }
 
-function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: ArenaProps) {
+function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange, children }: ArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer>(new Renderer());
   const [, force] = useReducer((x: number) => x + 1, 0);
@@ -360,6 +371,7 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: Arena
         />
         <AttributeEditor attrs={attrs} onChange={onAttrChange} />
         <BindingPanel battle={battle} bindings={bindings} onChange={onBindingChange} />
+        {children}
         <PhaseThreeControls
           key={worldEpoch}
           battle={battle}
@@ -439,9 +451,31 @@ function Arena({ battle, attrs, bindings, onAttrChange, onBindingChange }: Arena
             <b>{battle.started ? (battle.paused ? '暂停' : '演武中') : '整备'}</b>
           </div>
           <div className="muted small">
-            施法 {battle.stats.casts} · 打断 {battle.stats.interrupts} · 反噬{' '}
+            全场施法起手（含妖兽） {battle.stats.casts} · 打断 {battle.stats.interrupts} · 反噬{' '}
             {battle.stats.backfires}
           </div>
+          {battle.firstBatchLegacyRejections.length > 0 && (
+            <div
+              className="casting-note"
+              role="status"
+              aria-live="polite"
+              aria-label="旧 Battle 首批拒绝"
+            >
+              <b>旧活动 Battle 已拒绝首批有限世界法术</b>
+              <div className="active-cast-list">
+                {battle.firstBatchLegacyRejections.map((rejection) => (
+                  <div className="active-cast" key={rejection.sequence}>
+                    <strong>{rejection.spell}</strong> · 来源 {rejection.source} ·{' '}
+                    {rejection.reason}
+                    <div className="muted small">
+                      本次：VM 0、控制会话 0、玩家法力扣除 0、有限世界付款 0、成功施法记录
+                      0。上方全场施法起手可能因妖兽或其他旧法术变化，不代表本次拒绝成功。
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {activeCasts.length > 0 && (
             <div className="casting-note" data-testid="active-casts">
               <div className="row-between">
@@ -577,7 +611,12 @@ function AttributePanel({
   onObserveTarget: () => void;
   feedback: string;
 }) {
-  const foes = battle.world.actors.filter((actor) => actor.faction === 'foe' && actor.alive);
+  const foes = battle.world.actors.filter(
+    (actor) =>
+      actor.faction === 'foe' &&
+      actor.alive &&
+      battle.world.senseQuote(battle.player, actor.id, 'position') !== null,
+  );
   const now = battle.world.controlTimeNow;
   const rows = (snapshot: PanelSnapshot | null, fields: readonly EntityAuditField[]) =>
     snapshot ? (
@@ -1002,6 +1041,9 @@ export function CombatView({
   onBindingsChange,
 }: CombatViewProps) {
   const [battle, setBattle] = useState<Battle | null>(null);
+  const [finiteResult, setFiniteResult] = useState<FirstBatchResult | null>(null);
+  const [b4Result, setB4Result] = useState<B4Result | null>(null);
+  const [finiteError, setFiniteError] = useState('');
 
   const parsed = useMemo<ParsedBook>(() => {
     try {
@@ -1024,6 +1066,9 @@ export function CombatView({
   }, [source]);
 
   useEffect(() => {
+    setFiniteResult(null);
+    setB4Result(null);
+    setFiniteError('');
     if (!parsed.book) {
       setBattle(null);
       return;
@@ -1053,6 +1098,32 @@ export function CombatView({
   const updateBinding = (slot: string, spell: string): void => {
     onBindingsChange({ ...bindings, [slot]: spell });
     battle?.setBinding(slot, spell);
+    setFiniteResult(null);
+    setB4Result(null);
+    setFiniteError('');
+  };
+  const runFinite = (slot: string, scenario: FirstBatchCase): void => {
+    const spell = bindings[slot];
+    if (!parsed.book || (spell !== 'J1执行' && spell !== 'D1执行')) return;
+    try {
+      setFiniteResult(runFirstBatchDrive(parsed.book, spell.slice(0, 2) as 'J1' | 'D1', scenario));
+      setB4Result(null);
+      setFiniteError('');
+    } catch (error) {
+      setFiniteResult(null);
+      setFiniteError(finitePlayerError(error));
+    }
+  };
+  const runB4 = (slot: string, scenario: B4Case): void => {
+    if (!parsed.book || bindings[slot] !== 'B4修壳') return;
+    try {
+      setB4Result(runFirstBatchB4(parsed.book, scenario));
+      setFiniteResult(null);
+      setFiniteError('');
+    } catch (error) {
+      setB4Result(null);
+      setFiniteError(finitePlayerError(error));
+    }
   };
 
   return (
@@ -1077,7 +1148,234 @@ export function CombatView({
               bindings={bindings}
               onAttrChange={updateAttr}
               onBindingChange={updateBinding}
-            />
+            >
+              <section className="panel finite-observation" aria-label="首批有限世界观察">
+                <h2>首批有限世界观察</h2>
+                <p className="muted small">
+                  选择已绑定的 J1、D1 或 B4，在有限场景中由当前法术书的规范 AST 经真实 World/VM
+                  执行。有限场景独立于当前旧波次；每次重新建立来源、授权和付款，以下只显示执行者本人的账。
+                </p>
+                {SLOTS.filter(
+                  (slot) => bindings[slot.key] === 'J1执行' || bindings[slot.key] === 'D1执行',
+                ).map((slot) => (
+                  <div key={slot.key}>
+                    <strong>
+                      {slot.label}：{bindings[slot.key]}
+                    </strong>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runFinite(slot.key, 'success')}
+                    >
+                      有源执行
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runFinite(slot.key, 'noSource')}
+                    >
+                      无源反例
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runFinite(slot.key, 'revokedRead')}
+                    >
+                      撤销读权反例
+                    </button>
+                  </div>
+                ))}
+                {SLOTS.filter((slot) => bindings[slot.key] === 'B4修壳').map((slot) => (
+                  <div key={slot.key}>
+                    <strong>{slot.label}：B4修壳</strong>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'success')}
+                    >
+                      B1首撞后修壳
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'emptyRead')}
+                    >
+                      修壳后获准空读
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'noSource')}
+                    >
+                      无源反例
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'competingLot')}
+                    >
+                      同刻 lot 竞争
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'postStale')}
+                    >
+                      POST 失证
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'revokedRead')}
+                    >
+                      撤销读权
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'capacityUnknown')}
+                    >
+                      容量未知
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'queueFull')}
+                    >
+                      FIFO 实满
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'outOfDomain')}
+                    >
+                      域外回路修复
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'recontact')}
+                    >
+                      修壳后再撞（未获准读容量）
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'recontactMeasured')}
+                    >
+                      再撞容量足额
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => runB4(slot.key, 'recontactQueueFull')}
+                    >
+                      再撞 FIFO 实满
+                    </button>
+                  </div>
+                ))}
+                {!SLOTS.some((slot) =>
+                  ['J1执行', 'D1执行', 'B4修壳'].includes(bindings[slot.key]),
+                ) && <p className="muted small">先在推演台加入有限法术，再在上方槽位绑定。</p>}
+                {finiteError && (
+                  <p role="status" className="errors">
+                    {finiteError}
+                  </p>
+                )}
+                {finiteResult && (
+                  <div role="status" aria-label="有限世界收据">
+                    <p>
+                      {finiteResult.kind}：
+                      {finiteResult.actionFacts > 0 ? '作用已提交' : '作用未提交'}；
+                      {finiteResult.success ? '全链证据齐' : '全链未证成'} · {finiteResult.reason}
+                    </p>
+                    <p>
+                      本书 AST/hash {finiteResult.astHash} · 规范字节{' '}
+                      {finiteResult.canonicalAstBytes}
+                    </p>
+                    <p>
+                      静态上界：法力 {finiteResult.staticMana}、耗时 {finiteResult.staticTicks}{' '}
+                      tick、神识 {finiteResult.staticShenshi}；本次 VM：本人 {finiteResult.vmMana}{' '}
+                      M、
+                      {finiteResult.vmTicks} tick。
+                    </p>
+                    <p>
+                      逐体安装容量：总 {finiteResult.capacityTotal} S、旧占用{' '}
+                      {finiteResult.capacityOccupied} S、安装峰 {finiteResult.capacityReservedPeak}{' '}
+                      S、余 {finiteResult.capacityAvailable} S。
+                    </p>
+                    <p>
+                      本人已付 {finiteResult.payerPaid} M、余额 {finiteResult.payerBalance}{' '}
+                      M；原读收据 {finiteResult.readReceipts}、作用事实 {finiteResult.actionFacts}
+                      、冲量 {finiteResult.actionImpulse ?? '未提交'}。
+                    </p>
+                    <p className="muted small">
+                      返书改写后本次收据只作历史观察，旧报价不继承；需重新建立场景和授权。
+                    </p>
+                  </div>
+                )}
+                {b4Result && (
+                  <div role="status" aria-label="B1与B4有限世界收据">
+                    <p>
+                      B1 自然接触 {b4Result.naturalContacts}：
+                      {b4Result.nextResponse ? '首撞后普通壳' : '普通壳'}{' '}
+                      {b4Result.naturalShellAfter}
+                      、碎片 {b4Result.naturalFragmentAfter}；B4{' '}
+                      {b4Result.actionFacts > 0
+                        ? b4Result.nextResponse
+                          ? '首次壳修作用已提交'
+                          : '壳修作用已提交'
+                        : '壳修作用未提交'}
+                      ；{b4Result.success ? '全链证据齐' : '全链未证成'} · {b4Result.reason}
+                    </p>
+                    <p>
+                      本书 AST/hash {b4Result.astHash} · 规范字节 {b4Result.canonicalAstBytes}
+                    </p>
+                    <p>
+                      静态上界：法力 {b4Result.staticMana}、耗时 {b4Result.staticTicks} tick、神识{' '}
+                      {b4Result.staticShenshi}；
+                      {b4Result.vmRan
+                        ? `${b4Result.nextResponse ? '首次' : '本次'} VM：本人 ${b4Result.vmMana} M、${b4Result.vmTicks} tick。`
+                        : '本次 VM 未准入。'}
+                    </p>
+                    <p>
+                      {b4Result.nextResponse ? '首次逐体安装容量' : '逐体安装容量'}：总{' '}
+                      {b4Result.capacityTotal} S、旧占用 {b4Result.capacityOccupied ?? '未知'}{' '}
+                      S、安装峰 {b4Result.capacityReservedPeak ?? '未知'} S、余{' '}
+                      {b4Result.capacityAvailable ?? '未知'} S。
+                    </p>
+                    <p>
+                      本人已付 {b4Result.payerPaid} M、余额 {b4Result.payerBalance} M；
+                      {b4Result.nextResponse ? '首次原读收据' : '原读收据'} {b4Result.readReceipts}
+                      、作用事实 {b4Result.actionFacts}；
+                      {b4Result.nextResponse ? '再撞后未获准重读的普通壳' : '当前普通壳'}{' '}
+                      {b4Result.shellAfter ?? '未知'}、
+                      {b4Result.nextResponse ? '首次已获准废料' : '废料'}{' '}
+                      {b4Result.wasteAfter ?? '未知'}。
+                    </p>
+                    {b4Result.nextResponse && (
+                      <p>
+                        再撞后新请求：报价
+                        {b4Result.nextResponse.quote === 'invalidated' ? '已撤销' : '未证'}
+                        、容量 {b4Result.nextResponse.capacity}、本人容量新读{' '}
+                        {b4Result.nextResponse.capacityReadCount} 笔 / 已付{' '}
+                        {b4Result.nextResponse.capacityReadPaid} M、B4 新读收据{' '}
+                        {b4Result.nextResponse.freshReadReceipts}；第二 VM 未执行。
+                      </p>
+                    )}
+                    {b4Result.emptyReadReceipt && (
+                      <p>
+                        修壳后获准空读：World 另收 2 M / {b4Result.emptyReadTicks}{' '}
+                        tick，空结果收据已提交；没有第二个修壳作用。
+                      </p>
+                    )}
+                    <p className="muted small">
+                      自然破壳先于主动修壳；失败不回滚自然事实或已付读。返书改写后旧报价撤销。
+                    </p>
+                  </div>
+                )}
+              </section>
+            </Arena>
             <SyncedSpellList battle={battle} />
           </>
         )

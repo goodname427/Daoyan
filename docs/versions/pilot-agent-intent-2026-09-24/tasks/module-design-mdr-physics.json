@@ -1,0 +1,70 @@
+{
+  "taskId": "mdr-physics",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "依据已完成的 mdr-world 前驱与主策退回结论，在已批准物理/材料方向内修订唯一物理模块稿：明确量纲、事实 ID 与状态所有权、有效质量/双边接触/容差、材料变化和自然致伤、付费作用接口、七类反例及 ADR 0018 覆盖影响。精度、材料域、阈值和价格仍待产品取舍及跨模块证明；本任务仅为文档修订，不代表 ADR 覆盖或游戏开发获准。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),s=fs.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\",\"utf8\");for(const x of [\"状态所有权\",\"有限形状\",\"有效质量\",\"接触容差\",\"双边\",\"反作用\",\"材料\",\"自然致伤\",\"C-<kindSequence>\",\"X-<kindSequence>\",\"A-<kindSequence>\",\"μ·L/s\",\"Q[k]\",\"M\",\"稳定物\",\"失供法球\",\"修士起步\",\"擦边\",\"撞墙\",\"撞活体或遗体\",\"场外移交\",\"失败和空状态\",\"ADR 0018\",\"玩家效果\",\"推荐甲\",\"范围外未知\"]){if(!s.includes(x))throw Error(\"Missing \"+x)}console.log(\"PASS physics/material contract and scenarios\")'",
+      "exitCode": 0,
+      "output": "PASS physics/material contract and scenarios",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node -e 'const fs=require(\"node:fs\"),p=require(\"node:path\"),q=\"docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md\",s=fs.readFileSync(q,\"utf8\");let n=0;for(const m of s.matchAll(/\\]\\(([^)]+)\\)/g)){const x=m[1].split(\"#\")[0];if(x&&!x.includes(\"://\")){if(!fs.existsSync(p.resolve(p.dirname(q),x)))throw Error(x);n++}}console.log(\"PASS \"+n+\" local links\")'",
+      "exitCode": 0,
+      "output": "PASS 6 local links",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md"]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json",
+      "exitCode": 1,
+      "output": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.",
+      "resolution": "Formatted the task evidence JSON, then reran the direct format check."
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json",
+      "exitCode": 128,
+      "output": "fatal: Unable to create .git/index.lock: Permission denied",
+      "resolution": "Blocked by Git metadata write permissions in this environment; no files were staged or committed."
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-rule-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/adr/0018-运动供能与命中守恒.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdr-world.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "taskId": "mdw-program-bound",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "综合 mdw-source-proof、mdw-price-proof 与 mdw-life-state 只读前驱，补全 M1/B1/J1/A1 的 AST、感官、记忆、订阅、信封、FIFO、引用、帧、神识及 M 池容量式；纳入装载与 AT0、分支/列表/循环、H/B、普通行动、维持及 payer 毛 M 的整链预算，增加双订阅碰撞反证和开发后静态界/实耗/峰值/原读核验。100/20 仅在同一 M1 或 A1 池至少 120 M 且早到转入、独立攻击报价及维持包齐证时可执行；当前原读和攻击价缺失，判为不可执行且 capacityUnknown。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json"
+  ],
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting... All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",d=f.readFileSync(p,\"utf8\");for(const k of [\"A_x·b_x+I_x\",\"SenseBytes_x\",\"MemoryBytes_x\",\"Subscriptions_x\",\"EnvelopeRefs_x\",\"FIFO_x\",\"Frames_x\",\"S_x≤Resident_x\",\"M1:\",\"B1:\",\"J1:\",\"A1:\",\"同一自然事件同刻命中同体两条订阅\",\"120 M\",\"capacityUnknown\",\"capacityFull\",\"AT0-contact-v1\",\"τ_AT0\",\"静态毛锁额≥同付款人实扣\",\"静态 tick≥实际已做工作\",\"静态 S≥同刻实占\",\"DeathBarrier\",\"第三引用\"])a.ok(d.includes(k),\"missing \"+k);console.log(\"PASS four-carrier budget, 100/20 gate, counterexamples and post-development audit coverage\")'",
+      "exitCode": 0,
+      "output": "PASS four-carrier budget, 100/20 gate, counterexamples and post-development audit coverage"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json'); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if(@(Compare-Object $expected $actual).Count -ne 0){throw 'Changed paths differ from contract'}; Write-Output 'PASS only mdw-program-bound writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdw-program-bound writePaths changed"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(r.taskId,\"mdw-program-bound\");a.equal(r.status,\"completed\");a.deepEqual(r.evidence,[\"docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md\",p]);a.ok(r.commands.every(x=>x.exitCode===0&&x.command));a.ok(r.failedAttempts.every(x=>x.exitCode!==0&&x.command));console.log(\"PASS mdw-program-bound task evidence JSON\")'",
+      "exitCode": 0,
+      "output": "PASS mdw-program-bound task evidence JSON"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "Get-Content docs/status.md; Get-Content docs/workflow.md; Get-Content docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md; Get-Content docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json",
+      "exitCode": 1,
+      "reason": "开工读取任务证据路径时该文件尚不存在（Get-Content 报 cannot find path）；随后按合同格式创建该 writePath。"
+    },
+    {
+      "command": "node -e 'const f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));r.commands.push(...);f.writeFileSync(p,JSON.stringify(r,null,2)+\"\\n\")'; node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json",
+      "exitCode": 1,
+      "reason": "PowerShell 在执行嵌套引号的证据补录脚本时报告 ParserError: Missing argument in parameter list；写文件步骤未执行，改用 here-string 写入。"
+    },
+    {
+      "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdw-program-bound.json; git commit -m \"docs: complete four-carrier program budget\"",
+      "exitCode": 1,
+      "reason": "Git 无法创建 .git/index.lock，返回 Permission denied；工作区策略将 .git 设为只读，未产生暂存或提交。"
+    }
+  ]
+}

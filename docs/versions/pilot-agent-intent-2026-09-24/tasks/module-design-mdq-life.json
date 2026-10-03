@@ -1,0 +1,84 @@
+{
+  "taskId": "mdq-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "整合 physical-mdq-1 与 mdq-mana K0/V0 净到账，按 M1/A1 材料、回路和保存承载导出逐体功能界、有限截止测量、X 与三链版本证书；逐 tick 条件复算 100/20、失供、补源、休眠、修壳及复制，并给程序撤权事实和理论共同因果引用。关键材料、包上游、修复和复制仍缺证，相关正向结果为 unknown 或 unexpressible。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),t=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdq-life\"),s=d.split(\"## `mdq-life` 逐体签证\")[1];a.deepEqual(t.dependsOn,[\"mdq-physics\",\"mdq-mana\"]);a.ok(s);for(const v of [\"M1@Xm0\",\"A1@Xa0\",\"physical-mdq-1\",\"mdq-life-1\",\"dueAt\",\"preservationDueAt\",\"recoveryDeadline\",\"N-m1\",\"N-a1\",\"N-m2\",\"N-a2\",\"LifeAssessment\",\"DeathBarrier\",\"unknown\",\"100/20\",\"无供能\",\"及时补源\",\"才补源\",\"V0\",\"惰性修壳\",\"复制分叉\",\"三链\",\"程序与理论\"])a.ok(s.includes(v),v);const rows=s.split(\"\\n\").filter(x=>/^\\| `T[012]/.test(x));a.equal(rows.length,8);for(const row of rows){a.ok(row.split(\" | \").length>=4,row);a.ok(/unknown|viable|critical|dormant|dead/.test(row),row);a.ok(/连续|新枝|unknown|none/.test(row),row)}a.equal(23,20+2+1);a.equal(130,7+123);a.equal(130,7+20+103);console.log(\"PASS mdq-life two-body certificate, event rows and conditional balances\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-life two-body certificate, event rows and conditional balances",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from task evidence and contract' }; Write-Output 'PASS only mdq-life design and task evidence paths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdq-life design and task evidence paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json\",r=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(r.taskId,\"mdq-life\");a.equal(r.status,\"completed\");a.equal(r.artifacts.length,2);a.ok(r.commands.length>0&&r.commands.every(x=>x.exitCode===0));for(const x of r.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdq-life task result and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-life task result and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json\",r=JSON.parse(f.readFileSync(p,\"utf8\")),{parseStageTaskResult}=require(\"./scripts/version-stage-tasks.ts\");a.equal(parseStageTaskResult(r,\"mdq-life\").status,\"completed\");a.deepEqual(r.artifacts,[\"docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md\",p]);a.ok(r.commands.length>0&&r.commands.every(x=>x.exitCode===0&&x.evidence.every(f.existsSync)));a.ok(r.failedAttempts.every(x=>x.exitCode!==0));console.log(\"PASS mdq-life task result parser and evidence paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-life task result parser and evidence paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+        "scripts/version-stage-tasks.ts"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),t=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdq-life\"),s=d.split(\"## `mdq-life` 逐体签证\")[1];a.deepEqual(t.dependsOn,[\"mdq-physics\",\"mdq-mana\"]);a.ok(s);for(const v of [\"M1@Xm0\",\"A1@Xa0\",\"physical-mdq-1\",\"mdq-life-1\",\"dueAt\",\"preservationDueAt\",\"recoveryDeadline\",\"N-m1\",\"N-a1\",\"N-m2\",\"N-a2\",\"LifeAssessment\",\"DeathBarrier\",\"unknown\",\"100/20\",\"无供能\",\"及时补源\",\"才补源\",\"V0\",\"惰性修壳\",\"复制分叉\",\"三链\",\"程序与理论\"])a.ok(s.includes(v),v);const rows=s.split(\"| tick / 分支 |\")[1].split(\"**交给程序与理论\")[0].split(\"\\n\").filter(x=>x.startsWith(\"| `\"));a.ok(rows.length>=8,rows.length);for(const row of rows){a.ok(row.includes(\" | \")&&row.split(\" | \").length>=4,row);a.ok(/unknown|viable|critical|dormant|dead/.test(row),row);a.ok(/连续|新枝|unknown|none/.test(row),row)}a.equal(23,20+2+1);a.equal(130,7+123);a.equal(130,7+20+103);console.log(\"PASS mdq-life two-body certificate, event rows and conditional balances\")'",
+      "exitCode": 1,
+      "output": "TypeError: Cannot read properties of undefined (reading 'split')",
+      "resolution": "Prettier 对表格列宽补齐空格；改以行首 tick 正则识别 8 个事件行，并重跑定向检查通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "taskId": "mds-life",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "补全 M1/A1 在 physical-mds-1 与 mds-ledger 前驱上的逐体关键回路、四链测量、独立 N→X、窗口及截止、可达修复边界和九类逐 tick 条件证书。当前关键编辑无获准材料/包/报价，上游未实测，正向结果保持条件式；缺证为 unknown 且冻结旧私权。",
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),s=d.split(\"## `mds-life-1`\")[1];a.ok(s);for(const x of [\"physical-mds-1\",\"mds-life-1\",\"k_m\",\"k_a\",\"m-store\",\"a-store\",\"senseTestVersion\",\"regTestVersion\",\"linkTestVersion\",\"storeTestVersion\",\"N-i1→X-i1\",\"N-i2→X-i2\",\"preservationDueAt\",\"recoveryDeadline\",\"D0\",\"unexpressible\",\"unknown\",\"冻结旧身份私权\",\"DeathBarrier\",\"revokedGrantIds\",\"程序消费\",\"理论按\"])a.ok(s.includes(x),x);for(const x of [\"及时补源\",\"最后一击但无②来源\",\"⑥迟到补源\",\"暂停、④V0\",\"首次关键损伤\",\"第二次独立失供\",\"惰性修壳\",\"复制分叉\",\"创建者 M1 死亡\"])a.ok(s.includes(x),x);for(const id of [\"mds-supply\",\"mds-ledger\"])a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");console.log(\"PASS mds-life certificate fields, events and accepted predecessors\")'",
+      "exitCode": 0,
+      "output": "PASS mds-life certificate fields, events and accepted predecessors",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Changed paths differ from contract' }; Write-Output 'PASS only two contract writePaths changed'",
+      "exitCode": 0,
+      "output": "PASS only two contract writePaths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json"
+      ]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",e=JSON.parse(f.readFileSync(p+\"tasks/module-design-mds-life.json\",\"utf8\"));a.equal(e.taskId,\"mds-life\");a.equal(e.status,\"completed\");a.equal(e.commands.length,5);a.ok(e.commands.every(x=>x.exitCode===0));a.ok(e.failedAttempts.every(x=>x.exitCode!==0));for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mds-life evidence JSON\")'",
+      "exitCode": 0,
+      "output": "PASS mds-life evidence JSON",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mds-life.json"
+      ]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),c=require(\"node:child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",want=[p+\"life-identity-design.md\",p+\"tasks/module-design-mds-life.json\"].sort(),got=c.execFileSync(\"git\",[\"status\",\"--porcelain=v1\",\"--untracked-files=all\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).map(x=>x.slice(3).replaceAll(\"\\\\\",\"/\")).sort();a.deepEqual(got,want);console.log(\"PASS only two contract writePaths changed\")'",
+      "exitCode": 1,
+      "output": "Error: spawnSync git EPERM",
+      "resolution": "PowerShell directly invoked git for the same writePaths scope check; that replacement exited 0."
+    }
+  ]
+}

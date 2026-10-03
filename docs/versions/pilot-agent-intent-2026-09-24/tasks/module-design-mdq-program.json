@@ -1,0 +1,84 @@
+{
+  "taskId": "mdq-program",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "完成四类载体逐体字段、AST、记忆、队列、储池、执行器、神识容量分项与生命周期/同刻峰值；补结构版本损坏换证、H/B/普通行动/K0/V0/100-20统一资源复算、双时点授权、事件顺序、队列竞争及失败余态。沿用四原子与同一AST，首批死后独立grant关闭；缺证capacityUnknown，满额capacityFull/queueFull。仅纸面条件证书，不宣称结构已实测或游戏已实现。",
+  "artifacts": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+  ],
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),c=JSON.parse(f.readFileSync(p+\"module-design-tasks.json\",\"utf8\")).tasks.find(x=>x.id===\"mdq-program\");a.deepEqual(c.dependsOn,[\"mdq-physics\",\"mdq-mana\",\"mdq-life\"]);a.deepEqual(c.writePaths,[p+\"programmable-spells-design.md\"]);for(const id of c.dependsOn)a.equal(JSON.parse(f.readFileSync(p+\"tasks/module-design-\"+id+\".json\",\"utf8\")).status,\"completed\");for(const s of [\"CarrierCapacityCertificate mdq-program-1\",\"M1\",\"B1\",\"J1\",\"A1\",\"字段/候选索引\",\"AST：至多 256\",\"本体事件信封引用\",\"K0\",\"V0\",\"100/20\",\"capacityUnknown\",\"capacityFull\",\"queueFull\",\"postDeathGrantUnavailable\",\"双时点\",\"已付款不回滚\",\"physical-mdq-1\",\"mdq-life-1\"])a.ok(d.includes(s),s);a.equal(8+2+2+8,20);a.equal(8+1+2+8,19);a.equal(9+12,21);a.equal(23*3,69);a.equal(3+100+20,123);a.equal(7+0+123,130);console.log(\"PASS mdq-program predecessor, carrier/resource/peak/scenario coverage and balances\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-program predecessor, carrier/resource/peak/scenario coverage and balances",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+      "exitCode": 0,
+      "output": "",
+      "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md"]
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json\",e=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(e.taskId,\"mdq-program\");a.equal(e.status,\"completed\");a.ok(e.summary.length>0);a.ok(e.commands.length>=3);for(const c of e.commands){a.equal(c.exitCode,0);a.ok(c.command);for(const x of c.evidence)a.ok(f.existsSync(x),x)}for(const x of e.evidence)a.ok(f.existsSync(x),x);console.log(\"PASS mdq-program evidence JSON syntax, required fields and paths\")'",
+      "exitCode": 0,
+      "output": "PASS mdq-program evidence JSON syntax, required fields and paths",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+      ]
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+      ]
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json",
+      "exitCode": 0,
+      "output": "",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+      ]
+    },
+    {
+      "command": "$expected = @('docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md', 'docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json'); $actual = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (@(Compare-Object $expected $actual).Count -ne 0) { throw ('Changed paths differ from task artifacts: ' + ($actual -join ', ')) }; Write-Output 'PASS only mdq-program design and evidence paths changed'",
+      "exitCode": 0,
+      "output": "PASS only mdq-program design and evidence paths changed",
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json"
+      ]
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-program.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design-tasks.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-physics.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-mana.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdq-life.json"
+  ],
+  "limitations": [
+    "上限是条件夹具声明，载体传感器、AST存储、执行器和储池仍须逐体结构实测及签证。",
+    "预存物理包上游来源及部分正功/改料成功域未证；相关正向案例维持条件态，实际缺证须拒绝。"
+  ]
+}

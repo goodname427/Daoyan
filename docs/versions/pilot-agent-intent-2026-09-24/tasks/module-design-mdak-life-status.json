@@ -1,0 +1,63 @@
+{
+  "taskId": "mdak-life-status",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "依据本轮 mdak-life-status 合同及最新 drb6-world-closure-review，修正生命设计 723：总览 1–20 已消费 mdai-B4-audit-v1 新价和程序 559 S 安装峰，但仍因物理旧阻断及 C_S−O≥559/逐维容量证明未闭合而阻断。按 LifeId/assessmentId、B4-v1/slice-B4-01/readId/priceVersion 反查物理、账本、程序、理论、桥接和总览现行权威；逐 payer 对账 B4 50=29+5+10+6、空读 2/50→48、POST 失证 39/11，J1 32 与 P0/P2/P1 分账合计 35/36，D1 40=26+14；物理 E0/q 不并入 M。复核 AST/hash 假设身份、559 S 安装峰及未知球容量，并裁定创建者死亡、POST 失证、拒绝、合法空、未知、域外和竞争的 DeathBarrier、派生 grant、自然事实/已付款余态。普通 k0 壳修不证明 k_m/k_a 修复或旧 LifeId 复苏。仅完成纸面边界，真实 receipt、规范 AST/hash、球容量/VM 实耗、assessmentId 与授权观察留待开发；关键修复开放、玩家边界及 44/6 可施放性仍待主策判断。",
+  "crossModuleReconciliation": {
+    "physical": "mdai-b4-fields/mdaj-physical-price；S0-physical-v1、seed-physical-v1、B4-v1、slice-B4-01、逐 readId/V0…VP；物理独占 C/N/X、Q[k0]、阈值、E0/q、热和残片。",
+    "ledger": "mdai-B4-audit-v1/audit-work-v1/receipt-B4-funded-v1/payerGrant-B4-v1；B4 条件 50=29+5+10+6，R0 合法空读 2 M/50→48，POST 失证 39/11；J1 32、P0/P2 各自 1/2、可选 P1 1，跨账户 35/36；D1 40=26+14。没有实收据，不表述为实扣。",
+    "program": "book-mdu-01/v1/AST-B4-mdai-audit-v1/B4-R19-projection-v1/H_B4_mdai_assumed_v1/C-B4-mdai-carrier-v1；旧 AST-B4-mdaa-assumed-v1 非别名；响应条件 314 S、安装峰 559 S，须 C_S−O≥559；规范 AST/hash、球容量和 VM 实耗未知。",
+    "life": "mdai-b4-life；LifeId 与 assessmentId 分离，普通 k0 不触 k_m/k_a、保存/控制链或旧身份复苏；四证齐才⑤一次 DeathBarrier、⑥撤派生未来权。",
+    "theory_bridge_overview": "mdai-world/mdaj-theory-consumers、mdai-bridge、mdaj-overview；理论和桥接已消费同键条件账及余态；总览已消费新价与 559 S 但仍 blocked，由 Version PM 复核，不由本任务解除。",
+    "remaining_authority_decision": "最新 drb6-world-closure-review 为 changes-requested；关键回路修复是否开放、固定审计与通用探查玩家边界、44/6 对可施放性的影响由主策判断。"
+  },
+  "contractGap": "本轮按任务 readPaths 使用当前主策结论/发现、物理、账本、程序、生命、理论、桥接及 module-design.md；mdak-ledger-status 仅作合同所述只读前驱，不增加计划依赖。无合同外权威被用于数值或规则判断。",
+  "commands": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",d=f.readFileSync(p+\"life-identity-design.md\",\"utf8\"),m=f.readFileSync(p+\"module-design.md\",\"utf8\"),l=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),th=f.readFileSync(p+\"world-theory-draft.md\",\"utf8\"),b=f.readFileSync(p+\"player-bridge-design.md\",\"utf8\"),r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\");for(const x of [\"mdaj-overview\",\"559 S\",\"仍为 **blocked**\",\"普通 `k0`\",\"`k_m/k_a`\",\"drb6-world-closure-review\",\"DeathBarrier\",\"POST 失证\",\"合法空\",\"outOfDomain\",\"稳定世界序\",\"B4-R19-projection-v1\",\"unknownPrice\",\"mdai-B4-audit-v1\"])a.ok(d.includes(x),x);a.ok(m.includes(\"559 S\"));a.ok(l.includes(\"mdai-B4-audit-v1\"));a.ok(pr.includes(\"559 S\"));a.ok(th.includes(\"44/6\"));a.ok(b.includes(\"mdai-bridge\"));a.ok(r.includes(\"drb6-world-closure-review\"));a.equal(10,4+2+4);a.equal(3,2+1);a.equal(100,53+47);a.equal(4,2+1+1);a.equal(29+5+10+6,50);console.log(\"PASS mdak life stable-key consumers, arithmetic and seven boundary cases\")'",
+      "exitCode": 0,
+      "output": "PASS mdak life stable-key consumers, arithmetic and seven boundary cases"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json",
+      "exitCode": 0,
+      "output": "All matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json\",e=JSON.parse(f.readFileSync(p,\"utf8\"));a.equal(e.taskId,\"mdak-life-status\");a.equal(e.status,\"completed\");a.ok(e.commands.length>=3&&e.commands.every(x=>x.exitCode===0));a.equal(e.failedAttempts[0].exitCode,1);a.deepEqual(e.evidence,[\"docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md\",p]);console.log(\"PASS exact mdak-life-status evidence and recorded exit codes\")'",
+      "exitCode": 0,
+      "output": "PASS exact mdak-life-status evidence and recorded exit codes"
+    },
+    {
+      "command": "$expected=@('docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json' | Sort-Object); $actual=@(git status --porcelain --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') } | Sort-Object); if(@(Compare-Object -ReferenceObject $expected -DifferenceObject $actual).Count -ne 0){Write-Error 'scope mismatch'; exit 1}; Write-Output 'PASS exact writePaths worktree scope'",
+      "exitCode": 0,
+      "output": "PASS exact writePaths worktree scope"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+      "exitCode": 1,
+      "reason": "新增 Markdown 表格未符合 Prettier 格式；随后运行 node node_modules/prettier/bin/prettier.cjs --write docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md 并重跑检查通过。"
+    }
+  ],
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdak-life-status.json"
+  ]
+}

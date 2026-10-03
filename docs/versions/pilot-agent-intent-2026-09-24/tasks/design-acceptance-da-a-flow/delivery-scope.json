@@ -1,0 +1,40 @@
+﻿{
+  "taskId": "da-a-flow",
+  "deliveryBase": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
+  "head": "ea1fa0f88376970df22575b473f1fbe3c4db610f",
+  "excludedHistoricalBase": "0f6b1f0",
+  "excludedHistoricalCommits": [
+    "ea1fa0f88376970df22575b473f1fbe3c4db610f docs: reconcile pilot development gate handoff",
+    "ee92c060327d86e0ec71d3ae04235722678e64a8 chore(version): sync development gate reconciliation control",
+    "c3035b4902b43f105fc2e50e7400ecb19bc06fa5 fix(secretary): reconcile development gate before acceptance",
+    "445484ed558104cc510ad020c1e73e9583278026 docs: correct pilot development gate status",
+    "caa732af32767916bd52206ae2073f288510ac4b test(ci): bound secretary fixture cleanup"
+  ],
+  "excludedHistoricalPaths": [
+    "docs/dev/2026-10-02.md",
+    "docs/status.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/development.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/development.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md",
+    "scripts/agent-routing.ts",
+    "scripts/pre-push-verify.mjs",
+    "scripts/secretary-notice-guard.ts",
+    "test/agent-routing.test.ts",
+    "test/secretary-dashboard.test.ts",
+    "test/secretary-notice-guard.test.ts"
+  ],
+  "committedTaskPaths": [],
+  "workspaceTaskPaths": [
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/browser-attempts.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/check-delivery-scope.ps1",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/checks.txt",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/collect-evidence.mjs",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/delivery-scope.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/source-evidence.json",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/validate.mjs"
+  ],
+  "outsideWritePaths": [],
+  "policy": "Prior committed work is preserved and excluded from this task delivery; only contract writePaths may be staged by the delivery owner."
+}

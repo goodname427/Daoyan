@@ -1,0 +1,65 @@
+{
+  "taskId": "unified-world-review",
+  "status": "completed",
+  "scopeRevision": 13,
+  "charterRevision": "2",
+  "summary": "承接上一轮 changes-requested 与六项 mdr 结果，复审范围修订 13、策划修订 2 和 A/B/B/B/B/B。审核报告逐项标记退回项：信标窄域拒绝与六阶段相对顺序已闭合；共同价函数、材料精度、身份连续性、死后授权和新规则体验仍待判断。五份细则与唯一理论正文未发现批准方向内冲突，故只修订本轮审核记录和任务证据，不宣称理论定型或开发获准。",
+  "commands": [
+    {
+      "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json",
+      "exitCode": 0,
+      "evidence": ["design-review-findings.md", "tasks/design-review-unified-world-review.json"]
+    },
+    {
+      "command": "node -e 'const f=require(\"fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\"),j=JSON.parse(f.readFileSync(p+\"tasks/design-review-unified-world-review.json\",\"utf8\")),c=JSON.parse(f.readFileSync(p+\"design-review-tasks.json\",\"utf8\")).tasks[0],ids=[\"world\",\"physics\",\"mana\",\"life\",\"spells\",\"experience\"];if(j.taskId!==\"unified-world-review\"||j.status!==\"completed\"||j.scopeRevision!==13||j.charterRevision!==\"2\"||j.commands.length!==4||!j.commands.every(z=>z.exitCode===0)||!j.evidence.every(q=>f.existsSync(q))||!ids.every(id=>JSON.parse(f.readFileSync(p+\"tasks/module-design-mdr-\"+id+\".json\",\"utf8\")).status===\"completed\")||![\"F3\",\"F4\",\"100/20\",\"B1\",\"①\",\"⑥\",\"推演台\",\"演武场\",\"ADR 0017\",\"ADR 0020\",\"仍待判断\"].every(t=>r.includes(t)))throw Error(\"review contract\");console.log(\"review contract OK\")'",
+      "exitCode": 0,
+      "evidence": [
+        "design-review-findings.md",
+        "tasks/design-review-unified-world-review.json",
+        "design-review-tasks.json"
+      ]
+    },
+    {
+      "command": "$tasks=(Get-Content .daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json -Raw | ConvertFrom-Json).stageTasks; $allowed=@(($tasks | Where-Object {$_.id -eq 'unified-world-review'} | Select-Object -Last 1).writePaths); $changed=git diff --name-only; $outside=@($changed | Where-Object {$_ -notin $allowed}); if($outside.Count){Write-Error \"outside writePaths: $outside\"; exit 1}; Write-Output \"writePaths OK\"",
+      "exitCode": 0,
+      "evidence": [
+        ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        "design-review-findings.md",
+        "tasks/design-review-unified-world-review.json"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "evidence": ["design-review-findings.md", "tasks/design-review-unified-world-review.json"]
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const f=require(\"fs\"),x=require(\"child_process\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",r=f.readFileSync(p+\"design-review-findings.md\",\"utf8\"),j=JSON.parse(f.readFileSync(p+\"tasks/design-review-unified-world-review.json\",\"utf8\")),c=JSON.parse(f.readFileSync(p+\"design-review-tasks.json\",\"utf8\")).tasks[0],ids=[\"world\",\"physics\",\"mana\",\"life\",\"spells\",\"experience\"];if(j.taskId!==\"unified-world-review\"||j.status!==\"completed\"||j.scopeRevision!==13||j.charterRevision!==\"2\"||j.commands.length!==3||!j.commands.every(z=>z.exitCode===0)||!j.evidence.every(q=>f.existsSync(q))||!ids.every(id=>JSON.parse(f.readFileSync(p+\"tasks/module-design-mdr-\"+id+\".json\",\"utf8\")).status===\"completed\")||![\"F3\",\"F4\",\"100/20\",\"B1\",\"①\",\"⑥\",\"推演台\",\"演武场\",\"ADR 0017\",\"ADR 0020\",\"仍待判断\"].every(t=>r.includes(t))||!x.execFileSync(\"git\",[\"diff\",\"--name-only\"],{encoding:\"utf8\"}).trim().split(/\\r?\\n/).every(q=>c.writePaths.includes(q)))throw Error(\"review contract\");console.log(\"review contract OK\")'",
+      "exitCode": 1,
+      "evidence": "Node 子进程执行 git diff --name-only 时返回 spawnSync git EPERM；改由 PowerShell 直接调用 git 核验写入范围，保留原退出码。"
+    },
+    {
+      "command": "$allowed=(Get-Content docs/versions/pilot-agent-intent-2026-09-24/design-review-tasks.json -Raw | ConvertFrom-Json).tasks[0].writePaths; $changed=git diff --name-only; $outside=@($changed | Where-Object {$_ -notin $allowed}); if($outside.Count){Write-Error \"outside writePaths: $outside\"; exit 1}; Write-Output \"writePaths OK\"",
+      "exitCode": 1,
+      "evidence": "误用较早 design-review-tasks.json 的 writePaths，漏列本轮任务结果 JSON；改以版本状态最新 stageTasks 合同核验，保留真实退出码。"
+    }
+  ],
+  "delivery": {
+    "committed": false,
+    "reason": "执行任务按制作人明确要求仅在工作区交付，不执行 commit、push、tag 或发布。"
+  },
+  "evidence": [
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review-findings.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-review-unified-world-review.json"
+  ]
+}

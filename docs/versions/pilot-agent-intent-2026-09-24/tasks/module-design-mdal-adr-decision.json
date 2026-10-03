@@ -1,0 +1,71 @@
+{
+  "taskId": "mdal-adr-decision",
+  "status": "completed",
+  "scopeRevision": 13,
+  "summary": "架构归属者对照总览现行 1–13、drb7、已接纳 mdal-bridge-consumer、物理/账本/程序/生命/理论/桥接权威段与 ADR 0017–0020，采纳 ADR-0024 为首批 A 的设计覆盖合同，并撤销 ADR 旧第 57 行的 mdaj 总览阻断时态。覆盖旧单边阻挡、自动 Wm、damage 池/HP 双扣、三池 E 物理解释和 fixed life 无因删除，沿用共享 AST、已付惯性、逐字段授权正价、提交后裁剪派发、原子迁移与安全回退。仅本 ADR 与本证据变更；主策 drb7 的其他消费者时态、固定审计与通用探查的玩家边界、44/余 6 M 与 559 S 的可施放性仍待主策复核，本任务不作整版联签。真实收据、规范 AST/hash、容量原读及 VM 实耗仍留开发验收。",
+  "scope": {
+    "writePaths": [
+      "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+      "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json"
+    ],
+    "readPathsGap": "无：合同 readPaths 包含总览 1–13、六模块权威、桥接现行 mdal 段、drb7 审核和 ADR 0017–0020；正式任务合同中的直接前驱 mdal-bridge-consumer 为 accepted，其现行正文位于列明的桥接 readPath。",
+    "nonGoals": "不改其他模块、流程状态或游戏代码；不把采纳当 World/VM 已实现、整版主策通过、真实付款或球容量已签。"
+  },
+  "reconciliation": {
+    "physicalAndIdentity": "S0-physical-v1/seed-physical-v1 独立复位；B1 世界序 20 的 C-B1-01→N-B1-impact-01→X-B1-shell-v1 双端 −6/+6 μ·L/s，10=4+2+4 E0，旧普通壳 3q=2q+fragment q；X-B1-shell-v1 是事实 ID、XB1-shell-v1 是新结构版。B4-v1/slice-B4-01 独立 100=53+47 E0/12、包 32/12→8/12、仓 4q=2q+q+q；首撞热/残片及 M 不充新来源。生命只消费普通 k0，缺关键四证为 unknown/unknown，旧 LifeId 不因修壳复苏；理论按自然 C/N/X→事件→读/条件作用排序。",
+    "readsAndLedger": "物理十九固定 readId 是 main/aux/heat/material 各 R0–R3 加三个独立 POST；逐 readId 核 phase、端点字段、grant/撤权、V0…V3/VP，账本 Audit-B4-v1 的 priceVersion=mdai-B4-audit-v1/workVersion=audit-work-v1 逐 ID 对应唯一 ReadTx/receipt-B4-read-[readId]-[requestId]-v1 和不可取收款。F/E=199/53，四阶段各 6 M/≤56 tick、POST 5 M/≤47 tick，十九读 29 M/≤271 tick。receipt-B4-funded-v1 是 acct-B1-B4 本人 50 M 净入的条件模板，非实到账；全链 50=29读+5装+10作用+6余，R3 后已付 29/余 21、锁 15 可用 6；POST 全失证时十六前读 24+装 5+作用 10=已付 39/暂余 11，释未用锁 5，POST 包余玩家见待测。获准且真 ok([]) 的材料 R0 单读 2 M/≤21 tick、条件余 48；预检拒零新扣，合法已发且可付的 attempt 1 与成功互斥。J1 本人 32、P0/P2 各自 1/2、可选 P1 自付 1，跨账户 35/36；D1 本人 40=26+14，均不借 B4 payer。",
+    "programCapacityAndBridge": "book-mdu-01/v1、AST-B4-mdai-audit-v1、B4-R19-projection-v1、H_B4_mdai_assumed_v1、C-B4-mdai-carrier-v1 是纸面设计身份；十九索引 0…18 逐 readId/phase/projectionHash/receiptId，旧 B4 hash 不是别名，J1 两名只为同一假设 AST 的有据别名，D1 独立。单页 8+19+199+53=279 S，转交两页加槽 559 S，释放暂存并订阅 281 S，响应峰 314 S，新增 S_install=Smax=559 S；同 capacityCertificateVersion 须 C_S−O≥559 且页/槽/订阅/FIFO/引用/帧分项足额，未读则 capacityUnknown，非 queueFull。桥接同书编辑→演武绑定观察→返书改版撤旧 Quote/覆盖/未执行锁；六入口只在规范意图、能力/可见字段、executor/payer/grant、AST/hash、价/容量版、事实与请求序相同时同价同余态，只展示获准壳态和本人真实已付/暂余/释锁。",
+    "counterexamples": "旧 DSL、蓝图、预设/默认书及整本存档保原字节、源码位置和旧 AST，新版书/配置/绑定增量另存；隔离副本 AST→AST 逐项证明来源、物理、价、容量、权限、返回与失败余态等价才整本原子迁移，否则定位拒绝且旧程序不覆写原件或新版增量。回退封存 causeId/pre-XVersion 与 requestId/effectId/ReadTx/LoadTx/Tx↔A→X/receiptId；同 ID 重投新付 0，成功支线已付 44/余 6 不变成 88 或再损 HP，无法保证则仅留可读旧副本并拒绝运行回退。同 payer 在 29/余 21 后先锁 15 则他笔 20 欠 14；他笔先付 20 则 B4 余 1、锁欠 14、旧 29 不退。同 lot 稳定先序第一笔领切片，后笔无权复制；跨 payer 仅后笔本人可在合法已锁求证失败时互斥付 attempt 1。",
+    "developmentAcceptance": "同一 Node 无头 World→共享 AST→compiler→VM→World 获取真实逐端授权/鲜样和误差、净入/锁/不可取收据、规范 AST 字节及 SHA-256、球实容与旧占用/分项 capacityVersion、VM M/tick/S 和安装工作实耗；逐项证静态界不低于实耗并走六入口。当前 Quote=unknownPrice/capacityUnknown，纸面中心值不是运行可施放证。"
+  },
+  "commands": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",ph=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),le=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),d=f.readFileSync(\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",\"utf8\"),rx=/`((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/,ids=le.split(\"## B4 固定投影审计原子\")[1].split(/\\r?\\n/).filter(z=>z.startsWith(\"| `\")&&rx.test(z)).map(z=>z.match(rx)[1]);a.equal(ids.length,19);a.equal(new Set(ids).size,19);for(const id of ids)a.ok(ph.includes(\"`\"+id+\"`\"),id);for(const k of [\"29 M/≤271 tick\",\"50=29读+5装+10作用+6余\",\"39/暂余 11\",\"S_install=Smax=559 S\"])a.ok(d.includes(k),k);a.ok(pr.includes(\"Smax=max(314,559)=559 S\"));a.deepEqual([29+5+10,50-44,24+5+10,50-39,2*(8+19+199+53)+1],[44,6,39,11,559]);console.log(\"PASS mdal source IDs, paper ledger and capacity\")' ",
+      "exitCode": 0,
+      "output": "PASS mdal source IDs, paper ledger and capacity"
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),d=f.readFileSync(\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",\"utf8\"),m=f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/module-design.md\",\"utf8\").split(/\\r?\\n/).slice(0,13).join(\"\\n\");a.ok(m.includes(\"撤销旧阻断\")&&m.includes(\"559 S\"));for(const k of [\"已采纳（首批 A 的设计合同\",\"总览 1–13 **已撤销**\",\"[0017]\",\"[0018]\",\"[0019]\",\"[0020]\",\"Wm\",\"damage\",\"HP\",\"三池\",\"life\",\"原字节\",\"新版法术书\",\"定位拒绝\",\"同 lot\",\"同 ID 重投\",\"Quote=unknownPrice/capacityUnknown\"])a.ok(d.includes(k),k);a.ok(!d.includes(\"本文为待采纳提案\"));console.log(\"PASS mdal ADR adoption, overview tense and rollback boundaries\")' ",
+      "exitCode": 0,
+      "output": "PASS mdal ADR adoption, overview tense and rollback boundaries"
+    },
+    {
+      "command": "node node_modules/prettier/bin/prettier.cjs --check docs/adr/0024-自然接触与旧运动命中语义覆盖.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json",
+      "exitCode": 0,
+      "output": "Checking formatting...\nAll matched files use Prettier code style!"
+    },
+    {
+      "command": "git diff --check -- docs/adr/0024-自然接触与旧运动命中语义覆盖.md docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),j=JSON.parse(f.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json\",\"utf8\")),t=JSON.parse(f.readFileSync(\".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json\",\"utf8\")).stageTasks.find(x=>x.id===j.taskId);a.equal(j.status,\"completed\");a.deepEqual(j.scope.writePaths,t.writePaths);a.deepEqual(j.evidence,t.writePaths);a.ok(j.commands.every(x=>x.exitCode===0));a.equal(j.failedAttempts.length,2);for(const p of j.evidence)a.ok(f.existsSync(p));console.log(\"PASS mdal evidence matches task contract\")'",
+      "exitCode": 0,
+      "output": "PASS mdal evidence matches task contract"
+    },
+    {
+      "command": "$expected=@('docs/adr/0024-自然接触与旧运动命中语义覆盖.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json' | Sort-Object); $actual=@(git -c core.quotepath=false status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,'/') } | Sort-Object); if(@(Compare-Object $expected $actual).Count -ne 0){throw 'writePaths mismatch'}; Write-Output 'PASS mdal exact writePaths'",
+      "exitCode": 0,
+      "output": "PASS mdal exact writePaths"
+    }
+  ],
+  "failedAttempts": [
+    {
+      "command": "node -e 'const a=require(\"node:assert/strict\"),f=require(\"node:fs\"),p=\"docs/versions/pilot-agent-intent-2026-09-24/\",ph=f.readFileSync(p+\"physics-material-design.md\",\"utf8\"),le=f.readFileSync(p+\"mana-ledger-design.md\",\"utf8\"),pr=f.readFileSync(p+\"programmable-spells-design.md\",\"utf8\"),d=f.readFileSync(\"docs/adr/0024-自然接触与旧运动命中语义覆盖.md\",\"utf8\"),ids=[...le.split(\"## B4 固定投影审计原子\")[1].split(\"## \")[0].matchAll(/^\\| `((?:Read-B4-(?:main|aux|heat|material)-R[0-3])|(?:POST-B4-(?:main|heat|material)))`/gm)].map(x=>x[1]);a.equal(ids.length,19);a.equal(new Set(ids).size,19);for(const id of ids)a.ok(ph.includes(\"`\"+id+\"`\"),id);for(const k of [\"29 M/≤271 tick\",\"50=29读+5装+10作用+6余\",\"39/暂余 11\",\"S_install=Smax=559 S\"])a.ok(d.includes(k),k);a.ok(pr.includes(\"Smax=max(314,559)=559 S\"));a.deepEqual([29+5+10,50-44,24+5+10,50-39,2*(8+19+199+53)+1],[44,6,39,11,559]);console.log(\"PASS mdal source IDs, paper ledger and capacity\")' ",
+      "exitCode": 1,
+      "output": "AssertionError [ERR_ASSERTION]: 0 !== 19",
+      "reason": "检查脚本提前截断账本小节导致读表为零；改按 readId 表行筛选后，同项检查通过。"
+    },
+    {
+      "command": "$expected=@('docs/adr/0024-自然接触与旧运动命中语义覆盖.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json' | Sort-Object); $actual=@(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace([char]92,'/') } | Sort-Object); if(@(Compare-Object $expected $actual).Count -ne 0){throw 'writePaths mismatch'}; Write-Output 'PASS mdal exact writePaths'",
+      "exitCode": 1,
+      "output": "writePaths mismatch",
+      "reason": "Git 默认对中文路径采用引号和八进制转义；范围检查改用 git -c core.quotepath=false 读取真实路径。"
+    }
+  ],
+  "evidence": [
+    "docs/adr/0024-自然接触与旧运动命中语义覆盖.md",
+    "docs/versions/pilot-agent-intent-2026-09-24/tasks/module-design-mdal-adr-decision.json"
+  ]
+}
