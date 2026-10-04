@@ -1,0 +1,159 @@
+{
+  "taskId": "da-a-flow",
+  "date": "2026-10-04",
+  "operatorRole": "independent-design-acceptor",
+  "participatedInDevelopment": false,
+  "process": {
+    "pid": 9884,
+    "windowId": 32115732,
+    "title": "道衍 · 推演台",
+    "command": "E:\\CGL\\Programs\\Daoyan\\node_modules\\electron\\dist\\electron.exe . --user-data-dir=C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-design-acceptance-da-a-flow-20261004\\profile --enable-logging=file --log-file=C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-design-acceptance-da-a-flow-20261004\\electron-runtime.log",
+    "userDataDir": "C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-design-acceptance-da-a-flow-20261004\\profile",
+    "retained": true,
+    "localStateObserved": true,
+    "initialReloadRequired": true,
+    "closedAfterEvidence": true
+  },
+  "tree": {
+    "head": "6e4561754c8a9bf1d73a25be9519bc9f5218c5f1",
+    "gitTree": "0b99286117f0e79a351b7d77349c1670c19b94ae",
+    "branch": "codex/version-pilot-agent-intent-2026-09-24",
+    "workspaceFingerprint": "0fabb15910871432fbb4630146dbd86c3d4a48059694757d6ce240edb01928d2",
+    "configFingerprint": "e1e0ce99bca2103ec75fbe47fb1bc1c87574ca1f468a040bfc9a1c211d1ee32e"
+  },
+  "observations": {
+    "oldBattle": {
+      "spells": ["J1执行", "D1执行", "B4修壳"],
+      "source": "slot:mouse after rebinding the same left-click slot",
+      "publicReason": "旧活动 Battle 缺少同版来源、授权和容量证书；未创建 VM 或控制会话，未付款，也未登记为成功施法。",
+      "perAttempt": {
+        "vm": 0,
+        "controlSessions": 0,
+        "playerManaDebit": 0,
+        "finiteWorldPayment": 0,
+        "successRecords": 0
+      },
+      "playerMana": "300.0 -> 300.0",
+      "finiteWorldPayment": "0.0 -> 0.0",
+      "globalCastStarts": [9, 84, 150, 207],
+      "globalCounterInterpretation": "妖兽和旧法术的全场起手；界面明确说明不代表被拒三术成功。",
+      "dv01": "closed"
+    },
+    "surfaceBoundary": {
+      "ordinarySandbox": "绑定不提供来源或授权，结果以实测收据为准。",
+      "finiteObservation": "独立于旧活动波次，规范 AST 经真实 World/VM，每次重建来源、授权和付款。",
+      "oldBattle": "缺证在 VM、控制会话、付款和成功记录之前稳定拒绝。",
+      "notAdded": ["活动波次有限世界迁移", "持续移动", "攻击", "第二次 B4 付费响应"]
+    },
+    "saveIsolation": {
+      "v0Fixture": "fixture-v0-migration.json",
+      "v0Result": "已导入并迁移旧版本存档；生命上限显示 240。",
+      "futureFixture": "fixture-future-rejected.json",
+      "futureResult": "导入失败：存档来自更新版本，当前道衍无法安全读取。",
+      "originalPreserved": "拒绝后生命上限仍为 240，已迁移法术与绑定仍在。"
+    },
+    "sixSources": {
+      "mouse": "J1/D1/B4 均完成真实触发并拒绝。",
+      "keyboard": "槽位 1 已绑定 J1；工具发送 1/KP_1 未形成应用需要的 Digit1 事件。",
+      "gamepad": "原生验收环境没有硬件 gamepad 输入。",
+      "monsterAI": "当前玩家界面没有将首批有限术配置给妖兽的可操作入口。",
+      "entityEvent": "已将受击响应术 1 设为 J1 并登记 1 个独立响应；本轮未能促成玩家受击来生成拒绝记录。",
+      "enemyCultivator": "批准文档将敌方修士列为未来候选，当前首批 A 无玩家可操作入口。",
+      "verdict": "partial-technical-blocker"
+    },
+    "viewport": {
+      "observed": "1429x975",
+      "required": "390x844",
+      "attempt": "拖动原生窗口边框后尺寸仍为 1429x975；获准 Computer Use API 无窗口 resize 能力。",
+      "verdict": "technical-blocker"
+    },
+    "console": {
+      "applicationErrors": 0,
+      "warnings": 1,
+      "warning": "Electron Security Warning (Insecure Content-Security-Policy)",
+      "evidence": "runtime-console-2026-10-04.txt",
+      "evidenceBytes": 483,
+      "evidenceSha256": "e9398fca2db983a84b303085d8fd7fb205350d45245c6ff4496fcc6c8991455d",
+      "verdict": "implementation-deviation"
+    }
+  },
+  "screenshots": [
+    {
+      "path": "reverification-2026-10-04-01-initial-lab.png",
+      "bytes": 136755,
+      "width": 1429,
+      "height": 975,
+      "sha256": "9085add90dfdf1696e07e4044372c82f844c728c3674625d39faa7ed1ed5cd64"
+    },
+    {
+      "path": "reverification-2026-10-04-02-j1-rejected.png",
+      "bytes": 88718,
+      "width": 1429,
+      "height": 975,
+      "sha256": "88e1bcfed89f69f958add71fc6680016cd8b1f025035c60981ba20868ae1da52"
+    },
+    {
+      "path": "reverification-2026-10-04-03-d1-rejected.png",
+      "bytes": 88904,
+      "width": 1429,
+      "height": 975,
+      "sha256": "10d5137471bd10d02fe740045f6fcbf9c67061d267bb31335c2b06410c7bbdb2"
+    },
+    {
+      "path": "reverification-2026-10-04-04-all-three-rejected.png",
+      "bytes": 91206,
+      "width": 1429,
+      "height": 975,
+      "sha256": "7fdaefb47684afc20256f11348d3544d9e86e27dd3990674e39a968ef9611587"
+    },
+    {
+      "path": "reverification-2026-10-04-05-account-and-b4-record.png",
+      "bytes": 97446,
+      "width": 1429,
+      "height": 975,
+      "sha256": "355ddda33eab104f397274f43f0c5e6e477034b6f1566456bdf96453c9ebc67d"
+    },
+    {
+      "path": "reverification-2026-10-04-06-three-records-and-stats.png",
+      "bytes": 110291,
+      "width": 1429,
+      "height": 975,
+      "sha256": "fe6e05d9b065bc93eb6ae7f3c6c5e57696b3c7d35d215ae7243ac1c67731ce43"
+    },
+    {
+      "path": "reverification-2026-10-04-07-v0-migrated.png",
+      "bytes": 88630,
+      "width": 1429,
+      "height": 975,
+      "sha256": "b224165702e106ab60adf7fd2224d215d32bd21d0c1ac0f1969416ce4fba970c"
+    },
+    {
+      "path": "reverification-2026-10-04-08-future-rejected-preserved.png",
+      "bytes": 89577,
+      "width": 1429,
+      "height": 975,
+      "sha256": "815fa351d82813b1d1689f8c99612ea4a8930533b572d9ba8c5e063cd5688d56"
+    },
+    {
+      "path": "reverification-2026-10-04-09-entity-event-registered.png",
+      "bytes": 92913,
+      "width": 1429,
+      "height": 975,
+      "sha256": "012cfc49e4a55633d44f87c712a6c9fa243b18c563c4b640bb35a18054812a21"
+    }
+  ],
+  "toolAttempts": [
+    {
+      "operation": "exact 390x844 native resize",
+      "result": "drag did not change the 1429x975 window; no documented resize API"
+    },
+    {
+      "operation": "keyboard slot 1",
+      "result": "1 and KP_1 did not generate the required Digit1 application event"
+    },
+    {
+      "operation": "entity-event response",
+      "result": "registration succeeded; no player-hit event occurred during the retained run"
+    }
+  ]
+}

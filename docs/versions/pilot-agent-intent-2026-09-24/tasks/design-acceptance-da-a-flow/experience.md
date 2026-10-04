@@ -99,3 +99,52 @@
 - **TB04（DA07 环境能力）**：首次实玩使用默认 Electron 用户目录，自动保存可能已写入 localStorage，且无法断定操作前存档状态或具体影响；没有可证明隔离的旧档测试入口，当前窗口 API 也无 resize/控制台查询能力。后续独立 `--user-data-dir` 窗口不是先前操作环境。恢复条件：保持默认用户目录原状，提供隔离测试档入口及文档化窄屏/控制台观察能力；只复验 DA07。
 
 本轮未提交、未推送、未修改游戏实现、正式运行状态或其他任务文件。
+
+---
+
+## 2026-10-04 范围修订 13 最终树定向复验
+
+本节只追加 `dev-battle-boundary-a1` 之后的 DA06 与 TB02–TB04 续验，不重写或重演上文已通过的 DA01–DA05。验收者仍是未参与 `dev-world-a3`、`dev-player-a3`、`dev-battle-boundary-a1` 实现的独立策划角色。
+
+### 输入、复用与原生环境
+
+- 受验 HEAD 为 `6e4561754c8a9bf1d73a25be9519bc9f5218c5f1`，Git tree 为 `0b99286117f0e79a351b7d77349c1670c19b94ae`。范围修订 13 仍为批准状态，`drb9` 仍为 `approved`。
+- `development-17` 记录最终集成树 `npm run verify:full` 退出 0：40 个文件 660 项覆盖率测试、沙盒、27 项 E2E 和生产构建通过，另保留 1 项首次超时后重试通过的 flaky。该门禁仅作来源，不代替本轮玩家操作。
+- `git diff --exit-code c80f240..HEAD -- src/game/battle.ts src/app/CombatView.tsx test/combat.test.ts test/render.test.tsx e2e/candidate.spec.ts` 退出 0；本轮受验的五份实现/测试文件仍与 `dev-battle-boundary-a1` 原修复提交一致。DA01–DA05 的有限观察输入、场景与配置未被这次旧 Battle 边界修复改变，因此继续复用原 38 项玩家证据。
+- 本轮原生 Electron 进程实际参数包含 `--user-data-dir=C:\Users\30595\AppData\Local\Temp\daoyan-design-acceptance-da-a-flow-20261004\profile`、`--enable-logging=file` 和独立日志路径；该 profile 已保留，取证后窗口关闭。完整进程、操作和截图哈希见 [native-run-2026-10-04.json](./native-run-2026-10-04.json)。
+
+### DA06：旧活动 Battle 定向黑盒复验
+
+入口与操作：从同一法术书进入旧活动 Battle，把左键槽依次绑定 J1执行、D1执行、B4修壳，并在战场中逐术以鼠标真实触发。定向复验没有点击有限观察卡片来代替旧 Battle，也没有用开发断言或自动化来源标签代签。
+
+预期：三术都在 VM、控制会话、付款与成功记录之前公开拒绝；玩家法力和有限世界付款不变；妖兽或旧法术造成的全场统计变化必须与本次拒绝分开。
+
+实际：三术均显示“旧活动 Battle 缺少同版来源、授权和容量证书；未创建 VM 或控制会话，未付款，也未登记为成功施法”。每条明示 `VM 0、控制会话 0、玩家法力扣除 0、有限世界付款 0、成功施法记录 0`。本人法力保持 `300.0`，累计付款保持 `0.0`；全场施法起手从 9、84、150 到 207 持续变化，但界面明确说明这是妖兽或其他旧法术统计，不代表三次拒绝成功。
+
+证据：[J1 拒绝](./reverification-2026-10-04-02-j1-rejected.png)、[D1 拒绝](./reverification-2026-10-04-03-d1-rejected.png)、[三术拒绝](./reverification-2026-10-04-04-all-three-rejected.png)、[账户与 B4](./reverification-2026-10-04-05-account-and-b4-record.png)、[三术与全场统计](./reverification-2026-10-04-06-three-records-and-stats.png)。判定：**DV01 关闭，DA06 的旧 Battle 缺证边界通过。**
+
+### 玩家可见职责与首批 A 边界
+
+- 普通推演沙盒仍明确不提供首批有限世界来源或授权，绑定结果以实测收据为准。
+- “首批有限世界观察”仍独立于旧活动波次，以当前法术书规范 AST 进入真实 World/VM，并逐次重建来源、授权与付款。
+- 旧活动 Battle 只新增缺证前置拒绝和公开单次零副作用记录，没有把活动波次迁入有限世界，也没有新增持续移动、攻击、第二次 B4 付费响应或其他首批 A 行为。
+- 当前可实际操作的鼠标槽不能绕过旧 Battle 缺证边界。数字键 `1`/`KP_1` 没有生成应用需要的 `Digit1` 事件；无硬件 gamepad；界面没有把首批术配置给妖兽 AI 的入口；敌方修士仍是未来候选。实体事件已把受击响应术 1 设为 J1 并成功登记 1 个响应，但本轮没有促成玩家受击形成拒绝记录。因此 TB03 仍是**部分覆盖的技术阻断**，不能用开发自动化代签六入口。
+
+### TB02–TB04 补验
+
+- **TB02 关闭。** 本轮按 `docs/workflow.md` 的截图持久化规则保存 9 张原生窗口 PNG，并在操作记录中登记每张的字节数、1429×975 尺寸和 SHA-256。原始操作 JSON、截图与运行日志均位于本任务独占证据目录。
+- **TB04 存档部分关闭。** 在独立 profile 中导入 [v0 测试档](./fixture-v0-migration.json)，页面提示已迁移旧版本存档并显示生命上限 240；随后导入 [未来版本测试档](./fixture-future-rejected.json)，页面明确拒绝“存档来自更新版本”，拒绝后生命上限、已迁移法术与绑定保持不变。证据见 [迁移成功](./reverification-2026-10-04-07-v0-migrated.png) 和 [拒绝保原](./reverification-2026-10-04-08-future-rejected-preserved.png)。
+- **TB04 窄屏仍阻断。** 原生窗口实测为 1429×975；拖动边框后尺寸未变化，获准的 `@oai/sky` API 没有窗口 resize 能力，无法形成 390×844 的独立原生玩家证据。
+- **运行期日志发现 DV02。** `--enable-logging=file` 运行日志没有应用 error，但记录 1 条 `Electron Security Warning (Insecure Content-Security-Policy)`。原始日志逐字封装为可版本管理证据，见 [runtime-console-2026-10-04.txt](./runtime-console-2026-10-04.txt)；其字节数与 SHA-256 由 `native-run-2026-10-04.json` 声明并由定向校验复核。这不是工具阻断，而是需桌面壳/构建配置维护者关闭或给出批准解释的实现偏差。
+
+### 相对前轮差异与唯一结论
+
+前轮的 DV01 已由本轮真实旧 Battle 操作关闭；TB02 已由持久截图关闭；TB04 的隔离旧档迁移/拒绝保原已完成。继续未关闭的只有：
+
+- **TB03**：键盘、手柄、妖兽 AI、实体事件实际触发和敌方修士入口缺少完整独立同键证据。责任归属为对应玩家入口开发、Version PM 与验收环境。
+- **TB04**：390×844 原生可达性仍无证据。责任归属为 Version PM / 验收环境维护。
+- **DV02**：Electron CSP warning。责任归属为桌面壳/构建配置维护者。
+
+因为并非所有批准必验项都有独立玩家证据，且仍有未关闭偏差，DV01 虽已关闭，本任务唯一结论仍为 **blocked / 继续退回**。后续只补上述三项，不再重演 DA01–DA05，也不再退回 `dev-battle-boundary-a1` 的旧 Battle 缺证修复。
+
+本轮未修改实现、测试、策划规则、共享节点材料或正式运行状态；未提交、未推送、未打 tag。
