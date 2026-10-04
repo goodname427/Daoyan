@@ -3,52 +3,57 @@
     "owner": "Version PM",
     "path": "docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md",
     "acceptance": [
-      "本修复轮开发节点收束时写明版本 ID，链接已批准的 design-review.md、实际 development.json 与原独立策划证据 tasks/design-acceptance-da-a-flow.json；保留 dev-world-a3、dev-player-a3 的历史交付，逐项区分 DV01 已修复并实测、仍待原独立策划续验及未覆盖的环境或证据项。",
+      "本修复轮开发节点收束时写明版本 ID，链接已批准的 design-review.md、实际 development.json 与原独立策划证据 tasks/design-acceptance-da-a-flow.json；保留 dev-world-a3、dev-player-a3、dev-battle-boundary-a1 的历史交付，逐项区分 DV01 已关闭、DV02 本轮实现并实测、仍待原独立策划续验及 TB03/TB04 环境证据缺口。",
       "继续记载法球付费事件、更多预设、敌方修士候选的依赖、验收证据及返工或重新设计触发条件，并核实 ADR 0017–0020、ADR 0024 与旧内容迁移回退状态；候选体验前在 docs/roadmap.md 写入本交接路径，候选节点收束时补链实际 candidate.json。"
     ]
   },
   "tasks": [
     {
-      "id": "dev-battle-boundary-a1",
-      "contextPolicy": "continue",
-      "contextReason": "DV01 属于 dev-player-a3 已批准玩家桥接范围内的定向实现偏差，世界规则、角色、首批 A、范围修订 13 与模型/推理配置均未重置；沿用该实现与审核脉络可复用已核实的旧 Battle 边界和测试证据，但以新 ID 单独记录修复，不重开或改名历史任务。",
-      "title": "旧活动 Battle 的首批法术缺证拒绝边界",
-      "objective": "修复 DV01：玩家在旧活动 Battle 通过已绑定槽位请求 J1执行、D1执行或 B4修壳时，稳定公开缺少同版来源、授权与容量证书的拒因，并确保拒绝不会被表现为该首批法术已施放或已付款；有限世界观察与旧活动战斗继续保持明确边界。",
+      "id": "dev-electron-csp-a1",
+      "contextPolicy": "fresh",
+      "contextReason": "范围修订 13 和首批 A 未改变，但本轮唯一实现偏差从玩法及旧 Battle 边界切换为 Electron 桌面壳安全配置，职责和直接依赖均不同；新会话可避免沿用 dev-player-a3 或 dev-battle-boundary-a1 的无关玩法上下文，原独立策划会话仍单独续验。",
+      "title": "Electron 渲染进程 CSP 安全边界",
+      "objective": "关闭 DA07 的 DV02：为开发态与构建态 Electron 渲染页面建立可核查、最小授权的 Content Security Policy，使原生独立启动日志不再产生 Insecure Content-Security-Policy 告警，同时保持现有页面启动、预加载桥接和外部元法术加载能力，不改变首批 A 游戏语义。",
       "deliverables": [
-        "旧活动 Battle 对三项首批有限世界法术的统一缺证拒绝行为和玩家可见反馈；拒绝发生在创建该法术的 VM、控制会话、付款或施法成功记录之前。",
-        "定向游戏与界面回归，覆盖鼠标绑定复现以及 J1执行、D1执行、B4修壳三术的同类入口，证明公开拒因、玩家法力、有限世界付款和该次请求的施法记录一致；允许无关敌方行为继续按旧 Battle 规则运行，但不能被展示成被拒首批法术的成功。",
-        "独立修复说明与任务证据，关联 DV01、DA06、受验代码树和直接检查结果，并明确修复后只交回原 design-acceptance-da-a-flow 独立策划 Agent 定向续验 DA06。"
+        "Electron 渲染入口的 CSP 配置及其直接回归覆盖；开发态所需连接与构建态本地资源权限须被明确限制，不以关闭 Electron 安全告警或仅依赖打包态自动隐藏告警冒充修复。",
+        "开发态与生产构建态的定向验证：页面可加载，contextIsolation、nodeIntegration 和现有 preload IPC 边界不弱化，外部元法术目录的既有加载路径保持可用，生产产物携带等价安全策略。",
+        "使用独立 --user-data-dir 和文件日志复走原 DA07 Electron 启动路径，保存无 Insecure Content-Security-Policy 且无新增应用 error/warn 的可核查记录；任务说明与结构化证据关联 DV02、受验代码树、命令和日志，并明确只交回原 design-acceptance-da-a-flow 独立策划 Agent 定向续验 DA07。"
       ],
       "acceptance": [
-        "按 DV01 原复现路径将 J1执行绑定鼠标左键、开始旧活动 Battle 并在战场触发时，界面稳定显示该术因旧场景缺少同版来源、授权和容量证书而拒绝；该请求不创建 J1 VM 或控制会话，不扣玩家法力、不增加有限世界付款，也不登记为 J1 成功施法。若战斗中的敌方或其他旧法术使全局统计变化，玩家仍可明确区分其与本次拒绝。",
-        "D1执行与 B4修壳通过旧活动 Battle 的已绑定槽位触发时服从相同拒绝合同；不同输入设备或来源标签不能绕过该边界。普通沙盒继续给出缺证提示，演武场内独立有限世界观察仍是首批三术的唯一已批准执行入口，修复不得把活动波次、持续移动、攻击或第二次 B4 付费响应纳入本版。",
-        "定向自动化同时断言玩家可见拒因和无副作用边界，并以实际应用复走 DA06 的旧 Battle 复现路径留存可核查证据；不以代码中已有 guard、单元测试或截图缺口替代实际操作。修复后原独立策划 Agent 只续验 DA06 并决定偏差是否关闭，开发 Agent 不修改策划验收结论。",
-        "不为 TB02 持久截图、TB03 六入口选择器或 TB04 隔离存档/390×844/控制台能力增加产品实现，不修改已批准策划来迁就代码；若关闭 DV01 必须新增世界公理、改变首批 A 玩家效果或作不可逆取舍，停止实现并升级主策。"
+        "策略明确限制默认资源来源与脚本来源，script-src 不含 unsafe-eval、通配远端或无边界远端来源；仅保留当前开发服务器、生产本地资源、样式/图片/字体、Vite 热更新连接及外部元法术实际需要的最小能力。若现有外部元法术动态加载无法在安全边界内成立，停止并升级架构判断，不得静默禁用扩展或扩大为任意 file/network 执行。",
+        "定向自动化同时证明 Electron 渲染入口存在预期 CSP、开发与构建配置不会移除或放宽该策略，并核对 electron/main.cjs 仍保持 contextIsolation=true、nodeIntegration=false 以及原 preload IPC 能力；普通浏览器入口、推演台和演武场的既有加载不因策略新增而出现资源拒绝或控制台错误。",
+        "执行生产构建并检查 dist/index.html 或等价最终响应确实携带有效策略；在当前源码的开发态原生 Electron 中使用隔离 user-data-dir、--enable-logging=file 和明确保留的日志完成实际启动与推演台/演武场往返，日志中 Insecure Content-Security-Policy 为 0，且没有由本次策略造成的应用 error/warn。打包态本来不显示该 Electron 告警，不能单独作为关闭 DV02 的证据。",
+        "不修改已批准世界规则、首批 A 行为、旧 Battle 修复、策划验收结论或共享节点报告；不把 TB03 六入口和 TB04 390×844 环境缺口纳入产品实现。修复后只由原独立策划 Agent 定向续验 DA07 并决定 DV02 是否关闭；若需新增产品能力、移除外部元法术或作不可逆安全取舍，停止并升级主策。"
       ],
       "dependsOn": [],
       "readPaths": [
+        "AGENTS.md",
+        "docs/workflow.md",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/independent-play-2026-10-03.json",
-        "src/game/battle.ts",
-        "src/app/CombatView.tsx",
-        "test/combat.test.ts",
-        "test/render.test.tsx",
-        "e2e/candidate.spec.ts"
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/native-run-2026-10-04.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/runtime-console-2026-10-04.txt",
+        "docs/reference/扩展元法术.md",
+        "index.html",
+        "vite.config.ts",
+        "electron/main.cjs",
+        "electron/preload.cjs",
+        "src/game/externalMetas.ts",
+        "scripts/desktop.mjs",
+        "test/electron-runtime-diagnostics.test.ts"
       ],
       "writePaths": [
-        "src/game/battle.ts",
-        "src/app/CombatView.tsx",
-        "test/combat.test.ts",
-        "test/render.test.tsx",
-        "e2e/candidate.spec.ts",
-        "docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json"
+        "index.html",
+        "vite.config.ts",
+        "electron/main.cjs",
+        "test/electron-security.test.ts",
+        "docs/versions/pilot-agent-intent-2026-09-24/electron-csp-fix.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-electron-csp-a1.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-electron-csp-a1"
       ]
     }
   ]
