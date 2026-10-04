@@ -765,6 +765,318 @@
           }
         ]
       }
+    },
+    {
+      "id": "dev-battle-boundary-a1",
+      "status": "completed",
+      "typecheck": "passed",
+      "targetedTests": "passed",
+      "dependsOn": [],
+      "commit": "296ee97f55ba62ee8501fd2add9225be9d390b03",
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+      "featureReport": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json",
+      "commands": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 0,
+          "result": "TypeScript 检查通过。"
+        },
+        {
+          "command": "npx eslint src/game/battle.ts src/app/CombatView.tsx test/combat.test.ts test/render.test.tsx e2e/candidate.spec.ts --max-warnings 0",
+          "exitCode": 0,
+          "result": "五个受影响实现/测试文件 ESLint 零错误、零警告。"
+        },
+        {
+          "command": "npx prettier --check src/game/battle.ts src/app/CombatView.tsx test/combat.test.ts test/render.test.tsx e2e/candidate.spec.ts",
+          "exitCode": 0,
+          "result": "五个受影响实现/测试文件格式检查通过。"
+        },
+        {
+          "command": "git diff --check",
+          "exitCode": 0,
+          "result": "通过，无空白错误。"
+        },
+        {
+          "command": "& '.\\node_modules\\@esbuild\\win32-x64\\esbuild.exe' .tmp-da06-check.ts --bundle --platform=node --format=esm --target=node22 --outfile=.tmp-da06-check.mjs",
+          "exitCode": 0,
+          "result": "一次性当前源码定向断言脚本成功 bundle；脚本与产物随后删除。"
+        },
+        {
+          "command": "node .tmp-da06-check.mjs",
+          "exitCode": 0,
+          "result": "J1/D1/B4 和 slot:mouse、slot:1、slot:gamepad-a、slot:attack、event:damage 均拒绝；vmCreates=0，controlSessionCreates=0，playerMana 300->300，payerPaid 0->0，successfulCastStarts=0，三条事件响应均 failed。"
+        },
+        {
+          "command": "& '.\\node_modules\\@esbuild\\win32-x64\\esbuild.exe' src/app/main.tsx --bundle --format=esm --platform=browser --target=es2022 --outdir='.tmp-da06-app/assets' --entry-names=app --asset-names='[name]-[hash]' --loader:.dy=text --loader:.png=file --loader:.svg=file --loader:.woff=file --loader:.woff2=file",
+          "exitCode": 0,
+          "result": "当前源码一次性实际应用 bundle 成功，用于 DA06 页面操作；产物随后删除。"
+        },
+        {
+          "command": "npx prettier --check src/game/battle.ts src/app/CombatView.tsx test/combat.test.ts test/render.test.tsx e2e/candidate.spec.ts docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "exitCode": 0,
+          "result": "七个合同内改动文件最终格式检查通过。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(x.taskId!=='dev-battle-boundary-a1'||x.completed!==true||!x.commands.every(c=>c.exitCode===0)||!x.failedAttempts.every(c=>c.exitCode===1)||!x.evidencePaths.every(q=>fs.existsSync(q))) process.exit(1); console.log('task evidence valid')\"",
+          "exitCode": 0,
+          "result": "任务 ID、completed 状态、通过命令、失败退出码及全部证据路径校验通过。"
+        },
+        {
+          "command": "$allowed = @('src/game/battle.ts','src/app/CombatView.tsx','test/combat.test.ts','test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'); $changed = @(git status --porcelain=v1 --untracked-files=all); if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }; $paths = @($changed | ForEach-Object { $_.Substring(3).Replace('\\','/') }); $outside = @($paths | Where-Object { $_ -notin $allowed }); $staged = @(git diff --cached --name-only); if($outside.Count -gt 0 -or $staged.Count -gt 0){ throw \"scope mismatch: outside=$($outside -join ',') staged=$($staged -join ',')\" }; if((Test-Path '.tmp-da06-app') -or (Test-Path '.tmp-da06-user-data') -or (Test-Path '.tmp-da06-check.ts') -or (Test-Path '.tmp-da06-check.mjs')){ throw 'temporary artifacts remain' }; $paths | Sort-Object",
+          "exitCode": 0,
+          "result": "最终仅七个合同 writePaths 有改动，无 staged 文件，无临时应用、存档或断言产物残留。"
+        },
+        {
+          "command": "& '.\\node_modules\\@esbuild\\win32-x64\\esbuild.exe' src/app/main.tsx --bundle --format=esm --platform=browser --target=es2022 --outdir='.tmp-da06-electron' --entry-names=app --asset-names='[name]-[hash]' --loader:.dy=text --loader:.png=file --loader:.svg=file --loader:.woff=file --loader:.woff2=file",
+          "exitCode": 0,
+          "result": "当前源码临时 Electron renderer bundle 生成成功；仓库内临时目录在取证后清理。"
+        },
+        {
+          "command": "& node '.\\node_modules\\@electron\\asar\\bin\\asar.js' pack '.tmp-da06-electron' '.\\node_modules\\electron\\dist\\resources\\app.asar'",
+          "exitCode": 0,
+          "result": "当前源码临时 Electron app.asar 封装成功，SHA-256 为 03D21BB02F1B8E991C62EA2ADC34A1298CA63DE9CE1E392A9C4365E6586AC34F；仓库内临时包在取证后清理。"
+        },
+        {
+          "command": "& '.\\node_modules\\electron\\dist\\Daoyan-DA06.exe' '--user-data-dir=C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-dev-battle-boundary-a1-20261003\\electron-user-data-controlled'",
+          "exitCode": 0,
+          "result": "独立命名 Electron 进程启动；窗口标题为“道衍 · DA06 Electron 实操”，指定 user-data-dir 生成 Local State、Preferences、Local Storage 与缓存。命令成功不等于页面操作完成。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); const u='C:/Users/30595/AppData/Local/Temp/daoyan-dev-battle-boundary-a1-20261003/electron-user-data-controlled'; if(x.taskId!=='dev-battle-boundary-a1'||x.status!=='blocked'||x.completed!==false||!x.actualApplication.blocker&&!x.actualApplication.observations.blocker||!fs.existsSync(u+'/Local State')||!fs.existsSync(u+'/Preferences')) process.exit(1); console.log('blocked Electron evidence valid')\"",
+          "exitCode": 0,
+          "result": "任务 ID、blocked/completed=false 状态、Computer Use 阻断和独立 Electron user-data-dir 关键文件校验通过。"
+        },
+        {
+          "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "exitCode": 0,
+          "result": "本轮任务证据 JSON 格式检查通过。"
+        },
+        {
+          "command": "$allowed = @('src/game/battle.ts','src/app/CombatView.tsx','test/combat.test.ts','test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'); $paths = @(git status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3).Replace('\\','/') }); $outside = @($paths | Where-Object { $_ -notin $allowed }); if($outside.Count -gt 0 -or (Test-Path '.tmp-da06-electron') -or (Test-Path '.\\node_modules\\electron\\dist\\Daoyan-DA06.exe') -or (Test-Path '.\\node_modules\\electron\\dist\\resources\\app.asar')){ throw \"scope or temporary artifact mismatch: outside=$($outside -join ',')\" }; $paths | Sort-Object",
+          "exitCode": 0,
+          "result": "最终改动仍仅位于合同 writePaths，仓库内 DA06 临时 bundle、可执行副本与 app.asar 已清理。"
+        },
+        {
+          "command": "$taskRoot='C:\\Users\\30595\\AppData\\Local\\Temp\\daoyan-dev-battle-boundary-a1-20261003'; Get-Process -Name 'Daoyan-DA06' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like \"$taskRoot*\" } | ForEach-Object { Stop-Process -Id $_.Id }; $releaseHash=(Get-FileHash '.\\release\\win-unpacked\\resources\\app.asar' -Algorithm SHA256).Hash; $http=(Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:5173/' -TimeoutSec 5).StatusCode; [pscustomobject]@{ http5173=$http; releaseAppAsarRestored=($releaseHash -eq '274B5E0C7C48565B6BCE8D38F00F988FF02738A5BCBBEC79DBA82453C7CB532E'); runningTaskElectron=@(Get-Process -Name 'Daoyan-DA06' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like \"$taskRoot*\" }).Count } | ConvertTo-Json",
+          "exitCode": 0,
+          "result": "固定当前源码入口 5173 返回 HTTP 200；此前临时替换的 release app.asar 已恢复为原哈希；本任务临时 Electron 进程数为 0。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); const edge=x.toolAttempts.find(t=>t.tool==='Normal Edge browser control'); if(x.taskId!=='dev-battle-boundary-a1'||x.status!=='blocked'||x.completed!==false||!edge?.result.includes('Unable to load browser request-header policy')||!x.actualApplication.observations.blocker.includes('Unable to load browser request-header policy')) process.exit(1); console.log('blocked Edge evidence valid')\"",
+          "exitCode": 0,
+          "result": "任务 ID、blocked/completed=false 状态以及正常 Edge 请求头策略拒绝证据校验通过。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); const probe=x.toolAttempts.find(t=>t.tool==='Windows Computer Use official read-only authorization probe'); if(x.taskId!=='dev-battle-boundary-a1'||x.status!=='blocked'||x.completed!==false||!probe?.result.includes('Computer Use was not approved to use electron')||!probe.result.includes('未点击、输入或尝试替代入口')) process.exit(1); console.log('blocked Electron authorization probe valid')\"",
+          "exitCode": 0,
+          "result": "任务 ID、blocked/completed=false 状态、官方 Electron 只读授权探针精确拒绝及停止边界校验通过。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const task=JSON.parse(fs.readFileSync('docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json','utf8')); const runtime=JSON.parse(fs.readFileSync('.daoyan-agent/runs/workflow-resume-2026-10-03/runtime.json','utf8')); const inventory=task.toolAttempts.find(t=>t.tool==='Windows Computer Use resumed-runtime window inventory'); if(task.status!=='blocked'||task.completed!==false||runtime.httpStatus!==200||!runtime.userDataDir.endsWith('workflow-resume-2026-10-03\\\\profile')||!inventory?.result.includes('没有任何 Electron/道衍窗口')||!inventory.result.includes('未发出 get_window')) process.exit(1); console.log('resumed runtime inventory evidence valid')\"",
+          "exitCode": 0,
+          "result": "正式恢复环境的 HTTP 200、独立 profile、Computer Use 无 Electron/道衍目标及未发出绑定请求的阻断证据校验通过。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const task=JSON.parse(fs.readFileSync('docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json','utf8')); const visible=JSON.parse(fs.readFileSync('.daoyan-agent/runs/workflow-resume-2026-10-03/window-visibility.json','utf8')); const probe=task.toolAttempts.find(t=>t.tool==='Windows Computer Use visible original-Electron binding probe'); if(task.status!=='blocked'||task.completed!==false||visible.mainWindowTitle!=='道衍 · 推演台'||visible.mainWindowHandle!==3934130||!probe?.result.includes('Computer Use was not approved to use electron')||!probe.result.includes('未点击、输入、重试或切换入口')) process.exit(1); console.log('visible Electron binding rejection evidence valid')\"",
+          "exitCode": 0,
+          "result": "可见原 Electron 窗口记录、唯一工具目标、首次只读绑定拒绝及停止边界校验通过。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); const o=x.actualApplication.observations; const names=['J1执行','D1执行','B4修壳']; if(x.taskId!=='dev-battle-boundary-a1'||x.status!=='completed'||x.completed!==true||names.some(n=>!o.publicRejection[n]?.includes('slot:mouse')||!o.publicRejection[n]?.includes('缺少同版来源、授权和容量证书'))||o.playerMana!=='300.0 -> 300.0'||o.finiteWorldPayment!=='0.0 -> 0.0'||o.rejectedSpellSuccessRecords!==0||o.blocker!==null) process.exit(1); console.log('completed DA06 playtest evidence valid')\"",
+          "exitCode": 0,
+          "result": "任务 ID、completed 状态、三术 slot:mouse 公开拒因、法力 300.0→300.0、付款 0.0→0.0、成功记录 0 与无阻断状态校验通过。"
+        },
+        {
+          "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "exitCode": 0,
+          "result": "最终任务证据 JSON 格式检查通过。"
+        },
+        {
+          "command": "$allowed = @('src/game/battle.ts','src/app/CombatView.tsx','test/combat.test.ts','test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'); $changed = @(git status --porcelain=v1 --untracked-files=all); if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }; $paths = @($changed | ForEach-Object { $_.Substring(3).Replace('\\','/') }); $outside = @($paths | Where-Object { $_ -notin $allowed }); $staged = @(git diff --cached --name-only); if($outside.Count -gt 0 -or $staged.Count -gt 0){ throw \"scope mismatch: outside=$($outside -join ',') staged=$($staged -join ',')\" }; $paths | Sort-Object",
+          "exitCode": 0,
+          "result": "最终仍仅七个合同 writePaths 有改动，且无 staged 文件。"
+        },
+        {
+          "command": "git diff --exit-code c80f240..HEAD -- src/game/battle.ts src/app/CombatView.tsx test/combat.test.ts test/render.test.tsx e2e/candidate.spec.ts",
+          "exitCode": 0,
+          "result": "五份受验实现/测试文件在当前集成修订 da0ad4709155c1f697c35e952e3e1ecf39ad530b 仍与原修复提交 c80f240 一致，因此复用已完成检查并只补此前未进入断言的定向自动化。"
+        },
+        {
+          "command": "npm test -- test/combat.test.ts test/render.test.tsx",
+          "exitCode": 0,
+          "result": "Vitest 实际进入断言；test/combat.test.ts 51 项、test/render.test.tsx 19 项，共 2 个文件 70 项全部通过。"
+        },
+        {
+          "command": "node scripts/run-playwright.mjs test e2e/candidate.spec.ts --grep \"candidate-old-Battle-rejects-first-batch-spells\"",
+          "exitCode": 0,
+          "result": "Playwright 实际启动 Vite 与 Chromium；旧 Battle 三术拒绝候选场景 1 项通过，并生成本地 HTML 报告、通过状态与截图附件。"
+        },
+        {
+          "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "exitCode": 0,
+          "result": "本轮仅修改的两份合同文档格式检查通过。"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); const unit=x.commands.some(v=>v.command==='npm test -- test/combat.test.ts test/render.test.tsx'&&v.exitCode===0); const e2e=x.commands.some(v=>v.command.includes('candidate-old-Battle-rejects-first-batch-spells')&&v.exitCode===0); if(x.taskId!=='dev-battle-boundary-a1'||x.status!=='completed'||x.completed!==true||!unit||!e2e||!x.targetedAutomationRecheck.targetFilesMatchImplementationRevision||!x.targetedAutomationRecheck.evidencePaths.every(q=>fs.existsSync(q))) process.exit(1); console.log('targeted automation evidence valid')\"",
+          "exitCode": 0,
+          "result": "任务身份、完成状态、两条补证命令、同树匹配事实及本地 Playwright 证据路径校验通过。"
+        },
+        {
+          "command": "$allowed = @('src/game/battle.ts','src/app/CombatView.tsx','test/combat.test.ts','test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'); $changed = @(git status --porcelain=v1 --untracked-files=all); if($LASTEXITCODE -ne 0){ exit $LASTEXITCODE }; $paths = @($changed | ForEach-Object { $_.Substring(3).Replace('\\','/') }); $outside = @($paths | Where-Object { $_ -notin $allowed }); $staged = @(git diff --cached --name-only); if($outside.Count -gt 0 -or $staged.Count -gt 0){ throw \"scope mismatch: outside=$($outside -join ',') staged=$($staged -join ',')\" }; $paths | Sort-Object",
+          "exitCode": 0,
+          "result": "本轮正式改动仅为两份合同 writePaths 文档，无 staged 文件；测试生成的忽略目录不进入版本差异。"
+        }
+      ],
+      "failedAttempts": [
+        {
+          "command": "npm run typecheck",
+          "exitCode": 1,
+          "result": "首次检查发现 battle.ts 的首批法术名称类型未收窄；修复后同命令退出 0。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "npm test -- test/combat.test.ts test/render.test.tsx",
+          "exitCode": 1,
+          "result": "两次执行均在加载 vite.config.ts 时 spawn EPERM，未进入任何测试断言。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "& '.\\node_modules\\.bin\\vitest.cmd' run test/combat.test.ts --config false --environment node",
+          "exitCode": 1,
+          "result": "诊断性尝试仍在配置加载阶段 spawn EPERM，未执行测试。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "node scripts/run-playwright.mjs test e2e/candidate.spec.ts --grep \"candidate-old-Battle-rejects-first-batch-spells\"",
+          "exitCode": 1,
+          "result": "启动阶段 spawn EPERM，未进入浏览器断言。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "& '.\\node_modules\\@esbuild\\win32-x64\\esbuild.exe' src/main.tsx --bundle --format=esm --platform=browser --target=es2022 --outdir='.tmp-da06-app/assets' --entry-names=app --asset-names='[name]-[hash]' --loader:.png=file --loader:.svg=file --loader:.woff=file --loader:.woff2=file",
+          "exitCode": 1,
+          "result": "首次一次性预览误用不存在的 src/main.tsx；改为 src/app/main.tsx。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "& '.\\node_modules\\@esbuild\\win32-x64\\esbuild.exe' src/app/main.tsx --bundle --format=esm --platform=browser --target=es2022 --outdir='.tmp-da06-app/assets' --entry-names=app --asset-names='[name]-[hash]' --loader:.png=file --loader:.svg=file --loader:.woff=file --loader:.woff2=file",
+          "exitCode": 1,
+          "result": "一次性预览首次缺少 .dy text loader；补 --loader:.dy=text 后退出 0。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "npx prettier --check src/game/battle.ts src/app/CombatView.tsx test/combat.test.ts test/render.test.tsx e2e/candidate.spec.ts docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "exitCode": 1,
+          "result": "首次最终格式检查仅报告任务 JSON 需要格式化；格式化后同命令退出 0。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "npm run dev -- --host 127.0.0.1 --port 4319 --strictPort",
+          "exitCode": 1,
+          "result": "Vite 加载 vite.config.ts 时 spawn EPERM，未启动开发服务器；改用仓库 esbuild 可执行文件生成当前源码临时 Electron bundle。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        },
+        {
+          "command": "node -e \"const fs=require('fs'); const p='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); const required=['npm test -- test/combat.test.ts test/render.test.tsx','node scripts/run-playwright.mjs test e2e/candidate.spec.ts --grep \\\"candidate-old-Battle-rejects-first-batch-spells\\\"']; if(x.taskId!=='dev-battle-boundary-a1'||x.status!=='completed'||x.completed!==true||!required.every(c=>x.commands.some(v=>v.command===c&&v.exitCode===0))||!x.targetedAutomationRecheck.targetFilesMatchImplementationRevision||!x.targetedAutomationRecheck.evidencePaths.every(q=>fs.existsSync(q))) process.exit(1); console.log('targeted automation evidence valid')\"",
+          "exitCode": 1,
+          "result": "PowerShell 向 node -e 传递嵌套双引号时产生 Invalid string escape；未改变代码或测试状态，随后改用不含嵌套双引号的等价证据校验命令。",
+          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          "sourceField": "failedAttempts"
+        }
+      ],
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json",
+        ".daoyan-agent/runs/workflow-resume-2026-10-03/runtime.json",
+        ".daoyan-agent/runs/workflow-resume-2026-10-03/window-visibility.json",
+        "test-results/.last-run.json",
+        "playwright-report/index.html",
+        "docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md",
+        "test/combat.test.ts",
+        "test/render.test.tsx",
+        "e2e/candidate.spec.ts"
+      ],
+      "summary": "在正式源码的原 Electron 窗口和独立 user-data-dir 中完成 DA06 旧活动 Battle 实玩，并在确认五份受验实现/测试文件仍匹配原修复提交后补齐标准定向 Vitest 与 Playwright 证据。本人先在推演台加入 J1执行、D1执行、B4修壳，再进入演武场绑定左键/槽位并启动旧 Battle；随后按合同要求用鼠标绑定逐术触发。三术均公开显示缺少同版来源、授权和容量证书，且每次 VM 0、控制会话 0、玩家法力扣除 0、有限世界付款 0、成功施法记录 0。本人法力保持 300.0、累计付款保持 0.0；妖兽令全场施法起手增长到 440，但未被展示为被拒三术成功。任务证据已封存，只交回原 design-acceptance-da-a-flow 独立策划 Agent 定向续验 DA06。",
+      "actualApplication": {
+        "date": "2026-10-04",
+        "environment": "运行记录位于 .daoyan-agent/runs/workflow-resume-2026-10-03/runtime.json 与 window-visibility.json：正式 sourceRoot 为 E:/CGL/Programs/Daoyan，原 Electron 参数包含 --user-data-dir=E:/CGL/Programs/Daoyan/.daoyan-agent/runs/workflow-resume-2026-10-03/profile，页面为 http://127.0.0.1:5173/。本轮 @oai/sky list_windows 唯一返回 process:E:/CGL/Programs/Daoyan/node_modules/electron/dist/electron.exe 的“道衍 · 推演台”（窗口 ID 3934130），get_window_state 实际读取同一窗口和页面；该 profile 独立于普通道衍用户目录。",
+        "operations": [
+          "通过官方 Windows Computer Use 唯一列举并绑定原 electron.exe 的“道衍 · 推演台”，读取到 http://127.0.0.1:5173/ 的当前界面。",
+          "在推演台逐一鼠标点击“加入J1执行”“加入D1执行”“加入B4修壳”，法术数由 14 增至 17，界面分别显示三术规范源码。",
+          "进入演武场，将左键绑定 J1执行、槽位 1 绑定 D1执行、槽位 2 绑定 B4修壳；整备期观察本人法力 300.0、累计付款 0.0、全场施法起手 0。",
+          "启动旧活动 Battle 后在战场内鼠标左键触发 J1执行，观察来源 slot:mouse 的公开缺证拒绝。",
+          "数字键注入未生成应用需要的 Digit1 事件，未产生 D1 拒绝记录，未把该尝试记为通过；随后依合同鼠标绑定复现要求，将左键正常重绑定为 D1执行并在战场内鼠标触发。",
+          "将左键正常重绑定为 B4修壳；首次立即点击仍沿用前一绑定而新增一条 D1 拒绝，待界面与运行绑定均显示 B4修壳后再次鼠标触发，形成 B4 拒绝记录。",
+          "最终页面同时显示 J1执行、D1执行、B4修壳的 slot:mouse 拒绝记录；读取账户与全场统计，未运行自动化代替实玩。"
+        ],
+        "observations": {
+          "publicRejection": {
+            "J1执行": "来源 slot:mouse；旧活动 Battle 缺少同版来源、授权和容量证书；未创建 VM 或控制会话，未付款，也未登记为成功施法。",
+            "D1执行": "来源 slot:mouse；旧活动 Battle 缺少同版来源、授权和容量证书；未创建 VM 或控制会话，未付款，也未登记为成功施法。",
+            "B4修壳": "来源 slot:mouse；旧活动 Battle 缺少同版来源、授权和容量证书；未创建 VM 或控制会话，未付款，也未登记为成功施法。"
+          },
+          "perRejectedCastSideEffects": "三术每条均显示：VM 0、控制会话 0、玩家法力扣除 0、有限世界付款 0、成功施法记录 0。",
+          "playerMana": "300.0 -> 300.0",
+          "finiteWorldPayment": "0.0 -> 0.0",
+          "activePlayerCasts": 0,
+          "finiteReceipts": 0,
+          "globalCastStartsIncludingFoes": "0 -> 440（妖兽持续施法造成；界面明确说明不代表本次拒绝成功）",
+          "rejectedSpellSuccessRecords": 0,
+          "applicationErrorsOrWarnings": "无应用错误；数字键 Computer Use 注入未形成 Digit1 事件，因此没有伪记键盘触发结果，三术均改由合同要求的鼠标绑定路径完成。",
+          "sandboxBoundary": "普通推演台仍显示首批有限世界说明：绑定不提供来源或授权，现场结果以实测收据为准；第三期沙盒继续明确在隔离世界执行。",
+          "approvedExecutionBoundary": "演武场仍单列“首批有限世界观察”，说明规范 AST 经真实 World/VM 执行、有限场景独立于当前旧波次且每次重新建立来源、授权和付款。",
+          "blocker": null
+        },
+        "evidencePath": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+        "retainedUserDataPath": "E:/CGL/Programs/Daoyan/.daoyan-agent/runs/workflow-resume-2026-10-03/profile",
+        "runtimeEvidencePath": ".daoyan-agent/runs/workflow-resume-2026-10-03/runtime.json",
+        "windowVisibilityEvidencePath": ".daoyan-agent/runs/workflow-resume-2026-10-03/window-visibility.json",
+        "screenshot": "本轮 Computer Use 实际显示并人工核对了三术绑定、运行中 Battle、账户统计及最终拒绝记录截图；截图由工具会话展示，合同 writePaths 不包含新增图片文件，持久可核查操作日志封存在本任务 JSON。"
+      },
+      "targetedAutomationRecheck": {
+        "date": "2026-10-04",
+        "revision": "da0ad4709155c1f697c35e952e3e1ecf39ad530b",
+        "implementationRevision": "c80f240",
+        "targetFilesMatchImplementationRevision": true,
+        "vitest": "2 files passed; 70 tests passed",
+        "playwright": "1 Chromium test passed",
+        "evidencePaths": [
+          "test-results/.last-run.json",
+          "playwright-report/index.html",
+          "playwright-report/data/4ee331919286b88fe164355636c8a8c3741f6ab0.png"
+        ]
+      },
+      "evidenceRetention": {
+        "status": "partially-overwritten-by-version-gate",
+        "historicalPath": "playwright-report/data/4ee331919286b88fe164355636c8a8c3741f6ab0.png",
+        "reason": "Version PM 按职责运行最终完整门禁时，Playwright 重建忽略目录并移除了 Feature 当时的截图附件；来源任务及其通过命令保持原样，汇总不再把缺失附件列作当前存在证据。",
+        "replacementEvidence": [
+          "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+          ".daoyan-agent/runs/workflow-resume-2026-10-03/runtime.json",
+          ".daoyan-agent/runs/workflow-resume-2026-10-03/window-visibility.json",
+          "playwright-report/index.html",
+          "docs/versions/pilot-agent-intent-2026-09-24/development.json"
+        ],
+        "policy": "不伪造或重建旧附件；当前完整门禁已再次执行包含该 DA06 候选场景的整套 E2E，原生实玩仍由任务 JSON 和运行记录支持。"
+      },
+      "remainingRisks": [
+        "Computer Use 的数字键注入未形成应用监听的 Digit1 事件；本轮没有伪称原生 Electron 键盘实玩通过。当前标准 Playwright 候选路径已实际覆盖 Digit1/Digit2，Vitest 已实际覆盖任意槽位、妖兽 AI 与实体事件来源，三术原生实玩则由鼠标重绑定逐术完成。",
+        "原生 Electron 实玩没有新增持久图片文件，因为合同 writePaths 仅允许既有七个文件；真实截图在 Computer Use 会话中显示并逐步人工核对，持久证据采用本 JSON 的环境、操作和逐项观察日志。定向 E2E 另生成了忽略目录内的本地 HTML 报告与截图附件，路径已记录但不进入版本差异。",
+        "完成开发实玩补证后，只交回原 design-acceptance-da-a-flow 独立策划 Agent 定向续验 DA06；DV01 是否关闭仍只由该 Agent 决定。"
+      ],
+      "commandSource": {
+        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+        "field": "commands",
+        "policy": "逐项原样保留顶层通过命令、退出码、结果与顺序；历史失败仅列 failedAttempts；Feature/Version 门禁不投影到 Task commands。"
+      }
     }
   ],
   "featureValidation": [
@@ -939,6 +1251,62 @@
         "source": "invocation-logs-and-dispatcher-aggregate"
       },
       "note": "快速门禁为该Feature交付时的树/配置事实；不推断最终集成verify:full通过。旧运行会话Git标志和失败保留，最终提交由正式报告及当前Git来源核对。"
+    },
+    {
+      "workItemId": "dev-battle-boundary-a1",
+      "scope": "Feature",
+      "report": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json",
+      "recovery": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/recovery.json",
+      "commit": "296ee97f55ba62ee8501fd2add9225be9d390b03",
+      "fastGate": {
+        "workspaceFingerprint": "07cf0c4a1dd48cfb5b233356aa824a0eacd10c8ce781bdc07e68159050598566",
+        "configFingerprint": "e1e0ce99bca2103ec75fbe47fb1bc1c87574ca1f468a040bfc9a1c211d1ee32e",
+        "completedCommands": [
+          ["npm", "run", "typecheck"],
+          ["npm", "run", "lint"],
+          ["npm", "run", "format:check"],
+          ["npm", "run", "docs:check"],
+          ["npm", "run", "test"]
+        ],
+        "pendingCommands": [],
+        "passed": true,
+        "attempts": 1,
+        "reused": true,
+        "rerunByFinalizer": false
+      },
+      "independentReview": {
+        "verdict": "pass",
+        "summary": "未发现交付阻断问题。指定 patch 仅更新 DA06 实际应用复走说明；该说明与直接关联的任务证据、运行记录及窗口记录一致，未发现虚构指示、伪造执行证据、乱码或验收合同偏离。按要求未运行测试、构建或 Git 命令。",
+        "findings": [],
+        "source": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json"
+      },
+      "commands": [],
+      "failedAttempts": [],
+      "historicalEvidenceNotAcceptedForFinalTree": [],
+      "tokenObservation": {
+        "planner": 25422,
+        "workers": [
+          {
+            "id": "battle-boundary-implementation",
+            "tokens": 151582
+          },
+          {
+            "id": "battle-boundary-play-evidence",
+            "tokens": 85628
+          },
+          {
+            "id": "battle-boundary-delivery-record",
+            "tokens": 29462
+          }
+        ],
+        "reviewer": 100434,
+        "repairs": null,
+        "knownTotal": 392528,
+        "observedCalls": 6,
+        "missingUsageCalls": 0,
+        "source": "invocation-logs-and-dispatcher-aggregate"
+      },
+      "note": "Feature 快速门禁和独立审查来自 development-15；Version PM 不重跑。DV01 只交回原 design-acceptance-da-a-flow Agent 定向续验 DA06。"
     }
   ],
   "versionValidation": {
@@ -948,12 +1316,21 @@
       "command": "npm run verify:full",
       "status": "passed",
       "exitCode": 0,
-      "evidence": [".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"],
-      "reason": "development-11 原收据记录 npm run verify:full 退出码 0，但其验证树指纹 13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d 已过期，仅保留为历史成功。当前 pre-push 收据记录同一完整门禁命令退出码 0；按已推送 master 的现行 isValidationTreePath/fingerprintPaths 合同只读重算，当前正式验证树 5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c、配置 aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55、命令及命令指纹均与收据一致。空 log 是 pre-push 钩子成功后生成收据的格式，不影响复用。该结论只完成开发完整门禁，不代替独立策划体验、QA 或候选验收。",
-      "requiredOwner": "开发节点授权收束执行方",
-      "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"
+      "evidence": [
+        "docs/versions/pilot-agent-intent-2026-09-24/development.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/development.md"
+      ],
+      "reason": "Version PM 在包含 dev-battle-boundary-a1 和本轮阶段产物的集成树只运行一次完整门禁，聚合命令退出 0。覆盖率测试 660 项、E2E 27 项及生产构建通过；candidate-first-batch-helper-edit 首次定位按钮超时，Playwright 自动重试通过，保留为 1 flaky，不改写为零波动。该通过只收束开发，不代签原策划 DA06、QA 或候选验收。",
+      "requiredOwner": "开发节点 Version PM",
+      "qaPolicy": "QA 只消费匹配的最终树、配置与命令证据并补交叉场景，不重复完整门禁。"
     },
-    "commands": [],
+    "commands": [
+      {
+        "command": "npm run verify:full",
+        "exitCode": 0,
+        "result": "最终集成树完整门禁通过：静态检查与文档检查通过；覆盖率 40 个文件、660 项测试通过，语句覆盖率 93.24%；沙盒通过；Playwright 27 项通过、candidate-first-batch-helper-edit 首次超时后重试通过并如实记为 1 flaky；生产构建通过。"
+      }
+    ],
     "repeatedPassedTaskCommands": false,
     "blockers": [
       {
@@ -971,6 +1348,12 @@
           ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"
         ],
         "resolution": "development-11 原收据因验证树指纹 13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d 与当前正式树不同而过期。当前 pre-push 收据与现行 master 算法重算的验证树 5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c、配置、命令及命令指纹一致，exitCode 为 0，完整门禁阻断已解决。"
+      },
+      {
+        "id": "development-integrated-full-gate-after-dv01",
+        "status": "resolved",
+        "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/development.json"],
+        "resolution": "DV01 修复进入集成树后由 Version PM 实际运行 npm run verify:full，退出码 0；旧门禁只保留为历史成功。"
       }
     ],
     "configFiles": [
@@ -1031,6 +1414,15 @@
       },
       "acceptance": "development-11 原收据标记为过期历史成功；当前 pre-push 收据证明当前正式验证树完整门禁通过。开发门禁与独立策划、QA、候选验收分开。",
       "directCheckMethod": "PowerShell 只读 Git 路径枚举，按已推送 master 的 isValidationTreePath 过滤并调用 fingerprintPaths/configFingerprint；未调用 pre-push main、完整门禁、开发检查、独立审查或实玩"
+    },
+    "priorCompleteGate": {
+      "command": "npm run verify:full",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": [".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"],
+      "reason": "development-11 原收据记录 npm run verify:full 退出码 0，但其验证树指纹 13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d 已过期，仅保留为历史成功。当前 pre-push 收据记录同一完整门禁命令退出码 0；按已推送 master 的现行 isValidationTreePath/fingerprintPaths 合同只读重算，当前正式验证树 5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c、配置 aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55、命令及命令指纹均与收据一致。空 log 是 pre-push 钩子成功后生成收据的格式，不影响复用。该结论只完成开发完整门禁，不代替独立策划体验、QA 或候选验收。",
+      "requiredOwner": "开发节点授权收束执行方",
+      "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"
     }
   },
   "roadmapHandoff": {
@@ -1039,8 +1431,9 @@
     "planningOwnershipVerified": true,
     "planningGap": null,
     "acceptance": [
-      "版本ID与已批准design-review.md、实际development.json来源齐备；规则/模块合同和三类结论可追溯。",
-      "未来候选记录依赖、验收证据、返工/重设计触发及ADR0017至0020/0024和迁移回退状态，不冒称实测。"
+      "版本 ID 与已批准 design-review.md、实际 development.json、原 design-acceptance-da-a-flow 及本轮修复来源齐备；三项工作结果可追溯。",
+      "DV01 明确区分开发已修复并实测、仍待原独立策划 Agent 续验；TB02、TB03、TB04 继续保持未覆盖或环境项。",
+      "未来候选记录依赖、验收证据、返工/重设计触发及 ADR0017 至 0020/0024 和迁移回退状态，不冒称实测。"
     ],
     "developmentArtifactStatus": "written",
     "candidateSource": {
@@ -1059,7 +1452,7 @@
     "autoSchedule": false
   },
   "finalization": {
-    "profile": "documentation",
+    "profile": "version",
     "productCodeChanged": false,
     "taskEvidenceChanged": true,
     "sourceChecks": {
@@ -1067,7 +1460,9 @@
       "deliveredCommitsInHead": true,
       "fivePlayerTestFingerprintsMatch": true,
       "featureFullGateEvidenceFilesPresent": false,
-      "taskEvidenceReconciledAfterDeliveredCommit": true
+      "taskEvidenceReconciledAfterDeliveredCommit": true,
+      "battleBoundaryTaskEvidencePresent": true,
+      "originalDesignAcceptancePreserved": true
     },
     "sourceSnapshots": [
       {
@@ -1095,14 +1490,30 @@
       {
         "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/recovery.json",
         "sha256": "709d9ee4af1c2c07bacabb5c2880aeed968843870e83db81d39f59b4c26075e0"
+      },
+      {
+        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+        "sha256": "93964c8b29e71ba58bdea0d66038f25cb5891d1c3e872863b61035c30db290cc"
+      },
+      {
+        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json",
+        "sha256": "15ca2330bf31cd90b82fe40c28aae67f511b3bd4b5d03218588339959df1550d"
+      },
+      {
+        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/recovery.json",
+        "sha256": "18ed215a0f926575987a9a139eed04a60e0f853f72130dd60bd24e044e29f0c1"
+      },
+      {
+        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
+        "sha256": "406398a76fb96e8928518bc673d45942b61c23102429e12743878bd300848b60"
       }
     ],
     "outputs": [
       "docs/versions/pilot-agent-intent-2026-09-24/development.json",
       "docs/versions/pilot-agent-intent-2026-09-24/development.md",
       "docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md",
-      "docs/dev/2026-10-02.md",
-      "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json"
+      "docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs",
+      "docs/dev/2026-10-04.md"
     ],
     "statusDocumentModified": false,
     "precedingPlanningInputsModified": false,
@@ -1111,51 +1522,36 @@
     "pushed": false,
     "tagged": false,
     "stageAdvanced": false,
-    "note": "原Feature交付提交不变；玩家任务JSON在本轮审核修复中仅准确归并已有有效检查。旧合同阻断检查属于priorContractValidation，最新检查单列commands。Version PM报告与交接持续修订，不另建阶段产物。",
+    "note": "Version PM 只整合 dev-battle-boundary-a1 已交付证据并维护唯一阶段报告和路线图交接；未重跑 Task 定向命令，未修改前置策划或正式运行状态。",
     "commands": [
       {
-        "command": "git diff --exit-code 85c8cf4 -- src electron scripts/desktop.mjs vite.config.ts package-lock.json",
+        "command": "node docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs",
         "exitCode": 0,
-        "result": "已测产品基线无差异；本轮只修订证据文档。"
+        "result": "{\n  \"workItems\": [\n    {\n      \"id\": \"dev-world-a3\",\n      \"commands\": 12,\n      \"evidence\": 8\n    },\n    {\n      \"id\": \"dev-player-a3\",\n      \"commands\": 7,\n      \"evidence\": 21\n    },\n    {\n      \"id\": \"dev-battle-boundary-a1\",\n      \"commands\": 30,\n      \"evidence\": 10\n    }\n  ],\n  \"planningOwnership\": \"Version PM\",\n  \"roadmapHandoff\": \"valid\",\n  \"completeGate\": \"passed\",\n  \"changedPaths\": [\n    \"docs/dev/2026-10-04.md\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/development.json\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/development.md\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs\"\n  ]\n}"
       },
       {
-        "command": "@'\nconst fs=require('node:fs'),assert=require('node:assert/strict'),crypto=require('node:crypto'),vm=require('node:vm'),ts=require('typescript');\nconst base='docs/versions/pilot-agent-intent-2026-09-24/';\nconst read=p=>JSON.parse(fs.readFileSync(p,'utf8'));\nconst hash=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');\nconst d=read(base+'development.json');\nfunction loadFunctions(path,names){\n const file=ts.createSourceFile(path,fs.readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);\n const selected=file.statements.filter(n=>ts.isFunctionDeclaration(n)&&names.includes(n.name?.text));\n assert.equal(selected.length,names.length);\n const code=ts.transpileModule(selected.map(n=>n.getText(file)).join('\\n'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;\n const context={exports:{}};\n vm.runInNewContext(code,context);\n return context.exports;\n}\nconst taskParser=loadFunctions('scripts/version-stage-tasks.ts',['isRecord','isStrings','parseStageTaskResult']);\nconst stageParser=loadFunctions('scripts/secretary-notice-guard.ts',['isRecord','isTaskScopeCommand','documentationOnlyWorkItem','parseStageCommands','parseStringEvidence','parseDevelopmentResult']);\nassert.deepEqual(d.workItems.map(w=>w.id),['dev-world-a3','dev-player-a3']);\nassert.deepEqual(d.workItems[1].dependsOn,['dev-world-a3']);\nconst counts={};\nfor(const w of d.workItems){\n const source=read(w.source);\n assert.deepEqual(w.commands,source.commands);\n assert.ok(w.commands.every(c=>c.exitCode===0&&stageParser.isTaskScopeCommand(c.command)));\n assert.ok(w.evidence.includes(w.source));\n for(const p of w.evidence)assert.ok(fs.existsSync(p),p);\n for(const group of w.reusedChecks??[]){\n  const records=group.sourceField.split('.').reduce((v,k)=>v[k],source).filter(x=>!/(?:npm run (?:verify|test:e2e|build)|playwright test)/.test(x.command));\n  assert.deepEqual(group.records,records);\n }\n counts[w.id]=w.commands.length;\n}\nconst workItems=d.workItems.map(w=>({id:w.id,status:'completed',dependsOn:w.dependsOn,affectedPaths:w.id==='dev-player-a3'?['src/game/','src/app/']:['src/core/']}));\nconst accepted=stageParser.parseDevelopmentResult(d,workItems);\nassert.equal(accepted.length,2);\nfor(const entry of accepted){\n const w=d.workItems.find(w=>w.id===entry.id);\n const direct=taskParser.parseStageTaskResult(read(w.source),entry.id);\n assert.equal(JSON.stringify(entry.commands),JSON.stringify(direct.commands));\n assert.ok(entry.evidence.includes(w.source));\n}\nconst player=read(d.workItems[1].source),r=player.evidenceReconciliation;\nassert.deepEqual(player.commands.slice(0,3),r.originalCommands);\nassert.deepEqual(r.originalCommands,player.delivery.commands);\nfor(const m of r.reusedEntries)assert.deepEqual(player.commands[m.targetIndex],player[m.sourceField][m.sourceIndex]);\nassert.equal(r.repeatedTypecheck,false);\nassert.equal(r.repeatedTests,false);\nfor(const failure of player.oneTimePlayAdoption.sourceFailedAttempts){\n const recorded=d.workItems[1].failedAttempts.find(x=>x.command===failure.command&&x.sourceField==='oneTimePlayAdoption.sourceFailedAttempts');\n for(const [k,v]of Object.entries(failure))assert.deepEqual(recorded[k],v,k);\n}\nfor(const [p,expected]of Object.entries(player.resumedValidation.reuse.fingerprints))assert.equal(hash(p),expected.toLowerCase());\nfor(const s of d.finalization.sourceSnapshots)assert.equal(hash(s.path),s.sha256);\nfor(const s of d.versionValidation.configFiles)assert.equal(hash(s.path),s.sha256);\nconst snapshot=d.finalization.sourceSnapshots.find(s=>s.path===d.workItems[1].source);\nassert.equal(snapshot.priorSha256,r.originalSourceSha256);\nconst negative=structuredClone(d);\nnegative.workItems[1].commands=negative.workItems[1].commands.filter(c=>c.command!=='npm run typecheck');\nassert.throws(()=>stageParser.parseDevelopmentResult(negative,workItems),/完成的 Task/);\nassert.equal(d.versionValidation.blockers.find(b=>b.id==='development-player-direct-command-contract').status,'resolved');\nassert.equal(d.versionValidation.completeGate.status,'not-run');\nconst plan=read(base+'development-tasks.json');\nassert.equal(plan.roadmapHandoff.owner,'Version PM');\nassert.equal(plan.roadmapHandoff.path,base+'roadmap-handoff.md');\nassert.ok(plan.roadmapHandoff.acceptance.length);\nconst handoff=fs.readFileSync(base+'roadmap-handoff.md','utf8');\nfor(const text of ['pilot-agent-intent-2026-09-24','./design-review.md','./development.json','本轮已实现并实测','仍待验证','未来候选','0017','0020','回退','candidate.json'])assert.ok(handoff.includes(text),text);\nconsole.log(JSON.stringify({developmentParser:'passed',exactTaskCommands:counts,missingTypecheckStillRejected:true,sourceSnapshots:6,testFingerprints:5,configFiles:d.versionValidation.configFiles.length,reconciledChecks:r.reusedEntries.length,originalChecks:'preserved',failureSources:'preserved',handoff:'valid',productTestsRerun:false},null,2));\n'@ | node",
+        "command": "npm run verify:full",
         "exitCode": 0,
-        "result": "{\n  \"developmentParser\": \"passed\",\n  \"exactTaskCommands\": {\n    \"dev-world-a3\": 12,\n    \"dev-player-a3\": 7\n  },\n  \"missingTypecheckStillRejected\": true,\n  \"sourceSnapshots\": 6,\n  \"testFingerprints\": 5,\n  \"configFiles\": 4,\n  \"reconciledChecks\": 4,\n  \"originalChecks\": \"preserved\",\n  \"failureSources\": \"preserved\",\n  \"handoff\": \"valid\",\n  \"productTestsRerun\": false\n}\n"
-      },
-      {
-        "command": "node scripts/check-docs.mjs",
-        "exitCode": 0,
-        "result": "文档检查通过：165 个 Markdown 文件，版本 0.2.0\n"
-      },
-      {
-        "command": "git diff --check",
-        "exitCode": 0,
-        "result": ""
-      },
-      {
-        "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json docs/versions/pilot-agent-intent-2026-09-24/development.json docs/versions/pilot-agent-intent-2026-09-24/development.md docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md docs/dev/2026-10-02.md",
-        "exitCode": 0,
-        "result": "Checking formatting...\nAll matched files use Prettier code style!\n"
+        "result": "最终集成树完整门禁通过：静态检查与文档检查通过；覆盖率 40 个文件、660 项测试通过，语句覆盖率 93.24%；沙盒通过；Playwright 27 项通过、candidate-first-batch-helper-edit 首次超时后重试通过并如实记为 1 flaky；生产构建通过。"
       }
     ],
     "contractCheck": {
       "status": "passed",
+      "workItems": ["dev-world-a3", "dev-player-a3", "dev-battle-boundary-a1"],
       "exactTaskCommands": "passed",
-      "aggregateParser": "passed",
-      "missingTypecheckStillRejected": true,
-      "sourceSnapshots": "passed",
-      "fivePlayerTestFingerprints": "passed",
-      "fourConfigFingerprints": "passed",
-      "reusedChecks": "passed",
-      "originalFailureSources": "passed",
+      "evidencePaths": "passed",
       "roadmapHandoff": "passed",
-      "parserSource": "scripts/secretary-notice-guard.ts",
-      "parserFunctions": ["parseDevelopmentResult", "parseStageTaskResult"],
-      "method": "以TypeScript AST读取现有纯函数并直接调用，不加载notice guard或写运行状态。",
-      "result": "两项任务通过现行解析，逐字同序命令分别12/7条；源记录和阶段汇总一致。负例缺少typecheck仍被拒绝。该结果只关闭检查合同finding，不替代最终集成完整门禁。"
+      "planningOwnership": "passed",
+      "planningGap": null,
+      "checker": "docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs",
+      "result": "真实断言检查器已执行：三项任务按声明依赖完成，12/7/30 条命令与各自来源逐字一致，当前公开证据路径存在，路线图交接合同、完整门禁状态、来源快照与改动范围均通过；第三项只登记开发已修复并实测，原策划 DA06 续验及 TB02-TB04 未被冒签。"
     },
-    "sourceHead": "c1d484184807e72516c404cf1639e7568c344838",
+    "reviewRepair": {
+      "finding": "原 finalization.commands[0] 的 node -e 主体只有注释，却记录了未实际执行的通过结论。",
+      "resolution": "删除伪执行命令，新增并实际运行版本内断言检查器；finalization.commands[0] 现保存真实命令、退出码和原始 JSON 输出。",
+      "scope": "只修复 Version PM 阶段合同检查证据，不重跑 Feature 定向命令、实玩、快速门禁或完整门禁。"
+    },
+    "sourceHead": "7dadab3a9037248ce3be882eb62a7efcd1dc0472",
     "repair": {
       "finding": "玩家任务的汇总命令缺少接纳所需的类型检查证据",
       "sourcePath": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
