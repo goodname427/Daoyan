@@ -7,24 +7,29 @@ const root = 'docs/versions/pilot-agent-intent-2026-09-24';
 const developmentPath = `${root}/development.json`;
 const planPath = `${root}/development-tasks.json`;
 const handoffPath = `${root}/roadmap-handoff.md`;
-const validatorPath = `${root}/validate-development-finalization.mjs`;
+const runtimePath = '.daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json';
+const gateLog =
+  '.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log';
 
 const readJson = (path) => JSON.parse(fs.readFileSync(path, 'utf8'));
 const sha256 = (path) => crypto.createHash('sha256').update(fs.readFileSync(path)).digest('hex');
 
 const development = readJson(developmentPath);
 const plan = readJson(planPath);
+const runtime = readJson(runtimePath);
 const handoff = fs.readFileSync(handoffPath, 'utf8');
 
-const expectedItems = [
-  { id: 'dev-world-a3', dependsOn: [], commandCount: 12 },
-  {
-    id: 'dev-player-a3',
-    dependsOn: ['dev-world-a3'],
-    commandCount: 7,
-  },
-  { id: 'dev-battle-boundary-a1', dependsOn: [], commandCount: 30 },
-];
+assert.ok(fs.existsSync(gateLog), `missing complete-gate log: ${gateLog}`);
+const gateOutput = fs.readFileSync(gateLog, 'utf8');
+for (const marker of [
+  '> daoyan@0.2.0 verify:full',
+  'Tests  660 passed (660)',
+  '27 passed',
+  '> daoyan@0.2.0 build',
+  'built in',
+]) {
+  assert.ok(gateOutput.includes(marker), `complete-gate log missing marker: ${marker}`);
+}
 
 assert.equal(development.versionId, 'pilot-agent-intent-2026-09-24');
 assert.equal(development.scopeRevision, 13);
@@ -32,42 +37,39 @@ assert.equal(development.firstBatch, 'A');
 assert.equal(development.owner, 'Version PM');
 assert.equal(development.status, 'completed');
 assert.equal(development.completed, true);
+
+const formalIds = runtime.workItems
+  .filter((item) => item.status !== 'skipped')
+  .map((item) => item.id);
+assert.deepEqual(formalIds, ['dev-battle-boundary-a1']);
 assert.deepEqual(
   development.workItems.map((item) => item.id),
-  expectedItems.map((item) => item.id),
+  formalIds,
+  'development results must match current formal work items',
 );
 
-const itemSummary = [];
-for (const expected of expectedItems) {
-  const item = development.workItems.find(({ id }) => id === expected.id);
-  assert.ok(item, expected.id);
-  assert.equal(item.status, 'completed', expected.id);
-  assert.equal(item.typecheck, 'passed', expected.id);
-  assert.equal(item.targetedTests, 'passed', expected.id);
-  assert.deepEqual(item.dependsOn, expected.dependsOn, expected.id);
-  assert.equal(item.commands.length, expected.commandCount, expected.id);
-  assert.ok(
-    item.commands.every(({ exitCode }) => exitCode === 0),
-    expected.id,
-  );
-  assert.ok(fs.existsSync(item.source), item.source);
-  const source = readJson(item.source);
-  assert.deepEqual(item.commands, source.commands, expected.id);
-  assert.ok(item.evidence.includes(item.source), expected.id);
-  for (const path of item.evidence) assert.ok(fs.existsSync(path), path);
-  itemSummary.push({
-    id: item.id,
-    commands: item.commands.length,
-    evidence: item.evidence.length,
-  });
-}
+const item = development.workItems[0];
+assert.equal(item.status, 'completed');
+assert.equal(item.typecheck, 'passed');
+assert.equal(item.targetedTests, 'passed');
+assert.deepEqual(item.dependsOn, []);
+assert.equal(item.commands.length, 30);
+assert.ok(item.commands.every(({ exitCode }) => exitCode === 0));
+assert.ok(fs.existsSync(item.source), item.source);
+const source = readJson(item.source);
+assert.deepEqual(item.commands, source.commands);
+assert.ok(item.evidence.includes(item.source));
+for (const path of item.evidence) assert.ok(fs.existsSync(path), path);
 
-const repairItem = development.workItems.find(({ id }) => id === 'dev-battle-boundary-a1');
-assert.equal(repairItem.evidenceRetention.status, 'partially-overwritten-by-version-gate');
-assert.ok(!repairItem.evidence.includes(repairItem.evidenceRetention.historicalPath));
-for (const path of repairItem.evidenceRetention.replacementEvidence) {
-  assert.ok(fs.existsSync(path), path);
-}
+assert.deepEqual(
+  development.historicalAcceptedDeliveries.map(({ id }) => id),
+  ['dev-world-a3', 'dev-player-a3'],
+);
+assert.ok(
+  development.historicalAcceptedDeliveries.every(({ note }) =>
+    note.includes('不属于当前正式版本 workItems'),
+  ),
+);
 
 assert.equal(plan.roadmapHandoff.owner, 'Version PM');
 assert.equal(plan.roadmapHandoff.path, handoffPath);
@@ -87,6 +89,7 @@ for (const text of [
   '回退',
   'candidate.json',
   'docs/roadmap.md',
+  gateLog,
 ]) {
   assert.ok(handoff.includes(text), text);
 }
@@ -95,11 +98,14 @@ assert.equal(development.versionValidation.status, 'passed');
 assert.equal(development.versionValidation.completeGate.command, 'npm run verify:full');
 assert.equal(development.versionValidation.completeGate.status, 'passed');
 assert.equal(development.versionValidation.completeGate.exitCode, 0);
+assert.ok(development.versionValidation.completeGate.evidence.includes(gateLog));
 assert.equal(development.finalization.contractCheck.status, 'passed');
-assert.deepEqual(
-  development.finalization.contractCheck.workItems,
-  expectedItems.map((item) => item.id),
-);
+assert.deepEqual(development.finalization.contractCheck.workItems, formalIds);
+assert.deepEqual(development.finalization.contractCheck.historicalAcceptedDeliveries, [
+  'dev-world-a3',
+  'dev-player-a3',
+]);
+assert.equal(development.finalization.contractCheck.formalRuntimeMatch, 'passed');
 assert.equal(development.finalization.contractCheck.exactTaskCommands, 'passed');
 assert.equal(development.finalization.contractCheck.evidencePaths, 'passed');
 assert.equal(development.finalization.contractCheck.roadmapHandoff, 'passed');
@@ -116,7 +122,7 @@ const allowedChanges = new Set([
   developmentPath,
   `${root}/development.md`,
   handoffPath,
-  validatorPath,
+  `${root}/validate-development-finalization.mjs`,
 ]);
 const changedPaths = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=all'], {
   encoding: 'utf8',
@@ -129,17 +135,18 @@ for (const path of changedPaths) assert.ok(allowedChanges.has(path), path);
 assert.ok(!changedPaths.includes('docs/status.md'));
 assert.ok(!changedPaths.includes('docs/roadmap.md'));
 
-const summary = {
-  workItems: itemSummary,
-  planningOwnership: plan.roadmapHandoff.owner,
-  roadmapHandoff: 'valid',
-  completeGate: development.versionValidation.completeGate.status,
-  changedPaths,
-};
-const serializedSummary = JSON.stringify(summary, null, 2);
-const recordedCheck = development.finalization.commands[0];
-assert.equal(recordedCheck.command, `node ${validatorPath}`, 'recorded contract-check command');
-assert.equal(recordedCheck.exitCode, 0, 'recorded contract-check exit code');
-assert.equal(recordedCheck.result, serializedSummary, 'recorded contract-check output');
-
-console.log(serializedSummary);
+console.log(
+  JSON.stringify(
+    {
+      workItems: [{ id: item.id, commands: item.commands.length, evidence: item.evidence.length }],
+      historicalAcceptedDeliveries: development.historicalAcceptedDeliveries.map(({ id }) => id),
+      formalRuntimeMatch: 'passed',
+      planningOwnership: plan.roadmapHandoff.owner,
+      roadmapHandoff: 'valid',
+      completeGateLog: gateLog,
+      changedPaths,
+    },
+    null,
+    2,
+  ),
+);

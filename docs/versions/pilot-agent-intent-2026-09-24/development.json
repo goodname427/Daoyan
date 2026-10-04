@@ -14,759 +14,6 @@
   ],
   "workItems": [
     {
-      "id": "dev-world-a3",
-      "status": "completed",
-      "typecheck": "passed",
-      "targetedTests": "passed",
-      "dependsOn": [],
-      "commit": "0aa4d113a4e72074dd9426b0c50185658d4bc282",
-      "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-      "featureReport": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json",
-      "commands": [
-        {
-          "command": "npm run typecheck",
-          "exitCode": 0,
-          "result": "最终代码树 TypeScript 检查通过。"
-        },
-        {
-          "command": "npm run lint",
-          "exitCode": 0,
-          "result": "审核指出的 src/core/world.ts eqeqeq 报错已修复；ESLint 零错误、零警告。"
-        },
-        {
-          "command": "npx eslint src/core/meta.ts src/core/metas/firstBatch.ts test/entity-vnext.test.ts --max-warnings 0",
-          "exitCode": 0,
-          "result": "本轮公开目录隔离改动的定向 ESLint 检查通过。"
-        },
-        {
-          "command": "npx eslint src/core/world.ts test/entity-vnext.test.ts --max-warnings 0",
-          "exitCode": 0,
-          "result": "reset、B4 目标材料绑定及 J1/D1 容量失鲜修复的定向 ESLint 检查通过。"
-        },
-        {
-          "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
-          "exitCode": 0,
-          "result": "仓库外 loader 直接执行允许测试文件中 14 个相关测试体：自然接触与 lot 归属、B4 成功/错目标 lot、reset、J1/D1 成功/容量失鲜及撤权余态；全部断言通过。"
-        },
-        {
-          "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-docs-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url scripts/generate-meta-reference.ts --check",
-          "exitCode": 0,
-          "result": "实际元法术参考生成脚本只读检查通过：94 个公开元法术，现有 docs/reference/meta-spells.md 同版。仓库外 loader 仅绕过本沙盒 tsx/esbuild 子进程权限限制。"
-        },
-        {
-          "command": "node scripts/check-docs.mjs",
-          "exitCode": 0,
-          "result": "文档检查通过：161 个 Markdown 文件，版本 0.2.0。"
-        },
-        {
-          "command": "$path=Join-Path $env:TEMP 'daoyan-a3-drive-smoke.mjs'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
-          "exitCode": 0,
-          "result": "真实 World/VM 的 J1/D1 逐端原读、逐 payer、来源、余态和静态上界实测通过。临时脚本位于仓库外。"
-        },
-        {
-          "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
-          "exitCode": 0,
-          "result": "真实 World/VM 的 B1→B4、19 笔审计、三 POST、再次自然撞击、材料与热账实测通过。临时脚本位于仓库外。"
-        },
-        {
-          "command": "npx prettier --check src/core/world.ts test/entity-vnext.test.ts docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "exitCode": 0,
-          "result": "上一轮相关代码、测试和文档格式检查通过。"
-        },
-        {
-          "command": "npx prettier --check src/core/meta.ts src/core/metas/firstBatch.ts test/entity-vnext.test.ts docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "exitCode": 0,
-          "result": "本轮公开目录隔离涉及的代码、测试和任务文档格式检查通过。"
-        },
-        {
-          "command": "git diff --check",
-          "exitCode": 0,
-          "result": "改动无空白错误。"
-        }
-      ],
-      "failedAttempts": [
-        {
-          "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
-          "exitCode": 1,
-          "reason": "新增 reset 断言初稿使用 Vitest 的 not.toBe，仓库外简化 runner 未实现该方法；改为等价布尔断言后同命令退出 0。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test -- test/secretary-dashboard.test.ts -t \"routes rejected candidate feedback into repair instead of the next-version backlog\"",
-          "exitCode": 1,
-          "reason": "本沙盒加载 vite.config.ts 时 esbuild spawn EPERM，测试体未执行。PM 快速门禁中的 20 秒超时用例只依赖 scripts/project-secretary.ts、版本状态模块及 test/helpers/secretary-guard.ts；修复路径均不在本任务 writePaths，不能以 src/core 改动签销。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run docs:check",
-          "exitCode": 1,
-          "reason": "tsx 启动 esbuild 子进程时本沙盒返回 spawn EPERM，生成脚本未运行；另用仓库外 Node loader 对实际生成脚本运行 --check 通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-docs-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url scripts/generate-meta-reference.ts --check",
-          "exitCode": 1,
-          "reason": "临时 loader 初稿未处理 package.json 的导入属性；补足 JSON 加载后同命令退出 0。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test -- test/entity-vnext.test.ts -t \"finite natural contact|sourced action\"",
-          "exitCode": 1,
-          "reason": "本轮定向 Vitest 在加载配置时 esbuild 子进程 spawn EPERM；目标测试体未执行，改用仓库外 Node loader 直接执行相关测试体。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test -- test/entity-vnext.test.ts",
-          "exitCode": 1,
-          "reason": "Vitest 加载配置时 esbuild 启动子进程返回 spawn EPERM；目标测试体未执行。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run typecheck",
-          "exitCode": 1,
-          "reason": "新增 B4 定向测试初稿对 analyzeBook 返回值和 Record 索引的类型使用错误；修正后同命令退出 0。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
-          "exitCode": 1,
-          "reason": "临时单测试 runner 初稿未提供 it.each；补充后四个定向测试体退出 0。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
-          "exitCode": 1,
-          "reason": "B4 临时测量初稿的 POST port 版本仍用撞后 v1，未采用修后 v2；修正后该命令退出 0。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
-          "exitCode": 1,
-          "reason": "旧临时脚本调用已废弃的 registerFiniteAuditStaticCertificate；改为 World 身体证书真值。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$path=Join-Path $env:TEMP 'daoyan-a3-b4-smoke.ts'; $url=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url $path",
-          "exitCode": 1,
-          "reason": "初版 B4 修后未恢复普通 panelAttached，第二次自然首撞未产生壳损；修正 World 余态后通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$url=([uri](Join-Path $env:TEMP 'daoyan-vitest-one-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $url test/entity-vnext.test.ts",
-          "exitCode": 1,
-          "reason": "新撤权余态断言把势能扣 48 错认为源端实得 48，遗漏取得热 8；改为实得 40 后通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-          "sourceField": "failedAttempts"
-        }
-      ],
-      "evidence": [
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json",
-        "test/entity-vnext.test.ts",
-        "src/core/meta.ts",
-        "src/core/world.ts",
-        "src/core/metas/firstBatch.ts",
-        "src/core/b4Audit.ts",
-        "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md"
-      ],
-      "summary": "已在现有共享 AST→compiler→VM→World 链接入并实测 J1 一次有源杆推、D1 一次有源起步及 B1 自然首撞后的 B4 普通惰性 k0 壳修。J1/D1/B4 分别取得 15/14/19 笔真实原读，VM 主付款方实耗为 32 M/187 tick/0 S、26 M/174 tick/0 S、44 M/302 tick/0 S；J1 跨三付款方合计 35 M，静态 M/tick/S 上界逐项不小于实耗。B1 先提交 C→N→X 与材料 3→2、碎片 0→1；B4 在自然事实之后修壳 2→3、废料 0→1，三笔 POST 均获同版证明。审核修复使缺材料库存的破壳保持未定，从耗散中先扣已证形变再占用热汇，并补齐 reset 有限状态清理、B4 目标与材料 lot 绑定及 J1/D1 执行体容量版本复核。",
-      "measurements": {
-        "J1": {
-          "astHash": "f1d5a2ad42fbec68ad02b7ef8ac8ea8609a28c432c9c3d5e7cbf25b003d76c79",
-          "canonicalAstBytes": 3052,
-          "readReceipts": 15,
-          "static": {
-            "mana": 87,
-            "ticks": 271,
-            "shenshiPeak": 0
-          },
-          "vm": {
-            "mana": 32,
-            "ticks": 187,
-            "shenshiPeak": 0
-          },
-          "payerReceipts": {
-            "primary": 32,
-            "P0": 1,
-            "P2": 2,
-            "total": 35
-          },
-          "capacity": {
-            "total": 128,
-            "occupiedBefore": 0,
-            "reservedPeak": 38,
-            "availableAfter": 90
-          }
-        },
-        "D1": {
-          "astHash": "2a633bae3d42ccbc2074fb8c7bb9d5fac4b9d6af54b7419e8deb91193ce252b6",
-          "canonicalAstBytes": 2769,
-          "readReceipts": 14,
-          "static": {
-            "mana": 54,
-            "ticks": 241,
-            "shenshiPeak": 0
-          },
-          "vm": {
-            "mana": 26,
-            "ticks": 174,
-            "shenshiPeak": 0
-          },
-          "capacity": {
-            "total": 128,
-            "occupiedBefore": 0,
-            "reservedPeak": 37,
-            "availableAfter": 91
-          }
-        },
-        "B1_B4": {
-          "astHash": "d3b13c166debcf7e92f4b3299d73dd0826f4bd6a1572233796810f4185327a0a",
-          "canonicalAstBytes": 3198,
-          "readReceipts": 19,
-          "static": {
-            "mana": 53,
-            "ticks": 451,
-            "shenshiPeak": 0
-          },
-          "vm": {
-            "mana": 44,
-            "ticks": 302,
-            "shenshiPeak": 0
-          },
-          "capacity": {
-            "total": 1024,
-            "occupiedBefore": 0,
-            "reservedPeak": 559,
-            "availableAfter": 465
-          },
-          "natural": {
-            "contactImpulse": 6,
-            "dissipatedEnergy": 6,
-            "deformation": 2,
-            "heat": 4,
-            "shellBefore": 3,
-            "shellAfter": 2,
-            "fragmentAfter": 1
-          },
-          "repair": {
-            "shellAfter": 3,
-            "wasteAfter": 1,
-            "packageAfter": 8,
-            "payerBalanceAfter": 6
-          }
-        }
-      },
-      "targetedTestEvidence": {
-        "method": "仓库外 Node loader 直接执行14个相关测试体和真实World/VM测量；不是标准Vitest成功",
-        "sourceField": "commands",
-        "standardRunnerStatus": "failed-in-sandbox"
-      },
-      "limitations": [
-        "Vitest 定向命令在当前沙盒的 esbuild spawn EPERM 下没有通过记录；调度器负责退出后的快速/完整门禁。",
-        "秘书 dashboard 用例在 PM 快速门禁中出现 20 秒超时；其测试、守卫和项目秘书实现均位于本任务 writePaths 外。本沙盒定向复跑在 Vitest 配置阶段遇到 esbuild spawn EPERM，未取得该超时的运行栈，须由原 PM 在控制面范围复现并修复。",
-        "旧 UI/Battle 按键、hitProjectile/damage、自动回蓝和固定寿命的域外调用尚未迁移到首批有限世界行为。"
-      ],
-      "commandSource": {
-        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-        "field": "commands",
-        "policy": "逐项原样保留顶层命令、退出码、结果与顺序；复用检查单列，不并入接纳数组。"
-      }
-    },
-    {
-      "id": "dev-player-a3",
-      "status": "completed",
-      "typecheck": "passed",
-      "targetedTests": "passed",
-      "dependsOn": ["dev-world-a3"],
-      "commit": "3d9d0bf20ed509069178c9a3265076b73cdfbd30",
-      "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-      "featureReport": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json",
-      "commands": [
-        {
-          "command": "$ErrorActionPreference='Stop'; $path='docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json'; $e=Get-Content $path -Raw|ConvertFrom-Json; $v=Get-Content .daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json -Raw|ConvertFrom-Json; $t=@($v.stageTasks|Where-Object id -eq 'dev-player-a3')[-1]; if($e.taskId -ne 'dev-player-a3' -or $e.status -ne 'completed' -or $e.completed -ne $true){throw 'Incorrect task completion record'}; $changed=@(git status --porcelain=v1 --untracked-files=all); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; $paths=@($changed|ForEach-Object {$_.Substring(3).Replace('\\','/')}); foreach($p in $paths){if(-not @($t.writePaths|Where-Object {$p -eq $_ -or $p.StartsWith($_+'/')}).Count){throw \"Outside writePaths: $p\"}}; if(@(Compare-Object ($paths|Sort-Object) ($e.delivery.changedPaths|Sort-Object)).Count){throw 'Delivery paths differ'}; $staged=@(git diff --cached --name-only); if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; if($staged.Count){throw 'Unexpected staged changes'}; foreach($p in $e.evidence){if(-not (Test-Path -LiteralPath $p -PathType Leaf)){throw \"Missing evidence: $p\"}}; if($e.oneTimePlayAdoption.remainingRequiredEvidence.Count){throw 'Unclosed required evidence'}; if($e.committed -or $e.pushed){throw 'Unverified Git delivery claim'}; Write-Output 'PASS dev-player-a3 completed evidence, exact four contract paths, evidence files, no staged changes or Git delivery claims'",
-          "exitCode": 0,
-          "result": "PASS dev-player-a3 completed evidence, exact four contract paths, evidence files, no staged changes or Git delivery claims"
-        },
-        {
-          "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "exitCode": 0,
-          "result": "Checking formatting...\nAll matched files use Prettier code style!"
-        },
-        {
-          "command": "git diff --check",
-          "exitCode": 0,
-          "result": "通过，无输出。"
-        },
-        {
-          "command": "npm run typecheck",
-          "exitCode": 0,
-          "result": "当前工作树 TypeScript 检查通过。"
-        },
-        {
-          "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
-          "exitCode": 0,
-          "result": "当前提交树真实 World/VM 冒烟通过；J1、D1、B4 分别为 15/32 M、14/26 M、19/44 M；两层同书辅助术改写后仍能执行。"
-        },
-        {
-          "command": "node (Join-Path $env:TEMP 'daoyan-a3-inprocess-test.mjs') test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
-          "exitCode": 0,
-          "result": "当前工作树 4 个测试文件、94 项断言通过，含扩充后的同书 DOM 往返。临时入口位于仓库外，使用 Vitest startVitest 和进程内 TypeScript 转换；不是标准 npm test 门禁。"
-        },
-        {
-          "command": "npx eslint test/render.test.tsx e2e/candidate.spec.ts --max-warnings 0",
-          "exitCode": 0,
-          "result": "本轮改动的界面与浏览器测试定向 ESLint 通过。"
-        }
-      ],
-      "failedAttempts": [
-        {
-          "command": "npm run test -- test/secretary-dashboard.test.ts -t \"routes rejected candidate feedback into repair instead of the next-version backlog\"",
-          "exitCode": 1,
-          "reason": "本机 Vite 配置加载时 esbuild spawn EPERM，测试体未启动；不能作为控制面超时复现或修复通过证据。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json e2e/candidate.spec.ts test/render.test.tsx",
-          "exitCode": 1,
-          "reason": "本轮对全部四个合同内改动逐项暂存时，.git/index.lock Permission denied；当前会话对 .git 只有读取权限，未生成本地提交。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "node (Join-Path $env:TEMP 'daoyan-a3-inprocess-test.mjs') test/render.test.tsx",
-          "exitCode": 1,
-          "reason": "扩充同书 DOM 往返后首次断言误认为改写 J1 无作用；实际 World/VM 已提交作用，14 笔读使全链未证成。按实际余态修正断言和文档后同命令及四文件定向命令均通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "exitCode": 1,
-          "reason": "本轮本地提交前的暂存被文件系统策略阻断：.git/index.lock Permission denied；锁文件不存在，当前会话对 .git 只有读取权限。两份本轮证据文件保持未提交。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
-          "exitCode": 1,
-          "reason": "本轮当前提交树的标准命令在 Vite 配置加载时遭遇 esbuild spawn EPERM，测试体未启动；随后仓库外进程内转换入口运行 94 项断言通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "exitCode": 1,
-          "reason": "本轮任务证据 JSON 首次格式检查失败；格式化后同命令通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run typecheck",
-          "exitCode": 1,
-          "reason": "首次放入推演台身份 useMemo 时位于 activeSpell 声明前；已移动到声明后，最终同命令通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx prettier --check src/game/finiteProgram.ts src/game/firstBatch.ts src/game/firstBatchB4.ts src/app/LabView.tsx src/demo/firstBatchSmoke.ts test/first-batch-player.test.ts test/render.test.tsx e2e/candidate.spec.ts docs/reference/spell-authoring.md docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
-          "exitCode": 1,
-          "reason": "本次新增代码的四个文件尚未按仓库格式排版；定向写入格式后最终检查通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
-          "exitCode": 1,
-          "reason": "新增界面预算断言先用辅助术局部变量替换，J1 当前最大耗时仍由原主链决定，预算未改变；调整为有价世界读取后冒烟复测通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx vitest run test/first-batch-player.test.ts test/render.test.tsx",
-          "exitCode": 1,
-          "reason": "本次辅助法术审核修复后的定向测试在 Vite 配置加载时被沙盒阻止 esbuild 子进程 spawn EPERM，测试体未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
-          "exitCode": 1,
-          "reason": "首次新增三分判断言把两笔 World 本人探查误写为 2 M；直接冒烟测得实付 4 M，随后修正断言并重跑通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx vitest run test/combat.test.ts",
-          "exitCode": 1,
-          "reason": "本次修复后的定向 Vitest 在配置加载时被沙盒阻止 esbuild 子进程 spawn EPERM，测试体未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx vitest run test/combat.test.ts test/render.test.tsx",
-          "exitCode": 1,
-          "reason": "本次修复后的直接测试在配置加载时被沙盒阻止 esbuild 子进程 spawn EPERM，测试体未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
-          "exitCode": 1,
-          "reason": "默认沙盒中 esbuild worker spawn EPERM，测试体未启动；获准的同命令通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "git commit -m \"docs: record first-batch player journey evidence\"",
-          "exitCode": 1,
-          "reason": "仓库 pre-commit 钩子自动运行 npm run verify；无关的 test/secretary-dashboard.test.ts 候选反馈路由用例 20 秒超时（全套 582/583 通过），提交未生成。本轮按任务要求只认可已通过的直接检查，后续单次禁用钩子提交文档。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json e2e/candidate.spec.ts test/render.test.tsx",
-          "exitCode": 1,
-          "reason": "fatal: Unable to create 'E:/CGL/Programs/Daoyan/.git/index.lock': Permission denied",
-          "phase": "player-a3-delivery",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run dev -- --host 127.0.0.1 --port 5180 --strictPort",
-          "exitCode": 1,
-          "reason": "Vite配置加载时esbuild spawn EPERM；页面服务未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "resumedValidation.failedAttempts"
-        },
-        {
-          "command": "git add -- docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json test/render.test.tsx e2e/candidate.spec.ts",
-          "exitCode": 1,
-          "reason": ".git/index.lock Permission denied；只读Git权限，未暂存、未提交。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "resumedValidation.failedAttempts"
-        },
-        {
-          "command": "npm run dev -- --host 127.0.0.1 --port 5180 --strictPort",
-          "exitCode": 1,
-          "reason": "Vite配置加载时esbuild spawn EPERM，服务未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "continuationValidation.failedAttempts"
-        },
-        {
-          "command": "$r=Get-Content '.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/recovery.json' -Raw | ConvertFrom-Json; foreach($p in $r.workspaceChangeBaseline.PSObject.Properties){$actual=(Get-FileHash -Algorithm SHA256 $p.Name).Hash.ToLower(); [pscustomobject]@{Path=$p.Name;Expected=$p.Value;Actual=$actual;Match=($actual -eq $p.Value)}} | Format-Table -AutoSize",
-          "exitCode": 1,
-          "callId": "exec-93c89295-3897-4b8c-9550-a395baa24dfc",
-          "timestamp": "2026-10-02T05:40:43.494Z",
-          "reason": "原公开来源核对命令ParserError，后续修正命令退出0。",
-          "source": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/server-and-tree-records.json",
-          "sourceField": "oneTimePlayAdoption.sourceFailedAttempts",
-          "evidenceSource": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json"
-        },
-        {
-          "command": "npm run desktop",
-          "exitCode": 1,
-          "callId": "exec-bc2efb6f-72cc-45a1-a055-7165f137b7f8",
-          "timestamp": "2026-10-02T05:43:26.854Z",
-          "reason": "原公开服务器执行最终退出1，运行期间Vite就绪与实玩已发生；不是通过检查或门禁。",
-          "source": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/server-and-tree-records.json",
-          "sourceField": "oneTimePlayAdoption.sourceFailedAttempts",
-          "evidenceSource": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json"
-        }
-      ],
-      "evidence": [
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json",
-        "src/game/finiteProgram.ts",
-        "src/game/firstBatch.ts",
-        "src/app/LabView.tsx",
-        "src/game/firstBatchB4.ts",
-        "src/demo/firstBatchSmoke.ts",
-        "test/combat.test.ts",
-        "e2e/candidate.spec.ts",
-        "test/first-batch-player.test.ts",
-        "test/render.test.tsx",
-        "test/persistence.test.ts",
-        "docs/reference/spell-authoring.md",
-        "docs/reference/entities-and-attributes.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/README.md",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/browser-calls.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/provenance.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/server-and-tree-records.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/call_t1CS5NdXzYPDH1JomJXipZhC-1.jpg",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence/call_753tZlynG7yxWgnYx7DFtCW6-1.jpg"
-      ],
-      "summary": "dev-player-a3 精确交付证据已补齐：沿用原恢复、实现和验证成果，采纳制作人一次性授权的41条浏览器记录及两张截图，复用仍匹配的94项断言。推演台编辑预算、演武场有限World/VM成功与拒绝观察、返书改写hash并撤旧报价已有可复核证据；活动Battle、返书后再次执行及辅助术浏览器体验仍未证明，不扩大验收结论。本轮只整理正式交付记录与范围，不重复测试、实玩或统一门禁；本地Git交付状态见delivery，未推送。",
-      "measurements": {
-        "J1": {
-          "readReceipts": 15,
-          "payerMana": 32,
-          "vmTicks": 187,
-          "installationShenshi": 38
-        },
-        "D1": {
-          "readReceipts": 14,
-          "payerMana": 26,
-          "vmTicks": 174,
-          "installationShenshi": 37
-        },
-        "B1_B4": {
-          "readReceipts": 19,
-          "payerMana": 44,
-          "vmTicks": 302,
-          "installationShenshi": 559,
-          "naturalShellAfter": 2,
-          "naturalFragmentAfter": 1,
-          "repairShellAfter": 3,
-          "repairWasteAfter": 1
-        },
-        "B4EmptyReadAfterRepair": {
-          "extraMana": 2,
-          "extraTicks": 21,
-          "emptyReceipt": true,
-          "extraActionFacts": 0
-        },
-        "B4RecontactCapacity": {
-          "unknown": {
-            "capacityReads": 0,
-            "extraMana": 0,
-            "status": "capacityUnknown"
-          },
-          "sufficient": {
-            "capacityReads": 2,
-            "extraMana": 4,
-            "status": "sufficient"
-          },
-          "full": {
-            "capacityReads": 2,
-            "extraMana": 4,
-            "status": "queueFull"
-          },
-          "secondVmRuns": 0
-        },
-        "sameBookTransitiveHelper": {
-          "entries": ["J1执行", "D1执行", "B4修壳"],
-          "dependencyDepth": 2,
-          "allHashesChangedAfterHelperEdit": true,
-          "allWorldVmSuccessAfterEdit": true,
-          "unrelatedSpellExcludedFromEntryHash": true
-        }
-      },
-      "targetedTestEvidence": {
-        "method": "复用四文件94项Vitest断言的进程内转换入口；五测试指纹匹配；不是标准Vitest成功或浏览器实玩",
-        "sourceField": "previousPassedCommands",
-        "standardRunnerStatus": "failed-in-sandbox",
-        "fingerprints": {
-          "test/render.test.tsx": "3EE83392D24219289BF224FBE632A80028836B83668BEEF0632881230E9945BE",
-          "e2e/candidate.spec.ts": "3B9E63700F91BE6CB8555A45D676C5B0A3A4424A73CA8DB96DE2D0D21BBDBE4B",
-          "test/first-batch-player.test.ts": "DB06F5BA4B840EF27EB5B5950C0C95D11C8EE0364746FC1CE9C86683C369B3BB",
-          "test/combat.test.ts": "C34F2EA416F00A04178DE53B6F165C53603483F7AA4E297F8CF79365E07E0462",
-          "test/persistence.test.ts": "DEDE49EC6FC69E933D11E70382041A9567F89577AE9ECAE52C5A8D897264D022"
-        }
-      },
-      "limitations": [
-        "演武场观察区使用独立真实 World；活动波次 Battle 尚未提供实体、来源、授权、价格和容量证书，旧画布按键触发有限术安全拒绝。",
-        "B4 再撞实测第二条自然接触，撤销旧成功覆盖与报价；无权容量读判 capacityUnknown，获准两笔 World 本人容量实读后结合桥接层一位本体 FIFO 的实际在途意图判 sufficient 或 queueFull。核心尚无动态本体 FIFO 原读接口，活动战斗不能借此有限场景证书。第二次付费修补不在首批范围，尚无新 B4 读集或报价。",
-        "B4 获准空读在同一 World 经直接 vmB4Read 执行，额外 21 tick 不在首次 VM.run 返回值中。",
-        "域外关键回路修复由游戏入口预检拒绝，不代表核心 VM 通用域证明。",
-        "返书后再次执行和两层辅助术改写未获浏览器实玩证明；仅复用既有自动化，本任务当前合同止于返书改写，不新增独立实玩门槛。",
-        "窄屏只验证390×844；error/warn只覆盖公开调用34的limit25查询。没有重测390×780或后续运行。",
-        "填回B4文本后源码字符串不相同、hash未回原值；规范AST包含call行号，编辑器serializeBook重写整书，不能仅凭局部缩进认定唯一原因或宣称等价恢复。旧报价不因此恢复；当前合同不要求恢复原文必回旧hash。",
-        "本次主Agent代验特例不延续至后续独立策划/QA；有限World不能当成旧活动波次的新实体证书或硬件手柄实测。",
-        "未运行npm run verify或verify:full；Feature PM负责集成门禁与Git交付。标准Vitest旧spawn EPERM失败保留，不冒写标准命令通过。"
-      ],
-      "commandSource": {
-        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        "field": "commands",
-        "policy": "逐项原样保留任务顶层归并后的命令、退出码、结果与顺序；复用实跑来源索引见任务evidenceReconciliation。"
-      },
-      "reusedChecks": [
-        {
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "previousPassedCommands",
-          "records": [
-            {
-              "command": "npm run typecheck",
-              "exitCode": 0,
-              "result": "当前工作树 TypeScript 检查通过。"
-            },
-            {
-              "command": "$pilotLoader=([uri](Join-Path $env:TEMP 'daoyan-ts-loader.mjs')).AbsoluteUri; node --no-warnings --experimental-transform-types --loader $pilotLoader src/demo/firstBatchSmoke.ts",
-              "exitCode": 0,
-              "result": "当前提交树真实 World/VM 冒烟通过；J1、D1、B4 分别为 15/32 M、14/26 M、19/44 M；两层同书辅助术改写后仍能执行。"
-            },
-            {
-              "command": "node (Join-Path $env:TEMP 'daoyan-a3-inprocess-test.mjs') test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
-              "exitCode": 0,
-              "result": "当前工作树 4 个测试文件、94 项断言通过，含扩充后的同书 DOM 往返。临时入口位于仓库外，使用 Vitest startVitest 和进程内 TypeScript 转换；不是标准 npm test 门禁。"
-            },
-            {
-              "command": "node scripts/check-docs.mjs",
-              "exitCode": 0,
-              "result": "162 个 Markdown 文件结构与链接检查通过。"
-            },
-            {
-              "command": "npx eslint test/render.test.tsx e2e/candidate.spec.ts --max-warnings 0",
-              "exitCode": 0,
-              "result": "本轮改动的界面与浏览器测试定向 ESLint 通过。"
-            },
-            {
-              "command": "npx prettier --check test/render.test.tsx e2e/candidate.spec.ts docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-              "exitCode": 0,
-              "result": "本轮两份测试和两份证据文件格式检查通过。"
-            },
-            {
-              "command": "git diff --check",
-              "exitCode": 0,
-              "result": "本轮文档与证据改动无空白错误。"
-            }
-          ]
-        },
-        {
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "adoptionPassedCommands",
-          "records": [
-            {
-              "command": "@'\nimport assert from \"node:assert/strict\";\nimport fs from \"node:fs\";\nimport { createHash } from \"node:crypto\";\nconst base = \".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence\";\nconst calls = JSON.parse(fs.readFileSync(base + \"/browser-calls.json\", \"utf8\"));\nconst provenance = JSON.parse(fs.readFileSync(base + \"/provenance.json\", \"utf8\"));\nconst records = JSON.parse(fs.readFileSync(base + \"/server-and-tree-records.json\", \"utf8\"));\nconst hash = p => createHash(\"sha256\").update(fs.readFileSync(p)).digest(\"hex\");\nassert.equal(calls.length, 41);\nassert.equal(provenance.browserRecordCount, calls.length);\nassert.equal(new Set(calls.map(c => c.callId)).size, 41);\nconst images = calls.flatMap(c => c.images);\nassert.equal(images.length, 2);\nfor (const img of images) assert.equal(hash(base + \"/\" + img.path), img.sha256);\nfor (const draft of provenance.recoveryDrafts.filter(d => /^(test|e2e)\\//.test(d.path))) assert.equal(hash(draft.path), draft.expected);\nassert.ok(records.some(r => r.command === \"npm run desktop\" && r.stdout.includes(\"http://localhost:5173/\")));\nassert.equal(records.find(r => r.command === \"npm run desktop\").exitCode, 1);\nconst text = calls.map(c => c.text.join(\"\\n\")).join(\"\\n\");\nfor (const fact of [\"原读收据 15\", \"原读收据 14\", \"原读收据 19\", \"本人已付 32 M\", \"本人已付 26 M\", \"本人已付 44 M\", \"读权已撤销\", \"空结果收据已提交\", \"POST 失证\", \"容量 sufficient\", \"容量 queueFull\", \"容量 capacityUnknown\", \"0613fc3d8e2415272f6baac5672e0081d414552ce1da9b24cb10bd713cd8ae81\"]) assert.ok(text.includes(fact), fact);\nconst width = calls.find(c => c.callId === \"call_6XELShBE6Sui3ohb0RIlKOCf\");\nassert.ok(width.code.includes(\"logs({levels:['error','warn'],limit:25})\"));\nassert.ok(width.text.join(\"\\n\").endsWith(\"[]\"));\nconsole.log(JSON.stringify({callCount:calls.length,imageCount:images.length,imageHashesVerified:true,testDraftsMatch:true,serverExitCode:1,artifacts:Object.fromEntries([\"README.md\",\"browser-calls.json\",\"provenance.json\",\"server-and-tree-records.json\",...images.map(i=>i.path)].map(p=>[p,hash(base+\"/\"+p)]))},null,2));\n'@ | node --input-type=module",
-              "exitCode": 0,
-              "result": "{\n  \"callCount\": 41,\n  \"imageCount\": 2,\n  \"imageHashesVerified\": true,\n  \"testDraftsMatch\": true,\n  \"serverExitCode\": 1,\n  \"artifacts\": {\n    \"README.md\": \"4ae90118fc2b349e0270cf1eee73befef062a945dd289ac03e3ae2020a44686c\",\n    \"browser-calls.json\": \"45c91506839862a5eae873bb13ba2b6825a2447b123527d517d12ad317b48d02\",\n    \"provenance.json\": \"36c22a07c0780143a83104bbafab79a3d4782911952706f3f40761b880f22149\",\n    \"server-and-tree-records.json\": \"6fb4c9be7f9860b48753e2b1dd099ef7b5535957fc86fb3faf4ff84c14617d77\",\n    \"call_t1CS5NdXzYPDH1JomJXipZhC-1.jpg\": \"6104a14f2a4e9caaabd54fabe63721c9ef1c921449db81b63655e0e52da1fdd4\",\n    \"call_753tZlynG7yxWgnYx7DFtCW6-1.jpg\": \"fa3b529184c65b148b228181294cbdcfce24674bc1b7e2d6d125cb0147a202d0\"\n  }\n}"
-            },
-            {
-              "command": "git diff --exit-code 85c8cf4 -- src electron scripts/desktop.mjs vite.config.ts package-lock.json",
-              "exitCode": 0,
-              "result": "与实玩产品基线无差异。"
-            },
-            {
-              "command": "@'\nimport assert from \"node:assert/strict\";\nimport fs from \"node:fs\";\nimport { resolve, dirname } from \"node:path\";\nconst file = \"docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md\";\nconst doc = fs.readFileSync(file,\"utf8\");\nlet links = 0;\nfor (const [,url] of doc.matchAll(/\\[[^\\]]*\\]\\(([^)]+)\\)/g)) {\n  if (/^(https?:|#)/.test(url)) continue;\n  assert.ok(fs.existsSync(resolve(dirname(file),url.split(\"#\")[0])), url);\n  links++;\n}\nconst pkg = JSON.parse(fs.readFileSync(\"package.json\",\"utf8\"));\nfor (const [,name] of doc.matchAll(/npm run ([a-zA-Z0-9:_-]+)/g)) assert.ok(pkg.scripts[name], name);\nconst task = JSON.parse(fs.readFileSync(\"docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json\",\"utf8\"));\nconst calls = JSON.parse(fs.readFileSync(task.oneTimePlayAdoption.evidence.find(p=>p.endsWith(\"/browser-calls.json\")),\"utf8\"));\nassert.equal(task.taskId,\"dev-player-a3\");\nassert.equal(task.status,\"passed\");\nassert.equal(task.completed,true);\nfor (const s of task.oneTimePlayAdoption.scenarios) for (const r of s.records) {\n  assert.equal(calls[r.number-1].callId,r.callId);\n  assert.equal(calls[r.number-1].timestamp,r.timestamp);\n}\nassert.equal(task.oneTimePlayAdoption.sourceServerRecord.exitCode,1);\nassert.equal(task.oneTimePlayAdoption.remainingRequiredEvidence.length,0);\nassert.equal(task.committed,false);\nassert.equal(task.pushed,false);\nconsole.log(\"Player evidence links and scripts valid: \"+links+\" links; 19 scenario references match public call IDs/times; source server exit 1 retained; no commit/push claimed.\");\n'@ | node --input-type=module",
-              "exitCode": 0,
-              "result": "Player evidence links and scripts valid: 6 links; 19 scenario references match public call IDs/times; source server exit 1 retained; no commit/push claimed."
-            },
-            {
-              "command": "$allowed = @('test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json'); $changed = @(git diff --name-only); $staged = @(git diff --cached --name-only); if (@($changed | Where-Object { $_ -notin $allowed }).Count -gt 0 -or $staged.Count -gt 0) { throw 'Unexpected change or staged file' }; $changed",
-              "exitCode": 0,
-              "result": "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md\r\ndocs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json\r\ne2e/candidate.spec.ts\r\ntest/render.test.tsx"
-            },
-            {
-              "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-              "exitCode": 0,
-              "result": "Checking formatting...\nAll matched files use Prettier code style!"
-            },
-            {
-              "command": "git diff --check",
-              "exitCode": 0,
-              "result": "通过。"
-            }
-          ]
-        },
-        {
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "resumedValidation.commands",
-          "records": [
-            {
-              "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-              "exitCode": 0,
-              "result": "Checking formatting...\nAll matched files use Prettier code style!"
-            },
-            {
-              "command": "git diff --check",
-              "exitCode": 0,
-              "result": "通过。"
-            },
-            {
-              "command": "$allowed = @('test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json'); $changed = @(git diff --name-only); $staged = @(git diff --cached --name-only); if (@($changed | Where-Object { $_ -notin $allowed }).Count -gt 0 -or $staged.Count -gt 0) { throw 'Unexpected change or staged file' }; $changed",
-              "exitCode": 0,
-              "result": "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md\r\ndocs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json\r\ne2e/candidate.spec.ts\r\ntest/render.test.tsx"
-            }
-          ]
-        },
-        {
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "continuationValidation.commands",
-          "records": [
-            {
-              "command": "git diff --exit-code b235cee9123bb50993566cd58706b62d0416d60c -- src/core src/game src/app src/demo test/combat.test.ts test/persistence.test.ts test/first-batch-player.test.ts vite.config.ts vitest.config.ts playwright.config.ts package.json",
-              "exitCode": 0,
-              "result": "无差异。"
-            },
-            {
-              "command": "git diff b235cee9123bb50993566cd58706b62d0416d60c -- AGENTS.md docs/workflow.md docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
-              "exitCode": 0,
-              "result": "无差异。"
-            }
-          ]
-        },
-        {
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "continuationValidation.documentChecks",
-          "records": [
-            {
-              "command": "npx prettier --check docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-              "exitCode": 0,
-              "result": "Checking formatting...\nAll matched files use Prettier code style!"
-            },
-            {
-              "command": "git diff --check",
-              "exitCode": 0,
-              "result": "通过。"
-            },
-            {
-              "command": "$allowed = @('test/render.test.tsx','e2e/candidate.spec.ts','docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md','docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json'); $changed = @(git diff --name-only); $staged = @(git diff --cached --name-only); if (@($changed | Where-Object { $_ -notin $allowed }).Count -gt 0 -or $staged.Count -gt 0) { throw 'Unexpected change or staged file' }; $changed",
-              "exitCode": 0,
-              "result": "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md\r\ndocs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json\r\ne2e/candidate.spec.ts\r\ntest/render.test.tsx"
-            }
-          ]
-        }
-      ],
-      "sourceServerRecord": {
-        "command": "npm run desktop",
-        "callId": "exec-bc2efb6f-72cc-45a1-a055-7165f137b7f8",
-        "time": "2026-10-02T05:43:26.854Z",
-        "cwd": "E:/CGL/Programs/Daoyan",
-        "exitCode": 1,
-        "outcome": "公开日志报告Vite就绪，提供实际页面；最终退出码1，非通过命令或完整门禁。",
-        "evidenceSource": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        "sourceField": "oneTimePlayAdoption.sourceServerRecord"
-      },
-      "evidenceReconciliation": {
-        "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        "sourceField": "evidenceReconciliation",
-        "reusedEntries": [
-          {
-            "targetIndex": 3,
-            "sourceField": "previousPassedCommands",
-            "sourceIndex": 0
-          },
-          {
-            "targetIndex": 4,
-            "sourceField": "previousPassedCommands",
-            "sourceIndex": 1
-          },
-          {
-            "targetIndex": 5,
-            "sourceField": "previousPassedCommands",
-            "sourceIndex": 2
-          },
-          {
-            "targetIndex": 6,
-            "sourceField": "previousPassedCommands",
-            "sourceIndex": 4
-          }
-        ]
-      }
-    },
-    {
       "id": "dev-battle-boundary-a1",
       "status": "completed",
       "typecheck": "passed",
@@ -1079,234 +326,21 @@
       }
     }
   ],
-  "featureValidation": [
+  "historicalAcceptedDeliveries": [
     {
-      "workItemId": "dev-world-a3",
-      "scope": "Feature",
-      "report": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json",
-      "recovery": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/recovery.json",
+      "id": "dev-world-a3",
+      "status": "accepted-before-dv01-repair",
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
       "commit": "0aa4d113a4e72074dd9426b0c50185658d4bc282",
-      "fastGate": {
-        "workspaceFingerprint": "486d6d8c42d651da0693d8764c2fc2b72c6b51496cf44ca826cd18d028d120bb",
-        "configFingerprint": "6ddb326af88f3ddf87e32bf87744ab5fb1b1cbe7190a813c09f39f2c83e55b45",
-        "completedCommands": [
-          ["npm", "run", "typecheck"],
-          ["npm", "run", "lint"],
-          ["npm", "run", "format:check"],
-          ["npm", "run", "docs:check"],
-          ["npm", "run", "test"]
-        ],
-        "pendingCommands": [],
-        "passed": true,
-        "attempts": 10,
-        "reused": true,
-        "rerunByFinalizer": false
-      },
-      "independentReview": {
-        "verdict": "pass",
-        "summary": "增量复审通过。上轮三个 finding 均已修复，并有对应的定向断言；未发现修复增量中的交付阻断问题。本次未重新运行测试、构建或 Git 命令。",
-        "findings": [],
-        "source": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json"
-      },
-      "commands": [],
-      "failedAttempts": [],
-      "historicalEvidenceNotAcceptedForFinalTree": [],
-      "tokenObservation": {
-        "planner": 27062,
-        "workers": [
-          {
-            "id": "implement-world-vm-behaviors",
-            "tokens": 258807
-          }
-        ],
-        "reviewer": 626079,
-        "repairs": 5657029,
-        "knownTotal": 6568977,
-        "observedCalls": 14,
-        "missingUsageCalls": 0,
-        "source": "invocation-logs-and-dispatcher-aggregate"
-      },
-      "note": "快速门禁为该Feature交付时的树/配置事实；不推断最终集成verify:full通过。旧运行会话Git标志和失败保留，最终提交由正式报告及当前Git来源核对。"
+      "note": "首批 A 核心历史交付；保留为路线图和本轮修复基线，不属于当前正式版本 workItems。"
     },
     {
-      "workItemId": "dev-player-a3",
-      "scope": "Feature",
-      "report": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json",
-      "recovery": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/recovery.json",
+      "id": "dev-player-a3",
+      "status": "accepted-before-dv01-repair",
+      "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
       "commit": "3d9d0bf20ed509069178c9a3265076b73cdfbd30",
-      "fastGate": {
-        "workspaceFingerprint": "8b815349159ec2af2530ecdf23d4c5e77e2bedc1965b2ecbb34aa438276ee39a",
-        "configFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
-        "completedCommands": [
-          ["npm", "run", "typecheck"],
-          ["npm", "run", "lint"],
-          ["npm", "run", "format:check"],
-          ["npm", "run", "docs:check"],
-          ["npm", "run", "test"]
-        ],
-        "pendingCommands": [],
-        "passed": true,
-        "attempts": 1,
-        "reused": true,
-        "rerunByFinalizer": false
-      },
-      "independentReview": {
-        "verdict": "pass",
-        "summary": "新增正式证据已关闭原实玩记录缺口，覆盖三术成功与拒绝、再撞容量三分判、返书改写及旧报价撤销。未证明事项已如实披露，未扩大验收结论；未发现本次交付前必须修复的问题。未修改文件或运行测试、构建、Git 命令。",
-        "findings": [],
-        "source": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json"
-      },
-      "commands": [
-        {
-          "command": "npx playwright test e2e/candidate.spec.ts e2e/smoke.spec.ts --list",
-          "exitCode": 0,
-          "result": "仅发现 2 个文件中的 24 个 Chromium 测试，含首批同书与辅助术改写；未启动浏览器或执行断言。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "previousPassedCommands"
-        }
-      ],
-      "failedAttempts": [
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-first-batch-helper-edit|candidate-narrow|uses two main views and an embedded blueprint mode' --reporter=line --output \"$env:TEMP\\daoyan-a3-playwright-current\" --trace on",
-          "exitCode": 1,
-          "reason": "当前工作树目标 Chromium 命令在启动子进程时 spawn EPERM，未启动测试体、浏览器或生成当前树 trace。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book|candidate-first-batch-helper-edit'",
-          "exitCode": 1,
-          "reason": "本次辅助法术浏览器路径在测试体启动前被沙盒阻止子进程 spawn EPERM，旧 trace 不能证明当前树。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book'",
-          "exitCode": 1,
-          "reason": "本次三分判修复后的 Chromium 直接路径被沙盒阻止子进程 spawn EPERM，浏览器测试体未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book'",
-          "exitCode": 1,
-          "reason": "本次修复后的 Chromium 直接路径被沙盒阻止子进程 spawn EPERM，浏览器测试体未启动。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-narrow|uses two main views and an embedded blueprint mode'",
-          "exitCode": 1,
-          "reason": "默认沙盒中本地服务或浏览器 spawn EPERM；获准的同命令通过。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        },
-        {
-          "command": "npm run verify",
-          "exitCode": 1,
-          "reason": "由 git pre-commit 钩子自动触发；test/secretary-dashboard.test.ts 的候选反馈路由用例 20 秒超时，31/32 测试文件、582/583 项通过。未重跑此统一门禁。",
-          "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-          "sourceField": "failedAttempts"
-        }
-      ],
-      "historicalEvidenceNotAcceptedForFinalTree": [
-        {
-          "command": "npx vitest run test/first-batch-player.test.ts test/combat.test.ts test/render.test.tsx test/persistence.test.ts",
-          "result": "审查前代码树 91 项通过；本次代码变更后需重跑。"
-        },
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts e2e/smoke.spec.ts -g 'candidate-first-batch-same-book|candidate-narrow|uses two main views and an embedded blueprint mode'",
-          "result": "审查前 Chromium 3 条通过；本次界面变更后需重跑。"
-        },
-        {
-          "command": "npm run test:e2e -- e2e/candidate.spec.ts -g 'candidate-first-batch-same-book' --trace on",
-          "result": "审查前同书 trace 已保存；不能作为本次修复后的浏览器通过证据。"
-        }
-      ],
-      "tokenObservation": {
-        "planner": null,
-        "workers": [
-          {
-            "id": "player-a3-recover",
-            "tokens": 181433
-          },
-          {
-            "id": "player-a3-implementation",
-            "tokens": 644572
-          },
-          {
-            "id": "player-a3-validation",
-            "tokens": 391075
-          },
-          {
-            "id": "player-a3-delivery",
-            "tokens": 57513
-          }
-        ],
-        "reviewer": 186136,
-        "repairs": null,
-        "knownTotal": 4871859,
-        "observedCalls": 15,
-        "missingUsageCalls": 0,
-        "source": "invocation-logs-and-dispatcher-aggregate"
-      },
-      "note": "快速门禁为该Feature交付时的树/配置事实；不推断最终集成verify:full通过。旧运行会话Git标志和失败保留，最终提交由正式报告及当前Git来源核对。"
-    },
-    {
-      "workItemId": "dev-battle-boundary-a1",
-      "scope": "Feature",
-      "report": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json",
-      "recovery": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/recovery.json",
-      "commit": "296ee97f55ba62ee8501fd2add9225be9d390b03",
-      "fastGate": {
-        "workspaceFingerprint": "07cf0c4a1dd48cfb5b233356aa824a0eacd10c8ce781bdc07e68159050598566",
-        "configFingerprint": "e1e0ce99bca2103ec75fbe47fb1bc1c87574ca1f468a040bfc9a1c211d1ee32e",
-        "completedCommands": [
-          ["npm", "run", "typecheck"],
-          ["npm", "run", "lint"],
-          ["npm", "run", "format:check"],
-          ["npm", "run", "docs:check"],
-          ["npm", "run", "test"]
-        ],
-        "pendingCommands": [],
-        "passed": true,
-        "attempts": 1,
-        "reused": true,
-        "rerunByFinalizer": false
-      },
-      "independentReview": {
-        "verdict": "pass",
-        "summary": "未发现交付阻断问题。指定 patch 仅更新 DA06 实际应用复走说明；该说明与直接关联的任务证据、运行记录及窗口记录一致，未发现虚构指示、伪造执行证据、乱码或验收合同偏离。按要求未运行测试、构建或 Git 命令。",
-        "findings": [],
-        "source": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json"
-      },
-      "commands": [],
-      "failedAttempts": [],
-      "historicalEvidenceNotAcceptedForFinalTree": [],
-      "tokenObservation": {
-        "planner": 25422,
-        "workers": [
-          {
-            "id": "battle-boundary-implementation",
-            "tokens": 151582
-          },
-          {
-            "id": "battle-boundary-play-evidence",
-            "tokens": 85628
-          },
-          {
-            "id": "battle-boundary-delivery-record",
-            "tokens": 29462
-          }
-        ],
-        "reviewer": 100434,
-        "repairs": null,
-        "knownTotal": 392528,
-        "observedCalls": 6,
-        "missingUsageCalls": 0,
-        "source": "invocation-logs-and-dispatcher-aggregate"
-      },
-      "note": "Feature 快速门禁和独立审查来自 development-15；Version PM 不重跑。DV01 只交回原 design-acceptance-da-a-flow Agent 定向续验 DA06。"
+      "dependsOn": ["dev-world-a3"],
+      "note": "首批 A 玩家闭环历史交付；保留为路线图和 DV01 来源，不属于当前正式版本 workItems。"
     }
   ],
   "versionValidation": {
@@ -1317,10 +351,11 @@
       "status": "passed",
       "exitCode": 0,
       "evidence": [
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log",
         "docs/versions/pilot-agent-intent-2026-09-24/development.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development.md"
       ],
-      "reason": "Version PM 在包含 dev-battle-boundary-a1 和本轮阶段产物的集成树只运行一次完整门禁，聚合命令退出 0。覆盖率测试 660 项、E2E 27 项及生产构建通过；candidate-first-batch-helper-edit 首次定位按钮超时，Playwright 自动重试通过，保留为 1 flaky，不改写为零波动。该通过只收束开发，不代签原策划 DA06、QA 或候选验收。",
+      "reason": "本轮 Version PM 收束在当前唯一正式工作项的集成树运行最终完整门禁，聚合命令退出 0：40 个文件 660 项覆盖率测试、沙盒、27 项 E2E 与生产构建通过；candidate-first-batch-helper-edit 首次超时后重试通过，保留为 1 flaky。原始 stdout/stderr 由同一门禁命令写入 evidence 中的 development-17 日志，并由阶段检查器核验文件与关键输出。该门禁不代签原策划 DA06、QA 或候选体验。",
       "requiredOwner": "开发节点 Version PM",
       "qaPolicy": "QA 只消费匹配的最终树、配置与命令证据并补交叉场景，不重复完整门禁。"
     },
@@ -1328,102 +363,27 @@
       {
         "command": "npm run verify:full",
         "exitCode": 0,
-        "result": "最终集成树完整门禁通过：静态检查与文档检查通过；覆盖率 40 个文件、660 项测试通过，语句覆盖率 93.24%；沙盒通过；Playwright 27 项通过、candidate-first-batch-helper-edit 首次超时后重试通过并如实记为 1 flaky；生产构建通过。"
+        "result": "最终集成树完整门禁通过：静态检查、170 个 Markdown 文档检查、40 个文件 660 项覆盖率测试、沙盒、27 项 E2E 与生产构建通过；candidate-first-batch-helper-edit 首次超时后重试通过，保留为 1 flaky。权威原始输出见 .daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log。"
       }
     ],
     "repeatedPassedTaskCommands": false,
     "blockers": [
       {
-        "id": "development-player-direct-command-contract",
+        "id": "development-work-item-alignment",
         "status": "resolved",
-        "source": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        "evidence": ["scripts/secretary-notice-guard.ts", "scripts/version-stage-tasks.ts"],
-        "reason": "dev-player-a3顶层commands只有三条交付检查，不含typecheck；实际通过类型检查在previousPassedCommands。收束接纳要求顶层commands逐字同序相等，parseDevelopmentResult又要求typecheck=passed时同数组必须含类型检查，两者对当前来源无法同时成立。",
-        "resolution": "按本轮审查修复要求，在来源任务顶层原样归并previousPassedCommands的索引0、1、2、4，并同步汇总；保留原3条交付检查、历史数组及失败，未重跑测试或修改接纳器。"
-      },
-      {
-        "id": "development-integrated-full-gate",
-        "status": "resolved",
-        "evidence": [
-          ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"
-        ],
-        "resolution": "development-11 原收据因验证树指纹 13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d 与当前正式树不同而过期。当前 pre-push 收据与现行 master 算法重算的验证树 5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c、配置、命令及命令指纹一致，exitCode 为 0，完整门禁阻断已解决。"
+        "source": ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
+        "reason": "development-16 汇总把 dev-world-a3 与 dev-player-a3 两项历史接纳成果混入当前 workItems，和正式版本当前唯一实际工作项不一致。",
+        "resolution": "workItems 只保留 dev-battle-boundary-a1；两项历史成果移入 historicalAcceptedDeliveries 并继续作为路线图与修复基线。"
       },
       {
         "id": "development-integrated-full-gate-after-dv01",
         "status": "resolved",
-        "evidence": ["docs/versions/pilot-agent-intent-2026-09-24/development.json"],
-        "resolution": "DV01 修复进入集成树后由 Version PM 实际运行 npm run verify:full，退出码 0；旧门禁只保留为历史成功。"
+        "evidence": [
+          ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log"
+        ],
+        "resolution": "由本轮 Version PM Feature profile 在最终阶段产物树运行 npm run verify:full；QA 只复用匹配证据。"
       }
-    ],
-    "configFiles": [
-      {
-        "path": "package.json",
-        "sha256": "0db27e18d9f791bd2d830366631bdd6d5c99458209013a2890e6e8098b189a5f"
-      },
-      {
-        "path": "package-lock.json",
-        "sha256": "46b10a1a6a15a4038fdf519ea871297144974ccc499c0e3a604440766a4e7b6b"
-      },
-      {
-        "path": "agents/policy.json",
-        "sha256": "6571285ec1a71d925d8c8c57d72d359ec44c7022173c3ae1373d446870566e88"
-      },
-      {
-        "path": "vite.config.ts",
-        "sha256": "81e67bcd141c4ebc7d8f43c4dc91f72fe3b69974c5c81dd4e73615f6c75d9839"
-      }
-    ],
-    "provenanceReconciliation": {
-      "status": "passed",
-      "scope": "仅三份归属文档；不修改游戏、测试、前置策划、status 或正式运行状态，不重跑门禁或实玩，仅本地提交且不推送",
-      "originalReceipt": {
-        "schemaVersion": 1,
-        "workspaceFingerprint": "13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d",
-        "configFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
-        "command": "npm run verify:full",
-        "commandFingerprint": "d02c65da7772a6c7b799fbf08f66e87a015274e842498a97f20f0b08cc204967",
-        "executionRound": 1,
-        "log": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/full-verify-1.log",
-        "exitCode": 0,
-        "createdAt": "2026-10-02T10:25:26.054Z"
-      },
-      "currentHead": "52e771750d45974348de85c306a895262fa68095",
-      "currentWorkspaceFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
-      "currentConfigFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
-      "baselineHeadIsAncestor": true,
-      "revisionBinding": "development-11 原收据未提供 Git HEAD，且树指纹已过期；不再用于当前树。当前 pre-push 收据直接绑定现行算法重算的正式验证树、配置和命令。",
-      "runtimeStateSource": ".daoyan-agent/releases/versions/pilot-agent-intent-2026-09-24.json",
-      "runtimeStateObserved": {
-        "development": "completed",
-        "designAcceptance": "active",
-        "qa": "pending",
-        "candidate": "pending"
-      },
-      "runtimeStatePolicy": "保留开发 completed、策划体验 active、QA/candidate pending 的运行状态历史事实；开发门禁通过不代签后续验收，本轮不改写正式节点",
-      "currentReceipt": {
-        "path": ".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json",
-        "createdAt": "2026-10-02T11:22:19.874Z",
-        "workspaceFingerprint": "5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c",
-        "configFingerprint": "aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55",
-        "command": "npm run verify:full",
-        "commandFingerprint": "d02c65da7772a6c7b799fbf08f66e87a015274e842498a97f20f0b08cc204967",
-        "exitCode": 0,
-        "log": "",
-        "policy": "现行 pre-push 合同要求树、配置、命令及 exitCode=0 全部匹配；空 log 是钩子成功后生成收据的既定格式。"
-      },
-      "acceptance": "development-11 原收据标记为过期历史成功；当前 pre-push 收据证明当前正式验证树完整门禁通过。开发门禁与独立策划、QA、候选验收分开。",
-      "directCheckMethod": "PowerShell 只读 Git 路径枚举，按已推送 master 的 isValidationTreePath 过滤并调用 fingerprintPaths/configFingerprint；未调用 pre-push main、完整门禁、开发检查、独立审查或实玩"
-    },
-    "priorCompleteGate": {
-      "command": "npm run verify:full",
-      "status": "passed",
-      "exitCode": 0,
-      "evidence": [".daoyan-agent/runs/pre-push-2026-10-02T11-22-19-873Z/full-gate-evidence.json"],
-      "reason": "development-11 原收据记录 npm run verify:full 退出码 0，但其验证树指纹 13b78ead323d61a5194c735c449e32799a8150c54af962e9cbd1d4b8e822ad9d 已过期，仅保留为历史成功。当前 pre-push 收据记录同一完整门禁命令退出码 0；按已推送 master 的现行 isValidationTreePath/fingerprintPaths 合同只读重算，当前正式验证树 5ccf6bdc034347b5b8dc42788e3156d1b9ce30d92e6375c1a0abece3336ea32c、配置 aa6cbb18e344300381c98f482fa7934538be90473e18883de0214bc470f09d55、命令及命令指纹均与收据一致。空 log 是 pre-push 钩子成功后生成收据的格式，不影响复用。该结论只完成开发完整门禁，不代替独立策划体验、QA 或候选验收。",
-      "requiredOwner": "开发节点授权收束执行方",
-      "qaPolicy": "QA只消费匹配的最终树/配置/命令证据并补交叉场景，不重复完整门禁。"
-    }
+    ]
   },
   "roadmapHandoff": {
     "owner": "Version PM",
@@ -1454,43 +414,15 @@
   "finalization": {
     "profile": "version",
     "productCodeChanged": false,
-    "taskEvidenceChanged": true,
+    "taskEvidenceChanged": false,
     "sourceChecks": {
-      "taskEvidenceMatchesDeliveredCommits": false,
-      "deliveredCommitsInHead": true,
-      "fivePlayerTestFingerprintsMatch": true,
-      "featureFullGateEvidenceFilesPresent": false,
-      "taskEvidenceReconciledAfterDeliveredCommit": true,
+      "formalWorkItemsMatched": true,
+      "exactTaskCommands": true,
+      "deliveredCommitInHead": true,
       "battleBoundaryTaskEvidencePresent": true,
       "originalDesignAcceptancePreserved": true
     },
     "sourceSnapshots": [
-      {
-        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-        "sha256": "822af10e0b4ffbf8e9b31cb01b8a28e78e7c30849cd50cb8bf3f1ab5150352d8"
-      },
-      {
-        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/report.json",
-        "sha256": "2b62a0f2669aaa77889073a247bf4e6f0e09fb5d64b58c35375757783d570f3e"
-      },
-      {
-        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-7/recovery.json",
-        "sha256": "7c28e2a1f881ae78b1d98ba7ea940c83c9ef277f3429a8bf8e832a8cb7e82954"
-      },
-      {
-        "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        "sha256": "db943b59f3c2cfcb2632e524c719991471952c86df6eb8396decbe2098ac5db0",
-        "priorSha256": "bd2acc63c46d343d15517faf0002c455d2cf9c5d044b39e7d1e2cafb5f9f6d30",
-        "reason": "本轮审核修复准确归并已有有效检查，原指纹保留。"
-      },
-      {
-        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/report.json",
-        "sha256": "27a519bc1567607fd49498690a157698e91d089b44fe68c74fff91906dcceb61"
-      },
-      {
-        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/recovery.json",
-        "sha256": "709d9ee4af1c2c07bacabb5c2880aeed968843870e83db81d39f59b4c26075e0"
-      },
       {
         "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
         "sha256": "93964c8b29e71ba58bdea0d66038f25cb5891d1c3e872863b61035c30db290cc"
@@ -1500,12 +432,16 @@
         "sha256": "15ca2330bf31cd90b82fe40c28aae67f511b3bd4b5d03218588339959df1550d"
       },
       {
-        "path": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/recovery.json",
-        "sha256": "18ed215a0f926575987a9a139eed04a60e0f853f72130dd60bd24e044e29f0c1"
-      },
-      {
         "path": "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
         "sha256": "406398a76fb96e8928518bc673d45942b61c23102429e12743878bd300848b60"
+      },
+      {
+        "path": "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
+        "sha256": "77372ed077c706080cdae1fb3a8e00c30a69576b9fb6910f21bbd2d7ad25b2b6"
+      },
+      {
+        "path": "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.md",
+        "sha256": "e7e2baa3a26b1a8162b09cfa12cb5fb8456c887105f87c140e98db17d6b9183c"
       }
     ],
     "outputs": [
@@ -1522,108 +458,31 @@
     "pushed": false,
     "tagged": false,
     "stageAdvanced": false,
-    "note": "Version PM 只整合 dev-battle-boundary-a1 已交付证据并维护唯一阶段报告和路线图交接；未重跑 Task 定向命令，未修改前置策划或正式运行状态。",
+    "note": "Version PM 只整合当前正式工作项 dev-battle-boundary-a1；历史两项交付保留为基线，不再冒充当前 workItems。未重跑 Task 定向命令，未修改前置策划或正式运行状态。",
     "commands": [
       {
         "command": "node docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs",
         "exitCode": 0,
-        "result": "{\n  \"workItems\": [\n    {\n      \"id\": \"dev-world-a3\",\n      \"commands\": 12,\n      \"evidence\": 8\n    },\n    {\n      \"id\": \"dev-player-a3\",\n      \"commands\": 7,\n      \"evidence\": 21\n    },\n    {\n      \"id\": \"dev-battle-boundary-a1\",\n      \"commands\": 30,\n      \"evidence\": 10\n    }\n  ],\n  \"planningOwnership\": \"Version PM\",\n  \"roadmapHandoff\": \"valid\",\n  \"completeGate\": \"passed\",\n  \"changedPaths\": [\n    \"docs/dev/2026-10-04.md\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/development.json\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/development.md\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md\",\n    \"docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs\"\n  ]\n}"
+        "result": "当前唯一实际工作项、来源命令和路线图交接通过；development-17 完整门禁日志实际存在，且包含 verify:full、660 项覆盖率测试、27 项 E2E、build 与构建完成输出。"
       },
       {
         "command": "npm run verify:full",
         "exitCode": 0,
-        "result": "最终集成树完整门禁通过：静态检查与文档检查通过；覆盖率 40 个文件、660 项测试通过，语句覆盖率 93.24%；沙盒通过；Playwright 27 项通过、candidate-first-batch-helper-edit 首次超时后重试通过并如实记为 1 flaky；生产构建通过。"
+        "result": "最终集成树完整门禁通过：静态检查、170 个 Markdown 文档检查、40 个文件 660 项覆盖率测试、沙盒、27 项 E2E 与生产构建通过；candidate-first-batch-helper-edit 首次超时后重试通过，保留为 1 flaky。权威原始输出见 .daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log。"
       }
     ],
     "contractCheck": {
       "status": "passed",
-      "workItems": ["dev-world-a3", "dev-player-a3", "dev-battle-boundary-a1"],
+      "workItems": ["dev-battle-boundary-a1"],
+      "historicalAcceptedDeliveries": ["dev-world-a3", "dev-player-a3"],
+      "formalRuntimeMatch": "passed",
       "exactTaskCommands": "passed",
       "evidencePaths": "passed",
       "roadmapHandoff": "passed",
       "planningOwnership": "passed",
       "planningGap": null,
       "checker": "docs/versions/pilot-agent-intent-2026-09-24/validate-development-finalization.mjs",
-      "result": "真实断言检查器已执行：三项任务按声明依赖完成，12/7/30 条命令与各自来源逐字一致，当前公开证据路径存在，路线图交接合同、完整门禁状态、来源快照与改动范围均通过；第三项只登记开发已修复并实测，原策划 DA06 续验及 TB02-TB04 未被冒签。"
-    },
-    "reviewRepair": {
-      "finding": "原 finalization.commands[0] 的 node -e 主体只有注释，却记录了未实际执行的通过结论。",
-      "resolution": "删除伪执行命令，新增并实际运行版本内断言检查器；finalization.commands[0] 现保存真实命令、退出码和原始 JSON 输出。",
-      "scope": "只修复 Version PM 阶段合同检查证据，不重跑 Feature 定向命令、实玩、快速门禁或完整门禁。"
-    },
-    "sourceHead": "7dadab3a9037248ce3be882eb62a7efcd1dc0472",
-    "repair": {
-      "finding": "玩家任务的汇总命令缺少接纳所需的类型检查证据",
-      "sourcePath": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-      "originalSourceSha256": "bd2acc63c46d343d15517faf0002c455d2cf9c5d044b39e7d1e2cafb5f9f6d30",
-      "mergedExistingChecks": 4,
-      "reason": "只登记blocked未满足当前接纳合同；本轮按审查要求修订来源证据和汇总，不重做任务或重跑已通过检查。",
-      "controlPlaneModified": false,
-      "productOrTaskSourcesModified": true,
-      "productCodeModified": false,
-      "taskEvidenceModified": true
-    },
-    "priorContractValidation": {
-      "status": "historical",
-      "contractCheck": {
-        "status": "blocked",
-        "exactTaskCommands": "passed",
-        "sourceSnapshots": "passed",
-        "fivePlayerTestFingerprints": "passed",
-        "reusedChecks": "passed",
-        "originalFailureSources": "passed",
-        "roadmapHandoff": "passed",
-        "aggregateParser": "blocked",
-        "parserSource": "scripts/secretary-notice-guard.ts",
-        "parserFunction": "parseDevelopmentResult",
-        "method": "以TypeScript AST读取现有纯函数，进程内转换后直接调用；不加载notice guard或触发运行状态写入。",
-        "reason": "完成的 Task 必须登记实际运行且至少一项通过的类型、定向测试或文档检查命令",
-        "result": "精确数组相等检查已修复并通过；玩家顶层缺typecheck导致接纳函数仍拒绝。校验脚本退出0只表示该阻断与来源保真均得到确认，不表示开发节点通过。"
-      },
-      "commands": [
-        {
-          "command": "@'\nconst fs = require('node:fs');\nconst assert = require('node:assert/strict');\nconst crypto = require('node:crypto');\nconst vm = require('node:vm');\nconst ts = require('typescript');\nconst base = 'docs/versions/pilot-agent-intent-2026-09-24/';\nconst read = p => JSON.parse(fs.readFileSync(p, 'utf8'));\nconst hash = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');\nconst d = read(base + 'development.json');\nconst plan = read(base + 'development-tasks.json');\nfunction loadFunctions(path, names) {\n  const file = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);\n  const selected = file.statements.filter(n => ts.isFunctionDeclaration(n) && names.includes(n.name?.text));\n  assert.equal(selected.length, names.length);\n  const code = ts.transpileModule(selected.map(n => n.getText(file)).join('\\n'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;\n  const context = {exports:{}};\n  vm.runInNewContext(code, context);\n  return context.exports;\n}\nconst taskParser = loadFunctions('scripts/version-stage-tasks.ts', ['isRecord','isStrings','parseStageTaskResult']);\nconst stageParser = loadFunctions('scripts/secretary-notice-guard.ts', ['isRecord','isTaskScopeCommand','documentationOnlyWorkItem','parseStageCommands','parseStringEvidence','parseDevelopmentResult']);\nassert.deepEqual(d.workItems.map(w => w.id), ['dev-world-a3','dev-player-a3']);\nassert.deepEqual(d.workItems[1].dependsOn, ['dev-world-a3']);\nconst counts = {};\nfor (const w of d.workItems) {\n  const s = read(w.source);\n  assert.deepEqual(w.commands, s.commands);\n  assert.equal(JSON.stringify(w.commands.map(({command,exitCode})=>({command,exitCode}))), JSON.stringify(taskParser.parseStageTaskResult(s,w.id).commands));\n  assert.ok(w.evidence.includes(w.source));\n  for (const p of w.evidence) assert.ok(fs.existsSync(p), p);\n  assert.ok(w.commands.every(c => c.exitCode === 0 && stageParser.isTaskScopeCommand(c.command)));\n  for (const group of w.reusedChecks ?? []) {\n    const records = group.sourceField.split('.').reduce((v,k)=>v[k],s).filter(x=>!/(?:npm run (?:verify|test:e2e|build)|playwright test)/.test(x.command));\n    assert.deepEqual(group.records, records);\n  }\n  counts[w.id] = w.commands.length;\n}\nconst player = read(d.workItems[1].source);\nfor (const failure of player.oneTimePlayAdoption.sourceFailedAttempts) {\n  const recorded = d.workItems[1].failedAttempts.find(x => x.command === failure.command && x.sourceField === 'oneTimePlayAdoption.sourceFailedAttempts');\n  for (const [key,value] of Object.entries(failure)) assert.deepEqual(recorded[key],value,key);\n}\nfor (const [path,expected] of Object.entries(player.resumedValidation.reuse.fingerprints)) assert.equal(hash(path),expected.toLowerCase());\nfor (const snapshot of d.finalization.sourceSnapshots) assert.equal(hash(snapshot.path),snapshot.sha256);\nassert.equal(plan.roadmapHandoff.owner,'Version PM');\nassert.equal(plan.roadmapHandoff.path,base+'roadmap-handoff.md');\nassert.ok(plan.roadmapHandoff.acceptance.length);\nconst handoff = fs.readFileSync(base+'roadmap-handoff.md','utf8');\nfor (const text of ['pilot-agent-intent-2026-09-24','./design-review.md','./development.json','本轮已实现并实测','仍待验证','未来候选','0017','0020','回退','candidate.json']) assert.ok(handoff.includes(text),text);\nconst workItems = d.workItems.map(w=>({id:w.id,status:'completed',dependsOn:w.dependsOn,affectedPaths:w.id==='dev-player-a3'?['src/game/','src/app/']:['src/core/']}));\nlet blocked = null;\ntry { stageParser.parseDevelopmentResult(d,workItems); } catch(error) { blocked = error.message; }\nassert.equal(blocked,'完成的 Task 必须登记实际运行且至少一项通过的类型、定向测试或文档检查命令');\nassert.equal(player.previousPassedCommands[0].command,'npm run typecheck');\nassert.equal(player.previousPassedCommands[0].exitCode,0);\nassert.ok(!player.commands.some(c=>/(?:typecheck|\\btsc\\b)/i.test(c.command)));\nassert.ok(d.versionValidation.blockers.some(b=>b.id==='development-player-direct-command-contract' && b.status==='open'));\nassert.equal(d.versionValidation.completeGate.status,'not-run');\nconsole.log(JSON.stringify({exactCommands:counts,sourceSnapshots:6,testFingerprints:5,reusedChecks:'unchanged',failureSources:'preserved',handoff:'valid',developmentParser:{status:'blocked',reason:blocked},productTestsRerun:false},null,2));\n'@ | node",
-          "exitCode": 0,
-          "result": "{\n  \"exactCommands\": {\n    \"dev-world-a3\": 12,\n    \"dev-player-a3\": 3\n  },\n  \"sourceSnapshots\": 6,\n  \"testFingerprints\": 5,\n  \"reusedChecks\": \"unchanged\",\n  \"failureSources\": \"preserved\",\n  \"handoff\": \"valid\",\n  \"developmentParser\": {\n    \"status\": \"blocked\",\n    \"reason\": \"完成的 Task 必须登记实际运行且至少一项通过的类型、定向测试或文档检查命令\"\n  },\n  \"productTestsRerun\": false\n}\n"
-        },
-        {
-          "command": "node scripts/check-docs.mjs",
-          "exitCode": 0,
-          "result": "文档检查通过：165 个 Markdown 文件，版本 0.2.0\n"
-        },
-        {
-          "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/development.json docs/versions/pilot-agent-intent-2026-09-24/development.md docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md docs/dev/2026-10-02.md",
-          "exitCode": 0,
-          "result": "Checking formatting...\nAll matched files use Prettier code style!\n"
-        },
-        {
-          "command": "git diff --check",
-          "exitCode": 0,
-          "result": ""
-        }
-      ]
-    },
-    "auditRepair": {
-      "finding": "玩家任务的汇总命令缺少接纳所需的类型检查证据",
-      "sourcePath": "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-      "originalSourceSha256": "bd2acc63c46d343d15517faf0002c455d2cf9c5d044b39e7d1e2cafb5f9f6d30",
-      "mergedExistingChecks": 4,
-      "reason": "只登记blocked未满足当前接纳合同；本轮按审查要求修订来源证据和汇总，不重做任务或重跑已通过检查。",
-      "controlPlaneModified": false
-    },
-    "failedAttempts": [
-      {
-        "command": "node node_modules/prettier/bin/prettier.cjs --check docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json docs/versions/pilot-agent-intent-2026-09-24/development.json docs/versions/pilot-agent-intent-2026-09-24/development.md docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md docs/dev/2026-10-02.md",
-        "exitCode": 1,
-        "result": "Checking formatting...\n[warn] docs/versions/pilot-agent-intent-2026-09-24/development.json\n[warn] Code style issues found in the above file. Run Prettier with --write to fix.\n",
-        "resolution": "记录检查结果后文件格式变化；Prettier --write修正，再检查退出0。"
-      }
-    ],
-    "previousRepair": {
-      "rejectedRun": ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-10/report.json",
-      "reason": "开发汇总没有逐字保留任务 dev-player-a3 的实际检查与来源",
-      "change": "两项commands原样复制来源顶层数组；玩家复用检查保留在reusedChecks，E2E发现记录仍只在Feature作用域；原失败记录source不再被汇总来源覆盖。",
-      "productOrTaskSourcesModified": false
+      "result": "当前 development.workItems 与正式版本唯一实际工作项逐一对应；30 条 Task 命令与来源逐字一致，历史两项只作基线。"
     }
   }
 }

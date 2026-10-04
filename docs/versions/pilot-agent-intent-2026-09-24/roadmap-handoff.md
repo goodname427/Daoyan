@@ -4,13 +4,13 @@
 
 来源：[已批准 design-review.md](./design-review.md)、[审核结构化结论](./design-review.json)、[实际 development.json](./development.json)、[开发公开报告](./development.md)、[原独立策划验收](./tasks/design-acceptance-da-a-flow.json)和[DV01 修复任务](./tasks/development-dev-battle-boundary-a1.json)。
 
-**三项正式工作项已交付，开发汇总 `status=completed`、`completed=true`，当前集成树完整门禁通过。** 首批 A 的核心与玩家闭环保持原交付；策划验收确认的 DV01 已由第三项修复并完成开发侧实际 Electron 复走。第三项进入集成树后，Version PM 只运行一次 `npm run verify:full`，退出码 0；660 项覆盖率测试、27 项 E2E 与生产构建通过，其中一个既有 helper-edit 场景首次超时、重试通过并保留为 1 flaky。开发证据不能代替原独立策划 Agent 关闭 DV01；QA/candidate 仍待后续节点。
+**本修正节点的唯一正式工作项 `dev-battle-boundary-a1` 已交付，开发汇总 `status=completed`、`completed=true`。** 首批 A 的核心与玩家闭环来自此前已接纳的 `dev-world-a3`、`dev-player-a3`；两项继续作为交接基线，但不属于当前正式版本 `workItems`。策划验收确认的 DV01 已由当前工作项修复并完成开发侧实际 Electron 复走。开发证据不能代替原独立策划 Agent 关闭 DV01；QA/candidate 仍待后续节点。
 
-旧 development-11 与 2026-10-02 pre-push 完整门禁均早于 DV01 修复，只作历史成功；本轮以当前三项集成树的实际 `npm run verify:full` 退出 0 为准。QA 只复用仍匹配的本轮完整门禁并补交叉场景，不再重复完整门禁。
+旧 development-11、2026-10-02 pre-push 与 development-16 完整门禁均早于本次工作项对齐修正，只作历史成功；本轮最终集成门禁 `npm run verify:full` 退出 0，40 个文件 660 项覆盖率测试、沙盒、27 项 E2E 与生产构建通过，其中 helper-edit 首次超时后重试通过并保留为 1 flaky。同一命令的原始 stdout/stderr 位于 `.daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log`，阶段检查器验证文件存在及关键阶段输出后才允许复用。QA 只复用与最终树、配置和命令仍匹配的本轮完整门禁并补交叉场景，不再重复完整门禁。
 
 ## 责任与规划核对
 
-[development-tasks.md](./development-tasks.md) 已规定 Version PM 独占维护本页，要求链接已批准设计、实际开发汇总和原策划验收，区分 DV01 已修复实测、待原 Agent 续验及其他未覆盖项，并继续维护候选依赖/证据/触发条件与 ADR/迁移回退状态；[development-tasks.json](./development-tasks.json) 的 `roadmapHandoff.owner/path/acceptance` 与此一致。本轮无规划缺口，不修改前置规划。三个游戏 Feature PM 均未代写本交接。
+[development-tasks.md](./development-tasks.md) 已规定 Version PM 独占维护本页，要求链接已批准设计、实际开发汇总和原策划验收，区分 DV01 已修复实测、待原 Agent 续验及其他未覆盖项，并继续维护候选依赖/证据/触发条件与 ADR/迁移回退状态；[development-tasks.json](./development-tasks.json) 的 `roadmapHandoff.owner/path/acceptance` 与此一致。本轮无规划缺口，不修改前置规划。历史两项与当前修正项的游戏 Feature PM 均未代写本交接。
 
 候选来源 **尚未产生**：当前没有 candidate.json，不能伪造候选完成链接。候选节点收束必须在此追加实际 candidate.json，并在候选体验前向 docs/roadmap.md 写入本交接路径；该同步由 Version PM 负责，留待候选阶段，不在本次改动前置策划输入。候选节点缺实际来源或项目路线图链接不能通过。未来候选不自动进入本版首批或下一正式版本。
 
@@ -42,7 +42,8 @@
 ## 仍待验证和已知限制
 
 - 玩家检查接纳缺口已修复：来源任务顶层保留三条交付检查并归并四条已有有效直接检查，汇总同步为七条。归并前来源指纹与原命令保留，不改变实测行为或独立验收边界。
-- 旧完整门禁均早于 DV01 修复；本轮 Version PM 在三项集成树重新运行一次，结果以 development.json 为准。QA 复用匹配证据并补交叉场景，不重复完整门禁。
+- development-16 的阶段报告虽通过内部审查和完整门禁，但其 `development.json.workItems` 与正式版本当前唯一实际工作项不一致，未被正式接纳；本轮已按运行记录对齐，历史两项只保留为基线。
+- 本轮 Version PM 在最终阶段产物树运行完整门禁并保留 development-17 原始日志；缺失日志或关键输出时直接检查失败，不得宣称 QA 可复用。QA 仅在证据仍匹配时补交叉场景，不重复完整门禁。
 - DV01 的开发修复与开发侧实玩已完成，但原 `design-acceptance-da-a-flow` 仍是 blocked 历史证据；须由同一原策划 Agent 只续验 DA06。TB02 持久截图、TB03 六入口同键性、TB04 隔离旧档/390×844/控制台观察仍未覆盖；不能借 Feature 自测或一次性实玩代签。
 - 活动 Battle 尚缺实体、来源、授权、价格、容量证书；现在对首批三术统一安全拒绝并公开原因，不得宣传为活动波次已迁入新规则。
 - 再撞只有自然新事实、撤旧覆盖和容量三分判；核心尚无动态本体 FIFO 原读接口，有限桥接的一位队列占用证不能用于活动战斗。第二 VM/新B4读集/新报价未执行。
