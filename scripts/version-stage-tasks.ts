@@ -373,11 +373,14 @@ export function assertStageTaskPrestartScope(task: VersionStageTask, changedFile
 }
 
 export function parseStageTaskResult(value: unknown, expectedTaskId: string): StageTaskResult {
-  // Older Feature PM reports call the same repository paths `artifacts`.
-  // Accept that spelling only when the contracted `evidence` field is absent.
+  // Delivered Feature PM reports also name repository paths `artifacts` or
+  // `evidencePaths`. Only absent fields fall back; invalid explicit evidence
+  // must still fail rather than being replaced by a compatibility spelling.
   const evidence = isRecord(value)
     ? value.evidence === undefined
-      ? value.artifacts
+      ? value.artifacts === undefined
+        ? value.evidencePaths
+        : value.artifacts
       : value.evidence
     : undefined;
   if (

@@ -151,6 +151,54 @@ describe('stage-owned task contracts', () => {
       '缺少实际检查',
     );
   });
+  it('recovers completed delivery paths without substituting invalid explicit evidence', () => {
+    const result = {
+      taskId: 'dev-battle-boundary-a1',
+      status: 'completed',
+      summary: '原角色已交付实玩及定向测试记录',
+      commands: [{ command: 'npm test -- test/combat.test.ts test/render.test.tsx', exitCode: 0 }],
+      evidencePaths: ['docs/versions/v2/battle-boundary-fix.md'],
+    };
+    expect(parseStageTaskResult(result, result.taskId).evidence).toEqual(result.evidencePaths);
+    for (const evidence of [null, [], [''], 'not-an-array']) {
+      expect(() => parseStageTaskResult({ ...result, evidence }, result.taskId)).toThrow(
+        '缺少实际检查',
+      );
+    }
+    expect(() => parseStageTaskResult({ ...result, artifacts: [] }, result.taskId)).toThrow(
+      '缺少实际检查',
+    );
+    expect(
+      parseStageTaskResult({ ...result, evidence: ['canonical.md'] }, result.taskId).evidence,
+    ).toEqual(['canonical.md']);
+    expect(
+      parseStageTaskResult({ ...result, artifacts: ['legacy.md'] }, result.taskId).evidence,
+    ).toEqual(['legacy.md']);
+  });
+  it('keeps completion and check requirements for compatible delivery paths', () => {
+    const result = {
+      taskId: 'physics',
+      status: 'completed',
+      summary: '交付证据',
+      commands: [{ command: 'node scripts/check-docs.mjs', exitCode: 0 }],
+      evidencePaths: ['docs/versions/v2/physics.md'],
+    };
+    for (const evidencePaths of [null, [], [''], [123], 'not-an-array']) {
+      expect(() => parseStageTaskResult({ ...result, evidencePaths }, 'physics')).toThrow(
+        '缺少实际检查',
+      );
+    }
+    expect(() => parseStageTaskResult({ ...result, status: 'blocked' }, 'physics')).toThrow();
+    expect(() => parseStageTaskResult({ ...result, commands: [] }, 'physics')).toThrow();
+    expect(() => parseStageTaskResult(result, 'other')).toThrow();
+    // A failed command stays visible to the existing stage acceptance gate.
+    expect(
+      parseStageTaskResult(
+        { ...result, commands: [{ command: 'node check.mjs', exitCode: 1 }] },
+        'physics',
+      ).commands[0].exitCode,
+    ).toBe(1);
+  });
   it('keeps a documented browser permission blocker distinct from missing delivery evidence', () => {
     const blocked = {
       taskId: 'da-a-flow',
