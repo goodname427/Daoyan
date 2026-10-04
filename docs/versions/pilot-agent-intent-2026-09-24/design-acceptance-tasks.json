@@ -2,24 +2,21 @@
   "tasks": [
     {
       "id": "da-a-flow",
-      "title": "首批 A 同书玩家流程的独立策划体验验收",
-      "objective": "由未参与 dev-world-a3、dev-player-a3 实现的主策或策划，在范围修订 13 的实际交付树上黑盒操作游戏，判断 J1、D1、B1→B4 及推演台—演武场—返书是否兑现已批准合同，交付逐场景证据和偏差清单。只验收本节点，不修实现、不扩范围、不替制作人确认新解释。",
-      "contextPolicy": "fresh",
-      "contextReason": "职责从开发执行/自测转为独立策划黑盒验收，尚无已核实的同范围独立体验会话；不得续接两项开发执行者或一次性主 Agent 补证会话。此任务后续同角色、范围和配置不变且会话可恢复时可续接，审查另保只读会话。",
+      "title": "首批 A 同书流程的定向策划复验",
+      "objective": "由原未参与实现的策划验收者在范围修订 13 的最终开发树上续验：复用仍匹配的 DA01–DA05 玩家证据，只对 dev-battle-boundary-a1 影响的 DA06 旧 Battle 边界重新黑盒操作，并补齐原任务尚未覆盖的必验项，形成是否关闭 DV01、是否仍有偏差或技术阻断的唯一结论。不修改实现、游戏测试或已批准策划。",
+      "contextPolicy": "continue",
+      "contextReason": "这是原 da-a-flow 在 DV01 定向修复后的同范围复验；验收角色、范围修订 13、首批 A、模型与推理职责未重置，原独立会话及 38 项操作证据可恢复。续接可保留执行与实现分离并避免重做 DA01–DA05；只读审查会话仍与执行会话分离。",
       "deliverables": [
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json：任务结果、范围修订、开发修订/树与配置指纹、验收者独立性、逐场景结论、复用证据索引和未关闭偏差。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md：DA01–DA08 的批准合同出处、玩家入口、操作、预期、实际、证据链接和通过/偏差/技术阻断判断。",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/ 下的截图、实际操作记录及必要运行日志；偏差写明命中合同、重现步骤、受影响开发成果和定向复验场景，不代写修复任务。"
+        "更新 docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json：记录最终开发树与配置指纹、复用证据、DA06 定向复验、未覆盖项补验、DV01 关闭或继续退回的结论。",
+        "更新 docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/experience.md：只追加本轮玩家入口、操作、预期、实际、证据及与前轮结论的差异，不重写已通过场景。",
+        "在 docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow/ 下保存本轮独立原生应用操作记录、可持久截图及必要运行证据；若入口或工具仍不可用，保留精确阻断和未覆盖项，不以开发自测代签。"
       ],
       "acceptance": [
-        "DA01 来源与独立性：声明未参与两项开发实现；核对范围修订 13、首批 A、drb9 和制作人完整方案批准。核对 development.json、development-11 正式报告/恢复证据及当前交付树、构建来源、运行配置。生命周期已进入本节点而开发正文仍称完整门禁 not-run，须找到匹配最终树的真实成功来源并记录差异；若缺失或不匹配，登记技术阻断交 Version PM，不凭节点状态补写成功，也不在本任务补跑完整门禁。",
-        "DA02 三行为主流程：实际从推演台同书加入/编辑 J1、D1、B4，观察规范身份和预算，切演武场绑定并运行有限世界观察。J1 杆推、D1 起步、B1 自然壳损后 B4 普通 k0 修壳分别有玩家可查的原读、本人付款、来源/反作用与余态；有限规定初态的 15/14/19 读、本人 32/26/44 M 与 B4 余 6 M 仅用于同前提核对，不当任意术固定价格。B1 自然事实先于 B4 独立付费，普通壳修不等于生命复苏；不从实现代码、测试或开发自述推断通过。",
-        "DA03 失败、空与隐私：实际操作 J1/D1 无源和撤读权，以及 B4 获准空读、同 lot 竞争、POST 失证、容量未知、FIFO 实满与域外分支。区分空、无权、未知和未准入；本人账、自然事实、已提交作用及拒因保持一致，POST 失证不能把已提交修壳或已付款回滚为未发生，界面不泄露私有账户/目标字段。缺可操作入口或证据的批准必验项记未覆盖/阻断，不用技术断言代签。",
-        "DA04 相邻再撞：在首次 B4 后实际触发第二次自然接触，分别观察未获准新容量读、容量足额、FIFO 实满。保留首次已付和作用事实、撤旧读覆盖与成功标记，区分未知与有证实满；不得借旧容量证宣称新报价，亦不得产生第二次 B4 修补或第二 VM。只验证批准的再撞余态，不新增法球付费响应。",
-        "DA05 跨模块返书与可编程相邻情形：由观察返回原法术书，先改 J1 原读，再改可达辅助术，核对新 hash/预算和旧报价/观察撤销，再绑定运行并判断新程序的实际余态；无关辅助术不应冒作可达依赖。至少保留一个玩家自编辑辅助组合的相邻情形，不仅重复三个预设。已付款与自然事实的历史结算不因返书改写倒带，旧收据不替新请求付款。",
-        "DA06 桥接与边界：在游戏实际提供的意图来源选择入口比较相同状态、能力、授权、payer、程序和版本下的结果及公开裁剪，明确来源标签不证明真实硬件或 AI 接入。核对普通沙盒缺首批证书的提示、旧活动 Battle 的缺证拒绝及有限观察与活动战斗的区分；不得把活动波次全量迁移、持续移动、攻击或六入口硬件实测增入本版。批准必验合同若只能在有限观察成立，明确指出边界与偏差，不以降低策划要求消除差异。",
-        "DA07 旧资产与可达体验：用隔离的测试存档从现有 UI 核对等价导入/迁移、不可等价定位拒绝及原件保留、绑定和同书往返；不操作真实用户存档，不补造新来源/余额/grant 或恢复旧活动队列。实际检查受影响页面桌面及窄屏的可达性、滚动、拒绝/空状态和运行期控制台，记录视口、查询范围与限制；不扩成 QA 全量回归或候选构建测试。",
-        "DA08 结论与复用：DA01–DA07 唯一归属本任务，逐项关联 dev-world-a3 和 dev-player-a3 的验收合同，并列明不能从玩家界面直接观察的技术项及其匹配前序来源。复用同树同配置的无头测量、命令、门禁和一次性补证作为来源与操作线索，独立策划仍亲自完成上述玩家操作和一致性判断；不重复运行其自动化命令。记录所有未覆盖、偏差和技术阻断，只有必验项均有独立实玩证据且无未关闭偏差才判通过；实现偏差退对应开发成果，新增产品解释/不可逆取舍升级主策或制作人，不修改批准策划迁就实现。"
+        "DA-R1 来源与复用：验收者仍未参与 dev-world-a3、dev-player-a3 或 dev-battle-boundary-a1 的实现。核对范围修订 13、drb9、development-17 最终树、配置和完整门禁来源，以及 dev-battle-boundary-a1 的交付修订；只有输入、场景和配置仍匹配时复用 DA01–DA05 及其相邻玩法结论，不重新操作、不重复完整代码门禁。",
+        "DA-R2 DV01 定向复验：在独立 --user-data-dir 的原生应用中，从玩家可达的旧活动 Battle 入口分别触发 J1执行、D1执行和 B4修壳。三术均须稳定公开缺少同版来源、授权和容量证书；每次拒绝发生在对应 VM、控制会话、付款和成功记录之前，玩家法力与有限世界付款不因该请求变化，且界面能把妖兽或其他旧法术造成的全场施法统计与本次拒绝区分。只有原策划验收者的实际观察符合这些条件才关闭 DV01。",
+        "DA-R3 边界一致性：定向比较普通沙盒、独立有限世界观察与旧活动 Battle 的玩家可见职责，确认修复没有把活动波次、持续移动、攻击、第二次 B4 付费响应或其他未批准行为带入首批 A。对当前游戏实际提供且可操作的意图入口，核对同一状态、能力、授权、payer、程序和版本下不能绕过旧 Battle 缺证边界；来源标签或自动化不能冒充未实际提供的硬件/AI 玩家入口。",
+        "DA-R4 未覆盖必验项：在不重演已通过玩法场景的前提下，补齐原任务 TB02 的可持久玩家证据、TB03 的批准六入口同键性可操作性判断，以及 TB04 的隔离测试存档下迁移/拒绝保原、390×844 可达性和运行期控制台 error/warn 检查。若产品没有批准入口或当前工具仍不能完成某项，记录明确的产品偏差或技术阻断及证据，不新增产品实现、不降低策划要求、不把开发/自动化证据记为独立实玩。",
+        "DA-R5 结论与退回：逐项关联历史 dev-world-a3、dev-player-a3 与本轮 dev-battle-boundary-a1，注明哪些前序证据继续有效、哪些由本轮操作替换。只有 DV01 已关闭、所有批准必验项均有独立玩家证据且无未关闭偏差时才通过；实现偏差只退对应开发成果，新增产品解释或不可逆取舍升级主策/制作人。共享节点总报告、docs/status.md、QA 和候选材料不由本任务写入。"
       ],
       "dependsOn": [],
       "readPaths": [
@@ -31,23 +28,17 @@
         "docs/versions/pilot-agent-intent-2026-09-24/intent-alignment.json",
         "docs/versions/pilot-agent-intent-2026-09-24/design-review.md",
         "docs/versions/pilot-agent-intent-2026-09-24/module-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/world-theory-draft.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/physics-material-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/mana-ledger-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/programmable-spells-design.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/life-identity-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/player-bridge-design.md",
         "docs/versions/pilot-agent-intent-2026-09-24/development-tasks.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development.json",
         "docs/versions/pilot-agent-intent-2026-09-24/development.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/core-implementation.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/player-implementation.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/roadmap-handoff.md",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-world-a3.json",
-        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-player-a3.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/report.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-11/recovery.json",
-        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-9/main-one-time-play-evidence"
+        "docs/versions/pilot-agent-intent-2026-09-24/battle-boundary-fix.md",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/development-dev-battle-boundary-a1.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
+        "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-15/report.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/report.json",
+        ".daoyan-agent/runs/secretary-formal-pilot-agent-intent-2026-09-24-13-development-17/full-verify-1.log"
       ],
       "writePaths": [
         "docs/versions/pilot-agent-intent-2026-09-24/tasks/design-acceptance-da-a-flow.json",
