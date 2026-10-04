@@ -455,11 +455,18 @@ export function developmentTaskEnvironmentBlockerReason(
     value.taskId !== expectedTaskId ||
     value.status !== 'blocked' ||
     value.completed !== false ||
-    !isRecord(value.actualApplication) ||
-    !isRecord(value.actualApplication.observations)
+    !isRecord(value.actualApplication)
   )
     return null;
-  const blocker = value.actualApplication.observations.blocker;
+  const application = value.actualApplication;
+  const observations = isRecord(application.observations) ? application.observations : null;
+  const electron = isRecord(application.electron) ? application.electron : null;
+  const blocker =
+    typeof observations?.blocker === 'string' && observations.blocker.trim()
+      ? observations.blocker
+      : electron?.completed === false
+        ? electron.blocker
+        : null;
   if (typeof blocker !== 'string' || !blocker.trim()) return null;
   return blocker.trim().replace(/\s+/g, ' ').slice(0, 240);
 }

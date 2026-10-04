@@ -37,13 +37,23 @@ const consolePath = join(evidenceDir, consoleEvidence.evidence);
 const consoleBytes = readFileSync(consolePath);
 const consoleText = consoleBytes.toString('utf8');
 const consoleSha256 = createHash('sha256').update(consoleBytes).digest('hex');
-const cspWarnings = consoleText.match(/Electron Security Warning \(Insecure Content-Security-Policy\)/g) ?? [];
-const applicationErrors = consoleText.match(/(?:^|\n).*?(?:ERROR:CONSOLE|Uncaught (?:Error|Exception)|Failed to load resource).*?(?=\n|$)/g) ?? [];
+const cspWarnings =
+  consoleText.match(/Electron Security Warning \(Insecure Content-Security-Policy\)/g) ?? [];
+const applicationErrors =
+  consoleText.match(
+    /(?:^|\n).*?(?:ERROR:CONSOLE|Uncaught (?:Error|Exception)|Failed to load resource).*?(?=\n|$)/g,
+  ) ?? [];
 
-assert(consoleBytes.length === consoleEvidence.evidenceBytes, 'console evidence byte count mismatch');
+assert(
+  consoleBytes.length === consoleEvidence.evidenceBytes,
+  'console evidence byte count mismatch',
+);
 assert(consoleSha256 === consoleEvidence.evidenceSha256, 'console evidence sha256 mismatch');
 assert(cspWarnings.length === consoleEvidence.warnings, 'console warning count mismatch');
-assert(applicationErrors.length === consoleEvidence.applicationErrors, 'console application error count mismatch');
+assert(
+  applicationErrors.length === consoleEvidence.applicationErrors,
+  'console application error count mismatch',
+);
 assert(consoleText.includes(consoleEvidence.warning), 'console warning text mismatch');
 
 for (const screenshot of run.screenshots) {

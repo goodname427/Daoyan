@@ -241,6 +241,53 @@ describe('stage-owned task contracts', () => {
       ),
     ).toBeNull();
   });
+  it('keeps a scoped native Electron launch refusal blocked instead of scheduling a retry', () => {
+    const blocked = {
+      taskId: 'dev-electron-csp-a1',
+      status: 'blocked',
+      completed: false,
+      actualApplication: {
+        developmentBrowser: { consoleErrors: 0 },
+        electron: {
+          completed: false,
+          processStarted: false,
+          blocker: '  Electron launch rejected: blocked by policy  ',
+        },
+      },
+    };
+    expect(developmentTaskEnvironmentBlockerReason(blocked, blocked.taskId)).toBe(
+      'Electron launch rejected: blocked by policy',
+    );
+    expect(developmentTaskEnvironmentBlockerReason(blocked, 'other')).toBeNull();
+    expect(
+      developmentTaskEnvironmentBlockerReason({ ...blocked, completed: true }, blocked.taskId),
+    ).toBeNull();
+    for (const electron of [
+      null,
+      { completed: true, blocker: 'old refusal' },
+      { blocker: 'old refusal' },
+      { completed: false, blocker: '' },
+    ]) {
+      expect(
+        developmentTaskEnvironmentBlockerReason(
+          { ...blocked, actualApplication: { electron } },
+          blocked.taskId,
+        ),
+      ).toBeNull();
+    }
+    expect(
+      developmentTaskEnvironmentBlockerReason(
+        {
+          ...blocked,
+          actualApplication: {
+            ...blocked.actualApplication,
+            observations: { blocker: 'original observation block' },
+          },
+        },
+        blocked.taskId,
+      ),
+    ).toBe('original observation block');
+  });
   it('returns a signed negative design verdict to development without treating an environment gap as pass', () => {
     const blocked = {
       taskId: 'da-a-flow',
